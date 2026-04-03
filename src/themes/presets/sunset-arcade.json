@@ -1,0 +1,19 @@
+{
+  "id": "sunset-arcade",
+  "name": "Sunset Arcade",
+  "description": "Warm retro palette with arcade punch.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#1a1016",
+    "foreground": "#fff9f2",
+    "muted": "#4a2638",
+    "accentMagenta": "#ff2d92",
+    "accentCyan": "#39d2ff",
+    "accentYellow": "#ffd447",
+    "accentOrange": "#ff6a00",
+    "accentPurple": "#9a3dff",
+    "fontHeading": "'Anton', 'Segoe UI', sans-serif",
+    "fontBody": "'Manrope', 'Segoe UI', sans-serif",
+    "fontDisplay": "'Bangers', 'Impact', sans-serif"
+  }
+}

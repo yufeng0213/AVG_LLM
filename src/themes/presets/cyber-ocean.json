@@ -1,0 +1,19 @@
+{
+  "id": "cyber-ocean",
+  "name": "Cyber Ocean",
+  "description": "Cool cyan and electric blue atmosphere.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#061423",
+    "foreground": "#f6fbff",
+    "muted": "#123455",
+    "accentMagenta": "#ff4db8",
+    "accentCyan": "#35f4ff",
+    "accentYellow": "#ffe66d",
+    "accentOrange": "#ff8a3d",
+    "accentPurple": "#5f7cff",
+    "fontHeading": "'Orbitron', 'Segoe UI', sans-serif",
+    "fontBody": "'Space Grotesk', 'Segoe UI', sans-serif",
+    "fontDisplay": "'Righteous', 'Impact', sans-serif"
+  }
+}

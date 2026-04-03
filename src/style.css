@@ -1,0 +1,406 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bangers&family=DM+Sans:wght@400;500;700&family=Manrope:wght@400;600;700;800&family=Nunito:wght@700;800;900&family=Orbitron:wght@500;700;800&family=Outfit:wght@700;800;900&family=Righteous&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+:root {
+  --background: #0d0d1a;
+  --foreground: #ffffff;
+  --muted: #2d1b4e;
+  --accent-magenta: #ff3af2;
+  --accent-cyan: #00f5d4;
+  --accent-yellow: #ffe600;
+  --accent-orange: #ff6b35;
+  --accent-purple: #7b2fff;
+  --radius-button: 9999px;
+  --radius-card: 24px;
+  --radius-panel: 16px;
+  --font-heading: 'Outfit', 'Segoe UI', sans-serif;
+  --font-body: 'DM Sans', 'Segoe UI', sans-serif;
+  --font-display: 'Bangers', 'Impact', sans-serif;
+  --text-shadow-single: 2px 2px 0 var(--accent-purple);
+  --text-shadow-double:
+    2px 2px 0 var(--accent-purple), 4px 4px 0 var(--accent-magenta);
+  --text-shadow-triple:
+    2px 2px 0 var(--accent-purple), 4px 4px 0 var(--accent-magenta),
+    6px 6px 0 var(--accent-cyan);
+  --surface-panel: color-mix(in srgb, var(--background) 32%, transparent);
+  --surface-field: color-mix(in srgb, var(--background) 28%, transparent);
+  --surface-control: color-mix(in srgb, var(--muted) 76%, transparent);
+  --surface-status: color-mix(in srgb, var(--muted) 65%, transparent);
+  --border-panel: var(--accent-cyan);
+  --border-field: var(--accent-cyan);
+  --border-control: var(--accent-magenta);
+  --border-status: var(--accent-cyan);
+  --border-action: var(--accent-yellow);
+  --gradient-primary: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--accent-magenta) 70%, var(--background)),
+    color-mix(in srgb, var(--accent-purple) 60%, var(--background)),
+    color-mix(in srgb, var(--accent-cyan) 58%, var(--background))
+  );
+  --gradient-secondary: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--accent-cyan) 72%, var(--background)),
+    color-mix(in srgb, var(--accent-purple) 62%, var(--background)),
+    color-mix(in srgb, var(--accent-magenta) 58%, var(--background))
+  );
+  --shadow-screen:
+    0 0 34px color-mix(in srgb, var(--accent-cyan) 45%, transparent),
+    12px 12px 0 var(--accent-magenta), 24px 24px 0 var(--accent-cyan);
+  --shadow-panel:
+    0 0 22px color-mix(in srgb, var(--accent-cyan) 45%, transparent),
+    6px 6px 0 var(--accent-yellow);
+  --shadow-card:
+    0 0 24px color-mix(in srgb, var(--accent-orange) 45%, transparent),
+    8px 8px 0 var(--accent-magenta), 16px 16px 0 var(--accent-cyan);
+  --shadow-field:
+    0 0 14px color-mix(in srgb, var(--accent-cyan) 35%, transparent),
+    6px 6px 0 var(--accent-magenta);
+  --shadow-button:
+    0 0 16px color-mix(in srgb, var(--accent-magenta) 38%, transparent),
+    6px 6px 0 var(--accent-cyan), 12px 12px 0 var(--accent-yellow);
+  --shadow-button-disabled:
+    0 0 12px color-mix(in srgb, var(--accent-magenta) 25%, transparent),
+    4px 4px 0 var(--accent-cyan);
+  --shadow-status:
+    0 0 12px color-mix(in srgb, var(--accent-yellow) 32%, transparent),
+    6px 6px 0 var(--accent-cyan);
+  --shadow-pressed: inset 10px 10px 20px #d9d4e3, inset -10px -10px 20px #ffffff;
+  --blob-primary: rgba(255, 58, 242, 0.2);
+  --blob-secondary: rgba(0, 245, 212, 0.18);
+  --blob-tertiary: rgba(123, 47, 255, 0.16);
+  --backdrop-blur: 9px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  background-color: var(--background);
+  overflow-x: hidden;
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+body::before {
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse at 20% 30%,
+      var(--blob-primary) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 84% 68%,
+      var(--blob-secondary) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 52% 48%,
+      var(--blob-tertiary) 0%,
+      transparent 62%
+    );
+  mix-blend-mode: screen;
+  animation: avg-gradient-shift 8s ease infinite;
+}
+
+body::after {
+  z-index: 1;
+  opacity: 0.22;
+  background-image:
+    radial-gradient(circle, var(--accent-magenta) 1.2px, transparent 1.2px),
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 10px,
+      color-mix(in srgb, var(--accent-yellow) 35%, transparent) 10px 20px
+    );
+  background-size:
+    28px 28px,
+    100% 100%;
+}
+
+#app {
+  position: relative;
+  z-index: 2;
+}
+
+.settings-panel-content {
+  display: grid;
+  gap: 16px;
+}
+
+.panel-title {
+  margin: 0;
+  font: 800 clamp(1.6rem, 4.1vw, 2.4rem) / 1 var(--font-heading);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: var(--text-shadow-double);
+}
+
+.panel-description {
+  margin: 0;
+  max-width: 860px;
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--foreground) 88%, var(--accent-cyan));
+}
+
+.settings-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.single-column {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.two-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.setting-field {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 4px solid var(--border-field);
+  border-radius: 18px;
+  background: var(--surface-field);
+  box-shadow: var(--shadow-field);
+}
+
+.setting-label {
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--accent-yellow);
+  text-shadow: var(--text-shadow-single);
+}
+
+.setting-input,
+.setting-select {
+  width: 100%;
+  border: 4px solid var(--border-control);
+  border-radius: var(--radius-button);
+  padding: 11px 14px;
+  font: 600 0.95rem/1.2 var(--font-body);
+  color: var(--foreground);
+  background: var(--surface-control);
+}
+
+.setting-input::placeholder {
+  color: color-mix(in srgb, var(--foreground) 44%, transparent);
+}
+
+.setting-input:focus-visible,
+.setting-select:focus-visible {
+  outline: 3px dashed var(--accent-cyan);
+  outline-offset: 3px;
+  border-color: var(--accent-yellow);
+}
+
+.setting-textarea {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  border: 4px dashed var(--border-control);
+  border-radius: var(--radius-panel);
+  padding: 12px 14px;
+  font: 600 0.9rem/1.5 'Consolas', 'Cascadia Code', 'Courier New', monospace;
+  color: var(--foreground);
+  background: var(--surface-control);
+}
+
+.setting-textarea:focus-visible {
+  outline: 3px dashed var(--accent-yellow);
+  outline-offset: 3px;
+  border-color: var(--accent-magenta);
+}
+
+.setting-range {
+  width: 100%;
+  accent-color: var(--accent-yellow);
+  cursor: pointer;
+}
+
+.setting-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 4px dashed var(--accent-orange);
+  border-radius: var(--radius-button);
+  background: color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  font-weight: 600;
+}
+
+.setting-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-cyan);
+}
+
+.setting-status-chip {
+  margin: 0;
+  align-self: end;
+  padding: 11px 14px;
+  border: 4px solid var(--border-status);
+  border-radius: var(--radius-button);
+  background: var(--surface-status);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-status);
+}
+
+.setting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.action-button {
+  appearance: none;
+  border: 4px solid var(--border-action);
+  border-radius: var(--radius-button);
+  min-height: 48px;
+  padding: 8px 16px;
+  font: 800 0.82rem/1 var(--font-body);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--foreground);
+  background: var(--gradient-primary);
+  cursor: pointer;
+  transition: transform 220ms ease, box-shadow 220ms ease;
+  box-shadow: var(--shadow-button);
+}
+
+.action-button:hover {
+  transform: translateY(-3px) scale(1.03);
+}
+
+.action-button:active {
+  transform: scale(0.97);
+}
+
+.action-button:focus-visible {
+  outline: 3px dashed var(--accent-cyan);
+  outline-offset: 3px;
+}
+
+.action-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--shadow-button-disabled);
+}
+
+.action-button.action-strong {
+  border-style: double;
+  border-color: var(--accent-cyan);
+}
+
+.action-button.action-outline {
+  background: var(--surface-panel);
+  border-style: dashed;
+}
+
+.action-button.action-ghost {
+  background: var(--surface-field);
+  border-style: dotted;
+}
+
+.status-message {
+  margin: 0;
+  padding: 10px 12px;
+  border: 4px dotted var(--border-status);
+  border-radius: 14px;
+  background: var(--surface-status);
+  color: color-mix(in srgb, var(--foreground) 92%, var(--accent-yellow));
+  font-size: 0.9rem;
+}
+
+@keyframes avg-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+@keyframes avg-float-reverse {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(20px) rotate(-5deg);
+  }
+}
+
+@keyframes avg-gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes avg-wiggle {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes avg-bounce-subtle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@media (max-width: 900px) {
+  .two-column {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+    scroll-behavior: auto !important;
+  }
+}
