@@ -1,5 +1,5 @@
 <script setup>
-const emit = defineEmits(['open-settings', 'open-worldbook', 'open-new-game', 'open-save-load', 'menu-click'])
+const emit = defineEmits(['open-settings', 'open-worldbook', 'open-new-game', 'open-save-load', 'open-plugin-manager', 'menu-click'])
 
 const menuItems = [
   {
@@ -36,6 +36,13 @@ const menuItems = [
     description: '维护世界观与剧情背景条目',
     icon: '📘',
     variant: 'tone-magenta border-dashed tilt-left',
+  },
+  {
+    id: 'plugins',
+    label: '插件管理',
+    description: '加载和管理扩展插件',
+    icon: '🔌',
+    variant: 'tone-cyan border-dashed tilt-right',
   },
 ]
 
@@ -116,6 +123,11 @@ const handleMenuClick = (itemId) => {
 
   if (itemId === 'load-save') {
     emit('open-save-load')
+    return
+  }
+
+  if (itemId === 'plugins') {
+    emit('open-plugin-manager')
     return
   }
 

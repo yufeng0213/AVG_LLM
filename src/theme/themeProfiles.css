@@ -624,6 +624,192 @@
   color: #635f69;
 }
 
+/* Plugin Manager Screen - clay-hifi theme */
+:root[data-theme-style='clay-hifi'] .plugin-screen {
+  border: 1px solid var(--border-panel);
+  border-radius: 52px;
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-screen);
+  backdrop-filter: blur(var(--backdrop-blur));
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-screen::before {
+  opacity: 0.08;
+  background-image: radial-gradient(circle, rgba(124, 58, 237, 0.28) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-screen::after {
+  opacity: 0;
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-bg-word {
+  color: color-mix(in srgb, var(--accent-purple) 20%, transparent);
+  opacity: 0.35;
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-tag {
+  border-width: 1px;
+  border-color: var(--border-action);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--foreground);
+  text-shadow: none;
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-title {
+  text-shadow: none;
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-title .title-gradient {
+  font-family: var(--font-heading);
+  background: linear-gradient(90deg, #332f3a 10%, #7c3aed 58%, #db2777 100%);
+  background-size: 220% 220%;
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-content {
+  border: 1px solid var(--border-panel);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: var(--shadow-card);
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-group {
+  border: 1px solid var(--border-panel);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-panel);
+}
+
+:root[data-theme-style='clay-hifi'] .group-header {
+  border-bottom: 1px solid var(--border-field);
+}
+
+:root[data-theme-style='clay-hifi'] .group-title {
+  text-shadow: none;
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-card {
+  border: 1px solid var(--border-field);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--foreground);
+  box-shadow: var(--shadow-field);
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-card--enabled {
+  border-color: var(--accent-purple);
+  background: linear-gradient(
+    110deg,
+    rgba(124, 58, 237, 0.15),
+    rgba(219, 39, 119, 0.1)
+  );
+  box-shadow: var(--shadow-button);
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-icon-area {
+  border: 1px solid var(--border-field);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-name {
+  text-shadow: none;
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-desc {
+  color: #635f69;
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-meta {
+  color: #635f69;
+}
+
+:root[data-theme-style='clay-hifi'] .toggle-btn {
+  border: 1px solid var(--border-field);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--foreground);
+  box-shadow: var(--shadow-field);
+}
+
+:root[data-theme-style='clay-hifi'] .toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+:root[data-theme-style='clay-hifi'] .toggle-btn--on {
+  border-color: transparent;
+  background: var(--gradient-secondary);
+  color: #ffffff;
+  box-shadow: var(--shadow-button);
+}
+
+:root[data-theme-style='clay-hifi'] .uninstall-btn {
+  border: 1px solid var(--border-field);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:root[data-theme-style='clay-hifi'] .dev-guide {
+  border: 1px solid var(--border-panel);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-panel);
+}
+
+:root[data-theme-style='clay-hifi'] .dev-guide-summary {
+  color: var(--accent-purple);
+}
+
+:root[data-theme-style='clay-hifi'] .dev-guide-content {
+  border-top: 1px solid var(--border-field);
+}
+
+:root[data-theme-style='clay-hifi'] .guide-title {
+  text-shadow: none;
+}
+
+:root[data-theme-style='clay-hifi'] .guide-code {
+  border: 1px solid var(--border-field);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--accent-purple);
+}
+
+:root[data-theme-style='clay-hifi'] .guide-hint {
+  color: #635f69;
+}
+
+:root[data-theme-style='clay-hifi'] .guide-hint code {
+  border: 1px solid var(--border-action);
+  color: var(--accent-purple);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:root[data-theme-style='clay-hifi'] .plugin-loading-section {
+  border: 1px solid var(--border-panel);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: var(--shadow-card);
+}
+
+:root[data-theme-style='clay-hifi'] .loading-text {
+  color: var(--foreground);
+  text-shadow: none;
+}
+
+:root[data-theme-style='clay-hifi'] .empty-title {
+  text-shadow: none;
+}
+
+:root[data-theme-style='clay-hifi'] .empty-desc,
+:root[data-theme-style='clay-hifi'] .empty-hint {
+  color: #635f69;
+}
+
 @keyframes clay-float {
   0%,
   100% {

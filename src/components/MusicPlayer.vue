@@ -1,5 +1,14 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import {
+  initSkinSystem,
+  loadSkin,
+  getCurrentSkin,
+  skinToStyles,
+  generateCustomCSS,
+  saveSkinSetting,
+  getSkinList
+} from './musicPlayerSkinManager.js'
 
 // 播放器状态
 const isExpanded = ref(false)
@@ -10,10 +19,22 @@ const duration = ref(0)
 const volume = ref(80)
 const isMuted = ref(false)
 const showSettings = ref(false)
+const showSkinSelector = ref(false)
 
 // 播放列表
 const playlist = ref([])
 const bgmFolderPath = ref('')
+
+// 皮肤系统
+const currentSkin = ref(null)
+const skinList = ref([])
+const selectedSkinId = ref('default')
+
+// 拖动状态
+const playerPosition = ref({ x: 20, y: 20 }) // 默认位置（右下角偏移）
+const isDragging = ref(false)
+const dragStartPos = ref({ x: 0, y: 0 })
+const playerStartPos = ref({ x: 0, y: 0 })
 
 // 音频元素
 let audioElement = null
@@ -225,6 +246,124 @@ const toggleSettings = () => {
   showSettings.value = !showSettings.value
 }
 
+// ========== 拖动功能 ==========
+
+// 开始拖动
+const startDrag = (event) => {
+  // 如果是点击展开按钮，不触发拖动
+  if (event.target.closest('.icon-btn')) return
+  
+  isDragging.value = true
+  dragStartPos.value = {
+    x: event.clientX,
+    y: event.clientY
+  }
+  playerStartPos.value = {
+    x: playerPosition.value.x,
+    y: playerPosition.value.y
+  }
+  
+  // 添加全局事件监听
+  document.addEventListener('mousemove', handleDrag)
+  document.addEventListener('mouseup', stopDrag)
+  
+  // 阻止默认行为
+  event.preventDefault()
+}
+
+// 拖动中
+const handleDrag = (event) => {
+  if (!isDragging.value) return
+  
+  const deltaX = event.clientX - dragStartPos.value.x
+  const deltaY = event.clientY - dragStartPos.value.y
+  
+  // 计算新位置
+  let newX = playerStartPos.value.x + deltaX
+  let newY = playerStartPos.value.y + deltaY
+  
+  // 获取窗口尺寸进行边界限制
+  const windowWidth = window.innerWidth
+  const windowHeight = window.innerHeight
+  const playerWidth = isExpanded.value ? 320 : 48
+  const playerHeight = isExpanded.value ? 400 : 48
+  
+  // 边界限制
+  newX = Math.max(0, Math.min(newX, windowWidth - playerWidth))
+  newY = Math.max(0, Math.min(newY, windowHeight - playerHeight))
+  
+  playerPosition.value = { x: newX, y: newY }
+}
+
+// 结束拖动
+const stopDrag = () => {
+  isDragging.value = false
+  
+  // 移除全局事件监听
+  document.removeEventListener('mousemove', handleDrag)
+  document.removeEventListener('mouseup', stopDrag)
+  
+  // 保存位置
+  savePlayerPosition()
+}
+
+// 保存播放器位置
+const savePlayerPosition = () => {
+  localStorage.setItem('music-player-position', JSON.stringify(playerPosition.value))
+}
+
+// 加载播放器位置
+const loadPlayerPosition = () => {
+  try {
+    const saved = localStorage.getItem('music-player-position')
+    if (saved) {
+      const pos = JSON.parse(saved)
+      // 验证位置是否在当前窗口范围内
+      const windowWidth = window.innerWidth
+      const windowHeight = window.innerHeight
+      if (pos.x >= 0 && pos.x < windowWidth - 48 && pos.y >= 0 && pos.y < windowHeight - 48) {
+        playerPosition.value = pos
+      }
+    }
+  } catch {
+    // 使用默认位置
+  }
+}
+
+// ========== 皮肤系统功能 ==========
+
+// 计算皮肤样式
+const skinStyles = computed(() => {
+  return skinToStyles(currentSkin.value)
+})
+
+// 切换皮肤
+const handleSkinChange = async (skinId) => {
+  selectedSkinId.value = skinId
+  currentSkin.value = await loadSkin(skinId)
+  saveSkinSetting(skinId)
+}
+
+// 加载外部皮肤文件
+const loadCustomSkin = async () => {
+  try {
+    if (window.avgLLM?.dialog?.selectFile) {
+      const result = await window.avgLLM.dialog.selectFile({
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+        title: '选择皮肤文件'
+      })
+      if (!result.canceled && result.filePaths.length > 0) {
+        const skinPath = result.filePaths[0]
+        currentSkin.value = await loadSkin(skinPath)
+        selectedSkinId.value = skinPath
+        saveSkinSetting(skinPath)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load custom skin:', error)
+  }
+}
+
 // 监听音量变化
 watch(volume, (newVal) => {
   if (audioElement && !isMuted.value) {
@@ -236,6 +375,12 @@ watch(volume, (newVal) => {
 onMounted(async () => {
   initAudio()
   await loadBgmSettings()
+  loadPlayerPosition()
+  
+  // 初始化皮肤系统
+  skinList.value = getSkinList()
+  currentSkin.value = await initSkinSystem()
+  selectedSkinId.value = getCurrentSkin().name === '默认皮肤' ? 'default' : 'neon-cyber'
 })
 
 // 组件卸载
@@ -245,22 +390,42 @@ onUnmounted(() => {
     audioElement.src = ''
     audioElement = null
   }
+  // 清理拖动事件监听
+  document.removeEventListener('mousemove', handleDrag)
+  document.removeEventListener('mouseup', stopDrag)
 })
 </script>
 
 <template>
-  <div class="music-player" :class="{ expanded: isExpanded }">
-    <!-- 收缩状态 - 小图标按钮 -->
-    <button v-if="!isExpanded" class="player-toggle-btn" @click="toggleExpand" title="音乐播放器">
+  <div
+    class="music-player"
+    :class="{ expanded: isExpanded, dragging: isDragging }"
+    :style="{
+      right: 'auto',
+      bottom: 'auto',
+      left: playerPosition.x + 'px',
+      top: playerPosition.y + 'px',
+      ...skinStyles.player
+    }"
+  >
+    <!-- 收缩状态 - 小图标按钮（可拖动） -->
+    <button
+      v-if="!isExpanded"
+      class="player-toggle-btn"
+      :style="skinStyles.toggleButton"
+      @mousedown="startDrag"
+      @click="toggleExpand"
+      title="音乐播放器（可拖动）"
+    >
       <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
         <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
       </svg>
     </button>
     
     <!-- 展开状态 - 播放器面板 -->
-    <div v-else class="player-panel">
-      <!-- 头部 -->
-      <div class="player-header">
+    <div v-else class="player-panel" :style="skinStyles.panel">
+      <!-- 头部（可拖动区域） -->
+      <div class="player-header" :style="skinStyles.header" @mousedown="startDrag">
         <span class="player-title">🎵 音乐播放器</span>
         <div class="header-actions">
           <button class="icon-btn" @click="toggleSettings" title="设置">
@@ -304,6 +469,22 @@ onUnmounted(() => {
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
             </svg>
           </button>
+        </div>
+        
+        <!-- 皮肤选择 -->
+        <div class="setting-row skin-selector">
+          <label>皮肤:</label>
+          <div class="skin-options">
+            <button
+              v-for="skin in skinList"
+              :key="skin.id"
+              class="skin-option"
+              :class="{ active: selectedSkinId === skin.id }"
+              @click="handleSkinChange(skin.id)"
+            >
+              {{ skin.name }}
+            </button>
+          </div>
         </div>
       </div>
       
@@ -372,10 +553,13 @@ onUnmounted(() => {
 <style scoped>
 .music-player {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
   z-index: 1000;
   font-family: inherit;
+  user-select: none;
+}
+
+.music-player.dragging {
+  opacity: 0.9;
 }
 
 .player-toggle-btn {
@@ -385,7 +569,7 @@ onUnmounted(() => {
   border: none;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  cursor: pointer;
+  cursor: grab;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -396,6 +580,10 @@ onUnmounted(() => {
 .player-toggle-btn:hover {
   transform: scale(1.1);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.player-toggle-btn:active {
+  cursor: grabbing;
 }
 
 .player-panel {
@@ -415,6 +603,15 @@ onUnmounted(() => {
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: grab;
+}
+
+.player-header:active {
+  cursor: grabbing;
+}
+
+.player-header .icon-btn {
+  cursor: pointer;
 }
 
 .player-title {
@@ -470,6 +667,38 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
   min-width: 80px;
+}
+
+.skin-selector {
+  flex-wrap: wrap;
+}
+
+.skin-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.skin-option {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.skin-option:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.skin-option.active {
+  background: var(--mp-primary, #667eea);
+  border-color: var(--mp-primary, #667eea);
+  color: #fff;
 }
 
 .folder-path {

@@ -6,6 +6,7 @@ import StartScreen from './screens/StartScreen.vue'
 import WorldBookEditorScreen from './screens/WorldBookEditorScreen.vue'
 import WorldBookScreen from './screens/WorldBookScreen.vue'
 import SaveLoadScreen from './screens/SaveLoadScreen.vue'
+import PluginManagerScreen from './screens/PluginManagerScreen.vue'
 
 const DESIGN_WIDTH = 1920
 const DESIGN_HEIGHT = 1080
@@ -37,6 +38,10 @@ const openWorldBookEditor = (bookId) => {
 
 const openSaveLoad = () => {
   currentScreen.value = 'save-load'
+}
+
+const openPluginManager = () => {
+  currentScreen.value = 'plugin-manager'
 }
 
 const backToWorldBookShelf = () => {
@@ -103,6 +108,7 @@ onBeforeUnmount(() => {
         @open-new-game="openNewGame"
         @open-worldbook="openWorldBook"
         @open-save-load="openSaveLoad"
+        @open-plugin-manager="openPluginManager"
       />
       <GameScreen
         v-else-if="currentScreen === 'game'"
@@ -120,6 +126,10 @@ onBeforeUnmount(() => {
         v-else-if="currentScreen === 'worldbook-shelf'"
         @back="backToStart"
         @open-book="openWorldBookEditor"
+      />
+      <PluginManagerScreen
+        v-else-if="currentScreen === 'plugin-manager'"
+        @back="backToStart"
       />
       <WorldBookEditorScreen
         v-else

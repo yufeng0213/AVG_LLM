@@ -1,0 +1,18 @@
+{
+  "id": "phone",
+  "name": "手机",
+  "version": "1.0.0",
+  "author": "AVG_LLM",
+  "description": "一个手机模拟器插件，在游戏界面显示一个手机，包含各种应用程序",
+  "type": "component",
+  "entry": "index.vue",
+  "icon": "📱",
+  "replaces": [],
+  "config": {
+    "theme": {
+      "type": "string",
+      "default": "dark",
+      "options": ["dark", "light"]
+    }
+  }
+}

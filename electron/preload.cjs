@@ -31,6 +31,20 @@ const bridgeApi = {
     loadFolder: (folderPath) => ipcRenderer.invoke('bgm:load-folder', folderPath),
     readAudio: (filePath) => ipcRenderer.invoke('bgm:read-audio', filePath),
   },
+  plugins: {
+    // 扫描插件目录
+    scan: () => ipcRenderer.invoke('plugins:scan'),
+    // 加载插件元数据
+    loadManifest: (pluginId) => ipcRenderer.invoke('plugins:load-manifest', pluginId),
+    // 加载插件组件代码（返回组件源码）
+    loadComponent: (pluginId) => ipcRenderer.invoke('plugins:load-component', pluginId),
+    // 选择插件文件夹
+    selectFolder: () => ipcRenderer.invoke('plugins:select-folder'),
+    // 安装插件
+    install: (sourcePath) => ipcRenderer.invoke('plugins:install', sourcePath),
+    // 卸载插件
+    uninstall: (pluginId) => ipcRenderer.invoke('plugins:uninstall', pluginId),
+  },
 }
 
 try {

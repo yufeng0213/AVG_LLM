@@ -1,0 +1,18 @@
+{
+  "id": "example-music-player",
+  "name": "示例音乐播放器",
+  "version": "1.0.0",
+  "author": "AVG_LLM",
+  "description": "一个简单的示例音乐播放器插件，用于演示插件系统功能",
+  "type": "music-player",
+  "entry": "index.vue",
+  "icon": "🎵",
+  "replaces": ["MusicPlayer"],
+  "config": {
+    "theme": {
+      "type": "string",
+      "default": "dark",
+      "options": ["dark", "light", "neon"]
+    }
+  }
+}

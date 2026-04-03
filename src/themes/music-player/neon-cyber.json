@@ -1,0 +1,94 @@
+{
+  "name": "霓虹赛博",
+  "version": "1.0.0",
+  "author": "AVG_LLM",
+  "description": "赛博朋克霓虹风格 - 粉青渐变",
+  
+  "colors": {
+    "primary": "#ff00ff",
+    "secondary": "#00ffff",
+    "background": "rgba(10, 10, 20, 0.9)",
+    "backgroundHover": "rgba(255, 0, 255, 0.1)",
+    "textPrimary": "#00ffff",
+    "textSecondary": "rgba(0, 255, 255, 0.8)",
+    "textMuted": "rgba(255, 0, 255, 0.5)",
+    "border": "rgba(0, 255, 255, 0.3)",
+    "accent": "#ff00ff",
+    "progressBar": "linear-gradient(90deg, #ff00ff 0%, #00ffff 100%)",
+    "shadow": "rgba(255, 0, 255, 0.3)",
+    "glow": "rgba(0, 255, 255, 0.5)"
+  },
+  
+  "toggleButton": {
+    "size": 48,
+    "borderRadius": 12,
+    "background": "linear-gradient(135deg, #ff00ff 0%, #00ffff 100%)",
+    "shadow": "0 0 20px rgba(0, 255, 255, 0.5), 0 0 40px rgba(255, 0, 255, 0.3)",
+    "shadowHover": "0 0 30px rgba(0, 255, 255, 0.7), 0 0 60px rgba(255, 0, 255, 0.5)",
+    "iconColor": "#ffffff",
+    "iconSize": 24,
+    "scaleHover": 1.15
+  },
+  
+  "panel": {
+    "width": 320,
+    "borderRadius": 8,
+    "padding": 16,
+    "backdropFilter": "blur(20px)",
+    "border": "2px solid rgba(0, 255, 255, 0.5)",
+    "shadow": "0 0 40px rgba(255, 0, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.1)",
+    "maxHeight": 500
+  },
+  
+  "header": {
+    "fontSize": 14,
+    "fontWeight": 700,
+    "paddingBottom": 12,
+    "borderBottom": "1px solid rgba(0, 255, 255, 0.3)",
+    "iconSize": 18
+  },
+  
+  "controls": {
+    "buttonSize": 44,
+    "playButtonSize": 56,
+    "buttonBackground": "rgba(0, 255, 255, 0.1)",
+    "buttonBackgroundHover": "rgba(255, 0, 255, 0.2)",
+    "playButtonBackground": "linear-gradient(135deg, #ff00ff 0%, #00ffff 100%)",
+    "iconSize": 24,
+    "playIconSize": 28,
+    "borderRadius": 50
+  },
+  
+  "progressBar": {
+    "height": 6,
+    "background": "rgba(255, 0, 255, 0.2)",
+    "fill": "linear-gradient(90deg, #ff00ff 0%, #00ffff 100%)",
+    "borderRadius": 3
+  },
+  
+  "playlist": {
+    "itemPadding": "8px 10px",
+    "itemBorderRadius": 4,
+    "itemBackgroundHover": "rgba(0, 255, 255, 0.1)",
+    "itemBackgroundActive": "rgba(255, 0, 255, 0.2)",
+    "maxHeight": 200,
+    "scrollbarWidth": 4
+  },
+  
+  "settings": {
+    "panelBackground": "rgba(0, 255, 255, 0.05)",
+    "panelBorderRadius": 4,
+    "panelPadding": 12,
+    "sliderHeight": 6,
+    "sliderThumbSize": 16
+  },
+  
+  "animation": {
+    "transitionDuration": "0.2s",
+    "hoverTransition": "all 0.15s ease",
+    "panelSlide": "panel-slide 0.2s ease",
+    "pulse": "pulse 0.8s infinite"
+  },
+  
+  "customCSS": ".music-player { border: 2px solid transparent; animation: border-glow 2s infinite alternate; } @keyframes border-glow { from { border-color: rgba(0, 255, 255, 0.3); } to { border-color: rgba(255, 0, 255, 0.5); } }"
+}

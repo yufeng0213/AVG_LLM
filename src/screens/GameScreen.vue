@@ -4,6 +4,9 @@ import { getActiveWorldBookId, loadWorldBooks } from '../worldbook/worldBookStor
 import { generateStory, buildStoryPrompt, parseStoryContent, toGameScript, hasChoices, extractChoices } from '../llm'
 import { saveGame, createHistoryBackup, formatTimestamp } from '../save/saveManager'
 import MusicPlayer from '../components/MusicPlayer.vue'
+import Phone from '../components/Phone.vue'
+import PluginComponent from '../plugins/PluginComponent.vue'
+import { PluginTypes } from '../plugins/pluginManager.js'
 
 const emit = defineEmits(['back'])
 
@@ -167,9 +170,15 @@ const getCharacterPortrait = (characterId, emotion = 'default') => {
   return characterData.portraits[0]
 }
 
+// 默认立绘路径
+const DEFAULT_PORTRAIT_PATH = './data/lihui/default.png'
+
 // 获取立绘图片 URL（通过 Electron API）
 const getPortraitImageUrl = async (portrait) => {
-  if (!portrait?.filePath) return ''
+  // 如果没有立绘，返回默认立绘
+  if (!portrait?.filePath) {
+    return getDefaultPortraitUrl()
+  }
 
   // 检查缓存
   if (portraitImageCache.value.has(portrait.filePath)) {
@@ -186,11 +195,41 @@ const getPortraitImageUrl = async (portrait) => {
         return url
       }
     } catch {
-      return ''
+      // 加载失败，返回默认立绘
+      return getDefaultPortraitUrl()
     }
   }
 
-  return ''
+  // 非 Electron 环境，返回默认立绘路径
+  return getDefaultPortraitUrl()
+}
+
+// 获取默认立绘 URL
+const getDefaultPortraitUrl = async () => {
+  const defaultPath = DEFAULT_PORTRAIT_PATH
+  
+  // 检查缓存
+  if (portraitImageCache.value.has(defaultPath)) {
+    return portraitImageCache.value.get(defaultPath)
+  }
+
+  // Electron 环境：读取默认立绘为 Base64
+  if (window.avgLLM?.file?.readImage) {
+    try {
+      const result = await window.avgLLM.file.readImage(defaultPath)
+      if (result?.base64) {
+        const url = `data:${result.mimeType};base64,${result.base64}`
+        portraitImageCache.value.set(defaultPath, url)
+        return url
+      }
+    } catch {
+      // 默认立绘加载失败，返回空
+      console.warn('默认立绘加载失败:', defaultPath)
+    }
+  }
+
+  // 非 Electron 环境或加载失败，返回相对路径
+  return defaultPath
 }
 
 // 获取角色当前应显示的情绪
@@ -348,12 +387,9 @@ const updatePortraitUrls = async () => {
   for (const character of sceneCharacters) {
     const emotion = getDisplayEmotion(character.id)
     const portrait = getCharacterPortrait(character.id, emotion)
-    if (portrait) {
-      const url = await getPortraitImageUrl(portrait)
-      portraitUrls.value[character.id] = url
-    } else {
-      portraitUrls.value[character.id] = ''
-    }
+    // 无论是否有立绘，都调用 getPortraitImageUrl（它会处理默认立绘）
+    const url = await getPortraitImageUrl(portrait)
+    portraitUrls.value[character.id] = url
   }
 }
 
@@ -370,7 +406,10 @@ const syncActiveCharacterBySpeaker = () => {
 
 const goNextLine = () => {
   if (isLastLine.value) {
-    currentLineIndex.value = 0
+    // 最后一句时，打开 AI 生成面板
+    if (!showGeneratePanel.value) {
+      showGeneratePanel.value = true
+    }
     return
   }
 
@@ -624,31 +663,24 @@ onMounted(() => {
       </div>
 
       <div class="character-layer" aria-label="人物立绘">
-        <button
+        <div
           v-for="character in sceneCharacters"
           :key="character.id"
-          type="button"
           class="character-stand"
           :class="[
-            character.toneClass,
             character.positionClass,
             { active: activeCharacterId === character.id },
             { speaking: speakerCharacterMap[currentLine.speaker] === character.id },
           ]"
           @click="activeCharacterId = character.id"
         >
-          <!-- 如果有立绘则显示图片 -->
+          <!-- 立绘图片 -->
           <img
-            v-if="portraitUrls[character.id]"
             :src="portraitUrls[character.id]"
             :alt="character.name"
             class="character-portrait"
           />
-          <!-- 否则显示剪影 -->
-          <span v-else class="character-silhouette" aria-hidden="true"></span>
-          <span class="character-name">{{ character.name }}</span>
-          <span class="character-role">{{ character.role }}</span>
-        </button>
+        </div>
       </div>
 
       <section class="dialogue-box" aria-live="polite">
@@ -668,7 +700,7 @@ onMounted(() => {
             上一句
           </button>
           <button type="button" class="action-button action-strong" @click="goNextLine">
-            {{ isLastLine ? '重新开始' : '下一句' }}
+            {{ isLastLine ? '继续' : '下一句' }}
           </button>
           <button
             type="button"
@@ -808,8 +840,17 @@ onMounted(() => {
       </section>
     </section>
 
-    <!-- 音乐播放器 -->
-    <MusicPlayer />
+    <!-- 音乐播放器（支持插件替换） -->
+    <PluginComponent
+      :default-component="MusicPlayer"
+      :plugin-type="PluginTypes.MUSIC_PLAYER"
+    />
+
+    <!-- 手机（支持插件替换） -->
+    <PluginComponent
+      :default-component="Phone"
+      :plugin-type="PluginTypes.PHONE"
+    />
   </main>
 </template>
 
@@ -1037,191 +1078,71 @@ onMounted(() => {
   inset: 0;
   display: flex;
   align-items: flex-end;
-  justify-content: center;
-  gap: clamp(14px, 2vw, 30px);
-  padding: clamp(18px, 2vw, 30px) clamp(16px, 2.2vw, 26px) 168px;
+  justify-content: space-between;
+  padding: 0 5% 180px;
+  pointer-events: none;
 }
 
 .character-stand {
   position: relative;
-  appearance: none;
-  width: clamp(180px, 19vw, 300px);
-  height: clamp(320px, 58vh, 570px);
-  border: 4px solid var(--accent-yellow);
-  border-radius: 36px 36px 24px 24px;
-  background: var(--gradient-secondary);
-  box-shadow:
-    0 0 24px color-mix(in srgb, var(--accent-magenta) 40%, transparent),
-    8px 8px 0 var(--accent-cyan), 16px 16px 0 var(--accent-yellow);
-  overflow: hidden;
+  width: clamp(200px, 22vw, 350px);
+  height: clamp(350px, 65vh, 600px);
   cursor: pointer;
-  transition: transform 260ms ease, box-shadow 260ms ease, opacity 260ms ease;
-}
-
-.character-stand::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(circle, color-mix(in srgb, var(--foreground) 62%, transparent) 1px, transparent 1px),
-    repeating-linear-gradient(
-      40deg,
-      transparent 0 14px,
-      color-mix(in srgb, var(--accent-cyan) 30%, transparent) 14px 20px
-    );
-  background-size:
-    26px 26px,
-    100% 100%;
-  opacity: 0.16;
-  pointer-events: none;
-}
-
-.character-stand:hover {
-  transform: translateY(-8px) scale(1.02);
-}
-
-.character-stand.active {
-  opacity: 1;
-  transform: translateY(-12px) scale(1.06);
-  border-color: var(--accent-cyan);
-  box-shadow:
-    0 0 30px color-mix(in srgb, var(--accent-cyan) 58%, transparent),
-    10px 10px 0 var(--accent-yellow), 20px 20px 0 var(--accent-magenta);
-}
-
-.character-stand:not(.active) {
-  opacity: 0.84;
+  pointer-events: auto;
+  transition: transform 300ms ease, filter 300ms ease;
 }
 
 .character-portrait {
-  position: absolute;
-  left: 50%;
-  bottom: 54px;
-  width: 72%;
-  height: 76%;
-  transform: translateX(-50%);
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   object-position: bottom center;
-  border-radius: 12px;
   filter: drop-shadow(0 4px 20px color-mix(in srgb, var(--foreground) 30%, transparent));
-  transition: opacity 300ms ease, transform 300ms ease;
+  transition: filter 300ms ease;
+}
+
+.character-stand:hover {
+  transform: translateY(-8px);
+}
+
+.character-stand.active {
+  transform: translateY(-12px);
+}
+
+.character-stand.active .character-portrait {
+  filter: drop-shadow(0 8px 30px color-mix(in srgb, var(--accent-cyan) 50%, transparent));
 }
 
 .character-stand.speaking .character-portrait {
-  transform: translateX(-50%) scale(1.02);
-  filter: drop-shadow(0 8px 30px color-mix(in srgb, var(--accent-cyan) 40%, transparent));
+  filter: drop-shadow(0 8px 30px color-mix(in srgb, var(--accent-cyan) 50%, transparent));
 }
 
-.character-silhouette {
-  position: absolute;
-  left: 50%;
-  bottom: 54px;
-  width: 72%;
-  height: 76%;
-  transform: translateX(-50%);
-  border-radius: 140px 140px 28px 28px;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--foreground) 92%, transparent),
-    color-mix(in srgb, var(--foreground) 68%, transparent)
-  );
-  opacity: 0.95;
+.character-stand:not(.active) {
+  opacity: 0.7;
 }
 
-.character-silhouette::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 9%;
-  width: 36%;
-  aspect-ratio: 1 / 1;
-  transform: translateX(-50%);
-  border-radius: 9999px;
-  background: color-mix(in srgb, var(--foreground) 96%, transparent);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--foreground) 30%, transparent);
-}
-
-.character-silhouette::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 30%;
-  width: 88%;
-  height: 58%;
-  transform: translateX(-50%);
-  border-radius: 130px 130px 24px 24px;
-  background: color-mix(in srgb, var(--foreground) 78%, transparent);
-}
-
-.character-name,
-.character-role {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  margin: 0;
-  z-index: 2;
-  text-align: left;
-}
-
-.character-name {
-  bottom: 28px;
-  font-family: var(--font-heading);
-  font-size: 1.1rem;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-shadow: var(--text-shadow-single);
-}
-
-.character-role {
-  bottom: 10px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--foreground) 84%, var(--accent-cyan));
-}
-
-.tone-violet {
-  background: linear-gradient(
-    140deg,
-    color-mix(in srgb, var(--accent-purple) 80%, var(--background)),
-    color-mix(in srgb, var(--accent-magenta) 72%, var(--background))
-  );
-}
-
-.tone-cyan {
-  background: linear-gradient(
-    140deg,
-    color-mix(in srgb, var(--accent-cyan) 78%, var(--background)),
-    color-mix(in srgb, var(--accent-purple) 72%, var(--background))
-  );
-}
-
-.tone-orange {
-  background: linear-gradient(
-    140deg,
-    color-mix(in srgb, var(--accent-orange) 80%, var(--background)),
-    color-mix(in srgb, var(--accent-magenta) 72%, var(--background))
-  );
-}
-
+/* 左侧立绘位置 */
 .is-left {
-  transform: translateY(14px) rotate(-1deg);
+  transform-origin: bottom center;
 }
 
+/* 中间立绘位置 */
 .is-center {
-  transform: translateY(0) rotate(0.8deg);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
 }
 
+/* 右侧立绘位置 */
 .is-right {
-  transform: translateY(18px) rotate(-0.8deg);
+  transform-origin: bottom center;
 }
 
 .character-stand.is-left.active,
 .character-stand.is-center.active,
 .character-stand.is-right.active {
-  transform: translateY(-12px) scale(1.06);
+  opacity: 1;
 }
 
 .dialogue-box {
@@ -1558,16 +1479,24 @@ onMounted(() => {
   }
 
   .character-layer {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
-
-  .character-stand.is-left {
-    display: none;
+    padding: 0 3% 160px;
   }
 
   .character-stand {
-    width: min(84vw, 320px);
+    width: min(40vw, 180px);
+    height: min(50vh, 300px);
+  }
+
+  /* 移动端只显示中间立绘 */
+  .character-stand.is-left,
+  .character-stand.is-right {
+    display: none;
+  }
+
+  .character-stand.is-center {
+    display: block;
+    width: min(70vw, 280px);
+    height: min(60vh, 350px);
   }
 
   .game-bg-word {

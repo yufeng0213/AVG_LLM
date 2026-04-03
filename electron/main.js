@@ -747,6 +747,171 @@ app.whenReady().then(() => {
     }
   })
 
+  // ==================== 插件系统 IPC handlers ====================
+  
+  // 插件目录名称
+  const PLUGINS_DIR_NAME = 'plugins'
+  
+  // 获取插件目录路径
+  const getPluginsDir = () => path.join(app.getPath('userData'), PLUGINS_DIR_NAME)
+  
+  // 扫描插件目录
+  ipcMain.handle('plugins:scan', async () => {
+    const pluginsDir = getPluginsDir()
+    await ensureDir(pluginsDir)
+    
+    try {
+      const dirs = await fsPromises.readdir(pluginsDir, { withFileTypes: true })
+      const pluginDirs = dirs.filter(d => d.isDirectory())
+      
+      const plugins = []
+      for (const dir of pluginDirs) {
+        const pluginPath = path.join(pluginsDir, dir.name)
+        const manifestPath = path.join(pluginPath, 'plugin.json')
+        
+        try {
+          const manifestContent = await fsPromises.readFile(manifestPath, 'utf-8')
+          const manifest = JSON.parse(manifestContent)
+          
+          // 验证必要字段
+          if (manifest.id && manifest.name && manifest.type) {
+            plugins.push({
+              ...manifest,
+              path: pluginPath,
+              installed: true
+            })
+          }
+        } catch {
+          // 忽略无效的插件目录
+        }
+      }
+      
+      return { success: true, plugins }
+    } catch (error) {
+      return { success: false, error: error.message, plugins: [] }
+    }
+  })
+  
+  // 加载插件元数据
+  ipcMain.handle('plugins:load-manifest', async (_event, pluginId) => {
+    const pluginsDir = getPluginsDir()
+    const manifestPath = path.join(pluginsDir, pluginId, 'plugin.json')
+    
+    try {
+      const content = await fsPromises.readFile(manifestPath, 'utf-8')
+      const manifest = JSON.parse(content)
+      return { success: true, manifest }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+  
+  // 加载插件组件代码
+  ipcMain.handle('plugins:load-component', async (_event, pluginId) => {
+    const pluginsDir = getPluginsDir()
+    const pluginPath = path.join(pluginsDir, pluginId)
+    
+    try {
+      // 先读取 manifest 获取入口文件
+      const manifestPath = path.join(pluginPath, 'plugin.json')
+      const manifestContent = await fsPromises.readFile(manifestPath, 'utf-8')
+      const manifest = JSON.parse(manifestContent)
+      
+      const entryFile = manifest.entry || 'index.vue'
+      const entryPath = path.join(pluginPath, entryFile)
+      
+      // 读取组件源码
+      const componentSource = await fsPromises.readFile(entryPath, 'utf-8')
+      
+      return {
+        success: true,
+        component: componentSource,
+        entry: entryFile
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+  
+  // 选择插件文件夹（用于安装）
+  ipcMain.handle('plugins:select-folder', async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return { success: false, error: 'Window not available' }
+    }
+    
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择插件目录',
+      properties: ['openDirectory'],
+      buttonLabel: '选择插件'
+    })
+    
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, canceled: true }
+    }
+    
+    return { success: true, path: result.filePaths[0] }
+  })
+  
+  // 安装插件
+  ipcMain.handle('plugins:install', async (_event, sourcePath) => {
+    if (!sourcePath || typeof sourcePath !== 'string') {
+      return { success: false, error: 'Invalid source path' }
+    }
+    
+    const pluginsDir = getPluginsDir()
+    await ensureDir(pluginsDir)
+    
+    try {
+      // 验证源目录包含 plugin.json
+      const manifestPath = path.join(sourcePath, 'plugin.json')
+      const manifestContent = await fsPromises.readFile(manifestPath, 'utf-8')
+      const manifest = JSON.parse(manifestContent)
+      
+      if (!manifest.id || !manifest.name || !manifest.type) {
+        return { success: false, error: 'Invalid plugin manifest' }
+      }
+      
+      // 目标目录
+      const targetPath = path.join(pluginsDir, manifest.id)
+      
+      // 检查是否已存在
+      try {
+        await fsPromises.access(targetPath)
+        // 已存在，先删除
+        await fsPromises.rm(targetPath, { recursive: true, force: true })
+      } catch {
+        // 不存在，继续
+      }
+      
+      // 复制整个目录
+      await fsPromises.cp(sourcePath, targetPath, { recursive: true })
+      
+      return {
+        success: true,
+        plugin: {
+          ...manifest,
+          path: targetPath,
+          installed: true
+        }
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+  
+  // 卸载插件
+  ipcMain.handle('plugins:uninstall', async (_event, pluginId) => {
+    const pluginsDir = getPluginsDir()
+    const pluginPath = path.join(pluginsDir, pluginId)
+    
+    try {
+      await fsPromises.rm(pluginPath, { recursive: true, force: true })
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+
   createWindow()
 
   app.on('activate', () => {
