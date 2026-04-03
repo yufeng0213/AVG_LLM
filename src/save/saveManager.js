@@ -1,10 +1,22 @@
 /**
  * 存档管理模块
  * 负责游戏存档的保存、加载、删除等操作
+ * 支持跨平台：Electron、Android (Capacitor)、Web
  */
 
-// 存档数据结构
+import { kvStorage, saveStorage, backupStorage } from '../storage/index.js'
+import { isElectron, isNative } from '../utils/platform.js'
+
+// 存档数据结构版本
 const SAVE_DATA_VERSION = 1
+
+// 存档元数据存储键
+const SAVE_LIST_KEY = 'saves'
+const BACKUP_LIST_KEY = 'backups'
+
+// 最大存档/备份数量
+const MAX_SAVES = 20
+const MAX_BACKUPS = 10
 
 /**
  * 创建空的存档数据结构
@@ -32,10 +44,9 @@ const createEmptySaveData = () => ({
  * @returns {Promise<string>} 存档目录路径
  */
 const getSaveDir = async () => {
-  if (window.avgLLM?.save?.getSaveDir) {
+  if (isElectron() && window.avgLLM?.save?.getSaveDir) {
     return await window.avgLLM.save.getSaveDir()
   }
-  // 浏览器环境回退
   return 'avg_llm_saves'
 }
 
@@ -44,16 +55,26 @@ const getSaveDir = async () => {
  * @returns {Promise<Array>} 存档列表
  */
 const getSaveList = async () => {
-  if (window.avgLLM?.save?.getSaveList) {
+  // Electron 环境优先使用 IPC
+  if (isElectron() && window.avgLLM?.save?.getSaveList) {
     return await window.avgLLM.save.getSaveList()
   }
-  // 浏览器环境回退：使用 localStorage
+  
+  // 使用存储抽象层
   try {
-    const saves = localStorage.getItem('avg_llm_saves')
-    return saves ? JSON.parse(saves) : []
+    const list = await kvStorage.get(SAVE_LIST_KEY)
+    return list || []
   } catch {
     return []
   }
+}
+
+/**
+ * 更新存档列表
+ * @param {Array} saves - 存档列表
+ */
+const updateSaveList = async (saves) => {
+  await kvStorage.set(SAVE_LIST_KEY, saves)
 }
 
 /**
@@ -63,7 +84,7 @@ const getSaveList = async () => {
  * @returns {Promise<Object>} 保存结果
  */
 const saveGame = async (gameData, slotId = null) => {
-  // 确保数据可被 IPC 克隆（深拷贝并移除不可序列化的属性）
+  // 确保数据可被序列化（深拷贝并移除不可序列化的属性）
   const clonedData = JSON.parse(JSON.stringify(gameData))
   
   const saveData = {
@@ -80,17 +101,27 @@ const saveGame = async (gameData, slotId = null) => {
       : ''
   }
 
-  if (window.avgLLM?.save?.saveGame) {
-    return await window.avgLLM.save.saveGame(saveData, slotId)
+  const id = slotId || `save_${Date.now()}`
+  
+  // Electron 环境优先使用 IPC
+  if (isElectron() && window.avgLLM?.save?.saveGame) {
+    return await window.avgLLM.save.saveGame(saveData, id)
   }
   
-  // 浏览器环境回退：使用 localStorage
+  // 使用存储抽象层
   try {
+    // 保存存档数据
+    const result = await saveStorage.save(id, saveData)
+    if (!result.success) {
+      return result
+    }
+    
+    // 更新存档列表
     const saves = await getSaveList()
-    const existingIndex = slotId ? saves.findIndex(s => s.id === slotId) : -1
+    const existingIndex = saves.findIndex(s => s.id === id)
     
     const saveEntry = {
-      id: slotId || `save_${Date.now()}`,
+      id,
       timestamp: saveData.timestamp,
       metadata: saveData.metadata,
     }
@@ -101,12 +132,19 @@ const saveGame = async (gameData, slotId = null) => {
       saves.unshift(saveEntry)
     }
 
-    // 最多保留 20 个存档
-    const trimmedSaves = saves.slice(0, 20)
-    localStorage.setItem('avg_llm_saves', JSON.stringify(trimmedSaves))
-    localStorage.setItem(`avg_llm_save_${saveEntry.id}`, JSON.stringify(saveData))
-
-    return { success: true, id: saveEntry.id }
+    // 限制存档数量
+    const trimmedSaves = saves.slice(0, MAX_SAVES)
+    
+    // 删除超出限制的存档文件
+    if (saves.length > MAX_SAVES) {
+      for (const oldSave of saves.slice(MAX_SAVES)) {
+        await saveStorage.delete(oldSave.id)
+      }
+    }
+    
+    await updateSaveList(trimmedSaves)
+    
+    return { success: true, id }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -118,20 +156,14 @@ const saveGame = async (gameData, slotId = null) => {
  * @returns {Promise<Object>} 存档数据
  */
 const loadGame = async (slotId) => {
-  if (window.avgLLM?.save?.loadGame) {
+  // Electron 环境优先使用 IPC
+  if (isElectron() && window.avgLLM?.save?.loadGame) {
     return await window.avgLLM.save.loadGame(slotId)
   }
-
-  // 浏览器环境回退
-  try {
-    const saveData = localStorage.getItem(`avg_llm_save_${slotId}`)
-    if (!saveData) {
-      return { success: false, error: '存档不存在' }
-    }
-    return { success: true, data: JSON.parse(saveData) }
-  } catch (error) {
-    return { success: false, error: error.message }
-  }
+  
+  // 使用存储抽象层
+  const result = await saveStorage.load(slotId)
+  return result
 }
 
 /**
@@ -140,16 +172,24 @@ const loadGame = async (slotId) => {
  * @returns {Promise<Object>} 删除结果
  */
 const deleteSave = async (slotId) => {
-  if (window.avgLLM?.save?.deleteSave) {
+  // Electron 环境优先使用 IPC
+  if (isElectron() && window.avgLLM?.save?.deleteSave) {
     return await window.avgLLM.save.deleteSave(slotId)
   }
-
-  // 浏览器环境回退
+  
+  // 使用存储抽象层
   try {
+    // 删除存档文件
+    const result = await saveStorage.delete(slotId)
+    if (!result.success) {
+      return result
+    }
+    
+    // 更新存档列表
     const saves = await getSaveList()
     const filteredSaves = saves.filter(s => s.id !== slotId)
-    localStorage.setItem('avg_llm_saves', JSON.stringify(filteredSaves))
-    localStorage.removeItem(`avg_llm_save_${slotId}`)
+    await updateSaveList(filteredSaves)
+    
     return { success: true }
   } catch (error) {
     return { success: false, error: error.message }
@@ -163,7 +203,7 @@ const deleteSave = async (slotId) => {
  * @returns {Promise<Object>} 备份结果
  */
 const createHistoryBackup = async (messages, backupName = null) => {
-  // 确保数据可被 IPC 克隆（深拷贝）
+  // 确保数据可被序列化（深拷贝）
   const clonedMessages = JSON.parse(JSON.stringify(messages))
   
   const backupData = {
@@ -174,27 +214,46 @@ const createHistoryBackup = async (messages, backupName = null) => {
     messages: clonedMessages,
   }
 
-  if (window.avgLLM?.backup?.createBackup) {
+  const id = `backup_${Date.now()}`
+  
+  // Electron 环境优先使用 IPC
+  if (isElectron() && window.avgLLM?.backup?.createBackup) {
     return await window.avgLLM.backup.createBackup(backupData)
   }
-
-  // 浏览器环境回退
+  
+  // 使用存储抽象层
   try {
-    const backups = JSON.parse(localStorage.getItem('avg_llm_backups') || '[]')
+    // 保存备份数据
+    const result = await backupStorage.save(id, backupData)
+    if (!result.success) {
+      return result
+    }
+    
+    // 更新备份列表
+    const backups = await getBackupList()
+    
     const backupEntry = {
-      id: `backup_${Date.now()}`,
+      id,
       timestamp: backupData.timestamp,
       name: backupData.name,
       messageCount: messages.length,
     }
 
     backups.unshift(backupEntry)
-    // 最多保留 10 个备份
-    const trimmedBackups = backups.slice(0, 10)
-    localStorage.setItem('avg_llm_backups', JSON.stringify(trimmedBackups))
-    localStorage.setItem(`avg_llm_backup_${backupEntry.id}`, JSON.stringify(backupData))
-
-    return { success: true, id: backupEntry.id }
+    
+    // 限制备份数量
+    const trimmedBackups = backups.slice(0, MAX_BACKUPS)
+    
+    // 删除超出限制的备份文件
+    if (backups.length > MAX_BACKUPS) {
+      for (const oldBackup of backups.slice(MAX_BACKUPS)) {
+        await backupStorage.delete(oldBackup.id)
+      }
+    }
+    
+    await kvStorage.set(BACKUP_LIST_KEY, trimmedBackups)
+    
+    return { success: true, id }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -205,14 +264,15 @@ const createHistoryBackup = async (messages, backupName = null) => {
  * @returns {Promise<Array>} 备份列表
  */
 const getBackupList = async () => {
-  if (window.avgLLM?.backup?.getBackupList) {
+  // Electron 环境优先使用 IPC
+  if (isElectron() && window.avgLLM?.backup?.getBackupList) {
     return await window.avgLLM.backup.getBackupList()
   }
-
-  // 浏览器环境回退
+  
+  // 使用存储抽象层
   try {
-    const backups = localStorage.getItem('avg_llm_backups')
-    return backups ? JSON.parse(backups) : []
+    const list = await kvStorage.get(BACKUP_LIST_KEY)
+    return list || []
   } catch {
     return []
   }
@@ -224,20 +284,14 @@ const getBackupList = async () => {
  * @returns {Promise<Object>} 备份数据
  */
 const loadBackup = async (backupId) => {
-  if (window.avgLLM?.backup?.loadBackup) {
+  // Electron 环境优先使用 IPC
+  if (isElectron() && window.avgLLM?.backup?.loadBackup) {
     return await window.avgLLM.backup.loadBackup(backupId)
   }
-
-  // 浏览器环境回退
-  try {
-    const backupData = localStorage.getItem(`avg_llm_backup_${backupId}`)
-    if (!backupData) {
-      return { success: false, error: '备份不存在' }
-    }
-    return { success: true, data: JSON.parse(backupData) }
-  } catch (error) {
-    return { success: false, error: error.message }
-  }
+  
+  // 使用存储抽象层
+  const result = await backupStorage.load(backupId)
+  return result
 }
 
 /**
@@ -246,16 +300,24 @@ const loadBackup = async (backupId) => {
  * @returns {Promise<Object>} 删除结果
  */
 const deleteBackup = async (backupId) => {
-  if (window.avgLLM?.backup?.deleteBackup) {
+  // Electron 环境优先使用 IPC
+  if (isElectron() && window.avgLLM?.backup?.deleteBackup) {
     return await window.avgLLM.backup.deleteBackup(backupId)
   }
-
-  // 浏览器环境回退
+  
+  // 使用存储抽象层
   try {
+    // 删除备份文件
+    const result = await backupStorage.delete(backupId)
+    if (!result.success) {
+      return result
+    }
+    
+    // 更新备份列表
     const backups = await getBackupList()
     const filteredBackups = backups.filter(b => b.id !== backupId)
-    localStorage.setItem('avg_llm_backups', JSON.stringify(filteredBackups))
-    localStorage.removeItem(`avg_llm_backup_${backupId}`)
+    await kvStorage.set(BACKUP_LIST_KEY, filteredBackups)
+    
     return { success: true }
   } catch (error) {
     return { success: false, error: error.message }

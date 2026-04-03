@@ -79,16 +79,23 @@
 html,
 body,
 #app {
+  width: 100%;
+  height: 100%;
   min-height: 100%;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
 }
 
 body {
   margin: 0;
+  padding: 0;
   color: var(--foreground);
   font-family: var(--font-body);
   line-height: 1.6;
   background-color: var(--background);
-  overflow-x: hidden;
+  overflow: hidden;
+  border-radius: 0;
 }
 
 body::before,
@@ -97,6 +104,7 @@ body::after {
   position: fixed;
   inset: 0;
   pointer-events: none;
+  border-radius: 0;
 }
 
 body::before {
@@ -139,6 +147,10 @@ body::after {
 #app {
   position: relative;
   z-index: 2;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  overflow: hidden;
 }
 
 .settings-panel-content {
@@ -403,4 +415,217 @@ body::after {
     transition-duration: 150ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ============================================
+   移动端适配样式 (Android/iOS)
+   ============================================ */
+
+/* 安全区域变量 */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* 小屏幕设备适配 (手机) */
+@media (max-width: 768px) {
+  :root {
+    --radius-card: 16px;
+    --radius-panel: 12px;
+    --backdrop-blur: 6px;
+  }
+
+  /* 全屏布局 */
+  html, body, #app {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+    padding-left: var(--safe-area-left);
+    padding-right: var(--safe-area-right);
+  }
+
+  /* 按钮触摸区域增大 */
+  .avg-button,
+  button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 20px;
+  }
+
+  /* 对话框适配 */
+  .dialogue-box,
+  .avg-panel {
+    padding: 16px;
+    margin: 8px;
+    font-size: 14px;
+  }
+
+  /* 卡片适配 */
+  .avg-card {
+    padding: 12px;
+    margin: 8px;
+  }
+
+  /* 输入框适配 */
+  input,
+  textarea,
+  select,
+  .avg-field {
+    font-size: 16px; /* 防止 iOS 自动缩放 */
+    padding: 12px 16px;
+    min-height: 44px;
+  }
+
+  /* 标题缩小 */
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+
+  /* 阴影简化（减少 GPU 负载） */
+  .avg-panel,
+  .avg-card {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
+  }
+
+  .avg-button {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent-magenta) 25%, transparent);
+  }
+
+  /* 禁用复杂动画 */
+  .avg-blob {
+    display: none;
+  }
+
+  /* 滚动容器 */
+  .scroll-container {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 隐藏桌面端专用元素 */
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+/* 中等屏幕设备适配 (平板) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --radius-card: 20px;
+    --radius-panel: 14px;
+  }
+
+  .avg-button,
+  button {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  /* 两列布局优化 */
+  .two-column {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  /* 移除 hover 效果，改用 active */
+  .avg-button:hover,
+  button:hover {
+    transform: none;
+    box-shadow: inherit;
+  }
+
+  .avg-button:active,
+  button:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+
+  /* 链接触摸优化 */
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 滚动优化 */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 禁用双击缩放 */
+  html {
+    touch-action: manipulation;
+  }
+}
+
+/* 横屏模式 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .dialogue-box {
+    max-height: 40vh;
+  }
+
+  .portrait-container {
+    max-width: 30vw;
+  }
+}
+
+/* 竖屏模式 */
+@media (max-width: 768px) and (orientation: portrait) {
+  .portrait-container {
+    max-height: 50vh;
+  }
+}
+
+/* 高对比度模式支持 */
+@media (prefers-contrast: high) {
+  :root {
+    --background: #000000;
+    --foreground: #ffffff;
+    --border-panel: #ffffff;
+    --border-field: #ffffff;
+  }
+}
+
+/* 深色模式强制（应用主题） */
+@media (prefers-color-scheme: light) {
+  /* 保持深色主题，不跟随系统 */
+  :root {
+    color-scheme: dark;
+  }
+}
+
+/* Capacitor 原生平台特定样式 */
+.platform-android .avg-panel,
+.platform-ios .avg-panel {
+  /* 原生平台下的面板样式 */
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+}
+
+/* Android 特定样式 */
+.platform-android {
+  /* Material Design 风格适配 */
+  --radius-button: 4px;
+}
+
+/* iOS 特定样式 */
+.platform-ios {
+  /* iOS 风格适配 */
+  --radius-button: 10px;
 }

@@ -1,5 +1,13 @@
 <script setup>
+import { onMounted, ref } from 'vue'
+import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStore'
+
 const emit = defineEmits(['open-settings', 'open-worldbook', 'open-new-game', 'open-save-load', 'open-plugin-manager', 'menu-click'])
+
+// 世界书选择相关
+const showWorldBookSelect = ref(false)
+const worldBooks = ref([])
+const selectedWorldBookId = ref('default_world_book')
 
 const menuItems = [
   {
@@ -104,6 +112,29 @@ const floatingShapes = [
   },
 ]
 
+// 加载世界书列表
+const loadWorldBookList = () => {
+  worldBooks.value = loadWorldBooks()
+  selectedWorldBookId.value = getActiveWorldBookId()
+}
+
+// 打开世界书选择弹窗
+const openWorldBookSelectDialog = () => {
+  loadWorldBookList()
+  showWorldBookSelect.value = true
+}
+
+// 关闭世界书选择弹窗
+const closeWorldBookSelectDialog = () => {
+  showWorldBookSelect.value = false
+}
+
+// 确认选择并开始新游戏
+const confirmNewGame = () => {
+  showWorldBookSelect.value = false
+  emit('open-new-game', selectedWorldBookId.value)
+}
+
 const handleMenuClick = (itemId) => {
   emit('menu-click', itemId)
   if (itemId === 'settings') {
@@ -112,7 +143,8 @@ const handleMenuClick = (itemId) => {
   }
 
   if (itemId === 'new-game') {
-    emit('open-new-game')
+    // 新游戏：先选择世界书
+    openWorldBookSelectDialog()
     return
   }
 
@@ -136,6 +168,8 @@ const handleMenuClick = (itemId) => {
     emit('open-save-load')
   }
 }
+
+onMounted(loadWorldBookList)
 </script>
 
 <template>
@@ -199,6 +233,37 @@ const handleMenuClick = (itemId) => {
         <p class="meta-chip chip-orange">v0.1 Prelude</p>
       </div>
     </section>
+
+    <!-- 世界书选择弹窗 -->
+    <div v-if="showWorldBookSelect" class="worldbook-select-overlay" @click.self="closeWorldBookSelectDialog">
+      <div class="worldbook-select-dialog">
+        <h3 class="dialog-title">选择开局世界书</h3>
+        <p class="dialog-desc">选择一本世界书作为新游戏的背景设定，后续剧情将基于此世界书生成。</p>
+        
+        <div class="worldbook-list">
+          <button
+            v-for="book in worldBooks"
+            :key="book.id"
+            type="button"
+            class="worldbook-item"
+            :class="{ selected: selectedWorldBookId === book.id }"
+            @click="selectedWorldBookId = book.id"
+          >
+            <span class="book-indicator">{{ selectedWorldBookId === book.id ? '✓' : '' }}</span>
+            <div class="book-info">
+              <span class="book-title">{{ book.title }}</span>
+              <span v-if="book.isDefault" class="book-badge">默认</span>
+              <span class="book-summary">{{ book.summary || '暂无简介' }}</span>
+            </div>
+          </button>
+        </div>
+
+        <div class="dialog-actions">
+          <button type="button" class="dialog-btn cancel" @click="closeWorldBookSelectDialog">取消</button>
+          <button type="button" class="dialog-btn confirm" @click="confirmNewGame">开始新游戏</button>
+        </div>
+      </div>
+    </div>
   </main>
 </template>
 
@@ -650,5 +715,162 @@ const handleMenuClick = (itemId) => {
   .menu-button {
     padding: 18px;
   }
+}
+
+/* 世界书选择弹窗样式 */
+.worldbook-select-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--background) 85%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.worldbook-select-dialog {
+  position: relative;
+  border: 4px solid var(--accent-cyan);
+  border-radius: 24px;
+  padding: 24px 32px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.dialog-title {
+  margin: 0 0 8px;
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  color: var(--accent-cyan);
+  text-shadow: var(--text-shadow-single);
+}
+
+.dialog-desc {
+  margin: 0 0 20px;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--foreground) 80%, transparent);
+}
+
+.worldbook-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.worldbook-item {
+  appearance: none;
+  border: 3px solid var(--border-panel);
+  border-radius: 16px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--surface-panel) 90%, transparent);
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+.worldbook-item:hover {
+  border-color: var(--accent-magenta);
+  background: color-mix(in srgb, var(--accent-magenta) 15%, var(--surface-panel));
+}
+
+.worldbook-item.selected {
+  border-color: var(--accent-cyan);
+  background: color-mix(in srgb, var(--accent-cyan) 20%, var(--surface-panel));
+}
+
+.book-indicator {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-panel);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.worldbook-item.selected .book-indicator {
+  border-color: var(--accent-cyan);
+  background: var(--accent-cyan);
+  color: var(--background);
+}
+
+.book-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.book-title {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.book-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 2px solid var(--accent-orange);
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-orange);
+  background: color-mix(in srgb, var(--accent-orange) 20%, transparent);
+}
+
+.book-summary {
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--foreground) 70%, transparent);
+  line-height: 1.4;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.dialog-btn {
+  appearance: none;
+  border: 3px solid var(--border-panel);
+  border-radius: var(--radius-button);
+  padding: 12px 24px;
+  font: 700 0.9rem/1 var(--font-body);
+  color: var(--foreground);
+  background: var(--surface-panel);
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.dialog-btn:hover {
+  transform: scale(1.05);
+}
+
+.dialog-btn.cancel:hover {
+  border-color: var(--accent-magenta);
+}
+
+.dialog-btn.confirm {
+  border-color: var(--accent-cyan);
+  background: var(--accent-cyan);
+  color: var(--background);
+}
+
+.dialog-btn.confirm:hover {
+  border-color: var(--accent-yellow);
+  background: color-mix(in srgb, var(--accent-cyan) 80%, var(--accent-yellow));
 }
 </style>

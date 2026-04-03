@@ -37,7 +37,7 @@ export const buildStoryPrompt = (params) => {
   }
 
   // 4. 用户指令（包含消息条数和选择的选项）
-  sections.push(buildInstructionSection(userInput, messageCount, selectedChoice))
+  sections.push(buildInstructionSection(userInput, messageCount, selectedChoice, worldBook))
 
   return sections.filter(Boolean).join('\n\n---\n\n')
 }
@@ -182,7 +182,7 @@ const buildDialogueHistorySection = (history, currentLine) => {
  * @param {Object} selectedChoice - 用户选择的选项（可选）
  * @returns {string} 指令文本
  */
-const buildInstructionSection = (userInput, messageCount = 3, selectedChoice = null) => {
+const buildInstructionSection = (userInput, messageCount = 3, selectedChoice = null, worldBook = null) => {
   const lines = ['## 生成指令']
   lines.push('')
   lines.push('请根据以上世界设定、角色信息和剧情上下文，生成接下来的剧情发展。')
@@ -195,6 +195,31 @@ const buildInstructionSection = (userInput, messageCount = 3, selectedChoice = n
   lines.push('5. highlight 为 true 时表示该角色立绘需要高亮')
   lines.push(`6. 必须生成 ${messageCount} 条对话`)
   lines.push('7. 在剧情关键节点，为最后一条对话添加 choices 字段提供选项')
+  lines.push('8. 可选: 使用 scene 字段切换场景背景')
+  
+  // 添加场景指令说明
+  lines.push('')
+  lines.push('### 场景切换指令')
+  lines.push('当需要切换背景场景时，在对话中添加 scene 字段:')
+  lines.push('```json')
+  lines.push('{')
+  lines.push('  "speaker": "旁白",')
+  lines.push('  "text": "场景描述...",')
+  lines.push('  "scene": {')
+  lines.push('    "id": "场景ID",')
+  lines.push('    "name": "场景名称"')
+  lines.push('  }')
+  lines.push('}')
+  lines.push('```')
+  
+  // 如果世界书有场景配置，列出可用场景
+  if (worldBook?.scenes && worldBook.scenes.length > 0) {
+    lines.push('')
+    lines.push('### 可用场景列表')
+    for (const scene of worldBook.scenes) {
+      lines.push(`- ${scene.id}: ${scene.name}${scene.description ? ` (${scene.description})` : ''}`)
+    }
+  }
   
   // 如果用户选择了某个选项，添加到指令中
   if (selectedChoice) {

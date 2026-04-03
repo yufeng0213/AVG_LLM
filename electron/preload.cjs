@@ -31,6 +31,11 @@ const bridgeApi = {
     loadFolder: (folderPath) => ipcRenderer.invoke('bgm:load-folder', folderPath),
     readAudio: (filePath) => ipcRenderer.invoke('bgm:read-audio', filePath),
   },
+  background: {
+    selectFolder: () => ipcRenderer.invoke('background:select-folder'),
+    scanFolder: (folderPath) => ipcRenderer.invoke('background:scan-folder', folderPath),
+    readImage: (filePath) => ipcRenderer.invoke('background:read-image', filePath),
+  },
   plugins: {
     // 扫描插件目录
     scan: () => ipcRenderer.invoke('plugins:scan'),

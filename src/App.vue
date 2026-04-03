@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, computed } from 'vue'
 import GameScreen from './screens/GameScreen.vue'
 import SettingsScreen from './screens/SettingsScreen.vue'
 import StartScreen from './screens/StartScreen.vue'
@@ -7,6 +7,7 @@ import WorldBookEditorScreen from './screens/WorldBookEditorScreen.vue'
 import WorldBookScreen from './screens/WorldBookScreen.vue'
 import SaveLoadScreen from './screens/SaveLoadScreen.vue'
 import PluginManagerScreen from './screens/PluginManagerScreen.vue'
+import { getPlatform, isMobileDevice, isNative } from './utils/platform'
 
 const DESIGN_WIDTH = 1920
 const DESIGN_HEIGHT = 1080
@@ -15,6 +16,11 @@ const currentScreen = ref('start')
 const activeWorldBookId = ref('default_world_book')
 const uiScale = ref(1)
 
+// 平台检测
+const platform = computed(() => getPlatform())
+const isMobile = computed(() => isMobileDevice())
+const isNativeApp = computed(() => isNative())
+
 // 存档数据（用于加载存档后传递给游戏界面）
 const loadedSaveData = ref(null)
 
@@ -22,8 +28,9 @@ const openSettings = () => {
   currentScreen.value = 'settings'
 }
 
-const openNewGame = () => {
+const openNewGame = (worldBookId = 'default_world_book') => {
   loadedSaveData.value = null // 新游戏清空存档数据
+  activeWorldBookId.value = worldBookId // 设置新游戏使用的世界书
   currentScreen.value = 'game'
 }
 
@@ -92,6 +99,16 @@ const updateUiScale = () => {
 onMounted(() => {
   updateUiScale()
   window.addEventListener('resize', updateUiScale)
+  
+  // 添加平台类名到 body
+  const body = document.body
+  body.classList.add(`platform-${platform.value}`)
+  if (isMobile.value) {
+    body.classList.add('mobile-device')
+  }
+  if (isNativeApp.value) {
+    body.classList.add('native-app')
+  }
 })
 
 onBeforeUnmount(() => {
@@ -100,8 +117,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="app-stage">
-    <div class="app-shell" :style="{ '--ui-scale': uiScale }">
+  <div class="app-stage" :class="`platform-${platform}`">
+    <div class="app-shell" :class="{ 'game-fullscreen': currentScreen === 'game' }" :style="{ '--ui-scale': uiScale }">
       <StartScreen
         v-if="currentScreen === 'start'"
         @open-settings="openSettings"
@@ -113,6 +130,7 @@ onBeforeUnmount(() => {
       <GameScreen
         v-else-if="currentScreen === 'game'"
         :save-data="loadedSaveData"
+        :world-book-id="activeWorldBookId"
         @back="backToStart"
       />
       <SettingsScreen v-else-if="currentScreen === 'settings'" @back="backToStart" />
@@ -148,6 +166,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  border-radius: 0;
 }
 
 .app-shell {
@@ -160,11 +179,65 @@ onBeforeUnmount(() => {
   justify-content: center;
   transform: scale(var(--ui-scale));
   transform-origin: top center;
+  border-radius: 0;
+}
+
+/* 游戏界面全屏模式 - 不受缩放影响 */
+.app-shell.game-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  padding: 0;
+  margin: 0;
+  transform: none;
+  position: fixed;
+  inset: 0;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 980px) {
   .app-shell {
     padding: calc(14px / var(--ui-scale));
   }
+  
+  .app-shell.game-fullscreen {
+    padding: 0;
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .app-stage {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  .app-shell {
+    width: 100%;
+    min-height: 100vh;
+    padding: 8px;
+    transform: none;
+  }
+  
+  .app-shell.game-fullscreen {
+    padding: 0;
+  }
+}
+
+/* 原生平台适配 */
+.platform-android .app-shell,
+.platform-ios .app-shell {
+  padding-top: env(safe-area-inset-top, 8px);
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+  padding-left: env(safe-area-inset-left, 8px);
+  padding-right: env(safe-area-inset-right, 8px);
+}
+
+.platform-android .app-shell.game-fullscreen,
+.platform-ios .app-shell.game-fullscreen {
+  padding: 0;
 }
 </style>

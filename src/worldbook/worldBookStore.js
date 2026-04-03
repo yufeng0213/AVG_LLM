@@ -26,6 +26,18 @@ export const createEmptyEntries = () => {
 // 创建空立绘数组
 export const createEmptyPortraits = () => []
 
+// 创建空场景数组
+export const createEmptyScenes = () => []
+
+// 创建新场景配置
+export const createNewScene = (index = 1) => ({
+  id: `scene_${Date.now()}_${index}`,
+  name: `场景 ${index}`,
+  background: '',
+  description: '',
+  createdAt: new Date().toISOString(),
+})
+
 // 创建新立绘配置
 export const createNewPortrait = (filePath, fileName, emotion = 'default') => ({
   id: `portrait_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -116,6 +128,25 @@ const normalizeCharacters = (rawCharacters) => {
   return parsed.length > 0 ? parsed : [createCharacterSkeleton(1)]
 }
 
+// 规范化单个场景数据
+const normalizeScene = (rawScene, index = 0) => {
+  return {
+    id: String(rawScene?.id || `scene_${Date.now()}_${index}`),
+    name: String(rawScene?.name || `场景 ${index + 1}`),
+    background: String(rawScene?.background || ''),
+    description: String(rawScene?.description || ''),
+    createdAt: String(rawScene?.createdAt || new Date().toISOString()),
+  }
+}
+
+// 规范化场景数组
+const normalizeScenes = (rawScenes) => {
+  if (!Array.isArray(rawScenes)) {
+    return []
+  }
+  return rawScenes.map((scene, index) => normalizeScene(scene, index)).filter((s) => s.name || s.background)
+}
+
 export const createDefaultWorldBook = () => ({
   id: 'default_world_book',
   title: '默认世界书',
@@ -126,6 +157,14 @@ export const createDefaultWorldBook = () => ({
   entries: createEmptyEntries(),
   userProfile: createEmptyUserProfile(),
   characters: [createCharacterSkeleton(1)],
+  scenes: [],  // 新增：场景列表
+  openingDialogue: [
+    { speaker: '旁白', text: '雨夜的图书馆只剩你与断续的电流声，窗外的霓虹正把地面切成碎片。', emotion: null },
+    { speaker: '伊芙', text: '终于等到你了，档案室的门只会在今晚开启，过了零点就会再次封存。', emotion: 'happy' },
+    { speaker: '你', text: '我来找失踪案的原始记录，线索应该在禁区最深处的那排手稿里。', emotion: 'neutral' },
+    { speaker: '零号', text: '再往前一步，你会看到不该被公开的名字，也会看到你自己的过去。', emotion: 'worried' },
+    { speaker: '旁白', text: '你握紧终端，屏幕上的微光把三道身影叠在一起，像命运重写前的倒计时。', emotion: null },
+  ],
 })
 
 export const normalizeWorldBook = (rawBook, index = 0) => {
@@ -141,6 +180,18 @@ export const normalizeWorldBook = (rawBook, index = 0) => {
   const isDefault = Boolean(rawBook?.isDefault) || rawBook?.id === fallback.id
   const id = isDefault ? fallback.id : String(rawBook?.id || `world_book_${Date.now()}_${index}`)
 
+  // 规范化开场对话
+  const normalizeOpeningDialogue = (rawDialogue) => {
+    if (!Array.isArray(rawDialogue) || rawDialogue.length === 0) {
+      return fallback.openingDialogue
+    }
+    return rawDialogue.map(line => ({
+      speaker: String(line?.speaker || '旁白'),
+      text: String(line?.text || ''),
+      emotion: line?.emotion || null,
+    })).filter(line => line.text)
+  }
+
   return {
     id,
     title: String(rawBook?.title || (isDefault ? fallback.title : `世界书 ${index + 1}`)),
@@ -151,6 +202,8 @@ export const normalizeWorldBook = (rawBook, index = 0) => {
     entries: nextEntries,
     userProfile: normalizeUserProfile(rawBook?.userProfile),
     characters: normalizeCharacters(rawBook?.characters),
+    scenes: normalizeScenes(rawBook?.scenes),
+    openingDialogue: normalizeOpeningDialogue(rawBook?.openingDialogue),
   }
 }
 
@@ -226,4 +279,120 @@ export const createNewWorldBook = (books = []) => {
 export const createNewCharacter = (characters = []) => {
   const nextIndex = (Array.isArray(characters) ? characters.length : 0) + 1
   return createCharacterSkeleton(nextIndex)
+}
+
+// 创建新场景（用于世界书编辑器）
+export const addNewScene = (scenes = []) => {
+  const nextIndex = (Array.isArray(scenes) ? scenes.length : 0) + 1
+  return createNewScene(nextIndex)
+}
+
+// 删除世界书（不能删除默认世界书）
+export const deleteWorldBook = (books, bookId) => {
+  const bookToDelete = books.find((book) => book.id === bookId)
+  
+  // 不能删除默认世界书
+  if (!bookToDelete || bookToDelete.isDefault || bookId === 'default_world_book') {
+    return { success: false, message: '无法删除默认世界书', books }
+  }
+  
+  const filteredBooks = books.filter((book) => book.id !== bookId)
+  const sortedBooks = sortWorldBooks(filteredBooks)
+  
+  return { success: true, message: `已删除：${bookToDelete.title}`, books: sortedBooks }
+}
+
+// 导出世界书为JSON
+export const exportWorldBook = (book) => {
+  const exportData = {
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+    worldBook: {
+      ...book,
+      // 移除内部ID相关字段，导入时会生成新ID
+      _exportedId: book.id,
+    }
+  }
+  return JSON.stringify(exportData, null, 2)
+}
+
+// 导入世界书
+export const importWorldBook = (jsonString, existingBooks = []) => {
+  try {
+    const data = JSON.parse(jsonString)
+    
+    // 验证数据结构
+    if (!data.worldBook && !data.title) {
+      return { success: false, message: '无效的世界书格式', book: null }
+    }
+    
+    // 支持两种格式：带包装的和不带包装的
+    const rawBook = data.worldBook || data
+    
+    // 生成新ID，避免冲突
+    const newId = `world_book_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+    
+    // 规范化并创建新世界书
+    const normalizedBook = normalizeWorldBook({
+      ...rawBook,
+      id: newId,
+      isDefault: false, // 导入的世界书不可能是默认的
+      title: rawBook.title || `导入的世界书 ${existingBooks.length}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    
+    return { success: true, message: `已导入：${normalizedBook.title}`, book: normalizedBook }
+  } catch (error) {
+    return { success: false, message: `导入失败：${error.message}`, book: null }
+  }
+}
+
+// 批量导入世界书
+export const importWorldBooks = (jsonString, existingBooks = []) => {
+  try {
+    const data = JSON.parse(jsonString)
+    
+    // 支持数组格式
+    if (Array.isArray(data)) {
+      const results = []
+      for (const item of data) {
+        const result = importWorldBook(JSON.stringify(item), existingBooks)
+        if (result.success && result.book) {
+          results.push(result.book)
+        }
+      }
+      return {
+        success: true,
+        message: `成功导入 ${results.length} 本世界书`,
+        books: results
+      }
+    }
+    
+    // 支持带 worldBooks 字段的格式
+    if (data.worldBooks && Array.isArray(data.worldBooks)) {
+      const results = []
+      for (const item of data.worldBooks) {
+        const result = importWorldBook(JSON.stringify(item), existingBooks)
+        if (result.success && result.book) {
+          results.push(result.book)
+        }
+      }
+      return {
+        success: true,
+        message: `成功导入 ${results.length} 本世界书`,
+        books: results
+      }
+    }
+    
+    // 单本世界书
+    const result = importWorldBook(jsonString, existingBooks)
+    return {
+      success: result.success,
+      message: result.message,
+      books: result.book ? [result.book] : []
+    }
+  } catch (error) {
+    return { success: false, message: `导入失败：${error.message}`, books: [] }
+  }
 }

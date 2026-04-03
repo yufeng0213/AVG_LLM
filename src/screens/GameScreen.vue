@@ -7,6 +7,12 @@ import MusicPlayer from '../components/MusicPlayer.vue'
 import Phone from '../components/Phone.vue'
 import PluginComponent from '../plugins/PluginComponent.vue'
 import { PluginTypes } from '../plugins/pluginManager.js'
+import {
+  loadBackgroundFolder,
+  switchBackground,
+  currentBackgroundUrl,
+  backgroundList
+} from '../background/backgroundStore'
 
 const emit = defineEmits(['back'])
 
@@ -16,11 +22,16 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  worldBookId: {
+    type: String,
+    default: 'default_world_book',
+  },
 })
 
 // 世界书数据
 const worldBooks = ref([])
-const activeBookId = ref(getActiveWorldBookId())
+// 使用传入的世界书ID，如果没有则使用存档中的或默认的
+const activeBookId = ref(props.worldBookId || props.saveData?.game?.worldBookId || getActiveWorldBookId())
 
 // 立绘图片缓存
 const portraitImageCache = ref(new Map())
@@ -49,8 +60,8 @@ const sceneCharacters = [
   },
 ]
 
-// 对话脚本（改为 ref 以支持动态添加）
-const dialogueScript = ref([
+// 默认开场白（当世界书没有定义时使用）
+const defaultOpeningDialogue = [
   {
     speaker: '旁白',
     text: '雨夜的图书馆只剩你与断续的电流声，窗外的霓虹正把地面切成碎片。',
@@ -76,7 +87,21 @@ const dialogueScript = ref([
     text: '你握紧终端，屏幕上的微光把三道身影叠在一起，像命运重写前的倒计时。',
     emotion: null,
   },
-])
+]
+
+// 对话脚本（改为 ref 以支持动态添加）- 初始化使用默认开场白
+const dialogueScript = ref([...defaultOpeningDialogue])
+
+// 初始化开场白（根据世界书或使用默认）
+const initializeOpeningDialogue = () => {
+  if (activeBook.value?.openingDialogue && activeBook.value.openingDialogue.length > 0) {
+    dialogueScript.value = [...activeBook.value.openingDialogue]
+  } else {
+    dialogueScript.value = [...defaultOpeningDialogue]
+  }
+  // 重置对话索引
+  currentLineIndex.value = 0
+}
 
 // LLM 剧情生成状态
 const isGenerating = ref(false)
@@ -568,12 +593,57 @@ watch(() => props.saveData, (newData) => {
   }
 }, { immediate: true })
 
-onMounted(() => {
+// 监听当前对话变化，切换背景
+watch(currentLine, async (newLine) => {
+  // 更新立绘显示
+  updatePortraitUrls()
+  // 检查当前对话是否有选项
+  checkCurrentDialogueChoices()
+  
+  // 如果有场景切换指令，切换背景
+  if (newLine?.scene) {
+    await switchBackground(newLine.scene)
+  }
+}, { immediate: true })
+
+// 背景样式计算
+const backgroundStyle = computed(() => {
+  if (!currentBackgroundUrl.value) {
+    return {}
+  }
+  return {
+    backgroundImage: `url(${currentBackgroundUrl.value})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+  }
+})
+
+// 是否有自定义背景
+const hasCustomBackground = computed(() => {
+  return Boolean(currentBackgroundUrl.value)
+})
+
+onMounted(async () => {
   loadWorldBookData()
   updatePortraitUrls()
+  
+  // 加载背景文件夹
+  await loadBackgroundFolder()
+  
   // 如果有存档数据，加载它
   if (props.saveData) {
     loadSaveData()
+  } else {
+    // 新游戏：初始化开场白
+    initializeOpeningDialogue()
+  }
+})
+
+// 监听世界书变化，重新初始化开场白
+watch(activeBook, (newBook) => {
+  if (newBook && !props.saveData) {
+    initializeOpeningDialogue()
   }
 })
 </script>
@@ -656,10 +726,18 @@ onMounted(() => {
     </section>
 
     <section class="scene-stage" aria-label="AVG 场景">
-      <div class="scene-background" aria-hidden="true">
-        <div class="scene-layer scene-gradient"></div>
-        <div class="scene-layer scene-window"></div>
-        <div class="scene-layer scene-floor"></div>
+      <div
+        class="scene-background"
+        :class="{ 'has-custom-bg': hasCustomBackground }"
+        :style="backgroundStyle"
+        aria-hidden="true"
+      >
+        <!-- 自定义背景图片时隐藏默认装饰层 -->
+        <div v-if="!hasCustomBackground" class="scene-layer scene-gradient"></div>
+        <div v-if="!hasCustomBackground" class="scene-layer scene-window"></div>
+        <div v-if="!hasCustomBackground" class="scene-layer scene-floor"></div>
+        <!-- 背景过渡遮罩（可选，用于平滑切换） -->
+        <div v-if="hasCustomBackground" class="scene-layer scene-overlay"></div>
       </div>
 
       <div class="character-layer" aria-label="人物立绘">
@@ -856,19 +934,18 @@ onMounted(() => {
 
 <style scoped>
 .game-screen {
-  position: relative;
-  width: 100%;
-  min-height: calc(100vh - clamp(40px, 8vw, 110px));
-  border: 8px solid var(--accent-cyan);
-  border-radius: 34px 20px 30px 18px;
-  background: var(--surface-panel);
-  backdrop-filter: blur(var(--backdrop-blur));
-  box-shadow: var(--shadow-screen);
-  padding: clamp(16px, 2.7vw, 30px);
-  display: grid;
-  grid-template-rows: auto 1fr;
-  gap: clamp(12px, 2.2vw, 20px);
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--background);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .game-screen::before,
@@ -877,10 +954,11 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 0;
 }
 
 .game-screen::before {
-  opacity: 0.14;
+  opacity: 0.08;
   background-image:
     radial-gradient(circle, var(--accent-cyan) 1px, transparent 1px),
     repeating-linear-gradient(
@@ -894,7 +972,7 @@ onMounted(() => {
 }
 
 .game-screen::after {
-  opacity: 0.1;
+  opacity: 0.06;
   background-image: conic-gradient(
     from 90deg at 1px 1px,
     transparent 90deg,
@@ -919,13 +997,18 @@ onMounted(() => {
 }
 
 .game-topbar {
-  position: relative;
-  z-index: 2;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  padding: 16px 20px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--background) 80%, transparent) 0%, transparent 100%);
 }
 
 .back-button {
@@ -997,21 +1080,26 @@ onMounted(() => {
 }
 
 .scene-stage {
-  position: relative;
-  z-index: 2;
-  min-height: clamp(560px, 70vh, 800px);
-  border: 4px solid var(--accent-yellow);
-  border-radius: 30px 22px 26px 18px;
-  box-shadow:
-    0 0 28px color-mix(in srgb, var(--accent-yellow) 35%, transparent),
-    8px 8px 0 var(--accent-magenta), 16px 16px 0 var(--accent-cyan);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
 .scene-background {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+}
+
+.scene-background.has-custom-bg {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .scene-layer {
@@ -1079,8 +1167,9 @@ onMounted(() => {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: 0 5% 180px;
+  padding: 0 5% 220px;
   pointer-events: none;
+  z-index: 2;
 }
 
 .character-stand {
@@ -1147,20 +1236,20 @@ onMounted(() => {
 
 .dialogue-box {
   position: absolute;
-  left: clamp(14px, 2vw, 24px);
-  right: clamp(14px, 2vw, 24px);
-  bottom: clamp(12px, 2vw, 22px);
-  z-index: 3;
-  border: 4px dashed var(--accent-cyan);
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--background) 70%, transparent);
-  backdrop-filter: blur(10px);
-  padding: clamp(12px, 1.7vw, 18px);
-  box-shadow:
-    0 0 24px color-mix(in srgb, var(--accent-cyan) 36%, transparent),
-    8px 8px 0 var(--accent-yellow), 14px 14px 0 var(--accent-magenta);
+  left: 5%;
+  right: 5%;
+  bottom: 20px;
+  z-index: 5;
+  border: 2px solid color-mix(in srgb, var(--accent-cyan) 60%, transparent);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--background) 85%, transparent);
+  backdrop-filter: blur(12px);
+  padding: 16px 20px;
+  box-shadow: 0 4px 30px color-mix(in srgb, var(--background) 80%, transparent);
   display: grid;
   gap: 10px;
+  max-width: 90%;
+  margin: 0 auto;
 }
 
 .dialogue-head {
@@ -1236,7 +1325,7 @@ onMounted(() => {
   z-index: 10;
   width: min(90%, 420px);
   border: 4px solid var(--accent-purple);
-  border-radius: 20px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background) 85%, transparent);
   backdrop-filter: blur(12px);
   box-shadow:
@@ -1311,7 +1400,7 @@ onMounted(() => {
   appearance: none;
   padding: 10px 14px;
   border: 3px solid var(--accent-purple);
-  border-radius: 12px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background) 60%, transparent);
   font-size: 0.95rem;
   font-weight: 700;
@@ -1348,7 +1437,7 @@ onMounted(() => {
   appearance: none;
   padding: 10px 14px;
   border: 3px solid var(--accent-cyan);
-  border-radius: 12px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background) 60%, transparent);
   font-size: 0.95rem;
   color: var(--foreground);
@@ -1409,7 +1498,7 @@ onMounted(() => {
   width: 100%;
   padding: 12px 20px;
   border: 3px solid var(--accent-cyan);
-  border-radius: 12px;
+  border-radius: 0;
   background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
   font-family: var(--font-heading);
   font-size: 0.95rem;
@@ -1435,23 +1524,14 @@ onMounted(() => {
 }
 
 @media (max-width: 1180px) {
-  .game-screen {
-    border-width: 6px;
-    min-height: calc(100vh - 30px);
-  }
-
   .character-layer {
     gap: 12px;
-    padding-bottom: 170px;
+    padding-bottom: 200px;
   }
 
   .character-stand {
     width: clamp(160px, 24vw, 240px);
     height: clamp(280px, 52vh, 420px);
-  }
-
-  .character-role {
-    font-size: 0.72rem;
   }
 }
 
@@ -1460,8 +1540,13 @@ onMounted(() => {
     justify-content: flex-start;
   }
 
+  .game-topbar {
+    padding: 12px 16px;
+  }
+
   .character-layer {
     gap: 10px;
+    padding-bottom: 180px;
   }
 
   .character-stand.is-right {
@@ -1471,13 +1556,15 @@ onMounted(() => {
   .dialogue-actions {
     justify-content: flex-start;
   }
+
+  .dialogue-box {
+    left: 3%;
+    right: 3%;
+    padding: 12px 16px;
+  }
 }
 
 @media (max-width: 680px) {
-  .scene-stage {
-    min-height: clamp(520px, 74vh, 760px);
-  }
-
   .character-layer {
     padding: 0 3% 160px;
   }
@@ -1503,6 +1590,14 @@ onMounted(() => {
     font-size: clamp(4.5rem, 24vw, 8rem);
     right: -7%;
   }
+
+  .dialogue-box {
+    left: 2%;
+    right: 2%;
+    bottom: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+  }
 }
 
 /* 选项面板样式 */
@@ -1514,7 +1609,7 @@ onMounted(() => {
   z-index: 11;
   width: min(90%, 480px);
   border: 4px solid var(--accent-yellow);
-  border-radius: 24px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background) 88%, transparent);
   backdrop-filter: blur(14px);
   box-shadow:
@@ -1556,7 +1651,7 @@ onMounted(() => {
   appearance: none;
   padding: 14px 20px;
   border: 3px solid var(--accent-cyan);
-  border-radius: 16px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--accent-purple) 30%, transparent);
   font-family: var(--font-heading);
   font-size: 1rem;
@@ -1606,7 +1701,7 @@ onMounted(() => {
   appearance: none;
   padding: 10px 14px;
   border: 3px solid var(--accent-magenta);
-  border-radius: 12px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background) 60%, transparent);
   font-size: 0.95rem;
   color: var(--foreground);
@@ -1627,7 +1722,7 @@ onMounted(() => {
   appearance: none;
   padding: 10px 18px;
   border: 3px solid var(--accent-yellow);
-  border-radius: 12px;
+  border-radius: 0;
   background: linear-gradient(135deg, var(--accent-yellow), var(--accent-orange));
   font-family: var(--font-heading);
   font-size: 0.9rem;
@@ -1693,7 +1788,7 @@ onMounted(() => {
 .generating-modal {
   padding: 32px 48px;
   border: 4px solid var(--accent-cyan);
-  border-radius: 24px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background) 90%, transparent);
   box-shadow:
     0 0 40px color-mix(in srgb, var(--accent-cyan) 50%, transparent),
@@ -1839,7 +1934,7 @@ onMounted(() => {
   right: 20px;
   width: 320px;
   border: 4px solid var(--accent-magenta);
-  border-radius: 16px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--bg) 95%, transparent);
   backdrop-filter: blur(8px);
   box-shadow:
@@ -1947,7 +2042,7 @@ onMounted(() => {
   appearance: none;
   width: 100%;
   border: 2px solid var(--accent-cyan);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 10px 20px;
   font: 600 1rem/1 var(--font-body);
   color: var(--bg);

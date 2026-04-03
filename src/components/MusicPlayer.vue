@@ -119,13 +119,24 @@ const playTrack = async (index) => {
   if (!audioElement) initAudio()
   
   try {
-    // 使用自定义协议加载本地文件
+    // 使用 IPC 读取音频文件为 Base64，然后使用 data URL 播放
+    if (window.avgLLM?.bgm?.readAudio) {
+      const audioData = await window.avgLLM.bgm.readAudio(track.path)
+      if (audioData && audioData.base64) {
+        audioElement.src = `data:${audioData.mimeType};base64,${audioData.base64}`
+        await audioElement.play()
+        isPlaying.value = true
+        return
+      }
+    }
+    
+    // 如果 Base64 方式失败，尝试使用自定义协议
     audioElement.src = `local-file://${encodeURIComponent(track.path)}`
     await audioElement.play()
     isPlaying.value = true
   } catch (error) {
     console.error('Failed to play track:', error)
-    // 尝试使用file协议
+    // 尝试直接使用路径（在某些环境下可能有效）
     try {
       audioElement.src = track.path
       await audioElement.play()

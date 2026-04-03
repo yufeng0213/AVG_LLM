@@ -323,7 +323,8 @@ plugins/
 .plugin-screen {
   position: relative;
   width: 100%;
-  min-height: calc(100vh - clamp(40px, 8vw, 110px));
+  height: calc(100vh - clamp(40px, 8vw, 110px));
+  max-height: calc(100vh - clamp(40px, 8vw, 110px));
   border: 8px solid var(--accent-purple);
   border-radius: 34px 20px 30px 18px;
   background: color-mix(in srgb, var(--muted) 86%, transparent);
@@ -631,7 +632,8 @@ plugins/
   box-shadow:
     0 0 24px color-mix(in srgb, var(--accent-orange) 45%, transparent),
     8px 8px 0 var(--accent-magenta), 16px 16px 0 var(--accent-cyan);
-  overflow: auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Empty State */

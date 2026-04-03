@@ -488,6 +488,48 @@ protocol.registerSchemesAsPrivileged([
 app.whenReady().then(() => {
   windowSettings = loadWindowSettings()
 
+  // 注册 local-file 协议处理器，用于本地音频文件播放
+  protocol.handle('local-file', async (request) => {
+    try {
+      const url = request.url.slice('local-file://'.length)
+      const filePath = decodeURIComponent(url)
+      
+      // 验证路径安全性
+      const normalizedPath = path.normalize(filePath)
+      if (normalizedPath.includes('..') || !path.isAbsolute(normalizedPath)) {
+        return new Response('Invalid path', { status: 400 })
+      }
+
+      // 读取文件
+      const fileBuffer = await fsPromises.readFile(normalizedPath)
+      const ext = path.extname(normalizedPath).toLowerCase()
+      
+      // 根据扩展名设置 MIME 类型
+      const mimeType = ext === '.mp3' ? 'audio/mpeg'
+        : ext === '.wav' ? 'audio/wav'
+        : ext === '.ogg' ? 'audio/ogg'
+        : ext === '.flac' ? 'audio/flac'
+        : ext === '.m4a' ? 'audio/mp4'
+        : ext === '.aac' ? 'audio/aac'
+        : ext === '.wma' ? 'audio/x-ms-wma'
+        : ext === '.mp4' ? 'audio/mp4'
+        : ext === '.webm' ? 'audio/webm'
+        : ext === '.mkv' ? 'audio/x-matroska'
+        : ext === '.avi' ? 'audio/x-msvideo'
+        : ext === '.mov' ? 'audio/quicktime'
+        : 'audio/mpeg'
+
+      return new Response(fileBuffer, {
+        headers: {
+          'Content-Type': mimeType,
+          'Content-Length': fileBuffer.length.toString()
+        }
+      })
+    } catch (error) {
+      return new Response('File not found', { status: 404 })
+    }
+  })
+
   ipcMain.handle('display:get-settings', () => ({
     ...windowSettings,
     runtime: getWindowRuntimeState(mainWindow),
@@ -631,8 +673,8 @@ app.whenReady().then(() => {
 
   // ========== BGM音乐播放器 IPC 处理程序 ==========
 
-  // 支持的音频格式
-  const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.wma']
+  // 支持的音频格式（包含视频文件中的音频）
+  const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.wma', '.mp4', '.webm', '.mkv', '.avi', '.mov']
 
   // 选择BGM文件夹
   ipcMain.handle('bgm:select-folder', async () => {
@@ -739,6 +781,11 @@ app.whenReady().then(() => {
         : ext === '.m4a' ? 'audio/mp4'
         : ext === '.aac' ? 'audio/aac'
         : ext === '.wma' ? 'audio/x-ms-wma'
+        : ext === '.mp4' ? 'audio/mp4'
+        : ext === '.webm' ? 'audio/webm'
+        : ext === '.mkv' ? 'audio/x-matroska'
+        : ext === '.avi' ? 'audio/x-msvideo'
+        : ext === '.mov' ? 'audio/quicktime'
         : 'audio/mpeg'
 
       return { base64, mimeType, path: normalizedPath }
@@ -907,6 +954,128 @@ app.whenReady().then(() => {
     try {
       await fsPromises.rm(pluginPath, { recursive: true, force: true })
       return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  // ==================== 背景图片系统 IPC handlers ====================
+  
+  // 支持的背景图片格式
+  const BACKGROUND_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+  
+  // 背景目录名称
+  const BACKGROUND_DIR_NAME = 'backgrounds'
+  
+  // 获取背景目录路径（优先使用项目中的 data/bg 目录）
+  const getBackgroundsDir = () => {
+    // 开发模式：使用项目中的 data/bg 目录
+    if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+      const devBgDir = path.join(process.cwd(), 'data', 'bg')
+      return devBgDir
+    }
+    // 生产模式：使用用户数据目录
+    return path.join(app.getPath('userData'), BACKGROUND_DIR_NAME)
+  }
+  
+  // 选择背景文件夹
+  ipcMain.handle('background:select-folder', async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return { success: false, error: 'Window not available' }
+    }
+    
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory'],
+      title: '选择背景图片文件夹'
+    })
+    
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, canceled: true }
+    }
+    
+    const folderPath = result.filePaths[0]
+    
+    try {
+      const files = await fsPromises.readdir(folderPath)
+      const imageFiles = files
+        .filter(file => {
+          const ext = path.extname(file).toLowerCase()
+          return BACKGROUND_EXTENSIONS.includes(ext)
+        })
+        .map(file => ({
+          name: file,
+          path: path.join(folderPath, file)
+        }))
+      
+      return {
+        success: true,
+        path: folderPath,
+        files: imageFiles
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+  
+  // 扫描背景文件夹
+  ipcMain.handle('background:scan-folder', async (_event, folderPath) => {
+    // 如果没有传入路径，使用默认背景目录
+    const bgDir = folderPath || getBackgroundsDir()
+    
+    // 确保目录存在
+    await ensureDir(bgDir)
+    
+    try {
+      const files = await fsPromises.readdir(bgDir)
+      const imageFiles = files
+        .filter(file => {
+          const ext = path.extname(file).toLowerCase()
+          return BACKGROUND_EXTENSIONS.includes(ext)
+        })
+        .map(file => ({
+          name: file,
+          path: path.join(bgDir, file)
+        }))
+      
+      return {
+        success: true,
+        path: bgDir,
+        files: imageFiles
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+  
+  // 读取背景图片为 Base64
+  ipcMain.handle('background:read-image', async (_event, filePath) => {
+    if (!filePath || typeof filePath !== 'string') {
+      return { success: false, error: 'Invalid file path' }
+    }
+    
+    // 验证路径安全性
+    const normalizedPath = path.normalize(filePath)
+    if (normalizedPath.includes('..') || !path.isAbsolute(normalizedPath)) {
+      return { success: false, error: 'Invalid file path' }
+    }
+    
+    // 验证文件扩展名
+    const ext = path.extname(normalizedPath).toLowerCase()
+    if (!BACKGROUND_EXTENSIONS.includes(ext)) {
+      return { success: false, error: 'Invalid file type' }
+    }
+    
+    try {
+      const fileBuffer = await fsPromises.readFile(normalizedPath)
+      const base64 = fileBuffer.toString('base64')
+      const mimeType = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
+        : ext === '.png' ? 'image/png'
+        : ext === '.gif' ? 'image/gif'
+        : ext === '.webp' ? 'image/webp'
+        : ext === '.bmp' ? 'image/bmp'
+        : 'image/png'
+      
+      return { success: true, base64, mimeType, path: normalizedPath }
     } catch (error) {
       return { success: false, error: error.message }
     }

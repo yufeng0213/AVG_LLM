@@ -114,11 +114,52 @@ const normalizeDialogueItem = (item, index) => {
     text: normalizeText(item.text),
     highlight: Boolean(item.highlight),
     choices: normalizeChoices(item.choices),
+    scene: normalizeScene(item.scene),  // 新增：场景切换指令
     metadata: {
       rawSpeaker: item.speaker,
       rawEmotion: item.emotion,
+      rawScene: item.scene,
     },
   }
+}
+
+/**
+ * 规范化场景数据
+ * @param {any} scene - 原始场景数据
+ * @returns {Object|null} 规范化的场景对象或 null
+ */
+const normalizeScene = (scene) => {
+  // 没有场景数据
+  if (!scene) return null
+  
+  // 如果是字符串，作为场景ID处理
+  if (typeof scene === 'string') {
+    const str = String(scene).trim()
+    if (!str) return null
+    return {
+      id: str,
+      name: str,
+      background: '',
+    }
+  }
+  
+  // 如果是对象，规范化各字段
+  if (typeof scene === 'object') {
+    const id = String(scene.id || scene.sceneId || '').trim()
+    const name = String(scene.name || scene.sceneName || '').trim()
+    const background = String(scene.background || scene.bg || '').trim()
+    
+    // 至少需要有 id 或 name
+    if (!id && !name) return null
+    
+    return {
+      id: id || name,
+      name: name || id,
+      background,
+    }
+  }
+  
+  return null
 }
 
 /**

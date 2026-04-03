@@ -2,7 +2,10 @@
 import { onMounted, ref } from 'vue'
 import {
   createNewWorldBook,
+  deleteWorldBook,
+  exportWorldBook,
   getActiveWorldBookId,
+  importWorldBooks,
   loadWorldBooks,
   persistWorldBooks,
   setActiveWorldBookId,
@@ -13,6 +16,9 @@ const emit = defineEmits(['back', 'open-book'])
 const statusMessage = ref('点击一本世界书进入详细设定。')
 const worldBooks = ref([])
 const activeBookId = ref('default_world_book')
+const showDeleteConfirm = ref(false)
+const bookToDelete = ref(null)
+const fileInputRef = ref(null)
 
 const bookToneClasses = [
   'book-tone-magenta',
@@ -51,6 +57,87 @@ const addWorldBook = () => {
   statusMessage.value = `已新增：${nextBook.title}`
 }
 
+const confirmDelete = (book, event) => {
+  event.stopPropagation()
+  if (book.isDefault || book.id === 'default_world_book') {
+    statusMessage.value = '无法删除默认世界书'
+    return
+  }
+  bookToDelete.value = book
+  showDeleteConfirm.value = true
+}
+
+const cancelDelete = () => {
+  bookToDelete.value = null
+  showDeleteConfirm.value = false
+}
+
+const executeDelete = () => {
+  if (!bookToDelete.value) return
+  
+  const result = deleteWorldBook(worldBooks.value, bookToDelete.value.id)
+  if (result.success) {
+    worldBooks.value = result.books
+    persistWorldBooks(worldBooks.value)
+    
+    // 如果删除的是当前激活的世界书，切换到第一本
+    if (activeBookId.value === bookToDelete.value.id) {
+      const newActiveId = worldBooks.value[0]?.id || 'default_world_book'
+      activeBookId.value = newActiveId
+      setActiveWorldBookId(newActiveId)
+    }
+    
+    statusMessage.value = result.message
+  } else {
+    statusMessage.value = result.message
+  }
+  
+  bookToDelete.value = null
+  showDeleteConfirm.value = false
+}
+
+const handleExport = (book, event) => {
+  event.stopPropagation()
+  const jsonStr = exportWorldBook(book)
+  const blob = new Blob([jsonStr], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${book.title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}_worldbook.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  statusMessage.value = `已导出：${book.title}`
+}
+
+const triggerImport = () => {
+  fileInputRef.value?.click()
+}
+
+const handleFileImport = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  
+  try {
+    const text = await file.text()
+    const result = importWorldBooks(text, worldBooks.value)
+    
+    if (result.success && result.books.length > 0) {
+      worldBooks.value = [...worldBooks.value, ...result.books]
+      persistWorldBooks(worldBooks.value)
+      statusMessage.value = result.message
+    } else {
+      statusMessage.value = result.message
+    }
+  } catch (error) {
+    statusMessage.value = `导入失败：${error.message}`
+  }
+  
+  // 重置文件输入
+  event.target.value = ''
+}
+
 onMounted(refreshBooks)
 </script>
 
@@ -72,9 +159,21 @@ onMounted(refreshBooks)
     <section class="worldbook-shelf-zone" aria-label="世界书书架">
       <div class="worldbook-shelf-header">
         <p class="worldbook-shelf-title">世界书书架</p>
-        <button type="button" class="worldbook-add-button" @click="addWorldBook">
-          ＋ 新增世界书
-        </button>
+        <div class="worldbook-actions">
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept=".json"
+            style="display: none"
+            @change="handleFileImport"
+          />
+          <button type="button" class="worldbook-import-button" @click="triggerImport">
+            📥 导入
+          </button>
+          <button type="button" class="worldbook-add-button" @click="addWorldBook">
+            ＋ 新增世界书
+          </button>
+        </div>
       </div>
 
       <div class="worldbook-shelf">
@@ -89,9 +188,41 @@ onMounted(refreshBooks)
         >
           <span v-if="book.isDefault" class="spine-badge">默认</span>
           <span class="spine-title">{{ book.title }}</span>
+          <div class="spine-actions" @click.stop>
+            <button
+              type="button"
+              class="spine-action-btn export-btn"
+              title="导出"
+              @click="handleExport(book, $event)"
+            >
+              📤
+            </button>
+            <button
+              v-if="!book.isDefault && book.id !== 'default_world_book'"
+              type="button"
+              class="spine-action-btn delete-btn"
+              title="删除"
+              @click="confirmDelete(book, $event)"
+            >
+              🗑️
+            </button>
+          </div>
         </button>
       </div>
     </section>
+
+    <!-- 删除确认弹窗 -->
+    <div v-if="showDeleteConfirm" class="delete-confirm-overlay" @click.self="cancelDelete">
+      <div class="delete-confirm-dialog">
+        <h3>确认删除</h3>
+        <p>确定要删除世界书「{{ bookToDelete?.title }}」吗？</p>
+        <p class="delete-warning">此操作无法撤销！</p>
+        <div class="delete-confirm-actions">
+          <button type="button" class="cancel-btn" @click="cancelDelete">取消</button>
+          <button type="button" class="confirm-delete-btn" @click="executeDelete">确认删除</button>
+        </div>
+      </div>
+    </div>
 
     <p class="status-message">{{ statusMessage }}</p>
   </main>
@@ -101,7 +232,8 @@ onMounted(refreshBooks)
 .worldbook-screen {
   position: relative;
   width: 100%;
-  min-height: calc(100vh - clamp(40px, 8vw, 110px));
+  height: calc(100vh - clamp(40px, 8vw, 110px));
+  max-height: calc(100vh - clamp(40px, 8vw, 110px));
   border: 8px solid var(--accent-cyan);
   border-radius: 34px 20px 30px 18px;
   background: var(--surface-panel);
@@ -109,7 +241,7 @@ onMounted(refreshBooks)
   box-shadow: var(--shadow-screen);
   padding: clamp(18px, 3vw, 32px);
   display: grid;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto 1fr auto;
   gap: clamp(14px, 2.5vw, 22px);
   overflow: hidden;
 }
@@ -227,6 +359,10 @@ onMounted(refreshBooks)
   background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
   box-shadow: var(--shadow-panel);
   padding: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .worldbook-shelf-header {
@@ -245,6 +381,36 @@ onMounted(refreshBooks)
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-shadow: var(--text-shadow-single);
+}
+
+.worldbook-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.worldbook-import-button {
+  appearance: none;
+  border: 4px solid var(--accent-magenta);
+  border-radius: var(--radius-button);
+  padding: 8px 14px;
+  font: 800 0.8rem/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--foreground);
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-button);
+  cursor: pointer;
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.worldbook-import-button:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+
+.worldbook-import-button:focus-visible {
+  outline: 3px solid var(--accent-yellow);
+  outline-offset: 3px;
 }
 
 .worldbook-add-button {
@@ -353,6 +519,129 @@ onMounted(refreshBooks)
   line-height: 1;
   letter-spacing: 0.08em;
   background: color-mix(in srgb, var(--background) 36%, transparent);
+}
+
+.spine-actions {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.worldbook-book-spine:hover .spine-actions {
+  opacity: 1;
+}
+
+.spine-action-btn {
+  appearance: none;
+  border: 2px solid color-mix(in srgb, var(--foreground) 50%, transparent);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.7rem;
+  line-height: 1;
+  background: color-mix(in srgb, var(--background) 80%, transparent);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.spine-action-btn:hover {
+  transform: scale(1.15);
+  background: color-mix(in srgb, var(--background) 60%, transparent);
+}
+
+.export-btn:hover {
+  border-color: var(--accent-cyan);
+}
+
+.delete-btn:hover {
+  border-color: var(--accent-magenta);
+  background: color-mix(in srgb, var(--accent-magenta) 30%, var(--background));
+}
+
+/* 删除确认弹窗 */
+.delete-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--background) 85%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.delete-confirm-dialog {
+  position: relative;
+  border: 4px solid var(--accent-magenta);
+  border-radius: 20px;
+  padding: 24px 32px;
+  max-width: 400px;
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-panel);
+  text-align: center;
+}
+
+.delete-confirm-dialog h3 {
+  margin: 0 0 12px;
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  color: var(--accent-magenta);
+}
+
+.delete-confirm-dialog p {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.delete-warning {
+  color: var(--accent-orange);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.cancel-btn {
+  appearance: none;
+  border: 3px solid var(--border-panel);
+  border-radius: var(--radius-button);
+  padding: 10px 20px;
+  font: 700 0.9rem/1 var(--font-body);
+  color: var(--foreground);
+  background: var(--surface-panel);
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.cancel-btn:hover {
+  transform: scale(1.05);
+}
+
+.confirm-delete-btn {
+  appearance: none;
+  border: 3px solid var(--accent-magenta);
+  border-radius: var(--radius-button);
+  padding: 10px 20px;
+  font: 700 0.9rem/1 var(--font-body);
+  color: var(--foreground);
+  background: var(--accent-magenta);
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.confirm-delete-btn:hover {
+  transform: scale(1.05);
+  background: color-mix(in srgb, var(--accent-magenta) 80%, var(--accent-orange));
 }
 
 .book-tone-default {

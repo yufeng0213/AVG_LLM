@@ -1,0 +1,21 @@
+{
+  "appId": "com.avgllm.app",
+  "appName": "AVG LLM",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#1a1a2e",
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "Filesystem": {
+      "directory": "DOCUMENTS"
+    },
+    "StatusBar": {
+      "style": "Dark",
+      "backgroundColor": "#1a1a2e"
+    }
+  }
+}

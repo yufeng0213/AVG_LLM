@@ -513,10 +513,10 @@
 }
 
 :root[data-theme-style='clay-hifi'] .game-screen {
-  border: 1px solid var(--border-panel);
-  border-radius: 52px;
-  background: var(--surface-panel);
-  box-shadow: var(--shadow-screen);
+  border: none;
+  border-radius: 0;
+  background: var(--background);
+  box-shadow: none;
 }
 
 :root[data-theme-style='clay-hifi'] .game-screen::before {
@@ -551,9 +551,9 @@
 }
 
 :root[data-theme-style='clay-hifi'] .scene-stage {
-  border: 1px solid var(--border-panel);
-  border-radius: 36px;
-  box-shadow: var(--shadow-panel);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 :root[data-theme-style='clay-hifi'] .scene-gradient {
@@ -572,9 +572,9 @@
 }
 
 :root[data-theme-style='clay-hifi'] .character-stand {
-  border: 1px solid var(--border-field);
-  border-radius: 30px;
-  box-shadow: var(--shadow-card);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 :root[data-theme-style='clay-hifi'] .character-stand::before {
@@ -593,10 +593,10 @@
 }
 
 :root[data-theme-style='clay-hifi'] .dialogue-box {
-  border: 1px solid var(--border-panel);
-  border-radius: 28px;
+  border: none;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.76);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 :root[data-theme-style='clay-hifi'] .speaker-tag {
