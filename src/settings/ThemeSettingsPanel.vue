@@ -12,6 +12,7 @@ const themes = ref([])
 const selectedThemeId = ref('')
 const statusMessage = ref('请选择一个主题并应用。')
 const customThemeJson = ref(getThemeTemplate())
+const fileInputRef = ref(null)
 
 const refreshThemes = () => {
   themes.value = getThemeCatalog()
@@ -41,6 +42,84 @@ const importThemeFromJson = () => {
   }
 }
 
+const triggerFileImport = () => {
+  if (fileInputRef.value) {
+    fileInputRef.value.click()
+  }
+}
+
+const handleFileImport = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  // 检查文件类型
+  if (!file.name.endsWith('.json')) {
+    statusMessage.value = '请选择 JSON 文件（.json 格式）。'
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const content = e.target?.result
+      if (typeof content !== 'string') {
+        statusMessage.value = '文件读取失败。'
+        return
+      }
+
+      const parsed = JSON.parse(content)
+      const savedTheme = upsertCustomTheme(parsed)
+      refreshThemes()
+      selectedThemeId.value = savedTheme.id
+      applyThemeById(savedTheme.id)
+      statusMessage.value = `已导入并应用主题：${savedTheme.name}`
+
+      // 更新 textarea 内容
+      customThemeJson.value = content
+    } catch (err) {
+      console.error('Theme import error:', err)
+      statusMessage.value = 'JSON 格式错误，请检查文件内容。'
+    }
+  }
+
+  reader.onerror = () => {
+    statusMessage.value = '文件读取失败，请重试。'
+  }
+
+  reader.readAsText(file)
+
+  // 清空 input 以便再次选择同一文件
+  event.target.value = ''
+}
+
+const exportCurrentTheme = () => {
+  const currentTheme = themes.value.find((item) => item.id === selectedThemeId.value)
+  if (!currentTheme) {
+    statusMessage.value = '未找到当前主题。'
+    return
+  }
+
+  const exportData = {
+    id: currentTheme.id,
+    name: currentTheme.name,
+    description: currentTheme.description,
+    styleProfile: currentTheme.styleProfile,
+    tokens: currentTheme.tokens,
+  }
+
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${currentTheme.styleProfile || currentTheme.id}.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+
+  statusMessage.value = `已导出主题文件：${link.download}`
+}
+
 onMounted(refreshThemes)
 </script>
 
@@ -48,7 +127,7 @@ onMounted(refreshThemes)
   <section class="settings-panel-content">
     <h2 class="panel-title">主题设置</h2>
     <p class="panel-description">
-      主题由 JSON 驱动，支持预设风格配置（如 dopamine-max / clay-hifi）与自定义 token 注入。
+      主题由 JSON 驱动，支持预设风格配置与自定义 token 注入。可导入外部分享的主题文件。
     </p>
 
     <div class="settings-grid two-column">
@@ -76,10 +155,34 @@ onMounted(refreshThemes)
       <button type="button" class="action-button action-strong" @click="applySelectedTheme">
         应用主题
       </button>
+      <button type="button" class="action-button action-outline" @click="exportCurrentTheme">
+        导出当前主题
+      </button>
+    </div>
+
+    <!-- 文件导入区域 -->
+    <div class="import-section">
+      <div class="setting-field import-file-area">
+        <span class="setting-label">导入主题文件</span>
+        <div class="import-file-row">
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept=".json"
+            class="file-input-hidden"
+            @change="handleFileImport"
+          />
+          <button type="button" class="action-button action-outline import-file-btn" @click="triggerFileImport">
+            <span class="import-icon">📁</span>
+            选择 JSON 文件
+          </button>
+          <span class="import-hint">支持导入 .json 格式的主题文件</span>
+        </div>
+      </div>
     </div>
 
     <label class="setting-field">
-      <span class="setting-label">注入主题 JSON</span>
+      <span class="setting-label">手动注入主题 JSON</span>
       <textarea
         v-model="customThemeJson"
         class="setting-textarea"
@@ -108,4 +211,39 @@ onMounted(refreshThemes)
   color: color-mix(in srgb, var(--foreground) 88%, var(--accent-cyan));
 }
 
+.import-section {
+  margin-top: 1rem;
+}
+
+.import-file-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.import-file-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.import-file-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.import-icon {
+  font-size: 1.1rem;
+}
+
+.import-hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
 </style>

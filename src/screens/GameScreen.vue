@@ -7,6 +7,7 @@ import MusicPlayer from '../components/MusicPlayer.vue'
 import Phone from '../components/Phone.vue'
 import PluginComponent from '../plugins/PluginComponent.vue'
 import { PluginTypes } from '../plugins/pluginManager.js'
+import CGGeneratorModal from '../components/CGGeneratorModal.vue'
 import {
   loadBackgroundFolder,
   switchBackground,
@@ -116,6 +117,11 @@ const showChoicesPanel = ref(false) // 是否显示选项面板
 const customInputText = ref('') // 用户自定义输入内容
 const selectedChoice = ref(null) // 用户选择的选项（用于继续生成）
 
+// CG 生成相关状态
+const showCGModal = ref(false) // 是否显示 CG 生成弹窗
+const generatedCG = ref(null) // 生成的 CG 图片数据
+const showCGViewer = ref(false) // 是否显示 CG 查看器
+
 // 可选的消息条数范围选项
 const messageRangeOptions = [
   { min: 5, max: 10, label: '5-10条' },
@@ -151,6 +157,12 @@ const activeCharacterId = ref('lead')
 
 const currentLine = computed(() => dialogueScript.value[currentLineIndex.value])
 const isLastLine = computed(() => currentLineIndex.value === dialogueScript.value.length - 1)
+
+// 当前说话的角色
+const currentSpeakingCharacter = computed(() => {
+  const speakerId = speakerCharacterMap[currentLine.value?.speaker]
+  return sceneCharacters.find(c => c.id === speakerId) || null
+})
 
 // 当前活跃的世界书
 const activeBook = computed(() =>
@@ -403,6 +415,14 @@ const hasApiConfig = computed(() => {
   const activeId = localStorage.getItem('avg_llm_active_api_id')
   return Boolean(activeId)
 })
+
+// ========== CG 生成功能 ==========
+
+// 处理 CG 生成完成
+const handleCGGenerated = (cgData) => {
+  generatedCG.value = cgData
+  showCGViewer.value = true
+}
 
 // 立绘图片 URL 状态（用于模板显示）
 const portraitUrls = ref({})
@@ -742,20 +762,17 @@ watch(activeBook, (newBook) => {
 
       <div class="character-layer" aria-label="人物立绘">
         <div
-          v-for="character in sceneCharacters"
-          :key="character.id"
+          v-if="currentSpeakingCharacter"
           class="character-stand"
           :class="[
-            character.positionClass,
-            { active: activeCharacterId === character.id },
-            { speaking: speakerCharacterMap[currentLine.speaker] === character.id },
+            'is-left',
+            { active: true },
           ]"
-          @click="activeCharacterId = character.id"
         >
           <!-- 立绘图片 -->
           <img
-            :src="portraitUrls[character.id]"
-            :alt="character.name"
+            :src="portraitUrls[currentSpeakingCharacter.id]"
+            :alt="currentSpeakingCharacter.name"
             class="character-portrait"
           />
         </div>
@@ -788,6 +805,15 @@ watch(activeBook, (newBook) => {
             title="AI生成剧情"
           >
             🤖 AI生成
+          </button>
+          <button
+            type="button"
+            class="action-button action-cg"
+            :class="{ 'is-active': showCGModal }"
+            @click="showCGModal = true"
+            title="生成CG图片"
+          >
+            🎨 生成CG
           </button>
         </div>
       </section>
@@ -929,6 +955,33 @@ watch(activeBook, (newBook) => {
       :default-component="Phone"
       :plugin-type="PluginTypes.PHONE"
     />
+
+    <!-- CG 生成弹窗 -->
+    <CGGeneratorModal
+      :visible="showCGModal"
+      :world-book="activeBook"
+      :dialogue-history="dialogueScript"
+      :current-line="currentLine"
+      @close="showCGModal = false"
+      @generated="handleCGGenerated"
+    />
+
+    <!-- CG 查看器 -->
+    <div v-if="generatedCG && showCGViewer" class="cg-viewer-overlay" @click="showCGViewer = false">
+      <div class="cg-viewer">
+        <img :src="generatedCG.url" alt="Generated CG" class="cg-image" />
+        <div class="cg-info">
+          <p class="cg-summary">{{ generatedCG.sceneSummary }}</p>
+          <button type="button" class="cg-close-btn" @click="showCGViewer = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CG 缩略图（已生成时显示） -->
+    <div v-if="generatedCG && !showCGViewer" class="cg-thumbnail" @click="showCGViewer = true" title="点击查看CG">
+      <img :src="generatedCG.url" alt="CG Thumbnail" class="cg-thumb-img" />
+      <span class="cg-thumb-label">CG</span>
+    </div>
   </main>
 </template>
 
@@ -1167,27 +1220,23 @@ watch(activeBook, (newBook) => {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: 0 5% 220px;
+  padding: 0 5%;
   pointer-events: none;
   z-index: 2;
 }
 
 .character-stand {
   position: relative;
-  width: clamp(200px, 22vw, 350px);
-  height: clamp(350px, 65vh, 600px);
   cursor: pointer;
   pointer-events: auto;
   transition: transform 300ms ease, filter 300ms ease;
 }
 
 .character-portrait {
-  width: 100%;
-  height: 100%;
+  height: 95vh;
+  width: auto;
   object-fit: contain;
   object-position: bottom center;
-  filter: drop-shadow(0 4px 20px color-mix(in srgb, var(--foreground) 30%, transparent));
-  transition: filter 300ms ease;
 }
 
 .character-stand:hover {
@@ -1196,14 +1245,6 @@ watch(activeBook, (newBook) => {
 
 .character-stand.active {
   transform: translateY(-12px);
-}
-
-.character-stand.active .character-portrait {
-  filter: drop-shadow(0 8px 30px color-mix(in srgb, var(--accent-cyan) 50%, transparent));
-}
-
-.character-stand.speaking .character-portrait {
-  filter: drop-shadow(0 8px 30px color-mix(in srgb, var(--accent-cyan) 50%, transparent));
 }
 
 .character-stand:not(.active) {
@@ -2095,6 +2136,149 @@ watch(activeBook, (newBook) => {
   40% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+/* CG 生成按钮样式 */
+.action-cg {
+  border-color: var(--accent-magenta);
+  color: var(--accent-magenta);
+  background: color-mix(in srgb, var(--accent-magenta) 15%, transparent);
+}
+
+.action-cg:hover:not(:disabled) {
+  background: var(--accent-magenta);
+  color: var(--bg);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-magenta) 40%, transparent);
+}
+
+.action-cg.is-active {
+  background: var(--accent-magenta);
+  color: var(--bg);
+}
+
+/* CG 查看器样式 */
+.cg-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.cg-viewer {
+  max-width: 90%;
+  max-height: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.cg-image {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 0 40px rgba(0, 212, 255, 0.3);
+}
+
+.cg-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cg-summary {
+  margin: 0;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--accent-cyan) 20%, transparent);
+  border-radius: 8px;
+  color: var(--accent-cyan);
+  font-size: 0.9rem;
+  max-width: 400px;
+}
+
+.cg-close-btn {
+  appearance: none;
+  border: 2px solid var(--accent-magenta);
+  border-radius: 6px;
+  padding: 8px 16px;
+  background: var(--accent-magenta);
+  color: var(--bg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cg-close-btn:hover {
+  background: color-mix(in srgb, var(--accent-magenta) 80%, var(--accent-cyan));
+  transform: scale(1.05);
+}
+
+/* CG 缩略图样式 */
+.cg-thumbnail {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  border: 2px solid var(--accent-magenta);
+  overflow: hidden;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(255, 0, 255, 0.3);
+}
+
+.cg-thumbnail:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(255, 0, 255, 0.5);
+}
+
+.cg-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cg-thumb-label {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  background: var(--accent-magenta);
+  color: var(--bg);
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .cg-thumbnail {
+    width: 60px;
+    height: 60px;
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .cg-viewer {
+    max-width: 95%;
+  }
+
+  .cg-info {
+    flex-direction: column;
+    gap: 8px;
   }
 }
 </style>

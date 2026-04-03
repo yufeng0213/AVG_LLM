@@ -624,6 +624,69 @@ app.whenReady().then(() => {
     }
   })
 
+  // 读取文本文件（用于加载工作流等配置文件）
+  ipcMain.handle('file:read-text', async (_event, filePath) => {
+    if (!filePath || typeof filePath !== 'string') {
+      console.log('file:read-text - 无效路径参数')
+      return null
+    }
+
+    console.log('file:read-text - 请求路径:', filePath)
+
+    // 验证文件扩展名
+    const ext = path.extname(filePath).toLowerCase()
+    const allowedExtensions = ['.json', '.txt', '.js', '.vue', '.html', '.css', '.md']
+    if (!allowedExtensions.includes(ext)) {
+      console.log('file:read-text - 不允许的扩展名:', ext)
+      return null
+    }
+
+    // 尝试多种路径解析方式
+    const pathsToTry = []
+    
+    // 1. 如果是绝对路径，直接使用
+    if (path.isAbsolute(filePath) && !filePath.includes('..')) {
+      pathsToTry.push(filePath)
+    }
+    
+    // 2. 基于应用目录解析相对路径
+    const appPath = app.getAppPath()
+    const resolvedFromApp = path.resolve(appPath, filePath)
+    if (!resolvedFromApp.includes('..')) {
+      pathsToTry.push(resolvedFromApp)
+    }
+    
+    // 3. 对于 ./data/ 开头的路径，尝试去掉 ./ 前缀
+    if (filePath.startsWith('./data/')) {
+      const dataPath = path.resolve(appPath, 'data', filePath.substring(7))
+      if (!dataPath.includes('..')) {
+        pathsToTry.push(dataPath)
+      }
+    }
+    
+    // 4. 尝试直接使用相对路径（基于当前工作目录）
+    const cwdPath = path.resolve(process.cwd(), filePath)
+    if (!cwdPath.includes('..')) {
+      pathsToTry.push(cwdPath)
+    }
+
+    console.log('file:read-text - 尝试路径:', pathsToTry)
+
+    // 尝试每个可能的路径
+    for (const tryPath of pathsToTry) {
+      try {
+        const content = await fsPromises.readFile(tryPath, 'utf-8')
+        console.log('file:read-text - 成功读取文件:', tryPath)
+        return content
+      } catch (err) {
+        console.log('file:read-text - 路径失败:', tryPath, err.message)
+      }
+    }
+
+    console.log('file:read-text - 所有路径尝试失败')
+    return null
+  })
+
   // ========== 存档系统 IPC 处理程序 ==========
 
   // 获取存档目录路径
@@ -1078,6 +1141,141 @@ app.whenReady().then(() => {
       return { success: true, base64, mimeType, path: normalizedPath }
     } catch (error) {
       return { success: false, error: error.message }
+    }
+  })
+
+  // ========== ComfyUI 代理请求（解决 CORS 问题）==========
+  
+  // 检查 ComfyUI 服务是否可用
+  ipcMain.handle('comfyui:check-available', async (_event, serverUrl) => {
+    if (!serverUrl || typeof serverUrl !== 'string') {
+      return { success: false, available: false, error: 'Invalid server URL' }
+    }
+
+    try {
+      const response = await fetch(`${serverUrl}/system_stats`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      })
+      return { success: true, available: response.ok }
+    } catch (error) {
+      return { success: true, available: false, error: error.message }
+    }
+  })
+
+  // 获取 ComfyUI 对象信息（模型、VAE、CLIP等）
+  ipcMain.handle('comfyui:get-object-info', async (_event, serverUrl, objectType) => {
+    if (!serverUrl || typeof serverUrl !== 'string') {
+      return { success: false, error: 'Invalid server URL', data: null }
+    }
+
+    try {
+      const response = await fetch(`${serverUrl}/object_info/${objectType}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      })
+
+      if (!response.ok) {
+        return { success: false, error: `HTTP ${response.status}`, data: null }
+      }
+
+      const data = await response.json()
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error.message, data: null }
+    }
+  })
+
+  // 提交工作流到 ComfyUI
+  ipcMain.handle('comfyui:submit-workflow', async (_event, serverUrl, workflow) => {
+    if (!serverUrl || typeof serverUrl !== 'string') {
+      return { success: false, error: 'Invalid server URL', data: null }
+    }
+
+    try {
+      const response = await fetch(`${serverUrl}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: workflow }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        return { success: false, error: `HTTP ${response.status}: ${errorText}`, data: null }
+      }
+
+      const data = await response.json()
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error.message, data: null }
+    }
+  })
+
+  // 获取 ComfyUI 执行历史
+  ipcMain.handle('comfyui:get-history', async (_event, serverUrl, promptId) => {
+    if (!serverUrl || typeof serverUrl !== 'string') {
+      return { success: false, error: 'Invalid server URL', data: null }
+    }
+
+    try {
+      const url = promptId ? `${serverUrl}/history/${promptId}` : `${serverUrl}/history`
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      })
+
+      if (!response.ok) {
+        return { success: false, error: `HTTP ${response.status}`, data: null }
+      }
+
+      const data = await response.json()
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error.message, data: null }
+    }
+  })
+
+  // 获取 ComfyUI 生成的图片
+  ipcMain.handle('comfyui:get-image', async (_event, serverUrl, filename, subfolder, type) => {
+    if (!serverUrl || typeof serverUrl !== 'string') {
+      return { success: false, error: 'Invalid server URL', data: null }
+    }
+
+    try {
+      const params = new URLSearchParams({
+        filename: filename || '',
+        type: type || 'output',
+        subfolder: subfolder || '',
+      })
+      
+      const response = await fetch(`${serverUrl}/view?${params.toString()}`, {
+        method: 'GET',
+      })
+
+      if (!response.ok) {
+        return { success: false, error: `HTTP ${response.status}`, data: null }
+      }
+
+      const arrayBuffer = await response.arrayBuffer()
+      const base64 = Buffer.from(arrayBuffer).toString('base64')
+      
+      // 根据文件扩展名确定 MIME 类型
+      const ext = filename?.split('.').pop()?.toLowerCase() || 'png'
+      const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+        : ext === 'gif' ? 'image/gif'
+        : ext === 'webp' ? 'image/webp'
+        : 'image/png'
+
+      return {
+        success: true,
+        data: {
+          base64,
+          mimeType,
+          dataUrl: `data:${mimeType};base64,${base64}`,
+        }
+      }
+    } catch (error) {
+      return { success: false, error: error.message, data: null }
     }
   })
 

@@ -1,11 +1,12 @@
 import dopamineMax from '../themes/presets/dopamine-max.json'
 import clayHiFi from '../themes/presets/clay-hifi.json'
+import linearModern from '../themes/presets/linear-modern.json'
 
 const ACTIVE_THEME_KEY = 'avg_llm_active_theme'
 const CUSTOM_THEMES_KEY = 'avg_llm_custom_themes'
 const DEFAULT_STYLE_PROFILE = 'dopamine-max'
 
-const presetThemes = [dopamineMax, clayHiFi]
+const presetThemes = [dopamineMax, clayHiFi, linearModern]
 const fallbackTheme = presetThemes[0]
 
 const tokenToCssVar = {

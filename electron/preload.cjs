@@ -12,6 +12,7 @@ const bridgeApi = {
   },
   file: {
     readImage: (filePath) => ipcRenderer.invoke('file:read-image', filePath),
+    readText: (filePath) => ipcRenderer.invoke('file:read-text', filePath),
   },
   save: {
     getSaveDir: () => ipcRenderer.invoke('save:get-dir'),
@@ -49,6 +50,19 @@ const bridgeApi = {
     install: (sourcePath) => ipcRenderer.invoke('plugins:install', sourcePath),
     // 卸载插件
     uninstall: (pluginId) => ipcRenderer.invoke('plugins:uninstall', pluginId),
+  },
+  comfyui: {
+    // 检查 ComfyUI 服务是否可用
+    checkAvailable: (serverUrl) => ipcRenderer.invoke('comfyui:check-available', serverUrl),
+    // 获取对象信息（模型、VAE、CLIP等）
+    getObjectInfo: (serverUrl, objectType) => ipcRenderer.invoke('comfyui:get-object-info', serverUrl, objectType),
+    // 提交工作流
+    submitWorkflow: (serverUrl, workflow) => ipcRenderer.invoke('comfyui:submit-workflow', serverUrl, workflow),
+    // 获取执行历史
+    getHistory: (serverUrl, promptId) => ipcRenderer.invoke('comfyui:get-history', serverUrl, promptId),
+    // 获取生成的图片
+    getImage: (serverUrl, filename, subfolder, type) =>
+      ipcRenderer.invoke('comfyui:get-image', serverUrl, filename, subfolder, type),
   },
 }
 
