@@ -1,7 +1,8 @@
 import { getEmotionLabel } from './emotionPresets'
+import { kvStorage } from '../storage/index.js'
 
-export const WORLD_BOOK_STORAGE_KEY = 'avg_llm_world_books'
-export const ACTIVE_WORLD_BOOK_KEY = 'avg_llm_active_world_book'
+export const WORLD_BOOK_STORAGE_KEY = 'world_books'
+export const ACTIVE_WORLD_BOOK_KEY = 'active_world_book'
 
 export const WORLD_BOOK_ENTRY_DEFS = [
   { key: 'overview', label: '世界概述', hint: '一句话说明这个世界最核心的设定。' },
@@ -228,14 +229,13 @@ const ensureDefaultWorldBook = (books) => {
   return [createDefaultWorldBook(), ...books]
 }
 
-export const loadWorldBooks = () => {
+export const loadWorldBooks = async () => {
   if (typeof window === 'undefined') {
     return [createDefaultWorldBook()]
   }
 
   try {
-    const raw = window.localStorage.getItem(WORLD_BOOK_STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
+    const parsed = await kvStorage.get(WORLD_BOOK_STORAGE_KEY)
     const normalized = Array.isArray(parsed)
       ? parsed.map((book, index) => normalizeWorldBook(book, index))
       : []
@@ -246,19 +246,19 @@ export const loadWorldBooks = () => {
   }
 }
 
-export const persistWorldBooks = (books) => {
+export const persistWorldBooks = async (books) => {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(WORLD_BOOK_STORAGE_KEY, JSON.stringify(books))
+  await kvStorage.set(WORLD_BOOK_STORAGE_KEY, books)
 }
 
-export const getActiveWorldBookId = () => {
+export const getActiveWorldBookId = async () => {
   if (typeof window === 'undefined') return 'default_world_book'
-  return window.localStorage.getItem(ACTIVE_WORLD_BOOK_KEY) || 'default_world_book'
+  return (await kvStorage.get(ACTIVE_WORLD_BOOK_KEY)) || 'default_world_book'
 }
 
-export const setActiveWorldBookId = (bookId) => {
+export const setActiveWorldBookId = async (bookId) => {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(ACTIVE_WORLD_BOOK_KEY, String(bookId || 'default_world_book'))
+  await kvStorage.set(ACTIVE_WORLD_BOOK_KEY, bookId || 'default_world_book')
 }
 
 export const createNewWorldBook = (books = []) => {

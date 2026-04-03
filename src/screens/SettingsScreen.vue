@@ -310,33 +310,206 @@ const activePanel = computed(() => panelMap[activeTab.value])
 
 @media (max-width: 900px) {
   .settings-screen {
-    border-width: 6px;
-    min-height: calc(100vh - 30px);
+    border-width: 4px;
+    border-radius: 16px;
+    min-height: calc(100vh - 20px);
+    padding: 12px;
+    gap: 12px;
+    box-shadow: 0 0 20px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
+  }
+
+  .settings-header {
+    gap: 10px;
+  }
+
+  .back-button {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    border-width: 2px;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
+  }
+
+  .settings-tag {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    border-width: 2px;
+  }
+
+  .settings-title {
+    font-size: 1.5rem;
+  }
+
+  .title-gradient {
+    font-size: 1rem;
   }
 
   .settings-layout {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .settings-nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
   }
 
   .settings-nav-item {
-    min-height: 88px;
-    align-content: center;
+    min-height: 60px;
+    padding: 8px 12px;
+    flex: 1 1 calc(50% - 8px);
+    min-width: 100px;
+    border-width: 2px;
+  }
+
+  .nav-main {
+    font-size: 0.85rem;
+  }
+
+  .nav-note {
+    display: none;
+  }
+
+  .settings-content {
+    padding: 12px;
+    border-width: 2px;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-orange) 30%, transparent);
+  }
+
+  .settings-bg-word {
+    display: none;
   }
 }
 
 @media (max-width: 680px) {
-  .settings-nav {
-    grid-template-columns: 1fr;
+  .settings-screen {
+    padding: 10px;
+    gap: 8px;
   }
 
-  .settings-bg-word {
-    font-size: clamp(4.5rem, 24vw, 8rem);
-    right: -7%;
+  .settings-header {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .back-button {
+    padding: 6px 10px;
+    font-size: 0.65rem;
+  }
+
+  .settings-title-group {
+    gap: 4px;
+  }
+
+  .settings-tag {
+    padding: 4px 8px;
+    font-size: 0.6rem;
+  }
+
+  .settings-title {
+    font-size: 1.2rem;
+  }
+
+  .title-gradient {
+    font-size: 0.8rem;
+  }
+
+  .settings-nav {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .settings-nav-item {
+    min-height: 50px;
+    padding: 6px 10px;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .nav-main {
+    font-size: 0.75rem;
+  }
+
+  .settings-content {
+    padding: 10px;
+    border-width: 1px;
+  }
+}
+
+/* 横屏模式 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .settings-screen {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .settings-header {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .settings-layout {
+    grid-template-columns: minmax(0, 140px) minmax(0, 1fr);
+  }
+
+  .settings-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .settings-nav-item {
+    min-height: 40px;
+    padding: 4px 8px;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .nav-main {
+    font-size: 0.7rem;
+  }
+
+  .settings-content {
+    padding: 8px;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 480px) {
+  .settings-screen {
+    padding: 8px;
+    border-width: 3px;
+    border-radius: 12px;
+  }
+
+  .back-button {
+    padding: 5px 8px;
+    font-size: 0.6rem;
+  }
+
+  .settings-title {
+    font-size: 1rem;
+  }
+
+  .title-gradient {
+    font-size: 0.7rem;
+  }
+
+  .settings-nav-item {
+    min-height: 44px;
+    padding: 5px 8px;
+  }
+
+  .nav-main {
+    font-size: 0.65rem;
+  }
+
+  .settings-content {
+    padding: 8px;
   }
 }
 </style>

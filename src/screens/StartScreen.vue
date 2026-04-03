@@ -113,14 +113,14 @@ const floatingShapes = [
 ]
 
 // 加载世界书列表
-const loadWorldBookList = () => {
-  worldBooks.value = loadWorldBooks()
-  selectedWorldBookId.value = getActiveWorldBookId()
+const loadWorldBookList = async () => {
+  worldBooks.value = await loadWorldBooks()
+  selectedWorldBookId.value = await getActiveWorldBookId()
 }
 
 // 打开世界书选择弹窗
-const openWorldBookSelectDialog = () => {
-  loadWorldBookList()
+const openWorldBookSelectDialog = async () => {
+  await loadWorldBookList()
   showWorldBookSelect.value = true
 }
 
@@ -169,7 +169,9 @@ const handleMenuClick = (itemId) => {
   }
 }
 
-onMounted(loadWorldBookList)
+onMounted(async () => {
+  await loadWorldBookList()
+})
 </script>
 
 <template>
@@ -692,28 +694,163 @@ onMounted(loadWorldBookList)
 
 @media (max-width: 640px) {
   .launch-screen {
-    padding: 18px;
-    border-radius: 26px 20px 30px 14px;
+    padding: 12px;
+    border-radius: 16px;
+    border-width: 3px;
+    min-height: calc(100vh - 16px);
+    /* 简化阴影 */
+    box-shadow: 0 0 16px color-mix(in srgb, var(--accent-magenta) 40%, transparent);
+    transform: none;
   }
 
   .hero-tag {
-    letter-spacing: 0.16em;
+    letter-spacing: 0.12em;
+    padding: 6px 12px;
+    font-size: 0.7rem;
+  }
+
+  .hero-title-main {
+    font-size: 1.8rem;
+  }
+
+  .hero-title-gradient {
+    font-size: 1.2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.85rem;
+    line-height: 1.4;
   }
 
   .menu-panel {
-    padding: 14px;
+    padding: 10px;
+    border-width: 2px;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
   }
 
-  .floating-shape:last-child {
+  .menu-heading {
+    font-size: 1.1rem;
+  }
+
+  /* 隐藏所有浮动装饰 */
+  .floating-layer,
+  .massive-word {
     display: none;
   }
 
   .menu-grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .menu-button {
-    padding: 18px;
+    min-height: 70px;
+    padding: 10px 12px;
+    border-width: 2px;
+    /* 简化阴影 */
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent-magenta) 25%, transparent);
+    transform: none !important;
+  }
+
+  .menu-button:hover {
+    transform: none !important;
+  }
+
+  .menu-button-icon {
+    font-size: 1.3rem;
+  }
+
+  .menu-button-text {
+    font-size: 0.8rem;
+  }
+
+  .menu-button-desc {
+    display: none;
+  }
+
+  .menu-meta {
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .meta-chip {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    border-width: 2px;
+    transform: none;
+  }
+}
+
+/* 超小屏幕 (手机竖屏) */
+@media (max-width: 480px) {
+  .launch-screen {
+    padding: 8px;
+    border-radius: 12px;
+    gap: 12px;
+  }
+
+  .hero-block {
+    gap: 6px;
+  }
+
+  .menu-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .menu-button {
+    min-height: 56px;
+    padding: 8px 12px;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .menu-button-icon {
+    font-size: 1.1rem;
+  }
+
+  .menu-button-text {
+    font-size: 0.75rem;
+  }
+}
+
+/* 横屏模式优化 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .launch-screen {
+    padding: 8px 16px;
+    min-height: calc(100vh - 12px);
+  }
+
+  .hero-block {
+    max-width: 50%;
+  }
+
+  .menu-panel {
+    padding: 8px 12px;
+  }
+
+  .menu-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .menu-button {
+    min-height: 50px;
+    padding: 6px 8px;
+  }
+
+  .menu-button-icon {
+    font-size: 1rem;
+  }
+
+  .menu-button-text {
+    font-size: 0.7rem;
+  }
+
+  .menu-button-desc {
+    display: none;
   }
 }
 

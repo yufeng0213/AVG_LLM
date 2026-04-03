@@ -5,6 +5,7 @@
 
 import defaultSkin from '../themes/music-player/default.json'
 import neonCyberSkin from '../themes/music-player/neon-cyber.json'
+import { kvStorage } from '../storage/index.js'
 
 // 默认皮肤配置（当加载失败时使用）
 const DEFAULT_SKIN = defaultSkin || {
@@ -323,19 +324,19 @@ export const generateCustomCSS = (skin) => {
 }
 
 /**
- * 保存皮肤设置到localStorage
+ * 保存皮肤设置
  * @param {string} skinId - 皮肤ID
  */
-export const saveSkinSetting = (skinId) => {
-  localStorage.setItem('music-player-skin', skinId)
+export const saveSkinSetting = async (skinId) => {
+  await kvStorage.set('music-player-skin', skinId)
 }
 
 /**
- * 从localStorage加载皮肤设置
- * @returns {string} 皮肤ID
+ * 加载皮肤设置
+ * @returns {Promise<string>} 皮肤ID
  */
-export const loadSkinSetting = () => {
-  return localStorage.getItem('music-player-skin') || 'default'
+export const loadSkinSetting = async () => {
+  return (await kvStorage.get('music-player-skin')) || 'default'
 }
 
 /**
@@ -343,7 +344,7 @@ export const loadSkinSetting = () => {
  * @returns {Promise<Object>} 初始皮肤配置
  */
 export const initSkinSystem = async () => {
-  const savedSkinId = loadSkinSetting()
+  const savedSkinId = await loadSkinSetting()
   return await loadSkin(savedSkinId)
 }
 

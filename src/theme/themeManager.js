@@ -1,9 +1,10 @@
 import dopamineMax from '../themes/presets/dopamine-max.json'
 import clayHiFi from '../themes/presets/clay-hifi.json'
 import linearModern from '../themes/presets/linear-modern.json'
+import { kvStorage } from '../storage/index.js'
 
-const ACTIVE_THEME_KEY = 'avg_llm_active_theme'
-const CUSTOM_THEMES_KEY = 'avg_llm_custom_themes'
+const ACTIVE_THEME_KEY = 'active_theme'
+const CUSTOM_THEMES_KEY = 'custom_themes'
 const DEFAULT_STYLE_PROFILE = 'dopamine-max'
 
 const presetThemes = [dopamineMax, clayHiFi, linearModern]
@@ -80,42 +81,40 @@ const normalizeTheme = (theme, source = 'custom') => {
   }
 }
 
-const readJsonStorage = (key) => {
+const readJsonStorage = async (key) => {
   if (typeof window === 'undefined') return null
 
   try {
-    const raw = window.localStorage.getItem(key)
-    if (!raw) return null
-    return JSON.parse(raw)
+    return await kvStorage.get(key)
   } catch {
     return null
   }
 }
 
-const writeJsonStorage = (key, value) => {
+const writeJsonStorage = async (key, value) => {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(key, JSON.stringify(value))
+  await kvStorage.set(key, value)
 }
 
-export const getCustomThemes = () => {
-  const raw = readJsonStorage(CUSTOM_THEMES_KEY)
+export const getCustomThemes = async () => {
+  const raw = await readJsonStorage(CUSTOM_THEMES_KEY)
   if (!Array.isArray(raw)) return []
   return raw.map((theme) => normalizeTheme(theme, 'custom'))
 }
 
-export const getThemeCatalog = () => {
+export const getThemeCatalog = async () => {
   const normalizedPresets = presetThemes.map((theme) => normalizeTheme(theme, 'preset'))
-  return [...normalizedPresets, ...getCustomThemes()]
+  return [...normalizedPresets, ...await getCustomThemes()]
 }
 
-export const getActiveThemeId = () => {
+export const getActiveThemeId = async () => {
   if (typeof window === 'undefined') return fallbackTheme.id
-  return window.localStorage.getItem(ACTIVE_THEME_KEY) || fallbackTheme.id
+  return (await kvStorage.get(ACTIVE_THEME_KEY)) || fallbackTheme.id
 }
 
-const setActiveThemeId = (themeId) => {
+const setActiveThemeId = async (themeId) => {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(ACTIVE_THEME_KEY, themeId)
+  await kvStorage.set(ACTIVE_THEME_KEY, themeId)
 }
 
 const applyTokensToDocument = (tokens) => {
@@ -134,8 +133,8 @@ const applyStyleProfileToDocument = (styleProfile) => {
   root.setAttribute('data-theme-style', styleProfile || DEFAULT_STYLE_PROFILE)
 }
 
-export const applyThemeById = (themeId, { persist = true } = {}) => {
-  const catalog = getThemeCatalog()
+export const applyThemeById = async (themeId, { persist = true } = {}) => {
+  const catalog = await getThemeCatalog()
   const selected = catalog.find((theme) => theme.id === themeId) || catalog[0]
   if (!selected) return null
 
@@ -143,13 +142,13 @@ export const applyThemeById = (themeId, { persist = true } = {}) => {
   applyStyleProfileToDocument(selected.styleProfile)
 
   if (persist) {
-    setActiveThemeId(selected.id)
+    await setActiveThemeId(selected.id)
   }
 
   return selected
 }
 
-export const upsertCustomTheme = (themeInput) => {
+export const upsertCustomTheme = async (themeInput) => {
   const normalized = normalizeTheme(
     {
       ...themeInput,
@@ -158,7 +157,7 @@ export const upsertCustomTheme = (themeInput) => {
     'custom',
   )
 
-  const existing = getCustomThemes()
+  const existing = await getCustomThemes()
   const targetIndex = existing.findIndex((item) => item.id === normalized.id)
 
   if (targetIndex >= 0) {
@@ -167,13 +166,13 @@ export const upsertCustomTheme = (themeInput) => {
     existing.push(normalized)
   }
 
-  writeJsonStorage(CUSTOM_THEMES_KEY, existing)
+  await writeJsonStorage(CUSTOM_THEMES_KEY, existing)
   return normalized
 }
 
-export const initTheme = () => {
-  const activeThemeId = getActiveThemeId()
-  const applied = applyThemeById(activeThemeId, { persist: false })
+export const initTheme = async () => {
+  const activeThemeId = await getActiveThemeId()
+  const applied = await applyThemeById(activeThemeId, { persist: false })
   if (applied) return applied
   return applyThemeById(fallbackTheme.id)
 }

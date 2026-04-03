@@ -14,13 +14,13 @@ const statusMessage = ref('请选择一个主题并应用。')
 const customThemeJson = ref(getThemeTemplate())
 const fileInputRef = ref(null)
 
-const refreshThemes = () => {
-  themes.value = getThemeCatalog()
-  selectedThemeId.value = getActiveThemeId()
+const refreshThemes = async () => {
+  themes.value = await getThemeCatalog()
+  selectedThemeId.value = await getActiveThemeId()
 }
 
-const applySelectedTheme = () => {
-  const applied = applyThemeById(selectedThemeId.value)
+const applySelectedTheme = async () => {
+  const applied = await applyThemeById(selectedThemeId.value)
   if (!applied) {
     statusMessage.value = '主题应用失败。'
     return
@@ -29,13 +29,13 @@ const applySelectedTheme = () => {
   statusMessage.value = `已应用主题：${applied.name}`
 }
 
-const importThemeFromJson = () => {
+const importThemeFromJson = async () => {
   try {
     const parsed = JSON.parse(customThemeJson.value)
-    const savedTheme = upsertCustomTheme(parsed)
-    refreshThemes()
+    const savedTheme = await upsertCustomTheme(parsed)
+    await refreshThemes()
     selectedThemeId.value = savedTheme.id
-    applyThemeById(savedTheme.id)
+    await applyThemeById(savedTheme.id)
     statusMessage.value = `已注入并应用主题：${savedTheme.name}`
   } catch {
     statusMessage.value = 'JSON 格式错误，请检查后重试。'
@@ -59,7 +59,7 @@ const handleFileImport = (event) => {
   }
 
   const reader = new FileReader()
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
       const content = e.target?.result
       if (typeof content !== 'string') {
@@ -68,10 +68,10 @@ const handleFileImport = (event) => {
       }
 
       const parsed = JSON.parse(content)
-      const savedTheme = upsertCustomTheme(parsed)
-      refreshThemes()
+      const savedTheme = await upsertCustomTheme(parsed)
+      await refreshThemes()
       selectedThemeId.value = savedTheme.id
-      applyThemeById(savedTheme.id)
+      await applyThemeById(savedTheme.id)
       statusMessage.value = `已导入并应用主题：${savedTheme.name}`
 
       // 更新 textarea 内容
@@ -120,7 +120,9 @@ const exportCurrentTheme = () => {
   statusMessage.value = `已导出主题文件：${link.download}`
 }
 
-onMounted(refreshThemes)
+onMounted(async () => {
+  await refreshThemes()
+})
 </script>
 
 <template>

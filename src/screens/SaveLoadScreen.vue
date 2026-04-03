@@ -753,21 +753,211 @@ const getSlotDescription = (slot) => {
 }
 
 @media (max-width: 768px) {
-  .slot-grid {
-    grid-template-columns: 1fr;
+  .save-load-screen {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .screen-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .back-button {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+
+  .screen-title {
+    font-size: 1.2rem;
+  }
+
+  .screen-subtitle {
+    font-size: 0.75rem;
+  }
+
+  .tab-nav {
+    gap: 6px;
   }
 
   .tab-button {
-    padding: 8px 16px;
-    font-size: 0.9rem;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    border-width: 2px;
   }
 
   .tab-label {
     display: none;
   }
 
+  .slot-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .slot-card {
+    padding: 12px;
+    border-width: 2px;
+  }
+
+  .slot-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .slot-title {
+    font-size: 0.9rem;
+  }
+
+  .slot-time {
+    font-size: 0.7rem;
+  }
+
+  .slot-description {
+    font-size: 0.8rem;
+  }
+
+  .slot-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .action-button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  .confirm-dialog {
+    padding: 16px 20px;
+    max-width: 90%;
+    margin: 0 16px;
+  }
+
+  .dialog-title {
+    font-size: 1.1rem;
+  }
+
+  .dialog-message {
+    font-size: 0.9rem;
+  }
+
+  .dialog-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dialog-button {
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  .screen-footer {
+    padding-top: 8px;
+  }
+
+  .footer-tip {
+    font-size: 0.8rem;
+  }
+}
+
+/* 横屏模式 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .save-load-screen {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .screen-header {
+    flex-direction: row;
+    align-items: center;
+  }
+
   .screen-title {
-    font-size: 1.4rem;
+    font-size: 1rem;
+  }
+
+  .slot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  .slot-card {
+    padding: 8px 10px;
+  }
+
+  .slot-title {
+    font-size: 0.8rem;
+  }
+
+  .slot-description {
+    font-size: 0.7rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .slot-actions {
+    gap: 4px;
+  }
+
+  .action-button {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 480px) {
+  .save-load-screen {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .screen-title {
+    font-size: 1rem;
+  }
+
+  .screen-subtitle {
+    font-size: 0.65rem;
+  }
+
+  .tab-button {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+
+  .slot-card {
+    padding: 10px;
+    border-width: 1px;
+  }
+
+  .slot-title {
+    font-size: 0.85rem;
+  }
+
+  .slot-description {
+    font-size: 0.75rem;
+  }
+
+  .action-button {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+
+  .empty-state {
+    padding: 20px;
+  }
+
+  .empty-icon {
+    font-size: 2rem;
+  }
+
+  .empty-text {
+    font-size: 0.85rem;
   }
 }
 </style>

@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { getActiveWorldBookId, loadWorldBooks } from '../worldbook/worldBookStore'
 import { generateStory, buildStoryPrompt, parseStoryContent, toGameScript, hasChoices, extractChoices } from '../llm'
 import { saveGame, createHistoryBackup, formatTimestamp } from '../save/saveManager'
+import { kvStorage } from '../storage/index.js'
 import MusicPlayer from '../components/MusicPlayer.vue'
 import Phone from '../components/Phone.vue'
 import PluginComponent from '../plugins/PluginComponent.vue'
@@ -32,7 +33,7 @@ const props = defineProps({
 // 世界书数据
 const worldBooks = ref([])
 // 使用传入的世界书ID，如果没有则使用存档中的或默认的
-const activeBookId = ref(props.worldBookId || props.saveData?.game?.worldBookId || getActiveWorldBookId())
+const activeBookId = ref(props.worldBookId || props.saveData?.game?.worldBookId || 'default_world_book')
 
 // 立绘图片缓存
 const portraitImageCache = ref(new Map())
@@ -170,8 +171,8 @@ const activeBook = computed(() =>
 )
 
 // 加载世界书数据
-const loadWorldBookData = () => {
-  worldBooks.value = loadWorldBooks()
+const loadWorldBookData = async () => {
+  worldBooks.value = await loadWorldBooks()
 }
 
 // 根据角色ID获取角色数据（支持 USER 和 Char）
@@ -411,10 +412,13 @@ const toggleGeneratePanel = () => {
 }
 
 // 检查是否有 API 配置
-const hasApiConfig = computed(() => {
-  const activeId = localStorage.getItem('avg_llm_active_api_id')
-  return Boolean(activeId)
-})
+const hasApiConfig = ref(false)
+
+// 加载 API 配置状态
+const loadApiConfigStatus = async () => {
+  const activeId = await kvStorage.get('active_api_id')
+  hasApiConfig.value = Boolean(activeId)
+}
 
 // ========== CG 生成功能 ==========
 
@@ -645,8 +649,8 @@ const hasCustomBackground = computed(() => {
 })
 
 onMounted(async () => {
-  loadWorldBookData()
-  updatePortraitUrls()
+  await loadWorldBookData()
+  await updatePortraitUrls()
   
   // 加载背景文件夹
   await loadBackgroundFolder()
@@ -1606,8 +1610,32 @@ watch(activeBook, (newBook) => {
 }
 
 @media (max-width: 680px) {
+  .game-topbar {
+    padding: 8px 12px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .back-button {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    border-width: 2px;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
+  }
+
+  .game-hud {
+    gap: 4px;
+  }
+
+  .hud-chip {
+    padding: 4px 8px;
+    font-size: 0.65rem;
+    border-width: 2px;
+    box-shadow: 0 0 6px color-mix(in srgb, var(--accent-purple) 25%, transparent);
+  }
+
   .character-layer {
-    padding: 0 3% 160px;
+    padding: 0 3% 140px;
   }
 
   .character-stand {
@@ -1627,17 +1655,161 @@ watch(activeBook, (newBook) => {
     height: min(60vh, 350px);
   }
 
+  .character-portrait {
+    height: 55vh;
+  }
+
   .game-bg-word {
-    font-size: clamp(4.5rem, 24vw, 8rem);
-    right: -7%;
+    display: none;
   }
 
   .dialogue-box {
     left: 2%;
     right: 2%;
-    bottom: 10px;
-    padding: 10px 14px;
-    border-radius: 12px;
+    bottom: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border-width: 1px;
+    max-width: 96%;
+    backdrop-filter: blur(6px);
+  }
+
+  .dialogue-head {
+    gap: 6px;
+  }
+
+  .speaker-tag {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    border-width: 2px;
+  }
+
+  .line-progress {
+    font-size: 0.7rem;
+  }
+
+  .dialogue-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .dialogue-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .action-button {
+    padding: 8px 12px;
+    min-height: 36px;
+    font-size: 0.7rem;
+    border-width: 2px;
+  }
+
+  .save-actions {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    gap: 4px;
+  }
+
+  .save-button {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    border-width: 1px;
+  }
+}
+
+/* 横屏模式优化 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .game-topbar {
+    padding: 4px 8px;
+  }
+
+  .back-button {
+    padding: 6px 10px;
+    font-size: 0.65rem;
+  }
+
+  .hud-chip {
+    padding: 3px 6px;
+    font-size: 0.6rem;
+  }
+
+  .character-layer {
+    padding-bottom: 100px;
+  }
+
+  .character-portrait {
+    height: 70vh;
+  }
+
+  .dialogue-box {
+    bottom: 8px;
+    padding: 8px 12px;
+    max-height: 30vh;
+  }
+
+  .dialogue-text {
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .dialogue-actions {
+    gap: 4px;
+  }
+
+  .action-button {
+    padding: 6px 10px;
+    min-height: 28px;
+    font-size: 0.65rem;
+  }
+
+  .generate-panel {
+    width: min(80%, 320px);
+  }
+
+  .choices-panel {
+    width: min(80%, 360px);
+  }
+}
+
+/* 超小屏幕 (小于480px) */
+@media (max-width: 480px) {
+  .game-topbar {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+
+  .back-button {
+    padding: 6px 8px;
+    font-size: 0.6rem;
+  }
+
+  .hud-chip {
+    padding: 2px 4px;
+    font-size: 0.55rem;
+  }
+
+  .dialogue-box {
+    left: 1%;
+    right: 1%;
+    bottom: 4px;
+    padding: 8px 10px;
+  }
+
+  .dialogue-text {
+    font-size: 0.8rem;
+  }
+
+  .action-button {
+    padding: 6px 8px;
+    min-height: 32px;
+    font-size: 0.6rem;
+  }
+
+  /* 隐藏部分按钮，只保留核心功能 */
+  .action-button.action-cg {
+    display: none;
   }
 }
 

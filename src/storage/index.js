@@ -37,12 +37,24 @@ export const kvStorage = {
     
     if (isNative()) {
       const { value } = await Preferences.get({ key: fullKey })
-      return value ? JSON.parse(value) : null
+      if (!value) return null
+      try {
+        return JSON.parse(value)
+      } catch {
+        // 兼容旧数据：如果不是有效的 JSON，返回原始字符串
+        return value
+      }
     }
     
     // Web 回退
     const value = localStorage.getItem(fullKey)
-    return value ? JSON.parse(value) : null
+    if (!value) return null
+    try {
+      return JSON.parse(value)
+    } catch {
+      // 兼容旧数据：如果不是有效的 JSON，返回原始字符串
+      return value
+    }
   },
 
   /**

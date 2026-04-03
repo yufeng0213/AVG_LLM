@@ -4,6 +4,7 @@
  * 这是一个简单的手机模拟器，可以被插件替换
  */
 import { ref, onMounted, onUnmounted } from 'vue'
+import { kvStorage } from '../storage/index.js'
 
 // 手机状态
 const isPhoneVisible = ref(false)
@@ -122,16 +123,15 @@ const stopDrag = () => {
 }
 
 // 保存手机位置
-const savePhonePosition = () => {
-  localStorage.setItem('phone-position', JSON.stringify(phonePosition.value))
+const savePhonePosition = async () => {
+  await kvStorage.set('phone-position', phonePosition.value)
 }
 
 // 加载手机位置
-const loadPhonePosition = () => {
+const loadPhonePosition = async () => {
   try {
-    const saved = localStorage.getItem('phone-position')
-    if (saved) {
-      const pos = JSON.parse(saved)
+    const pos = await kvStorage.get('phone-position')
+    if (pos) {
       // 验证位置是否在当前窗口范围内
       const windowWidth = window.innerWidth
       const windowHeight = window.innerHeight
@@ -569,5 +569,104 @@ const loadPhonePosition = () => {
 .phone-slide-leave-to {
   opacity: 0;
   transform: translateY(20px) scale(0.9);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .phone-plugin {
+    /* 移动端固定在底部 */
+    position: fixed !important;
+    left: auto !important;
+    top: auto !important;
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .phone-trigger {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+
+  .phone-container {
+    width: calc(100vw - 20px);
+    max-width: 300px;
+    height: calc(100vh - 100px);
+    max-height: 500px;
+    right: 0;
+    bottom: 54px;
+    left: auto;
+    top: auto;
+  }
+
+  .phone-frame {
+    border-radius: 20px;
+  }
+
+  .status-bar {
+    padding: 8px 12px;
+  }
+
+  .home-screen {
+    padding: 16px;
+  }
+
+  .lock-time .big-time {
+    font-size: 36px;
+  }
+
+  .app-grid {
+    gap: 12px;
+  }
+
+  .app-icon-bg {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+
+  .app-name {
+    font-size: 11px;
+  }
+}
+
+/* 横屏模式 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .phone-container {
+    width: 280px;
+    height: calc(100vh - 60px);
+    max-height: 400px;
+  }
+
+  .lock-time .big-time {
+    font-size: 28px;
+  }
+
+  .app-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .app-icon-bg {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 480px) {
+  .phone-container {
+    width: calc(100vw - 16px);
+    max-width: 260px;
+    height: calc(100vh - 80px);
+    max-height: 450px;
+  }
+
+  .phone-trigger {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
 }
 </style>

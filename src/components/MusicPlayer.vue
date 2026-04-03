@@ -9,6 +9,7 @@ import {
   saveSkinSetting,
   getSkinList
 } from './musicPlayerSkinManager.js'
+import { kvStorage } from '../storage/index.js'
 
 // 播放器状态
 const isExpanded = ref(false)
@@ -209,21 +210,20 @@ const toggleMute = () => {
 }
 
 // 保存BGM设置
-const saveBgmSettings = () => {
+const saveBgmSettings = async () => {
   const settings = {
     bgmFolderPath: bgmFolderPath.value,
     volume: volume.value,
     currentTrackIndex: currentTrackIndex.value,
   }
-  localStorage.setItem('bgm-settings', JSON.stringify(settings))
+  await kvStorage.set('bgm-settings', settings)
 }
 
 // 加载BGM设置
 const loadBgmSettings = async () => {
   try {
-    const saved = localStorage.getItem('bgm-settings')
-    if (saved) {
-      const settings = JSON.parse(saved)
+    const settings = await kvStorage.get('bgm-settings')
+    if (settings) {
       volume.value = settings.volume || 80
       bgmFolderPath.value = settings.bgmFolderPath || ''
       
@@ -319,16 +319,15 @@ const stopDrag = () => {
 }
 
 // 保存播放器位置
-const savePlayerPosition = () => {
-  localStorage.setItem('music-player-position', JSON.stringify(playerPosition.value))
+const savePlayerPosition = async () => {
+  await kvStorage.set('music-player-position', playerPosition.value)
 }
 
 // 加载播放器位置
-const loadPlayerPosition = () => {
+const loadPlayerPosition = async () => {
   try {
-    const saved = localStorage.getItem('music-player-position')
-    if (saved) {
-      const pos = JSON.parse(saved)
+    const pos = await kvStorage.get('music-player-position')
+    if (pos) {
       // 验证位置是否在当前窗口范围内
       const windowWidth = window.innerWidth
       const windowHeight = window.innerHeight
@@ -942,5 +941,144 @@ onUnmounted(() => {
 
 .playlist::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .music-player-plugin {
+    /* 移动端固定在底部 */
+    position: fixed !important;
+    left: auto !important;
+    top: auto !important;
+    right: 10px;
+    bottom: 60px;
+  }
+
+  .player-trigger {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+
+  .player-container {
+    width: calc(100vw - 20px);
+    max-width: 300px;
+    right: 0;
+    bottom: 54px;
+    left: auto;
+    top: auto;
+    border-radius: 16px;
+  }
+
+  .player-header {
+    padding: 10px 12px;
+  }
+
+  .player-title {
+    font-size: 13px;
+  }
+
+  .player-body {
+    padding: 12px;
+  }
+
+  .track-name {
+    font-size: 13px;
+  }
+
+  .controls {
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .control-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .play-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .playlist {
+    max-height: 150px;
+  }
+
+  .settings-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .folder-path {
+    font-size: 10px;
+    min-width: 60px;
+  }
+}
+
+/* 横屏模式 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .music-player-plugin {
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .player-container {
+    width: 280px;
+    max-height: calc(100vh - 60px);
+  }
+
+  .player-body {
+    padding: 8px 10px;
+  }
+
+  .controls {
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .control-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .play-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .playlist {
+    max-height: 100px;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 480px) {
+  .player-container {
+    width: calc(100vw - 16px);
+    max-width: 260px;
+  }
+
+  .player-trigger {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .track-name {
+    font-size: 12px;
+  }
+
+  .control-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .play-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 </style>

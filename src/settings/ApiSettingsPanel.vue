@@ -1,8 +1,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { kvStorage } from '../storage/index.js'
 
-const CONFIG_STORAGE_KEY = 'avg_llm_api_configs'
-const ACTIVE_CONFIG_KEY = 'avg_llm_active_api_id'
+const CONFIG_STORAGE_KEY = 'api_configs'
+const ACTIVE_CONFIG_KEY = 'active_api_id'
 
 const configs = ref([])
 const selectedConfigId = ref('')
@@ -39,14 +40,13 @@ const createEmptyDraft = () => {
   form.model = 'gpt-5.2'
 }
 
-const persistConfigs = () => {
-  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(configs.value))
+const persistConfigs = async () => {
+  await kvStorage.set(CONFIG_STORAGE_KEY, configs.value)
 }
 
-const loadStorage = () => {
+const loadStorage = async () => {
   try {
-    const raw = localStorage.getItem(CONFIG_STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
+    const parsed = await kvStorage.get(CONFIG_STORAGE_KEY)
     configs.value = Array.isArray(parsed) ? parsed : []
   } catch {
     configs.value = []
@@ -60,10 +60,10 @@ const loadStorage = () => {
     createEmptyDraft()
   }
 
-  activeConfigId.value = localStorage.getItem(ACTIVE_CONFIG_KEY) || ''
+  activeConfigId.value = (await kvStorage.get(ACTIVE_CONFIG_KEY)) || ''
 }
 
-const saveConfig = () => {
+const saveConfig = async () => {
   if (!form.customApi.trim()) {
     statusMessage.value = 'LLM的自定义API 不能为空。'
     return
@@ -91,19 +91,19 @@ const saveConfig = () => {
 
   applyToForm(nextConfig)
   selectedConfigId.value = nextConfig.id
-  persistConfigs()
+  await persistConfigs()
   statusMessage.value = `已保存配置：${nextConfig.name}`
 }
 
-const applyConfig = () => {
+const applyConfig = async () => {
   if (!form.id) {
-    saveConfig()
+    await saveConfig()
   }
 
   if (!form.id) return
 
   activeConfigId.value = form.id
-  localStorage.setItem(ACTIVE_CONFIG_KEY, form.id)
+  await kvStorage.set(ACTIVE_CONFIG_KEY, form.id)
   statusMessage.value = `已应用配置：${form.name}`
 }
 

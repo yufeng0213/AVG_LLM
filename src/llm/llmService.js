@@ -3,23 +3,24 @@
  * 负责与 LLM API 通信，生成剧情内容
  */
 
+import { kvStorage } from '../storage/index.js'
+
 // 存储 key 常量
-const CONFIG_STORAGE_KEY = 'avg_llm_api_configs'
-const ACTIVE_CONFIG_KEY = 'avg_llm_active_api_id'
+const CONFIG_STORAGE_KEY = 'api_configs'
+const ACTIVE_CONFIG_KEY = 'active_api_id'
 
 /**
  * 获取当前激活的 API 配置
- * @returns {Object|null} API 配置对象
+ * @returns {Promise<Object|null>} API 配置对象
  */
-export const getActiveApiConfig = () => {
+export const getActiveApiConfig = async () => {
   if (typeof window === 'undefined') return null
 
   try {
-    const activeId = localStorage.getItem(ACTIVE_CONFIG_KEY)
+    const activeId = await kvStorage.get(ACTIVE_CONFIG_KEY)
     if (!activeId) return null
 
-    const raw = localStorage.getItem(CONFIG_STORAGE_KEY)
-    const configs = raw ? JSON.parse(raw) : []
+    const configs = await kvStorage.get(CONFIG_STORAGE_KEY) || []
     return configs.find((c) => c.id === activeId) || null
   } catch {
     return null

@@ -104,15 +104,15 @@ const ensureCharacterSelection = () => {
   }
 }
 
-const loadEditorData = () => {
-  worldBooks.value = loadWorldBooks()
+const loadEditorData = async () => {
+  worldBooks.value = await loadWorldBooks()
 
-  const desiredBookId = props.bookId || getActiveWorldBookId()
+  const desiredBookId = props.bookId || await getActiveWorldBookId()
   const exists = worldBooks.value.some((book) => book.id === desiredBookId)
   const nextId = exists ? desiredBookId : worldBooks.value[0]?.id || 'default_world_book'
 
   activeBookId.value = nextId
-  setActiveWorldBookId(nextId)
+  await setActiveWorldBookId(nextId)
   ensureCharacterSelection()
 }
 
@@ -255,8 +255,8 @@ const saveWorldBooks = async () => {
 
   isSaving.value = true
   try {
-    persistWorldBooks(worldBooks.value)
-    setActiveWorldBookId(activeBook.value.id)
+    await persistWorldBooks(worldBooks.value)
+    await setActiveWorldBookId(activeBook.value.id)
     statusMessage.value = `已保存：${activeBook.value.title}`
   } finally {
     isSaving.value = false
@@ -265,8 +265,8 @@ const saveWorldBooks = async () => {
 
 watch(
   () => props.bookId,
-  () => {
-    loadEditorData()
+  async () => {
+    await loadEditorData()
   },
 )
 
@@ -277,7 +277,9 @@ watch(
   },
 )
 
-onMounted(loadEditorData)
+onMounted(async () => {
+  await loadEditorData()
+})
 </script>
 
 <template>

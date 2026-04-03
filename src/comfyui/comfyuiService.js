@@ -1,18 +1,20 @@
 /**
  * ComfyUI 服务模块
  * 负责与本地 ComfyUI API 通信，生成 CG 图片
- * 
+ *
  * ComfyUI 默认运行在 http://127.0.0.1:8188
  * 主要 API 端点：
  * - POST /prompt - 提交工作流执行
  * - GET /history/{prompt_id} - 获取执行历史
  * - GET /view - 查看生成的图片
- * 
+ *
  * 在 Electron 环境下通过 IPC 代理请求，解决 CORS 问题
  */
 
+import { kvStorage } from '../storage/index.js'
+
 // 存储 key 常量
-const COMFYUI_CONFIG_KEY = 'avg_llm_comfyui_config'
+const COMFYUI_CONFIG_KEY = 'comfyui_config'
 
 // 默认配置
 const DEFAULT_CONFIG = {
@@ -42,15 +44,15 @@ const isElectron = () => {
 
 /**
  * 获取 ComfyUI 配置
- * @returns {Object} ComfyUI 配置对象
+ * @returns {Promise<Object>} ComfyUI 配置对象
  */
-export const getComfyUIConfig = () => {
+export const getComfyUIConfig = async () => {
   if (typeof window === 'undefined') return DEFAULT_CONFIG
 
   try {
-    const raw = localStorage.getItem(COMFYUI_CONFIG_KEY)
+    const raw = await kvStorage.get(COMFYUI_CONFIG_KEY)
     if (raw) {
-      return { ...DEFAULT_CONFIG, ...JSON.parse(raw) }
+      return { ...DEFAULT_CONFIG, ...raw }
     }
   } catch {
     // 忽略解析错误
@@ -62,11 +64,11 @@ export const getComfyUIConfig = () => {
  * 保存 ComfyUI 配置
  * @param {Object} config - 配置对象
  */
-export const saveComfyUIConfig = (config) => {
+export const saveComfyUIConfig = async (config) => {
   if (typeof window === 'undefined') return
 
   try {
-    localStorage.setItem(COMFYUI_CONFIG_KEY, JSON.stringify(config))
+    await kvStorage.set(COMFYUI_CONFIG_KEY, config)
   } catch {
     // 忽略存储错误
   }

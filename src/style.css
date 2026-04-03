@@ -429,14 +429,24 @@ body::after {
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
-/* 小屏幕设备适配 (手机) */
+/* 移动端通用优化变量 */
 @media (max-width: 768px) {
   :root {
-    --radius-card: 16px;
-    --radius-panel: 12px;
-    --backdrop-blur: 6px;
+    /* 简化视觉效果，减少 GPU 负载 */
+    --radius-card: 12px;
+    --radius-panel: 10px;
+    --radius-button: 8px;
+    --backdrop-blur: 4px;
+    /* 简化阴影 */
+    --shadow-panel: 0 0 12px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
+    --shadow-card: 0 0 10px color-mix(in srgb, var(--accent-orange) 25%, transparent);
+    --shadow-button: 0 0 8px color-mix(in srgb, var(--accent-magenta) 20%, transparent);
+    --shadow-field: 0 0 6px color-mix(in srgb, var(--accent-cyan) 20%, transparent);
   }
+}
 
+/* 小屏幕设备适配 (手机竖屏) */
+@media (max-width: 768px) and (orientation: portrait) {
   /* 全屏布局 */
   html, body, #app {
     height: 100%;
@@ -453,10 +463,12 @@ body::after {
 
   /* 按钮触摸区域增大 */
   .avg-button,
-  button {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 12px 20px;
+  button,
+  .action-button {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 14px 24px;
+    font-size: 1rem;
   }
 
   /* 对话框适配 */
@@ -477,23 +489,26 @@ body::after {
   input,
   textarea,
   select,
-  .avg-field {
+  .avg-field,
+  .setting-input,
+  .setting-select,
+  .setting-textarea {
     font-size: 16px; /* 防止 iOS 自动缩放 */
-    padding: 12px 16px;
-    min-height: 44px;
+    padding: 14px 18px;
+    min-height: 48px;
   }
 
   /* 标题缩小 */
-  h1 {
-    font-size: 1.5rem;
+  h1, .panel-title {
+    font-size: 1.4rem;
   }
 
   h2 {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
 
   h3 {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 
   /* 阴影简化（减少 GPU 负载） */
@@ -574,21 +589,147 @@ body::after {
   }
 }
 
-/* 横屏模式 */
+/* 横屏模式 (手机横屏/Android横屏) */
 @media (max-width: 768px) and (orientation: landscape) {
   .dialogue-box {
-    max-height: 40vh;
+    max-height: 35vh;
+    padding: 12px 16px;
   }
 
   .portrait-container {
-    max-width: 30vw;
+    max-width: 25vw;
+    max-height: 60vh;
+  }
+
+  /* 横屏时顶部工具栏紧凑 */
+  .game-topbar {
+    padding: 4px 8px;
+    gap: 8px;
+  }
+
+  /* 横屏时按钮更紧凑 */
+  .action-button {
+    padding: 6px 12px;
+    min-height: 36px;
+    font-size: 0.75rem;
   }
 }
 
 /* 竖屏模式 */
 @media (max-width: 768px) and (orientation: portrait) {
   .portrait-container {
-    max-height: 50vh;
+    max-height: 45vh;
+  }
+
+  /* 竖屏时对话框更大 */
+  .dialogue-box {
+    min-height: 25vh;
+    padding: 16px 20px;
+  }
+
+  /* 竖屏时按钮全宽 */
+  .dialogue-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .dialogue-actions .action-button {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ========== 移动端组件级优化 ========== */
+
+/* 移动端菜单网格优化 */
+@media (max-width: 768px) {
+  .menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .menu-button {
+    min-height: 80px;
+    padding: 12px;
+  }
+
+  .menu-button-icon {
+    font-size: 1.5rem;
+  }
+
+  .menu-button-text {
+    font-size: 0.9rem;
+  }
+
+  .menu-button-desc {
+    font-size: 0.7rem;
+    display: none; /* 移动端隐藏描述 */
+  }
+
+  /* 移动端面板简化 */
+  .launch-screen {
+    padding: 16px;
+    border-width: 4px;
+    border-radius: 16px;
+    box-shadow: 0 0 20px color-mix(in srgb, var(--accent-magenta) 40%, transparent);
+  }
+
+  .menu-panel {
+    padding: 12px;
+    border-width: 3px;
+  }
+
+  /* 移动端标题优化 */
+  .hero-title-main {
+    font-size: 2rem;
+  }
+
+  .hero-title-gradient {
+    font-size: 1.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.9rem;
+  }
+
+  /* 移动端隐藏装饰元素 */
+  .massive-word,
+  .floating-layer {
+    display: none;
+  }
+}
+
+/* 超小屏幕 (小于480px) */
+@media (max-width: 480px) {
+  .menu-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .menu-button {
+    min-height: 60px;
+    padding: 10px 12px;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .menu-button-icon {
+    font-size: 1.2rem;
+  }
+
+  .menu-button-text {
+    font-size: 0.85rem;
+  }
+
+  .hero-block {
+    gap: 8px;
+  }
+
+  .hero-tag {
+    padding: 6px 12px;
+    font-size: 0.7rem;
   }
 }
 
@@ -628,4 +769,67 @@ body::after {
 .platform-ios {
   /* iOS 风格适配 */
   --radius-button: 10px;
+}
+
+/* ========== Android 横屏分辨率适配 ========== */
+/*
+ * 设计基准：1920x1080 (16:9)
+ * 所有 Android 横屏设备保持相同布局比例
+ */
+.platform-android.android-landscape {
+  /* 禁用双击缩放 */
+  touch-action: manipulation;
+}
+
+.platform-android.android-landscape body {
+  /* 防止页面缩放 */
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* Android 横屏下的字体缩放基准 */
+.platform-android.android-landscape {
+  font-size: calc(16px * var(--ui-scale, 1));
+}
+
+/* Android 横屏下的按钮尺寸适配 */
+.platform-android.android-landscape .action-button,
+.platform-android.android-landscape button {
+  min-height: calc(44px * var(--ui-scale, 1));
+  min-width: calc(80px * var(--ui-scale, 1));
+}
+
+/* Android 横屏下的输入框适配 */
+.platform-android.android-landscape input,
+.platform-android.android-landscape select,
+.platform-android.android-landscape textarea {
+  min-height: calc(40px * var(--ui-scale, 1));
+  font-size: calc(14px * var(--ui-scale, 1));
+}
+
+/* Android 横屏下的面板适配 */
+.platform-android.android-landscape .avg-panel {
+  border-radius: calc(var(--radius-panel) * var(--ui-scale, 1));
+}
+
+/* Android 横屏下的卡片适配 */
+.platform-android.android-landscape .avg-card {
+  border-radius: calc(var(--radius-card) * var(--ui-scale, 1));
+}
+
+/* 禁用 Android 上的触摸高亮 */
+.platform-android * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Android 横屏下的滚动条隐藏 */
+.platform-android.android-landscape ::-webkit-scrollbar {
+  display: none;
+}
+
+.platform-android.android-landscape {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

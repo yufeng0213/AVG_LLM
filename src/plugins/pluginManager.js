@@ -3,6 +3,8 @@
  * 负责插件的扫描、加载、启用/禁用等管理功能
  */
 
+import { kvStorage } from '../storage/index.js'
+
 // 插件类型定义
 export const PluginTypes = {
   MUSIC_PLAYER: 'music-player',
@@ -28,7 +30,7 @@ const loadedPlugins = new Map()
 const enabledPlugins = new Map()
 
 // 插件配置存储键
-const PLUGIN_CONFIG_KEY = 'avg_llm_plugin_config'
+const PLUGIN_CONFIG_KEY = 'plugin_config'
 
 /**
  * 插件元数据结构
@@ -47,12 +49,12 @@ const PLUGIN_CONFIG_KEY = 'avg_llm_plugin_config'
 
 /**
  * 获取插件配置
- * @returns {Object} 插件配置对象
+ * @returns {Promise<Object>} 插件配置对象
  */
-export function getPluginConfig() {
+export async function getPluginConfig() {
   try {
-    const config = localStorage.getItem(PLUGIN_CONFIG_KEY)
-    return config ? JSON.parse(config) : { enabled: [], settings: {} }
+    const config = await kvStorage.get(PLUGIN_CONFIG_KEY)
+    return config || { enabled: [], settings: {} }
   } catch (e) {
     console.error('Failed to load plugin config:', e)
     return { enabled: [], settings: {} }
@@ -63,9 +65,9 @@ export function getPluginConfig() {
  * 保存插件配置
  * @param {Object} config - 插件配置对象
  */
-export function savePluginConfig(config) {
+export async function savePluginConfig(config) {
   try {
-    localStorage.setItem(PLUGIN_CONFIG_KEY, JSON.stringify(config))
+    await kvStorage.set(PLUGIN_CONFIG_KEY, config)
   } catch (e) {
     console.error('Failed to save plugin config:', e)
   }

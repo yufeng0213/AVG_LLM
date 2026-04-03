@@ -4,6 +4,6 @@ import './theme/themeProfiles.css'
 import App from './App.vue'
 import { initTheme } from './theme/themeManager'
 
-initTheme()
+initTheme().catch(console.error)
 
 createApp(App).mount('#app')

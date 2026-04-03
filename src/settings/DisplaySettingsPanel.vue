@@ -1,7 +1,9 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
+import { kvStorage } from '../storage/index.js'
+import { isAndroid, isElectron, isWeb } from '../utils/platform.js'
 
-const DISPLAY_STORAGE_KEY = 'avg_llm_display_settings'
+const DISPLAY_STORAGE_KEY = 'display_settings'
 
 const displayState = reactive({
   resolution: '1280x720',
@@ -9,6 +11,9 @@ const displayState = reactive({
   quality: 'high',
   textSpeed: 72,
   dynamicEffects: true,
+  // Android 特有设置
+  fullscreen: true,
+  landscapeMode: true,
 })
 
 const defaultResolutionOptions = ['1280x720', '1366x768', '1600x900', '1920x1080', '2560x1440']
@@ -16,19 +21,31 @@ const resolutionOptions = ref(defaultResolutionOptions)
 const isApplying = ref(false)
 const statusMessage = ref('画面参数待应用。')
 
-const readLocalSettings = () => {
+// 平台检测
+const isAndroidPlatform = computed(() => isAndroid())
+const isElectronPlatform = computed(() => isElectron())
+const isWebPlatform = computed(() => isWeb())
+
+const readLocalSettings = async () => {
   try {
-    const raw = localStorage.getItem(DISPLAY_STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : null
+    const parsed = await kvStorage.get(DISPLAY_STORAGE_KEY)
     if (parsed?.resolution) displayState.resolution = parsed.resolution
     if (parsed?.windowMode) displayState.windowMode = parsed.windowMode
+    if (parsed?.fullscreen !== undefined) displayState.fullscreen = parsed.fullscreen
+    if (parsed?.landscapeMode !== undefined) displayState.landscapeMode = parsed.landscapeMode
   } catch {
     // Ignore invalid local snapshot.
   }
 }
 
 const loadCurrentDisplaySettings = async () => {
-  readLocalSettings()
+  await readLocalSettings()
+
+  // Android 平台显示特定消息
+  if (isAndroidPlatform.value) {
+    statusMessage.value = 'Android 平台：全屏和横屏模式已默认启用。'
+    return
+  }
 
   const isElectronRuntime = navigator.userAgent.includes('Electron')
 
@@ -66,9 +83,17 @@ const applyDisplaySettings = async () => {
   const payload = {
     resolution: displayState.resolution,
     windowMode: displayState.windowMode,
+    fullscreen: displayState.fullscreen,
+    landscapeMode: displayState.landscapeMode,
   }
 
-  localStorage.setItem(DISPLAY_STORAGE_KEY, JSON.stringify(payload))
+  await kvStorage.set(DISPLAY_STORAGE_KEY, payload)
+
+  // Android 平台提示
+  if (isAndroidPlatform.value) {
+    statusMessage.value = 'Android 平台：全屏和横屏由系统控制，设置已保存。'
+    return
+  }
 
   if (!window.avgLLM?.display?.applySettings) {
     statusMessage.value = '已保存本地设置；在 Electron 中点击将直接调整窗口。'
@@ -99,6 +124,24 @@ onMounted(loadCurrentDisplaySettings)
     <h2 class="panel-title">画面设置</h2>
     <p class="panel-description">控制窗口模式、分辨率、渲染质量与文本播放速度。</p>
 
+    <!-- Android 特有设置 -->
+    <div v-if="isAndroidPlatform" class="android-settings-section">
+      <h3 class="subsection-title">Android 显示设置</h3>
+      <div class="settings-grid two-column">
+        <label class="setting-checkbox-row">
+          <input v-model="displayState.fullscreen" class="setting-checkbox" type="checkbox" />
+          <span>全屏模式（隐藏状态栏和导航栏）</span>
+        </label>
+        
+        <label class="setting-checkbox-row">
+          <input v-model="displayState.landscapeMode" class="setting-checkbox" type="checkbox" />
+          <span>横屏模式（自动旋转锁定横屏）</span>
+        </label>
+      </div>
+      <p class="android-note">提示：全屏和横屏设置在应用启动时自动生效。</p>
+    </div>
+
+    <!-- 通用设置 -->
     <div class="settings-grid two-column">
       <label class="setting-field">
         <span class="setting-label">分辨率</span>
@@ -113,7 +156,7 @@ onMounted(loadCurrentDisplaySettings)
         </select>
       </label>
 
-      <label class="setting-field">
+      <label class="setting-field" v-if="!isAndroidPlatform">
         <span class="setting-label">窗口模式</span>
         <select v-model="displayState.windowMode" class="setting-select">
           <option value="windowed">窗口</option>
@@ -152,3 +195,27 @@ onMounted(loadCurrentDisplaySettings)
     <p class="status-message">{{ statusMessage }}</p>
   </section>
 </template>
+
+<style scoped>
+.android-settings-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.1), rgba(255, 58, 242, 0.1));
+  border-radius: 12px;
+  border: 1px solid var(--accent-cyan, #00f5d4);
+}
+
+.subsection-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent-cyan, #00f5d4);
+  margin-bottom: 0.75rem;
+}
+
+.android-note {
+  font-size: 0.85rem;
+  color: var(--muted, #888);
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+</style>

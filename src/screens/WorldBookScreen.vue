@@ -33,26 +33,26 @@ const getBookToneClass = (book, index) => {
   return bookToneClasses[index % bookToneClasses.length]
 }
 
-const refreshBooks = () => {
-  worldBooks.value = loadWorldBooks()
+const refreshBooks = async () => {
+  worldBooks.value = await loadWorldBooks()
 
-  const storedActiveId = getActiveWorldBookId()
+  const storedActiveId = await getActiveWorldBookId()
   const activeExists = worldBooks.value.some((book) => book.id === storedActiveId)
   activeBookId.value = activeExists ? storedActiveId : worldBooks.value[0]?.id || 'default_world_book'
-  setActiveWorldBookId(activeBookId.value)
+  await setActiveWorldBookId(activeBookId.value)
 }
 
-const openBook = (bookId) => {
+const openBook = async (bookId) => {
   activeBookId.value = bookId
-  setActiveWorldBookId(bookId)
+  await setActiveWorldBookId(bookId)
   emit('open-book', bookId)
 }
 
-const addWorldBook = () => {
+const addWorldBook = async () => {
   const nextBook = createNewWorldBook(worldBooks.value)
   worldBooks.value = [...worldBooks.value, nextBook]
-  persistWorldBooks(worldBooks.value)
-  setActiveWorldBookId(nextBook.id)
+  await persistWorldBooks(worldBooks.value)
+  await setActiveWorldBookId(nextBook.id)
   activeBookId.value = nextBook.id
   statusMessage.value = `已新增：${nextBook.title}`
 }
@@ -72,19 +72,19 @@ const cancelDelete = () => {
   showDeleteConfirm.value = false
 }
 
-const executeDelete = () => {
+const executeDelete = async () => {
   if (!bookToDelete.value) return
   
   const result = deleteWorldBook(worldBooks.value, bookToDelete.value.id)
   if (result.success) {
     worldBooks.value = result.books
-    persistWorldBooks(worldBooks.value)
+    await persistWorldBooks(worldBooks.value)
     
     // 如果删除的是当前激活的世界书，切换到第一本
     if (activeBookId.value === bookToDelete.value.id) {
       const newActiveId = worldBooks.value[0]?.id || 'default_world_book'
       activeBookId.value = newActiveId
-      setActiveWorldBookId(newActiveId)
+      await setActiveWorldBookId(newActiveId)
     }
     
     statusMessage.value = result.message
@@ -125,7 +125,7 @@ const handleFileImport = async (event) => {
     
     if (result.success && result.books.length > 0) {
       worldBooks.value = [...worldBooks.value, ...result.books]
-      persistWorldBooks(worldBooks.value)
+      await persistWorldBooks(worldBooks.value)
       statusMessage.value = result.message
     } else {
       statusMessage.value = result.message
@@ -138,7 +138,9 @@ const handleFileImport = async (event) => {
   event.target.value = ''
 }
 
-onMounted(refreshBooks)
+onMounted(async () => {
+  await refreshBooks()
+})
 </script>
 
 <template>
