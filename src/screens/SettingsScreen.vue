@@ -478,6 +478,138 @@ const activePanel = computed(() => panelMap[activeTab.value])
   }
 }
 
+/* 竖屏模式 - 整体滚动设计 */
+@media (max-width: 768px) and (orientation: portrait) {
+  .settings-screen {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100vh !important;
+    border-width: 2px !important;
+    border-radius: 0 !important;
+    padding: 16px 12px !important;
+    gap: 12px !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  .settings-bg-word {
+    display: none !important;
+  }
+
+  .settings-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: var(--background) !important;
+    padding: 8px 0 !important;
+    border-bottom: 2px solid var(--accent-cyan) !important;
+  }
+
+  .back-button {
+    padding: 10px 16px !important;
+    font-size: 0.85rem !important;
+    border-width: 2px !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    background: color-mix(in srgb, var(--accent-purple) 30%, transparent) !important;
+  }
+
+  .settings-title-group {
+    gap: 4px !important;
+  }
+
+  .settings-tag {
+    display: none !important;
+  }
+
+  .settings-title {
+    font-size: 1.3rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .title-gradient {
+    font-size: 1rem !important;
+  }
+
+  .settings-layout {
+    display: block !important;
+    grid-template-columns: none !important;
+    gap: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* 菜单标签栏 - 水平滚动 */
+  .settings-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    padding: 8px 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    position: sticky !important;
+    top: 80px !important;
+    z-index: 9 !important;
+    scrollbar-width: none !important;
+  }
+
+  .settings-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .settings-nav-item {
+    flex: 0 0 auto !important;
+    min-width: 80px !important;
+    min-height: 44px !important;
+    padding: 10px 16px !important;
+    border-width: 2px !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    box-shadow: none !important;
+    background: color-mix(in srgb, var(--muted) 50%, transparent) !important;
+  }
+
+  .settings-nav-item.active {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)) !important;
+    border-color: var(--accent-yellow) !important;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent-cyan) 40%, transparent) !important;
+  }
+
+  .nav-main {
+    font-size: 0.8rem !important;
+    text-align: center !important;
+  }
+
+  .nav-note {
+    display: none !important;
+  }
+
+  /* 内容区域 - 无滚动限制 */
+  .settings-content {
+    padding: 16px 8px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+}
+
 /* 超小屏幕 */
 @media (max-width: 480px) {
   .settings-screen {

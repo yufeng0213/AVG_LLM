@@ -19,6 +19,8 @@ const activeBookId = ref('default_world_book')
 const showDeleteConfirm = ref(false)
 const bookToDelete = ref(null)
 const fileInputRef = ref(null)
+const showNewBookDialog = ref(false)
+const newBookTitle = ref('')
 
 const bookToneClasses = [
   'book-tone-magenta',
@@ -48,13 +50,27 @@ const openBook = async (bookId) => {
   emit('open-book', bookId)
 }
 
-const addWorldBook = async () => {
+const openNewBookDialog = () => {
+  newBookTitle.value = ''
+  showNewBookDialog.value = true
+}
+
+const cancelNewBook = () => {
+  newBookTitle.value = ''
+  showNewBookDialog.value = false
+}
+
+const confirmNewBook = async () => {
+  const title = newBookTitle.value.trim() || `新世界书 ${worldBooks.value.length + 1}`
   const nextBook = createNewWorldBook(worldBooks.value)
+  nextBook.title = title
   worldBooks.value = [...worldBooks.value, nextBook]
   await persistWorldBooks(worldBooks.value)
   await setActiveWorldBookId(nextBook.id)
   activeBookId.value = nextBook.id
-  statusMessage.value = `已新增：${nextBook.title}`
+  statusMessage.value = `已新增：${title}`
+  showNewBookDialog.value = false
+  newBookTitle.value = ''
 }
 
 const confirmDelete = (book, event) => {
@@ -172,7 +188,7 @@ onMounted(async () => {
           <button type="button" class="worldbook-import-button" @click="triggerImport">
             📥 导入
           </button>
-          <button type="button" class="worldbook-add-button" @click="addWorldBook">
+          <button type="button" class="worldbook-add-button" @click="openNewBookDialog">
             ＋ 新增世界书
           </button>
         </div>
@@ -222,6 +238,27 @@ onMounted(async () => {
         <div class="delete-confirm-actions">
           <button type="button" class="cancel-btn" @click="cancelDelete">取消</button>
           <button type="button" class="confirm-delete-btn" @click="executeDelete">确认删除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新增世界书弹窗 -->
+    <div v-if="showNewBookDialog" class="delete-confirm-overlay" @click.self="cancelNewBook">
+      <div class="new-book-dialog">
+        <h3>新增世界书</h3>
+        <label class="new-book-field">
+          <span class="field-label">世界书名称</span>
+          <input
+            v-model="newBookTitle"
+            type="text"
+            class="new-book-input"
+            placeholder="请输入世界书名称"
+            @keyup.enter="confirmNewBook"
+          />
+        </label>
+        <div class="delete-confirm-actions">
+          <button type="button" class="cancel-btn" @click="cancelNewBook">取消</button>
+          <button type="button" class="confirm-btn" @click="confirmNewBook">确认</button>
         </div>
       </div>
     </div>
@@ -729,6 +766,403 @@ onMounted(async () => {
   .worldbook-bg-word {
     font-size: clamp(4.5rem, 24vw, 8rem);
     right: -7%;
+  }
+}
+
+/* 竖屏模式 - 精美卡片设计 */
+@media (max-width: 768px) and (orientation: portrait) {
+  .worldbook-screen {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100vh !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    background: var(--background) !important;
+  }
+
+  .worldbook-bg-word {
+    display: none !important;
+  }
+
+  /* 顶部区域 - 渐变背景 */
+  .worldbook-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    padding: 20px 16px !important;
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--accent-cyan) 15%, var(--background)),
+      var(--background)
+    ) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent-cyan) 30%, transparent) !important;
+  }
+
+  .back-button {
+    align-self: flex-start !important;
+    padding: 8px 16px !important;
+    font-size: 0.8rem !important;
+    border: 1px solid var(--accent-cyan) !important;
+    border-radius: 20px !important;
+    box-shadow: none !important;
+    background: color-mix(in srgb, var(--accent-cyan) 15%, transparent) !important;
+    color: var(--accent-cyan) !important;
+    margin-bottom: 12px !important;
+  }
+
+  .worldbook-title-group {
+    gap: 6px !important;
+  }
+
+  .worldbook-tag {
+    display: none !important;
+  }
+
+  .worldbook-title {
+    font-size: 1.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    color: var(--foreground) !important;
+  }
+
+  .worldbook-title-gradient {
+    font-size: 0.75rem !important;
+    letter-spacing: 0.15em !important;
+    color: var(--accent-cyan) !important;
+    background: none !important;
+    -webkit-text-fill-color: var(--accent-cyan) !important;
+  }
+
+  /* 书架区域 */
+  .worldbook-shelf-zone {
+    padding: 0 !important;
+    padding-left: 16px !important;
+    overflow: visible !important;
+  }
+
+  .worldbook-shelf {
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+    gap: 8px !important;
+  }
+
+  .worldbook-shelf-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+    padding-bottom: 12px !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent) !important;
+  }
+
+  .worldbook-shelf-title {
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+    color: var(--foreground) !important;
+  }
+
+  .worldbook-actions {
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .worldbook-import-button,
+  .worldbook-add-button {
+    padding: 8px 14px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    border-width: 1px !important;
+    border-radius: 20px !important;
+    box-shadow: none !important;
+    min-width: auto !important;
+    width: auto !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .worldbook-import-button {
+    background: color-mix(in srgb, var(--accent-purple) 20%, transparent) !important;
+    border-color: var(--accent-purple) !important;
+    color: var(--accent-purple) !important;
+  }
+
+  .worldbook-add-button {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)) !important;
+    border: none !important;
+    color: var(--background) !important;
+  }
+
+  /* 书籍列表 - 单列卡片设计 */
+  .worldbook-shelf {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 书籍卡片 - 现代卡片风格 */
+  .worldbook-book-spine {
+    width: calc(100vw - 16px) !important;
+    min-height: 72px !important;
+    height: auto !important;
+    padding: 16px !important;
+    padding-right: 8px !important;
+    border: 1px solid color-mix(in srgb, var(--muted) 40%, transparent) !important;
+    border-radius: 12px !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.2s ease !important;
+    position: relative !important;
+    overflow: visible !important;
+    margin-right: 0 !important;
+  }
+
+  .worldbook-book-spine::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 4px !important;
+    background: var(--accent-cyan) !important;
+  }
+
+  .worldbook-book-spine.active {
+    border-color: var(--accent-cyan) !important;
+    box-shadow: 0 0 0 1px var(--accent-cyan), 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .worldbook-book-spine.active::before {
+    width: 6px !important;
+    background: linear-gradient(180deg, var(--accent-cyan), var(--accent-purple)) !important;
+  }
+
+  /* 默认书籍特殊样式 */
+  .book-tone-default {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-purple) 12%, var(--background)),
+      color-mix(in srgb, var(--accent-magenta) 8%, var(--background))
+    ) !important;
+  }
+
+  .book-tone-magenta {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-magenta) 12%, var(--background)),
+      color-mix(in srgb, var(--accent-yellow) 8%, var(--background))
+    ) !important;
+  }
+
+  .book-tone-cyan {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-cyan) 12%, var(--background)),
+      color-mix(in srgb, var(--accent-purple) 8%, var(--background))
+    ) !important;
+  }
+
+  .book-tone-orange {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-orange) 12%, var(--background)),
+      color-mix(in srgb, var(--accent-yellow) 8%, var(--background))
+    ) !important;
+  }
+
+  .book-tone-purple {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-purple) 12%, var(--background)),
+      color-mix(in srgb, var(--accent-cyan) 8%, var(--background))
+    ) !important;
+  }
+
+  .book-tone-yellow {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-yellow) 15%, var(--background)),
+      color-mix(in srgb, var(--accent-orange) 8%, var(--background))
+    ) !important;
+  }
+
+  .spine-badge {
+    position: absolute !important;
+    top: 4px !important;
+    left: 4px !important;
+    font-size: 0.6rem !important;
+    padding: 2px 6px !important;
+    border-radius: 6px !important;
+    background: var(--accent-cyan) !important;
+    color: var(--background) !important;
+    font-weight: 600 !important;
+    max-width: 40px !important;
+    white-space: nowrap !important;
+    z-index: 5 !important;
+  }
+
+  .spine-title {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    flex: 1 !important;
+    text-align: left !important;
+    color: var(--foreground) !important;
+    padding-right: 60px !important;
+  }
+
+  .spine-actions {
+    position: static !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+    opacity: 1 !important;
+    z-index: 10 !important;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+  }
+
+  .spine-action-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    font-size: 1.2rem !important;
+    border-radius: 8px !important;
+    background: var(--accent-cyan) !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+    margin: 0 !important;
+  }
+
+  .spine-action-btn.delete-btn {
+    background: var(--accent-magenta) !important;
+  }
+
+  .spine-action-btn:active {
+    transform: scale(0.95) !important;
+    background: var(--accent-cyan) !important;
+  }
+
+  /* 状态消息 */
+  .status-message {
+    position: fixed !important;
+    bottom: 24px !important;
+    left: 16px !important;
+    right: 16px !important;
+    transform: none !important;
+    z-index: 100 !important;
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
+    font-size: 0.85rem !important;
+    text-align: center !important;
+    background: color-mix(in srgb, var(--accent-cyan) 90%, var(--background)) !important;
+    color: var(--background) !important;
+  }
+
+  /* 删除确认弹窗 */
+  .delete-confirm-overlay {
+    padding: 16px !important;
+  }
+
+  .delete-confirm-dialog {
+    width: 90% !important;
+    max-width: 320px !important;
+    padding: 24px !important;
+    border-radius: 16px !important;
+    background: var(--background) !important;
+    border: 1px solid var(--accent-magenta) !important;
+  }
+
+  .delete-confirm-dialog h3 {
+    font-size: 1.2rem !important;
+    color: var(--accent-magenta) !important;
+  }
+
+  .delete-confirm-dialog p {
+    font-size: 0.9rem !important;
+  }
+
+  .delete-confirm-actions {
+    flex-direction: row !important;
+    gap: 12px !important;
+    margin-top: 20px !important;
+  }
+
+  .cancel-btn,
+  .confirm-delete-btn {
+    flex: 1 !important;
+    padding: 12px 16px !important;
+    font-size: 0.9rem !important;
+    border-radius: 10px !important;
+  }
+
+  .cancel-btn {
+    background: var(--muted) !important;
+    border-color: var(--muted) !important;
+  }
+
+  .confirm-delete-btn {
+    background: var(--accent-magenta) !important;
+  }
+
+  /* 新增世界书弹窗 */
+  .new-book-dialog {
+    width: 90% !important;
+    max-width: 320px !important;
+    padding: 24px !important;
+    border-radius: 16px !important;
+    background: var(--background) !important;
+    border: 1px solid var(--accent-cyan) !important;
+  }
+
+  .new-book-dialog h3 {
+    font-size: 1.2rem !important;
+    color: var(--accent-cyan) !important;
+    margin-bottom: 16px !important;
+  }
+
+  .new-book-field {
+    display: block !important;
+    margin-bottom: 16px !important;
+  }
+
+  .new-book-field .field-label {
+    display: block !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    color: var(--foreground) !important;
+    margin-bottom: 8px !important;
+  }
+
+  .new-book-input {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    font-size: 1rem !important;
+    border: 2px solid var(--accent-cyan) !important;
+    border-radius: 10px !important;
+    background: var(--surface-field) !important;
+    color: var(--foreground) !important;
+  }
+
+  .new-book-input:focus {
+    outline: none !important;
+    border-color: var(--accent-yellow) !important;
+  }
+
+  .confirm-btn {
+    background: var(--accent-cyan) !important;
+    color: var(--background) !important;
   }
 }
 </style>

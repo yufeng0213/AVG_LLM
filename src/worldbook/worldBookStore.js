@@ -1,5 +1,6 @@
 import { getEmotionLabel } from './emotionPresets'
 import { kvStorage } from '../storage/index.js'
+import { DEFAULT_NARRATOR_ID } from '../narrator/narratorStore'
 
 export const WORLD_BOOK_STORAGE_KEY = 'world_books'
 export const ACTIVE_WORLD_BOOK_KEY = 'active_world_book'
@@ -16,6 +17,15 @@ export const WORLD_BOOK_ENTRY_DEFS = [
   { key: 'storyHook', label: '开局前提', hint: '主角进入故事时已知/未知的状态。' },
 ]
 
+export const WORLD_BOOK_PORTRAIT_STYLE_OPTIONS = [
+  { value: 'card', label: '卡片式立绘（底部贴对话框顶部 -10px）' },
+  { value: 'half_body', label: '半身立绘（底部贴对话框顶部 -10px）' },
+  { value: 'full_body', label: '全身立绘（底部贴屏幕底部）' },
+  { value: 'leg_body', label: '腿部立绘（底部贴屏幕底部）' },
+]
+
+const WORLD_BOOK_PORTRAIT_STYLE_VALUES = WORLD_BOOK_PORTRAIT_STYLE_OPTIONS.map((item) => item.value)
+
 export const createEmptyEntries = () => {
   const entries = {}
   for (const item of WORLD_BOOK_ENTRY_DEFS) {
@@ -29,6 +39,11 @@ export const createEmptyPortraits = () => []
 
 // 创建空场景数组
 export const createEmptyScenes = () => []
+export const createEmptyBackgroundAssets = () => []
+
+export const createDefaultDisplaySettings = () => ({
+  portraitStyle: 'card',
+})
 
 // 创建新场景配置
 export const createNewScene = (index = 1) => ({
@@ -129,6 +144,42 @@ const normalizeCharacters = (rawCharacters) => {
   return parsed.length > 0 ? parsed : [createCharacterSkeleton(1)]
 }
 
+const normalizePortraitStyle = (rawStyle) => {
+  const nextStyle = String(rawStyle || '').trim()
+  if (WORLD_BOOK_PORTRAIT_STYLE_VALUES.includes(nextStyle)) {
+    return nextStyle
+  }
+  return 'card'
+}
+
+const normalizeDisplaySettings = (rawSettings) => {
+  const fallback = createDefaultDisplaySettings()
+  return {
+    portraitStyle: normalizePortraitStyle(rawSettings?.portraitStyle || fallback.portraitStyle),
+  }
+}
+
+const normalizeBackgroundAsset = (rawAsset, index = 0) => {
+  const idFallback = `bg_${index + 1}`
+  const nameFallback = `背景 ${index + 1}`
+  return {
+    id: String(rawAsset?.id || idFallback),
+    name: String(rawAsset?.name || nameFallback),
+    path: String(rawAsset?.path || ''),
+    label: String(rawAsset?.label || rawAsset?.name || nameFallback),
+  }
+}
+
+const normalizeBackgroundAssets = (rawAssets) => {
+  if (!Array.isArray(rawAssets)) {
+    return []
+  }
+
+  return rawAssets
+    .map((asset, index) => normalizeBackgroundAsset(asset, index))
+    .filter((asset) => asset.path)
+}
+
 // 规范化单个场景数据
 const normalizeScene = (rawScene, index = 0) => {
   return {
@@ -153,12 +204,15 @@ export const createDefaultWorldBook = () => ({
   title: '默认世界书',
   summary: '主线剧情默认背景设定。',
   isDefault: true,
+  defaultNarratorId: DEFAULT_NARRATOR_ID,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   entries: createEmptyEntries(),
   userProfile: createEmptyUserProfile(),
   characters: [createCharacterSkeleton(1)],
   scenes: [],  // 新增：场景列表
+  backgroundAssets: createEmptyBackgroundAssets(),
+  displaySettings: createDefaultDisplaySettings(),
   openingDialogue: [
     { speaker: '旁白', text: '雨夜的图书馆只剩你与断续的电流声，窗外的霓虹正把地面切成碎片。', emotion: null },
     { speaker: '伊芙', text: '终于等到你了，档案室的门只会在今晚开启，过了零点就会再次封存。', emotion: 'happy' },
@@ -198,12 +252,15 @@ export const normalizeWorldBook = (rawBook, index = 0) => {
     title: String(rawBook?.title || (isDefault ? fallback.title : `世界书 ${index + 1}`)),
     summary: String(rawBook?.summary || ''),
     isDefault,
+    defaultNarratorId: String(rawBook?.defaultNarratorId || fallback.defaultNarratorId || DEFAULT_NARRATOR_ID),
     createdAt: String(rawBook?.createdAt || new Date().toISOString()),
     updatedAt: String(rawBook?.updatedAt || new Date().toISOString()),
     entries: nextEntries,
     userProfile: normalizeUserProfile(rawBook?.userProfile),
     characters: normalizeCharacters(rawBook?.characters),
     scenes: normalizeScenes(rawBook?.scenes),
+    backgroundAssets: normalizeBackgroundAssets(rawBook?.backgroundAssets),
+    displaySettings: normalizeDisplaySettings(rawBook?.displaySettings),
     openingDialogue: normalizeOpeningDialogue(rawBook?.openingDialogue),
   }
 }
@@ -268,11 +325,14 @@ export const createNewWorldBook = (books = []) => {
     title: `世界书 ${index}`,
     summary: '用于扩展支线或平行世界背景。',
     isDefault: false,
+    defaultNarratorId: DEFAULT_NARRATOR_ID,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     entries: createEmptyEntries(),
     userProfile: createEmptyUserProfile(),
     characters: [createCharacterSkeleton(1)],
+    backgroundAssets: createEmptyBackgroundAssets(),
+    displaySettings: createDefaultDisplaySettings(),
   })
 }
 

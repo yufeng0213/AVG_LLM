@@ -1,13 +1,24 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStore'
+import { getEnabledNarratorProfiles, loadNarratorProfiles } from '../narrator/narratorStore'
 
-const emit = defineEmits(['open-settings', 'open-worldbook', 'open-new-game', 'open-save-load', 'open-plugin-manager', 'menu-click'])
+const emit = defineEmits([
+  'open-settings',
+  'open-worldbook',
+  'open-new-game',
+  'open-save-load',
+  'open-plugin-manager',
+  'open-narrator-manager',
+  'menu-click',
+])
 
 // 世界书选择相关
 const showWorldBookSelect = ref(false)
 const worldBooks = ref([])
 const selectedWorldBookId = ref('default_world_book')
+const narratorProfiles = ref([])
+const selectedNarratorId = ref('')
 
 const menuItems = [
   {
@@ -51,6 +62,13 @@ const menuItems = [
     description: '加载和管理扩展插件',
     icon: '🔌',
     variant: 'tone-cyan border-dashed tilt-right',
+  },
+  {
+    id: 'narrators',
+    label: '叙事者',
+    description: '管理不同主笔风格与叙事模板',
+    icon: '🧠',
+    variant: 'tone-orange border-dashed tilt-left',
   },
 ]
 
@@ -118,9 +136,16 @@ const loadWorldBookList = async () => {
   selectedWorldBookId.value = await getActiveWorldBookId()
 }
 
+const loadNarratorList = async () => {
+  const profiles = await loadNarratorProfiles()
+  narratorProfiles.value = getEnabledNarratorProfiles(profiles)
+}
+
 // 打开世界书选择弹窗
 const openWorldBookSelectDialog = async () => {
   await loadWorldBookList()
+  await loadNarratorList()
+  selectedNarratorId.value = ''
   showWorldBookSelect.value = true
 }
 
@@ -132,7 +157,10 @@ const closeWorldBookSelectDialog = () => {
 // 确认选择并开始新游戏
 const confirmNewGame = () => {
   showWorldBookSelect.value = false
-  emit('open-new-game', selectedWorldBookId.value)
+  emit('open-new-game', {
+    worldBookId: selectedWorldBookId.value,
+    narratorId: selectedNarratorId.value || null,
+  })
 }
 
 const handleMenuClick = (itemId) => {
@@ -163,6 +191,11 @@ const handleMenuClick = (itemId) => {
     return
   }
 
+  if (itemId === 'narrators') {
+    emit('open-narrator-manager')
+    return
+  }
+
   if (itemId === 'continue') {
     // 继续游戏：直接打开存档界面
     emit('open-save-load')
@@ -171,6 +204,7 @@ const handleMenuClick = (itemId) => {
 
 onMounted(async () => {
   await loadWorldBookList()
+  await loadNarratorList()
 })
 </script>
 
@@ -260,9 +294,20 @@ onMounted(async () => {
           </button>
         </div>
 
+        <label class="dialog-select-field">
+          <span class="dialog-select-label">本局叙事者（可覆盖）</span>
+          <select v-model="selectedNarratorId" class="dialog-select-control">
+            <option value="">跟随世界书默认</option>
+            <option v-for="profile in narratorProfiles" :key="profile.id" :value="profile.id">
+              {{ profile.name }}{{ profile.isDefault ? '（系统默认）' : '' }}
+            </option>
+          </select>
+          <span class="dialog-select-hint">留空时按世界书默认叙事者运行。</span>
+        </label>
+
         <div class="dialog-actions">
-          <button type="button" class="dialog-btn cancel" @click="closeWorldBookSelectDialog">取消</button>
-          <button type="button" class="dialog-btn confirm" @click="confirmNewGame">开始新游戏</button>
+          <button type="button" class="dialog-btn cancel small-btn" @click="closeWorldBookSelectDialog">取消</button>
+          <button type="button" class="dialog-btn confirm small-btn" @click="confirmNewGame">开始新游戏</button>
         </div>
       </div>
     </div>
@@ -974,6 +1019,39 @@ onMounted(async () => {
   line-height: 1.4;
 }
 
+.dialog-select-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.dialog-select-label {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--foreground) 90%, transparent);
+}
+
+.dialog-select-control {
+  appearance: none;
+  width: 100%;
+  border: 2px solid var(--accent-cyan);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+}
+
+.dialog-select-control:focus {
+  outline: none;
+  border-color: var(--accent-yellow);
+}
+
+.dialog-select-hint {
+  font-size: 0.76rem;
+  color: color-mix(in srgb, var(--foreground) 68%, transparent);
+}
+
 .dialog-actions {
   display: flex;
   gap: 12px;
@@ -1009,5 +1087,260 @@ onMounted(async () => {
 .dialog-btn.confirm:hover {
   border-color: var(--accent-yellow);
   background: color-mix(in srgb, var(--accent-cyan) 80%, var(--accent-yellow));
+}
+
+/* ========== Android 竖屏专用布局 ========== */
+/* 竖屏下主菜单界面简化 */
+
+/* Android 竖屏下隐藏装饰元素 */
+.platform-android.android-portrait .massive-word,
+.platform-android.android-portrait .floating-layer {
+  display: none;
+}
+
+/* Android 竖屏下启动屏幕全屏 */
+.platform-android.android-portrait .launch-screen {
+  width: 100vw;
+  min-height: 100vh;
+  height: 100vh;
+  padding: 16px;
+  border: none;
+  border-radius: 0;
+  transform: none;
+  box-shadow: none;
+  background: var(--background);
+  backdrop-filter: none;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Android 竖屏下英雄区块 */
+.platform-android.android-portrait .hero-block {
+  max-width: 100%;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.platform-android.android-portrait .hero-tag {
+  padding: 6px 12px;
+  font-size: 0.7rem;
+  border-width: 2px;
+}
+
+.platform-android.android-portrait .hero-title-main {
+  font-size: 1.8rem;
+}
+
+.platform-android.android-portrait .hero-title-gradient {
+  font-size: 1.2rem;
+}
+
+.platform-android.android-portrait .hero-subtitle {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* Android 竖屏下菜单面板 */
+.platform-android.android-portrait .menu-panel {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid var(--accent-cyan);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.platform-android.android-portrait .menu-heading-row {
+  padding: 8px 0;
+}
+
+.platform-android.android-portrait .menu-heading {
+  font-size: 1rem;
+}
+
+.platform-android.android-portrait .menu-heading-emoji {
+  font-size: 1rem;
+}
+
+/* Android 竖屏下菜单网格 - 单列布局 */
+.platform-android.android-portrait .menu-grid {
+  flex: 1;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+/* Android 竖屏下菜单按钮 */
+.platform-android.android-portrait .menu-button {
+  min-height: 56px;
+  padding: 12px 16px;
+  border-width: 2px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.platform-android.android-portrait .menu-button-icon {
+  font-size: 1.5rem;
+}
+
+.platform-android.android-portrait .menu-button-text {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.platform-android.android-portrait .menu-button-desc {
+  display: none;
+}
+
+/* Android 竖屏下元信息 */
+.platform-android.android-portrait .menu-meta {
+  padding: 8px 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.platform-android.android-portrait .meta-chip {
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  border-width: 2px;
+}
+
+/* Android 竖屏下世界书选择弹窗 */
+.platform-android.android-portrait .worldbook-select-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--background) 95%, transparent);
+  padding: 0;
+}
+
+.platform-android.android-portrait .worldbook-select-dialog {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  border: none;
+  border-radius: 0;
+  box-sizing: border-box;
+  padding: 16px 16px calc(12px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.platform-android.android-portrait .dialog-title {
+  font-size: 1.2rem;
+  padding: 8px 0;
+}
+
+.platform-android.android-portrait .dialog-desc {
+  font-size: 0.85rem;
+  padding: 0;
+}
+
+.platform-android.android-portrait .dialog-select-field {
+  margin-bottom: 10px;
+  gap: 4px;
+}
+
+.platform-android.android-portrait .dialog-select-label {
+  font-size: 0.8rem;
+}
+
+.platform-android.android-portrait .dialog-select-control {
+  min-height: 40px;
+  border-width: 1px;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
+.platform-android.android-portrait .dialog-select-hint {
+  font-size: 0.72rem;
+}
+
+/* Android 竖屏下世界书列表 */
+.platform-android.android-portrait .worldbook-list {
+  flex: 1;
+  overflow-y: auto;
+  gap: 8px;
+  padding-right: 2px;
+}
+
+.platform-android.android-portrait .worldbook-item {
+  min-width: 0 !important;
+  width: 100% !important;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  text-align: left;
+  padding: 12px;
+  border-width: 2px;
+  border-radius: 8px;
+}
+
+.platform-android.android-portrait .book-info {
+  min-width: 0;
+}
+
+.platform-android.android-portrait .book-title,
+.platform-android.android-portrait .book-summary {
+  word-break: break-word;
+}
+
+.platform-android.android-portrait .book-title {
+  font-size: 1rem;
+}
+
+.platform-android.android-portrait .book-summary {
+  font-size: 0.8rem;
+}
+
+/* Android 竖屏下弹窗按钮 */
+.platform-android.android-portrait .dialog-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto;
+  padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-panel) 0%, transparent),
+    color-mix(in srgb, var(--surface-panel) 92%, transparent) 34%
+  );
+  gap: 8px;
+  width: 100%;
+}
+
+.platform-android.android-portrait .dialog-btn {
+  min-width: 0 !important;
+  width: 100% !important;
+  min-height: 40px !important;
+  padding: 10px 12px !important;
+  font-size: 0.86rem !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-width: 1px !important;
+  border-radius: 10px !important;
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+  .platform-android.android-portrait .dialog-actions {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

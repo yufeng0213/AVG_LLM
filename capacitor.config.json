@@ -14,8 +14,9 @@
       "directory": "DOCUMENTS"
     },
     "StatusBar": {
-      "style": "Dark",
-      "backgroundColor": "#1a1a2e"
+      "style": "LIGHT",
+      "overlaysWebView": false,
+      "backgroundColor": "#0d0d1a"
     }
   }
 }

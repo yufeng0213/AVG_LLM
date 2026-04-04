@@ -32,9 +32,83 @@ const isElectronEnv = computed(() => {
   return typeof window !== 'undefined' && window.avgLLM?.dialog?.selectPortrait
 })
 
+const canAddPortrait = computed(() => {
+  if (isElectronEnv.value) {
+    return true
+  }
+  return typeof document !== 'undefined'
+})
+
+const pickImageFile = () => {
+  if (typeof document === 'undefined') {
+    return Promise.resolve({ canceled: true, file: null })
+  }
+
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.style.position = 'fixed'
+    input.style.left = '-9999px'
+
+    let settled = false
+
+    const finish = (file, canceled = false) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      window.removeEventListener('focus', handleFocus)
+      input.remove()
+      resolve({ canceled, file })
+    }
+
+    const handleFocus = () => {
+      window.setTimeout(() => {
+        if (!settled) {
+          const file = input.files?.[0] || null
+          finish(file, !file)
+        }
+      }, 320)
+    }
+
+    input.addEventListener('change', () => {
+      const file = input.files?.[0] || null
+      finish(file, !file)
+    }, { once: true })
+
+    input.addEventListener('cancel', () => {
+      finish(null, true)
+    }, { once: true })
+
+    window.addEventListener('focus', handleFocus, { once: true })
+    document.body.appendChild(input)
+    input.click()
+  })
+}
+
+const readFileAsDataUrl = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+      } else {
+        reject(new Error('无法读取图片数据'))
+      }
+    }
+    reader.onerror = () => reject(new Error('读取图片失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
 // 获取立绘预览 URL（通过 Electron API 或直接路径）
 const getPortraitUrl = async (portrait) => {
   if (!portrait?.filePath) return ''
+
+  if (portrait.filePath.startsWith('data:image')) {
+    return portrait.filePath
+  }
 
   // 检查缓存
   if (imageCache.value.has(portrait.filePath)) {
@@ -61,24 +135,40 @@ const getPortraitUrl = async (portrait) => {
 
 // 添加立绘
 const addPortrait = async () => {
-  if (!isElectronEnv.value) {
-    console.warn('Portrait selection requires Electron environment')
+  if (!canAddPortrait.value) {
+    console.warn('Portrait selection is not available')
     return
   }
 
   isLoading.value = true
   try {
-    const result = await window.avgLLM.dialog.selectPortrait()
-    if (result.canceled || result.filePaths.length === 0) {
+    if (isElectronEnv.value) {
+      const result = await window.avgLLM.dialog.selectPortrait()
+      if (result.canceled || result.filePaths.length === 0) {
+        return
+      }
+
+      const filePath = result.filePaths[0]
+      const fileName = filePath.split(/[\\/]/).pop()
+      const newPortrait = createNewPortrait(filePath, fileName, 'default')
+
+      localPortraits.value = [...localPortraits.value, newPortrait]
+      emit('update', localPortraits.value)
       return
     }
 
-    const filePath = result.filePaths[0]
-    const fileName = filePath.split(/[\\/]/).pop()
-    const newPortrait = createNewPortrait(filePath, fileName, 'default')
+    const pickResult = await pickImageFile()
+    if (pickResult.canceled || !pickResult.file) {
+      return
+    }
 
+    const file = pickResult.file
+    const dataUrl = await readFileAsDataUrl(file)
+    const newPortrait = createNewPortrait(dataUrl, file.name || 'portrait.png', 'default')
     localPortraits.value = [...localPortraits.value, newPortrait]
     emit('update', localPortraits.value)
+  } catch (error) {
+    console.error('Portrait import failed:', error)
   } finally {
     isLoading.value = false
   }
@@ -206,11 +296,11 @@ const getThumbnailUrl = (portrait) => {
     <button
       type="button"
       class="portrait-add-btn"
-      :disabled="isLoading || !isElectronEnv"
+      :disabled="isLoading || !canAddPortrait"
       @click="addPortrait"
     >
       <span v-if="isLoading">加载中...</span>
-      <span v-else-if="!isElectronEnv">需 Electron 环境</span>
+      <span v-else-if="!canAddPortrait">当前环境不可用</span>
       <span v-else>＋ 添加立绘</span>
     </button>
 

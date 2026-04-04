@@ -1,6 +1,12 @@
 <script setup>
-import { ref, onMounted, onUnmounted, defineAsyncComponent, computed } from 'vue'
-import { getPluginComponent, PluginTypes, initPluginSystem } from './pluginManager.js'
+import { ref, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import {
+  getPluginComponent,
+  getBuiltinPluginIdByType,
+  isPluginEnabled,
+  PluginTypes,
+  initPluginSystem
+} from './pluginManager.js'
 
 const props = defineProps({
   // 默认组件
@@ -26,30 +32,17 @@ const emit = defineEmits(['plugin-loaded', 'plugin-error'])
 // 当前激活的组件
 const activeComponent = ref(null)
 
-// 是否使用插件组件
-const usingPlugin = computed(() => activeComponent.value !== props.defaultComponent)
-
 // 加载状态
 const loading = ref(true)
 const error = ref(null)
 
 // 监听插件变化
-const handlePluginEnabled = async (event) => {
-  const { pluginId, plugin } = event.detail
-  if (plugin.type === props.pluginType) {
-    await loadActiveComponent()
-  }
+const handlePluginEnabled = async () => {
+  await loadActiveComponent()
 }
 
-const handlePluginDisabled = async (event) => {
-  const { pluginId } = event.detail
-  // 检查是否禁用了当前类型的插件
-  const pluginComponent = getPluginComponent(props.pluginType)
-  if (!pluginComponent) {
-    // 回退到默认组件
-    activeComponent.value = props.defaultComponent
-    emit('plugin-loaded', { usingPlugin: false })
-  }
+const handlePluginDisabled = async () => {
+  await loadActiveComponent()
 }
 
 // 加载当前应该使用的组件
@@ -58,15 +51,31 @@ const loadActiveComponent = async () => {
   error.value = null
   
   try {
-    // 检查是否有插件组件
+    // 优先使用外部启用插件组件
     const pluginComponent = getPluginComponent(props.pluginType)
     
     if (pluginComponent) {
-      // 使用插件组件
       activeComponent.value = defineAsyncComponent(() => Promise.resolve(pluginComponent))
       emit('plugin-loaded', { usingPlugin: true, component: pluginComponent })
-    } else {
-      // 使用默认组件
+      return
+    }
+
+    // 若当前类型存在内置插件，是否渲染默认组件取决于内置插件开关状态
+    const builtinPluginId = getBuiltinPluginIdByType(props.pluginType)
+    if (builtinPluginId) {
+      if (isPluginEnabled(builtinPluginId)) {
+        activeComponent.value = props.defaultComponent
+        emit('plugin-loaded', { usingPlugin: false, builtInEnabled: true })
+      } else {
+        // 内置插件被禁用时，不渲染任何组件
+        activeComponent.value = null
+        emit('plugin-loaded', { usingPlugin: false, builtInEnabled: false })
+      }
+      return
+    }
+
+    // 无内置插件类型时，回退到默认组件
+    if (props.defaultComponent) {
       activeComponent.value = props.defaultComponent
       emit('plugin-loaded', { usingPlugin: false })
     }
@@ -83,7 +92,11 @@ const loadActiveComponent = async () => {
 
 onMounted(async () => {
   // 初始化插件系统
-  await initPluginSystem()
+  try {
+    await initPluginSystem()
+  } catch (e) {
+    console.error('Failed to init plugin system in PluginComponent:', e)
+  }
   
   // 加载组件
   await loadActiveComponent()
@@ -100,7 +113,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="plugin-component-wrapper">
+  <div v-if="loading || error || activeComponent" class="plugin-component-wrapper">
     <!-- 加载状态 -->
     <div v-if="loading" class="plugin-loading">
       <slot name="loading">

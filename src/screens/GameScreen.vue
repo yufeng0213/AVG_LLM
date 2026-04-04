@@ -4,16 +4,18 @@ import { getActiveWorldBookId, loadWorldBooks } from '../worldbook/worldBookStor
 import { generateStory, buildStoryPrompt, parseStoryContent, toGameScript, hasChoices, extractChoices } from '../llm'
 import { saveGame, createHistoryBackup, formatTimestamp } from '../save/saveManager'
 import { kvStorage } from '../storage/index.js'
+import { DEFAULT_NARRATOR_ID, loadNarratorProfiles, resolveNarratorProfile } from '../narrator/narratorStore'
 import MusicPlayer from '../components/MusicPlayer.vue'
 import Phone from '../components/Phone.vue'
 import PluginComponent from '../plugins/PluginComponent.vue'
 import { PluginTypes } from '../plugins/pluginManager.js'
 import CGGeneratorModal from '../components/CGGeneratorModal.vue'
+import { isAndroid } from '../utils/platform.js'
 import {
+  applyWorldBookBackgroundAssets,
   loadBackgroundFolder,
   switchBackground,
-  currentBackgroundUrl,
-  backgroundList
+  currentBackgroundUrl
 } from '../background/backgroundStore'
 
 const emit = defineEmits(['back'])
@@ -28,12 +30,52 @@ const props = defineProps({
     type: String,
     default: 'default_world_book',
   },
+  sessionNarratorId: {
+    type: String,
+    default: '',
+  },
 })
 
 // 世界书数据
 const worldBooks = ref([])
 // 使用传入的世界书ID，如果没有则使用存档中的或默认的
 const activeBookId = ref(props.worldBookId || props.saveData?.game?.worldBookId || 'default_world_book')
+// 叙事者数据（优先：本局覆盖 > 世界书默认 > 系统默认）
+const narratorProfiles = ref([])
+const sessionNarratorId = ref(props.sessionNarratorId || '')
+
+const PHONE_SMS_STORAGE_PREFIX = 'phone-sms-threads'
+const createSessionSmsScopeId = () => `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+const sanitizeSmsScopeId = (value) => String(value || '').trim()
+const smsSaveScopeId = ref(sanitizeSmsScopeId(props.saveData?.__slotId) || createSessionSmsScopeId())
+
+const getPhoneSmsStorageKey = (worldBookId = activeBookId.value, scopeId = smsSaveScopeId.value) => {
+  const normalizedWorldId = String(worldBookId || 'default_world_book').trim() || 'default_world_book'
+  const normalizedScopeId = sanitizeSmsScopeId(scopeId) || 'session_default'
+  return `${PHONE_SMS_STORAGE_PREFIX}:${normalizedWorldId}:${normalizedScopeId}`
+}
+
+const syncPhoneSmsScopeAfterSave = async (nextSlotId) => {
+  const normalizedNextSlotId = sanitizeSmsScopeId(nextSlotId)
+  if (!normalizedNextSlotId) return
+
+  const previousScopeId = sanitizeSmsScopeId(smsSaveScopeId.value) || 'session_default'
+  if (previousScopeId !== normalizedNextSlotId) {
+    const sourceKey = getPhoneSmsStorageKey(activeBookId.value, previousScopeId)
+    const targetKey = getPhoneSmsStorageKey(activeBookId.value, normalizedNextSlotId)
+
+    try {
+      const sourceThreads = await kvStorage.get(sourceKey)
+      if (sourceThreads && typeof sourceThreads === 'object') {
+        await kvStorage.set(targetKey, sourceThreads)
+      }
+    } catch {
+      // no-op
+    }
+  }
+
+  smsSaveScopeId.value = normalizedNextSlotId
+}
 
 // 立绘图片缓存
 const portraitImageCache = ref(new Map())
@@ -111,6 +153,8 @@ const generateError = ref(null)
 const userPromptInput = ref('')
 const showGeneratePanel = ref(false)
 const generateMessageRange = ref({ min: 5, max: 10 }) // 生成消息条数范围，默认5-10条
+const selectedMessageRangeKey = ref('5-10')
+const customMessageRange = ref({ min: 5, max: 10 })
 
 // 选项相关状态
 const currentChoices = ref(null) // 当前对话的选项
@@ -125,9 +169,12 @@ const showCGViewer = ref(false) // 是否显示 CG 查看器
 
 // 可选的消息条数范围选项
 const messageRangeOptions = [
-  { min: 5, max: 10, label: '5-10条' },
-  { min: 10, max: 20, label: '10-20条' },
-  { min: 20, max: 30, label: '20-30条' },
+  { key: '5-10', min: 5, max: 10, label: '5-10条' },
+  { key: '10-20', min: 10, max: 20, label: '10-20条' },
+  { key: '20-30', min: 20, max: 30, label: '20-30条' },
+  { key: '30-40', min: 30, max: 40, label: '30-40条' },
+  { key: '40-50', min: 40, max: 50, label: '40-50条' },
+  { key: 'custom', label: '自定义', isCustom: true },
 ]
 
 // 在范围内随机生成消息条数
@@ -136,15 +183,65 @@ const getRandomMessageCount = () => {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
+const clampMessageCount = (value, fallback = 5) => {
+  const parsed = Number.parseInt(String(value), 10)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return Math.min(200, Math.max(1, parsed))
+}
+
+const applyCustomMessageRange = () => {
+  const min = clampMessageCount(customMessageRange.value.min, generateMessageRange.value.min)
+  const max = clampMessageCount(customMessageRange.value.max, generateMessageRange.value.max)
+  const normalizedMin = Math.min(min, max)
+  const normalizedMax = Math.max(min, max)
+
+  customMessageRange.value = {
+    min: normalizedMin,
+    max: normalizedMax,
+  }
+  generateMessageRange.value = {
+    min: normalizedMin,
+    max: normalizedMax,
+  }
+}
+
 // 更新消息条数范围
 const updateMessageRange = (event) => {
-  const selectedIndex = parseInt(event.target.value)
-  if (selectedIndex >= 0 && selectedIndex < messageRangeOptions.length) {
-    generateMessageRange.value = {
-      min: messageRangeOptions[selectedIndex].min,
-      max: messageRangeOptions[selectedIndex].max,
-    }
+  const selectedKey = String(event.target.value || '5-10')
+  selectedMessageRangeKey.value = selectedKey
+
+  const selectedOption = messageRangeOptions.find((opt) => opt.key === selectedKey)
+  if (!selectedOption) {
+    return
   }
+
+  if (selectedOption.isCustom) {
+    customMessageRange.value = {
+      min: generateMessageRange.value.min,
+      max: generateMessageRange.value.max,
+    }
+    applyCustomMessageRange()
+    return
+  }
+
+  generateMessageRange.value = {
+    min: selectedOption.min,
+    max: selectedOption.max,
+  }
+}
+
+const updateCustomMessageRangeField = (field, event) => {
+  if (selectedMessageRangeKey.value !== 'custom') {
+    return
+  }
+
+  customMessageRange.value = {
+    ...customMessageRange.value,
+    [field]: event?.target?.value,
+  }
+  applyCustomMessageRange()
 }
 
 const speakerCharacterMap = {
@@ -153,26 +250,254 @@ const speakerCharacterMap = {
   零号: 'zero',
 }
 
+const resolveSpeakerCharacterId = (speakerName) => {
+  const speaker = String(speakerName || '').trim()
+  if (!speaker || speaker === '旁白') return null
+
+  if (speakerCharacterMap[speaker]) {
+    return speakerCharacterMap[speaker]
+  }
+
+  const book = activeBook.value
+  if (!book) return null
+
+  const userAliases = [
+    book.userProfile?.name,
+    book.userProfile?.nickname,
+    '你',
+    '玩家',
+    '主角',
+  ]
+    .map((name) => String(name || '').trim())
+    .filter(Boolean)
+
+  if (userAliases.includes(speaker)) {
+    return 'lead'
+  }
+
+  const matchedIndex = (book.characters || []).findIndex((char) => {
+    const aliases = [char?.name, char?.nickname, char?.id]
+      .map((name) => String(name || '').trim())
+      .filter(Boolean)
+    return aliases.includes(speaker)
+  })
+
+  if (matchedIndex === 0) return 'eve'
+  if (matchedIndex === 1) return 'zero'
+
+  return null
+}
+
 const currentLineIndex = ref(0)
 const activeCharacterId = ref('lead')
+const currentSceneName = ref('旧图书馆')
 
 const currentLine = computed(() => dialogueScript.value[currentLineIndex.value])
 const isLastLine = computed(() => currentLineIndex.value === dialogueScript.value.length - 1)
+const isAndroidPlatform = computed(() => isAndroid())
+
+// 只保留当前剧情尾部的待选项，历史选项在分支确定后自动清理
+const normalizeDialogueChoicesForHistory = (script) => {
+  if (!Array.isArray(script) || script.length === 0) {
+    return []
+  }
+
+  const lastIndex = script.length - 1
+
+  return script.map((line, index) => {
+    if (!line || typeof line !== 'object') {
+      return line
+    }
+
+    if (index === lastIndex && hasChoices(line)) {
+      return { ...line }
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(line, 'choices')) {
+      return { ...line }
+    }
+
+    const { choices, ...rest } = line
+    return rest
+  })
+}
+
+const resolveSceneFromWorldBook = (scene) => {
+  if (!scene) return null
+
+  const bookScenes = Array.isArray(activeBook.value?.scenes) ? activeBook.value.scenes : []
+  if (bookScenes.length === 0) return null
+
+  if (typeof scene === 'string') {
+    const sceneText = String(scene).trim()
+    if (!sceneText) return null
+
+    return (
+      bookScenes.find((item) => item?.id === sceneText || item?.name === sceneText || item?.background === sceneText) ||
+      null
+    )
+  }
+
+  if (typeof scene === 'object') {
+    const id = String(scene.id || scene.sceneId || '').trim()
+    if (id) {
+      const matchedById = bookScenes.find((item) => item?.id === id || item?.name === id)
+      if (matchedById) return matchedById
+    }
+
+    const name = String(scene.name || scene.sceneName || '').trim()
+    if (name) {
+      const matchedByName = bookScenes.find((item) => item?.name === name || item?.id === name)
+      if (matchedByName) return matchedByName
+    }
+
+    const background = String(scene.background || scene.bg || '').trim()
+    if (background) {
+      const matchedByBg = bookScenes.find((item) => item?.background === background)
+      if (matchedByBg) return matchedByBg
+    }
+  }
+
+  return null
+}
+
+const resolveSceneName = (scene) => {
+  if (!scene) return ''
+
+  const matchedScene = resolveSceneFromWorldBook(scene)
+  if (matchedScene?.name) {
+    return String(matchedScene.name)
+  }
+
+  if (typeof scene === 'string') {
+    const sceneText = String(scene).trim()
+    return sceneText
+  }
+
+  if (typeof scene === 'object') {
+    const name = String(scene.name || scene.sceneName || '').trim()
+    if (name) return name
+
+    const id = String(scene.id || scene.sceneId || '').trim()
+    if (id) return id
+
+    const background = String(scene.background || scene.bg || '').trim()
+    if (background) return background
+  }
+
+  return ''
+}
+
+const updateCurrentSceneName = (scene) => {
+  const resolved = resolveSceneName(scene)
+  if (resolved) {
+    currentSceneName.value = resolved
+    return
+  }
+
+  if (!currentSceneName.value) {
+    const fallback = activeBook.value?.scenes?.[0]?.name
+    currentSceneName.value = String(fallback || '旧图书馆')
+  }
+}
+
+const applyBackgroundByLineScene = async (line, options = {}) => {
+  const sceneInput = line?.scene
+  const matchedScene = resolveSceneFromWorldBook(sceneInput)
+
+  if (matchedScene?.background) {
+    await switchBackground(matchedScene)
+    return
+  }
+
+  if (sceneInput) {
+    const sceneObject = typeof sceneInput === 'string'
+      ? { id: sceneInput, name: sceneInput, background: '' }
+      : sceneInput
+    await switchBackground(sceneObject)
+    return
+  }
+
+  if (options.allowFallback) {
+    const fallbackScene = (activeBook.value?.scenes || []).find((item) => item?.background)
+    if (fallbackScene?.background) {
+      updateCurrentSceneName(fallbackScene)
+      await switchBackground(fallbackScene)
+    }
+  }
+}
 
 // 当前说话的角色
 const currentSpeakingCharacter = computed(() => {
-  const speakerId = speakerCharacterMap[currentLine.value?.speaker]
+  const speakerId = resolveSpeakerCharacterId(currentLine.value?.speaker)
   return sceneCharacters.find(c => c.id === speakerId) || null
+})
+
+const hasPortraitForCharacter = (characterId) => {
+  const character = getCharacterData(characterId)
+  return Array.isArray(character?.portraits) && character.portraits.length > 0
+}
+
+const shouldShowCurrentPortrait = computed(() => {
+  const speaker = currentSpeakingCharacter.value
+  if (!speaker) return false
+
+  // Android 下：没有立绘配置就不显示
+  if (isAndroidPlatform.value) {
+    return hasPortraitForCharacter(speaker.id)
+  }
+
+  return true
 })
 
 // 当前活跃的世界书
 const activeBook = computed(() =>
   worldBooks.value.find((book) => book.id === activeBookId.value) || null,
 )
+const effectiveNarrator = computed(() => {
+  const preferredId = String(sessionNarratorId.value || activeBook.value?.defaultNarratorId || DEFAULT_NARRATOR_ID)
+  return resolveNarratorProfile(narratorProfiles.value, preferredId)
+})
+const activeNarratorIdForSave = computed(() => {
+  return String(sessionNarratorId.value || activeBook.value?.defaultNarratorId || effectiveNarrator.value?.id || DEFAULT_NARRATOR_ID)
+})
+
+const resolvePortraitStyle = (rawStyle) => {
+  const style = String(rawStyle || '').trim()
+  if (style === 'half_body' || style === 'full_body' || style === 'leg_body' || style === 'card') {
+    return style
+  }
+  return 'card'
+}
+
+const portraitStyle = computed(() => resolvePortraitStyle(activeBook.value?.displaySettings?.portraitStyle))
+const portraitStyleClass = computed(() => {
+  if (portraitStyle.value === 'half_body') return 'portrait-style-half-body'
+  if (portraitStyle.value === 'full_body') return 'portrait-style-full-body'
+  if (portraitStyle.value === 'leg_body') return 'portrait-style-leg-body'
+  return 'portrait-style-card'
+})
 
 // 加载世界书数据
 const loadWorldBookData = async () => {
   worldBooks.value = await loadWorldBooks()
+}
+
+const loadNarratorData = async () => {
+  narratorProfiles.value = await loadNarratorProfiles()
+}
+
+const applyBackgroundAssetsFromActiveBook = async () => {
+  const assets = Array.isArray(activeBook.value?.backgroundAssets) ? activeBook.value.backgroundAssets : []
+  if (assets.length > 0) {
+    await applyWorldBookBackgroundAssets(
+      assets,
+      `世界书背景：${String(activeBook.value?.title || '未命名世界书')}`,
+    )
+    return
+  }
+
+  await loadBackgroundFolder()
 }
 
 // 根据角色ID获取角色数据（支持 USER 和 Char）
@@ -184,11 +509,25 @@ const getCharacterData = (characterId) => {
     return activeBook.value.userProfile
   }
 
+  const characters = Array.isArray(activeBook.value.characters) ? activeBook.value.characters : []
+
   // 其他角色：根据名称或ID匹配
-  const character = activeBook.value.characters.find(
-    (char) => char.id === characterId || char.name === characterId,
+  const character = characters.find(
+    (char) => char.id === characterId || char.name === characterId || char.nickname === characterId,
   )
-  return character
+  if (character) {
+    return character
+  }
+
+  // 场景槽位回退（适配世界书动态角色ID）
+  if (characterId === 'eve') {
+    return characters[0] || null
+  }
+  if (characterId === 'zero') {
+    return characters[1] || characters[0] || null
+  }
+
+  return null
 }
 
 // 根据角色ID和情绪获取对应立绘
@@ -216,6 +555,16 @@ const getPortraitImageUrl = async (portrait) => {
   // 如果没有立绘，返回默认立绘
   if (!portrait?.filePath) {
     return getDefaultPortraitUrl()
+  }
+
+  // Android/Web 下的 data URL 立绘直接使用
+  if (portrait.filePath.startsWith('data:image')) {
+    return portrait.filePath
+  }
+
+  // 图床 URL 直接使用
+  if (portrait.filePath.startsWith('http://') || portrait.filePath.startsWith('https://')) {
+    return portrait.filePath
   }
 
   // 检查缓存
@@ -273,7 +622,7 @@ const getDefaultPortraitUrl = async () => {
 // 获取角色当前应显示的情绪
 const getDisplayEmotion = (characterId) => {
   // 当前说话的角色显示对话情绪
-  const speakerId = speakerCharacterMap[currentLine.value?.speaker]
+  const speakerId = resolveSpeakerCharacterId(currentLine.value?.speaker)
   if (activeCharacterId.value === characterId && speakerId === characterId) {
     return currentLine.value?.emotion || 'default'
   }
@@ -297,6 +646,7 @@ const handleGenerateStory = async (choiceToApply = null) => {
     // 构建 Prompt（包含随机消息条数和选择的选项）
     const prompt = buildStoryPrompt({
       worldBook: activeBook.value,
+      narratorProfile: effectiveNarrator.value,
       dialogueHistory: dialogueScript.value.slice(0, currentLineIndex.value + 1),
       currentLine: currentLine.value,
       sceneCharacters: sceneCharacters,
@@ -325,11 +675,13 @@ const handleGenerateStory = async (choiceToApply = null) => {
     const newDialogues = toGameScript(parsed.dialogues)
     
     if (newDialogues.length > 0) {
-      // 添加新对话到脚本末尾
-      dialogueScript.value = [...dialogueScript.value, ...newDialogues]
+      // 添加新对话到脚本末尾，并清理历史选项
+      const mergedScript = [...dialogueScript.value, ...newDialogues]
+      const normalizedScript = normalizeDialogueChoicesForHistory(mergedScript)
+      dialogueScript.value = normalizedScript
       
       // 自动跳转到第一条新对话
-      currentLineIndex.value = dialogueScript.value.length - newDialogues.length
+      currentLineIndex.value = normalizedScript.length - newDialogues.length
       
       // 清空用户输入和选择状态
       userPromptInput.value = ''
@@ -342,7 +694,7 @@ const handleGenerateStory = async (choiceToApply = null) => {
       currentChoices.value = null
       
       // 检查最后一条对话是否有选项
-      const lastDialogue = dialogueScript.value[dialogueScript.value.length - 1]
+      const lastDialogue = normalizedScript[normalizedScript.length - 1]
       if (hasChoices(lastDialogue)) {
         currentChoices.value = extractChoices(lastDialogue)
         showChoicesPanel.value = true
@@ -395,7 +747,8 @@ const handleCustomInput = async () => {
 const checkCurrentDialogueChoices = () => {
   if (hasChoices(currentLine.value)) {
     currentChoices.value = extractChoices(currentLine.value)
-    showChoicesPanel.value = true
+    // 进入含选项台词时先展示台词，下一次点击再弹出选项
+    showChoicesPanel.value = false
   } else {
     currentChoices.value = null
     showChoicesPanel.value = false
@@ -403,7 +756,11 @@ const checkCurrentDialogueChoices = () => {
 }
 
 // 切换生成面板显示
-const toggleGeneratePanel = () => {
+const toggleGeneratePanel = async () => {
+  if (!showGeneratePanel.value) {
+    await loadApiConfigStatus()
+  }
+
   showGeneratePanel.value = !showGeneratePanel.value
   if (!showGeneratePanel.value) {
     generateError.value = null
@@ -416,8 +773,18 @@ const hasApiConfig = ref(false)
 
 // 加载 API 配置状态
 const loadApiConfigStatus = async () => {
-  const activeId = await kvStorage.get('active_api_id')
-  hasApiConfig.value = Boolean(activeId)
+  try {
+    const activeId = await kvStorage.get('active_api_id')
+    if (!activeId) {
+      hasApiConfig.value = false
+      return
+    }
+
+    const configs = await kvStorage.get('api_configs')
+    hasApiConfig.value = Array.isArray(configs) && configs.some((item) => item?.id === activeId)
+  } catch {
+    hasApiConfig.value = false
+  }
 }
 
 // ========== CG 生成功能 ==========
@@ -443,7 +810,7 @@ const updatePortraitUrls = async () => {
 }
 
 const syncActiveCharacterBySpeaker = () => {
-  const characterId = speakerCharacterMap[currentLine.value?.speaker]
+  const characterId = resolveSpeakerCharacterId(currentLine.value?.speaker)
   if (characterId) {
     activeCharacterId.value = characterId
   }
@@ -454,6 +821,14 @@ const syncActiveCharacterBySpeaker = () => {
 }
 
 const goNextLine = () => {
+  if (hasChoices(currentLine.value) && !showChoicesPanel.value) {
+    if (!currentChoices.value) {
+      currentChoices.value = extractChoices(currentLine.value)
+    }
+    showChoicesPanel.value = true
+    return
+  }
+
   if (isLastLine.value) {
     // 最后一句时，打开 AI 生成面板
     if (!showGeneratePanel.value) {
@@ -473,6 +848,59 @@ const goPrevLine = () => {
   currentLineIndex.value -= 1
 }
 
+const createSerializableGameData = () => {
+  const sanitizedDialogueScript = normalizeDialogueChoicesForHistory(dialogueScript.value)
+
+  return JSON.parse(JSON.stringify({
+    metadata: {
+      chapter: '第一章',
+      scene: '旧图书馆',
+      playTime: currentPlayTime.value,
+      preview: currentLine.value?.text || '',
+    },
+    game: {
+      worldBookId: activeBookId.value,
+      narratorId: activeNarratorIdForSave.value,
+      currentLineIndex: currentLineIndex.value,
+      dialogueScript: sanitizedDialogueScript,
+      sceneCharacters: sceneCharacters.map(c => ({
+        id: c.id,
+        name: c.name,
+        role: c.role,
+        toneClass: c.toneClass,
+        positionClass: c.positionClass,
+      })),
+    },
+  }))
+}
+
+const handleDialogueBoxClick = (event) => {
+  if (showChoicesPanel.value || isGenerating.value || showSavePanel.value) {
+    return
+  }
+
+  const target = event?.target
+  if (target instanceof Element) {
+    const interactiveSelector = [
+      '.dialogue-actions',
+      'button',
+      'a',
+      'input',
+      'textarea',
+      'select',
+      'label',
+      '[role="button"]',
+      '[data-no-advance]',
+    ].join(', ')
+
+    if (target.closest(interactiveSelector)) {
+      return
+    }
+  }
+
+  goNextLine()
+}
+
 // ========== 存档功能 ==========
 
 // 存档状态
@@ -480,6 +908,7 @@ const isSaving = ref(false)
 const saveError = ref(null)
 const saveSuccess = ref(null)
 const showSavePanel = ref(false)
+const showTopMenu = ref(false)
 const saveSlotName = ref('')
 const playStartTime = ref(Date.now()) // 游戏开始时间
 
@@ -488,8 +917,17 @@ const currentPlayTime = computed(() => {
   return Math.floor((Date.now() - playStartTime.value) / 1000)
 })
 
+const closeTopMenu = () => {
+  showTopMenu.value = false
+}
+
+const toggleTopMenu = () => {
+  showTopMenu.value = !showTopMenu.value
+}
+
 // 切换存档面板显示
 const toggleSavePanel = () => {
+  closeTopMenu()
   showSavePanel.value = !showSavePanel.value
   if (!showSavePanel.value) {
     saveError.value = null
@@ -507,34 +945,18 @@ const handleSaveGame = async () => {
   saveSuccess.value = null
   
   try {
-    // 使用 JSON 序列化确保数据可被 IPC 克隆
-    const gameData = JSON.parse(JSON.stringify({
-      metadata: {
-        chapter: '第一章',
-        scene: '旧图书馆',
-        playTime: currentPlayTime.value,
-        preview: currentLine.value?.text || '',
-      },
-      game: {
-        worldBookId: activeBookId.value,
-        currentLineIndex: currentLineIndex.value,
-        dialogueScript: dialogueScript.value,
-        sceneCharacters: sceneCharacters.map(c => ({
-          id: c.id,
-          name: c.name,
-          role: c.role,
-          toneClass: c.toneClass,
-          positionClass: c.positionClass,
-        })),
-      },
-    }))
+    const gameData = createSerializableGameData()
     
     const result = await saveGame(gameData)
     
     if (result.success) {
+      await syncPhoneSmsScopeAfterSave(result.id)
       saveSuccess.value = `存档成功！时间: ${formatTimestamp(Date.now())}`
       // 自动创建历史备份
-      await createHistoryBackup(JSON.parse(JSON.stringify(dialogueScript.value)), `自动备份_${formatTimestamp(Date.now())}`)
+      await createHistoryBackup(
+        JSON.parse(JSON.stringify(gameData.game.dialogueScript)),
+        `自动备份_${formatTimestamp(Date.now())}`,
+      )
     } else {
       saveError.value = result.error || '存档失败'
     }
@@ -552,31 +974,12 @@ const quickSave = async () => {
   isSaving.value = true
   
   try {
-    // 使用 JSON 序列化确保数据可被 IPC 克隆
-    const gameData = JSON.parse(JSON.stringify({
-      metadata: {
-        chapter: '第一章',
-        scene: '旧图书馆',
-        playTime: currentPlayTime.value,
-        preview: currentLine.value?.text || '',
-      },
-      game: {
-        worldBookId: activeBookId.value,
-        currentLineIndex: currentLineIndex.value,
-        dialogueScript: dialogueScript.value,
-        sceneCharacters: sceneCharacters.map(c => ({
-          id: c.id,
-          name: c.name,
-          role: c.role,
-          toneClass: c.toneClass,
-          positionClass: c.positionClass,
-        })),
-      },
-    }))
+    const gameData = createSerializableGameData()
     
     const result = await saveGame(gameData)
     
     if (result.success) {
+      await syncPhoneSmsScopeAfterSave(result.id)
       // 简短提示
       saveSuccess.value = '快速存档成功！'
       setTimeout(() => {
@@ -590,12 +993,28 @@ const quickSave = async () => {
   }
 }
 
+const handleBackFromMenu = () => {
+  closeTopMenu()
+  emit('back')
+}
+
+const handleQuickSaveFromMenu = async () => {
+  closeTopMenu()
+  await quickSave()
+}
+
+const handleToggleSavePanelFromMenu = () => {
+  closeTopMenu()
+  toggleSavePanel()
+}
+
 // 加载存档数据
 const loadSaveData = () => {
   if (props.saveData && props.saveData.game) {
+    smsSaveScopeId.value = sanitizeSmsScopeId(props.saveData.__slotId) || createSessionSmsScopeId()
     // 从存档恢复游戏状态
     if (props.saveData.game.dialogueScript && props.saveData.game.dialogueScript.length > 0) {
-      dialogueScript.value = props.saveData.game.dialogueScript
+      dialogueScript.value = normalizeDialogueChoicesForHistory(props.saveData.game.dialogueScript)
     }
     if (props.saveData.game.currentLineIndex !== undefined) {
       currentLineIndex.value = props.saveData.game.currentLineIndex
@@ -603,10 +1022,22 @@ const loadSaveData = () => {
     if (props.saveData.game.worldBookId) {
       activeBookId.value = props.saveData.game.worldBookId
     }
+    if (props.saveData.game.narratorId) {
+      sessionNarratorId.value = props.saveData.game.narratorId
+    }
     // 重置游戏开始时间
     playStartTime.value = Date.now() - (props.saveData.metadata?.playTime || 0) * 1000
   }
 }
+
+watch(
+  () => props.sessionNarratorId,
+  (newId) => {
+    if (!props.saveData) {
+      sessionNarratorId.value = String(newId || '')
+    }
+  },
+)
 
 watch(currentLine, syncActiveCharacterBySpeaker, { immediate: true })
 
@@ -623,11 +1054,11 @@ watch(currentLine, async (newLine) => {
   updatePortraitUrls()
   // 检查当前对话是否有选项
   checkCurrentDialogueChoices()
-  
-  // 如果有场景切换指令，切换背景
-  if (newLine?.scene) {
-    await switchBackground(newLine.scene)
-  }
+  // 更新当前场景名称
+  updateCurrentSceneName(newLine?.scene)
+
+  // 根据当前对话场景切换背景（支持世界书场景映射）
+  await applyBackgroundByLineScene(newLine)
 }, { immediate: true })
 
 // 背景样式计算
@@ -649,11 +1080,11 @@ const hasCustomBackground = computed(() => {
 })
 
 onMounted(async () => {
+  await loadApiConfigStatus()
+  await loadNarratorData()
   await loadWorldBookData()
   await updatePortraitUrls()
-  
-  // 加载背景文件夹
-  await loadBackgroundFolder()
+  await applyBackgroundAssetsFromActiveBook()
   
   // 如果有存档数据，加载它
   if (props.saveData) {
@@ -662,13 +1093,26 @@ onMounted(async () => {
     // 新游戏：初始化开场白
     initializeOpeningDialogue()
   }
+
+  // 确保初始场景背景按世界书配置生效
+  await applyBackgroundByLineScene(currentLine.value, { allowFallback: true })
 })
 
 // 监听世界书变化，重新初始化开场白
-watch(activeBook, (newBook) => {
+watch(activeBook, async (newBook) => {
   if (newBook && !props.saveData) {
     initializeOpeningDialogue()
   }
+
+  if (!currentSceneName.value) {
+    const fallback = newBook?.scenes?.[0]?.name
+    currentSceneName.value = String(fallback || '旧图书馆')
+  }
+
+  await applyBackgroundAssetsFromActiveBook()
+
+  // 世界书切换后，重新按当前行场景应用背景
+  await applyBackgroundByLineScene(currentLine.value, { allowFallback: true })
 })
 </script>
 
@@ -677,30 +1121,45 @@ watch(activeBook, (newBook) => {
     <p class="game-bg-word" aria-hidden="true">PLAY</p>
 
     <header class="game-topbar">
-      <button type="button" class="back-button" @click="emit('back')">返回主菜单</button>
-      <div class="game-hud">
-        <p class="hud-chip chip-primary">{{ props.saveData ? '继续游戏' : '新游戏' }}</p>
-        <p class="hud-chip chip-secondary">序章 · 旧图书馆</p>
-        <p class="hud-chip chip-tertiary">对话 {{ currentLineIndex + 1 }} / {{ dialogueScript.length }}</p>
-      </div>
-      <div class="save-actions">
+      <div class="topbar-row">
         <button
           type="button"
-          class="save-button quick-save"
-          @click="quickSave"
-          :disabled="isSaving"
-          title="快速存档"
+          class="menu-toggle-btn"
+          :class="{ 'is-active': showTopMenu }"
+          :aria-expanded="showTopMenu"
+          aria-label="打开顶部菜单"
+          @click="toggleTopMenu"
         >
-          💾 快速存档
+          ☰
+        </button>
+        <div class="game-hud">
+          <p class="hud-chip chip-primary">{{ currentSceneName || '旧图书馆' }}</p>
+          <p class="hud-chip chip-secondary">序章 · 旧图书馆</p>
+          <p class="hud-chip chip-tertiary">对话 {{ currentLineIndex + 1 }} / {{ dialogueScript.length }}</p>
+        </div>
+      </div>
+
+      <div v-if="showTopMenu" class="top-menu-panel" role="menu" aria-label="游戏菜单">
+        <button type="button" class="top-menu-btn top-menu-back" role="menuitem" @click="handleBackFromMenu">
+          返回主菜单
         </button>
         <button
           type="button"
-          class="save-button"
-          :class="{ 'is-active': showSavePanel }"
-          @click="toggleSavePanel"
-          title="存档管理"
+          class="top-menu-btn top-menu-quick"
+          role="menuitem"
+          :disabled="isSaving"
+          @click="handleQuickSaveFromMenu"
         >
-          📁 存档
+          {{ isSaving ? '保存中...' : '快速存档' }}
+        </button>
+        <button
+          type="button"
+          class="top-menu-btn top-menu-save"
+          :class="{ 'is-active': showSavePanel }"
+          role="menuitem"
+          @click="handleToggleSavePanelFromMenu"
+        >
+          存档
         </button>
       </div>
       <!-- 存档成功提示 -->
@@ -764,13 +1223,17 @@ watch(activeBook, (newBook) => {
         <div v-if="hasCustomBackground" class="scene-layer scene-overlay"></div>
       </div>
 
-      <div class="character-layer" aria-label="人物立绘">
+      <div
+        class="character-layer"
+        :class="[portraitStyleClass, { 'android-speaker-layer': isAndroidPlatform }]"
+        aria-label="人物立绘"
+      >
         <div
-          v-if="currentSpeakingCharacter"
+          v-if="currentSpeakingCharacter && shouldShowCurrentPortrait"
           class="character-stand"
           :class="[
-            'is-left',
-            { active: true },
+            isAndroidPlatform ? 'is-center' : 'is-left',
+            { active: true, 'android-center-stand': isAndroidPlatform },
           ]"
         >
           <!-- 立绘图片 -->
@@ -782,14 +1245,14 @@ watch(activeBook, (newBook) => {
         </div>
       </div>
 
-      <section class="dialogue-box" aria-live="polite">
+      <section class="dialogue-box" aria-live="polite" @click="handleDialogueBoxClick">
         <div class="dialogue-head">
           <p class="speaker-tag">{{ currentLine.speaker }}</p>
           <p class="line-progress">{{ currentLineIndex + 1 }} / {{ dialogueScript.length }}</p>
         </div>
         <p class="dialogue-text">{{ currentLine.text }}</p>
 
-        <div class="dialogue-actions">
+        <div v-if="!isAndroidPlatform" class="dialogue-actions">
           <button
             type="button"
             class="action-button action-outline"
@@ -822,6 +1285,38 @@ watch(activeBook, (newBook) => {
         </div>
       </section>
 
+      <div v-if="isAndroidPlatform" class="dialogue-actions dialogue-actions-strip">
+        <button
+          type="button"
+          class="action-button action-outline"
+          :disabled="currentLineIndex === 0"
+          @click="goPrevLine"
+        >
+          上一句
+        </button>
+        <button type="button" class="action-button action-strong" @click="goNextLine">
+          {{ isLastLine ? '继续' : '下一句' }}
+        </button>
+        <button
+          type="button"
+          class="action-button action-ai"
+          :class="{ 'is-active': showGeneratePanel }"
+          @click="toggleGeneratePanel"
+          title="AI生成剧情"
+        >
+          🤖 AI生成
+        </button>
+        <button
+          type="button"
+          class="action-button action-cg"
+          :class="{ 'is-active': showCGModal }"
+          @click="showCGModal = true"
+          title="生成CG图片"
+        >
+          🎨 生成CG
+        </button>
+      </div>
+
       <!-- AI 剧情生成面板 -->
       <section v-if="showGeneratePanel" class="generate-panel" aria-label="AI剧情生成">
         <div class="generate-panel-header">
@@ -835,23 +1330,51 @@ watch(activeBook, (newBook) => {
           </div>
 
           <div class="generate-config-row">
-            <label class="generate-input-group generate-count-group">
+            <div class="generate-input-group generate-count-group">
               <span class="generate-label">生成条数范围</span>
               <select
                 class="generate-select"
                 :disabled="isGenerating"
+                :value="selectedMessageRangeKey"
                 @change="updateMessageRange($event)"
               >
                 <option
-                  v-for="(opt, index) in messageRangeOptions"
-                  :key="index"
-                  :value="index"
-                  :selected="generateMessageRange.min === opt.min && generateMessageRange.max === opt.max"
+                  v-for="opt in messageRangeOptions"
+                  :key="opt.key"
+                  :value="opt.key"
                 >
-                  {{ opt.label }}（随机）
+                  {{ opt.isCustom ? opt.label : `${opt.label}（随机）` }}
                 </option>
               </select>
-            </label>
+              <div v-if="selectedMessageRangeKey === 'custom'" class="generate-custom-range">
+                <div class="generate-custom-item">
+                  <span class="generate-custom-label">最小条数</span>
+                  <input
+                    class="generate-custom-number"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    max="200"
+                    :disabled="isGenerating"
+                    :value="customMessageRange.min"
+                    @input="updateCustomMessageRangeField('min', $event)"
+                  />
+                </div>
+                <div class="generate-custom-item">
+                  <span class="generate-custom-label">最大条数</span>
+                  <input
+                    class="generate-custom-number"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    max="200"
+                    :disabled="isGenerating"
+                    :value="customMessageRange.max"
+                    @input="updateCustomMessageRangeField('max', $event)"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <label class="generate-input-group">
@@ -887,8 +1410,24 @@ watch(activeBook, (newBook) => {
         </div>
       </section>
 
-      <!-- 选项面板 -->
-      <section v-if="showChoicesPanel && currentChoices" class="choices-panel" aria-label="剧情选项">
+      <!-- 生成中遮罩层 -->
+      <section v-if="isGenerating" class="generating-overlay" aria-label="生成中提示">
+        <div class="generating-modal">
+          <div class="generating-icon">🤖</div>
+          <h3 class="generating-title">正在生成剧情...</h3>
+          <p class="generating-hint">AI 正在根据你的选择编写后续剧情</p>
+          <div class="generating-spinner">
+            <span class="spinner-dot"></span>
+            <span class="spinner-dot"></span>
+            <span class="spinner-dot"></span>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- 选项面板 -->
+    <section v-if="showChoicesPanel && currentChoices" class="choices-overlay" aria-label="剧情选项">
+      <div class="choices-panel" role="dialog" aria-modal="true">
         <div class="choices-panel-header">
           <h3 class="choices-title">🎯 {{ currentChoices.prompt }}</h3>
         </div>
@@ -931,21 +1470,7 @@ watch(activeBook, (newBook) => {
 
           <p v-if="isGenerating" class="choices-status">⏳ 正在生成后续剧情...</p>
         </div>
-      </section>
-
-      <!-- 生成中遮罩层 -->
-      <section v-if="isGenerating" class="generating-overlay" aria-label="生成中提示">
-        <div class="generating-modal">
-          <div class="generating-icon">🤖</div>
-          <h3 class="generating-title">正在生成剧情...</h3>
-          <p class="generating-hint">AI 正在根据你的选择编写后续剧情</p>
-          <div class="generating-spinner">
-            <span class="spinner-dot"></span>
-            <span class="spinner-dot"></span>
-            <span class="spinner-dot"></span>
-          </div>
-        </div>
-      </section>
+      </div>
     </section>
 
     <!-- 音乐播放器（支持插件替换） -->
@@ -958,6 +1483,12 @@ watch(activeBook, (newBook) => {
     <PluginComponent
       :default-component="Phone"
       :plugin-type="PluginTypes.PHONE"
+      :component-props="{
+        worldBook: activeBook,
+        saveSlotId: smsSaveScopeId,
+        dialogueHistory: dialogueScript,
+        currentLine,
+      }"
     />
 
     <!-- CG 生成弹窗 -->
@@ -994,7 +1525,8 @@ watch(activeBook, (newBook) => {
   position: fixed;
   inset: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
   background: var(--background);
   overflow: hidden;
   display: flex;
@@ -1060,52 +1592,80 @@ watch(activeBook, (newBook) => {
   right: 0;
   z-index: 10;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   padding: 16px 20px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--background) 80%, transparent) 0%, transparent 100%);
 }
 
-.back-button {
+.topbar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.menu-toggle-btn {
   appearance: none;
-  border: 4px dashed var(--accent-cyan);
-  border-radius: 9999px;
-  padding: 10px 18px;
-  font: 700 0.86rem/1 var(--font-body);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border: 3px solid var(--accent-cyan);
+  border-radius: 10px;
+  padding: 0;
+  font: 800 1.15rem/1 var(--font-heading);
+  color: var(--accent-cyan);
+  background: color-mix(in srgb, var(--accent-cyan) 18%, transparent);
   cursor: pointer;
   box-shadow:
-    0 0 14px color-mix(in srgb, var(--accent-cyan) 45%, transparent),
-    6px 6px 0 var(--accent-yellow);
-  transition: transform 240ms ease, box-shadow 240ms ease;
+    0 0 14px color-mix(in srgb, var(--accent-cyan) 42%, transparent),
+    4px 4px 0 color-mix(in srgb, var(--accent-purple) 75%, transparent);
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, color 180ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.back-button:hover {
-  transform: translateY(-2px) scale(1.04);
+.menu-toggle-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
   box-shadow:
-    0 0 20px color-mix(in srgb, var(--accent-cyan) 60%, transparent),
-    9px 9px 0 var(--accent-yellow), 14px 14px 0 var(--accent-magenta);
+    0 0 18px color-mix(in srgb, var(--accent-cyan) 58%, transparent),
+    6px 6px 0 color-mix(in srgb, var(--accent-purple) 75%, transparent);
 }
 
-.back-button:focus-visible {
+.menu-toggle-btn.is-active {
+  color: var(--background);
+  background: var(--accent-cyan);
+}
+
+.menu-toggle-btn:focus-visible {
   outline: 3px dashed var(--accent-yellow);
   outline-offset: 4px;
 }
 
 .game-hud {
   display: flex;
-  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  margin-left: auto;
   gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.game-hud::-webkit-scrollbar {
+  display: none;
 }
 
 .hud-chip {
   margin: 0;
+  flex: 0 0 auto;
   padding: 8px 14px;
   border: 4px solid;
   border-radius: 9999px;
@@ -1229,6 +1789,12 @@ watch(activeBook, (newBook) => {
   z-index: 2;
 }
 
+.character-layer.android-speaker-layer {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .character-stand {
   position: relative;
   cursor: pointer;
@@ -1268,6 +1834,29 @@ watch(activeBook, (newBook) => {
   z-index: 2;
 }
 
+.character-layer.android-speaker-layer .character-stand.android-center-stand {
+  position: relative;
+  left: auto;
+  transform: translateY(0);
+  margin-inline: auto;
+}
+
+.character-layer.android-speaker-layer .character-stand.android-center-stand:hover {
+  transform: translateY(-8px);
+}
+
+.character-layer.android-speaker-layer .character-stand.android-center-stand.active {
+  transform: translateY(-12px);
+}
+
+.character-stand.is-center:hover {
+  transform: translateX(-50%) translateY(-8px);
+}
+
+.character-stand.is-center.active {
+  transform: translateX(-50%) translateY(-12px);
+}
+
 /* 右侧立绘位置 */
 .is-right {
   transform-origin: bottom center;
@@ -1283,16 +1872,16 @@ watch(activeBook, (newBook) => {
   position: absolute;
   left: 5%;
   right: 5%;
-  bottom: 20px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
   z-index: 5;
   border: 2px solid color-mix(in srgb, var(--accent-cyan) 60%, transparent);
   border-radius: 0;
   background: color-mix(in srgb, var(--background) 85%, transparent);
   backdrop-filter: blur(12px);
-  padding: 16px 20px;
+  padding: 12px 16px;
   box-shadow: 0 4px 30px color-mix(in srgb, var(--background) 80%, transparent);
   display: grid;
-  gap: 10px;
+  gap: 8px;
   max-width: 90%;
   margin: 0 auto;
 }
@@ -1329,7 +1918,7 @@ watch(activeBook, (newBook) => {
 .dialogue-text {
   margin: 0;
   font-size: clamp(1rem, 1.65vw, 1.24rem);
-  line-height: 1.65;
+  line-height: 1.55;
   color: color-mix(in srgb, var(--foreground) 95%, var(--accent-cyan));
 }
 
@@ -1399,15 +1988,31 @@ watch(activeBook, (newBook) => {
 
 .generate-close {
   appearance: none;
-  width: 28px;
-  height: 28px;
+  -webkit-appearance: none;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  flex: 0 0 28px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  aspect-ratio: 1 / 1 !important;
   border: 2px solid var(--accent-magenta);
-  border-radius: 50%;
+  border-radius: 50% !important;
   background: transparent;
   color: var(--foreground);
   font-size: 0.9rem;
+  line-height: 1 !important;
   cursor: pointer;
   transition: all 150ms ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
 }
 
 .generate-close:hover {
@@ -1433,12 +2038,44 @@ watch(activeBook, (newBook) => {
 
 .generate-config-row {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
 }
 
 .generate-count-group {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.generate-custom-range {
+  width: 100%;
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.generate-custom-item {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.generate-custom-label {
   flex: 0 0 auto;
-  min-width: 120px;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: color-mix(in srgb, var(--foreground) 82%, var(--accent-cyan));
+}
+
+.generate-custom-number {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .generate-select {
@@ -1461,6 +2098,30 @@ watch(activeBook, (newBook) => {
 }
 
 .generate-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.generate-custom-number {
+  appearance: none;
+  width: auto;
+  padding: 10px 14px;
+  border: 3px solid var(--accent-purple);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--background) 60%, transparent);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--foreground);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.generate-custom-number:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-purple) 40%, transparent);
+}
+
+.generate-custom-number:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -1571,7 +2232,7 @@ watch(activeBook, (newBook) => {
 @media (max-width: 1180px) {
   .character-layer {
     gap: 12px;
-    padding-bottom: 200px;
+    padding-bottom: 184px;
   }
 
   .character-stand {
@@ -1582,7 +2243,7 @@ watch(activeBook, (newBook) => {
 
 @media (max-width: 900px) {
   .game-hud {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .game-topbar {
@@ -1591,7 +2252,7 @@ watch(activeBook, (newBook) => {
 
   .character-layer {
     gap: 10px;
-    padding-bottom: 180px;
+    padding-bottom: 160px;
   }
 
   .character-stand.is-right {
@@ -1605,7 +2266,7 @@ watch(activeBook, (newBook) => {
   .dialogue-box {
     left: 3%;
     right: 3%;
-    padding: 12px 16px;
+    padding: 10px 14px;
   }
 }
 
@@ -1613,14 +2274,19 @@ watch(activeBook, (newBook) => {
   .game-topbar {
     padding: 8px 12px;
     gap: 6px;
-    flex-wrap: wrap;
   }
 
-  .back-button {
-    padding: 8px 12px;
-    font-size: 0.75rem;
+  .topbar-row {
+    gap: 6px;
+  }
+
+  .menu-toggle-btn {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    font-size: 1rem;
     border-width: 2px;
-    box-shadow: 0 0 8px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
   }
 
   .game-hud {
@@ -1635,7 +2301,7 @@ watch(activeBook, (newBook) => {
   }
 
   .character-layer {
-    padding: 0 3% 140px;
+    padding: 0 3% 118px;
   }
 
   .character-stand {
@@ -1666,8 +2332,8 @@ watch(activeBook, (newBook) => {
   .dialogue-box {
     left: 2%;
     right: 2%;
-    bottom: 8px;
-    padding: 10px 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
+    padding: 8px 10px;
     border-radius: 8px;
     border-width: 1px;
     max-width: 96%;
@@ -1690,7 +2356,7 @@ watch(activeBook, (newBook) => {
 
   .dialogue-text {
     font-size: 0.9rem;
-    line-height: 1.5;
+    line-height: 1.42;
   }
 
   .dialogue-actions {
@@ -1705,16 +2371,17 @@ watch(activeBook, (newBook) => {
     border-width: 2px;
   }
 
-  .save-actions {
-    position: absolute;
-    top: 4px;
-    right: 4px;
+  .top-menu-panel {
+    top: 52px;
+    left: 12px;
+    min-width: 150px;
+    padding: 6px;
     gap: 4px;
   }
 
-  .save-button {
+  .top-menu-btn {
     padding: 6px 10px;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     border-width: 1px;
   }
 }
@@ -1725,9 +2392,18 @@ watch(activeBook, (newBook) => {
     padding: 4px 8px;
   }
 
-  .back-button {
-    padding: 6px 10px;
-    font-size: 0.65rem;
+  .menu-toggle-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 0.9rem;
+  }
+
+  .top-menu-panel {
+    top: 44px;
+    left: 8px;
+    min-width: 140px;
   }
 
   .hud-chip {
@@ -1736,7 +2412,7 @@ watch(activeBook, (newBook) => {
   }
 
   .character-layer {
-    padding-bottom: 100px;
+    padding-bottom: 84px;
   }
 
   .character-portrait {
@@ -1744,14 +2420,14 @@ watch(activeBook, (newBook) => {
   }
 
   .dialogue-box {
-    bottom: 8px;
-    padding: 8px 12px;
-    max-height: 30vh;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
+    padding: 7px 10px;
+    max-height: 28vh;
   }
 
   .dialogue-text {
     font-size: 0.85rem;
-    line-height: 1.4;
+    line-height: 1.35;
   }
 
   .dialogue-actions {
@@ -1766,10 +2442,118 @@ watch(activeBook, (newBook) => {
 
   .generate-panel {
     width: min(80%, 320px);
+    z-index: 50;
+    border-radius: 12px;
+    border-width: 2px;
+    box-shadow:
+      0 0 20px color-mix(in srgb, var(--accent-purple) 30%, transparent),
+      0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .generate-panel-header {
+    padding: 14px 16px;
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-purple) 25%, transparent),
+      color-mix(in srgb, var(--accent-magenta) 15%, transparent)
+    );
+  }
+
+  .generate-title {
+    font-size: 0.95rem;
+  }
+
+  .generate-close {
+    width: 32px;
+    height: 32px;
+  }
+
+  .generate-panel-body {
+    padding: 14px;
+    gap: 10px;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
+  .generate-warning {
+    padding: 10px;
+    font-size: 0.8rem;
+  }
+
+  .generate-config-row {
+    gap: 10px;
+  }
+
+  .generate-count-group {
+    min-width: 100%;
+  }
+
+  .generate-custom-range {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .generate-custom-item {
+    gap: 6px;
+  }
+
+  .generate-custom-label {
+    font-size: 0.76rem;
+  }
+
+  .generate-input-group {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .generate-label {
+    font-size: 0.8rem;
+  }
+
+  .generate-select,
+  .generate-input,
+  .generate-custom-number {
+    padding: 10px 12px;
+    min-height: 44px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+  }
+
+  .generate-close {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    flex: 0 0 32px !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .generate-panel-footer {
+    padding: 12px 16px;
+  }
+
+  .generate-btn {
+    padding: 12px 16px;
+    min-height: 44px;
+    font-size: 0.9rem;
+    border-radius: 8px;
   }
 
   .choices-panel {
     width: min(80%, 360px);
+    z-index: 50;
+    border-radius: 12px;
   }
 }
 
@@ -1780,9 +2564,16 @@ watch(activeBook, (newBook) => {
     gap: 4px;
   }
 
-  .back-button {
-    padding: 6px 8px;
-    font-size: 0.6rem;
+  .topbar-row {
+    gap: 4px;
+  }
+
+  .menu-toggle-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    font-size: 0.82rem;
   }
 
   .hud-chip {
@@ -1793,8 +2584,8 @@ watch(activeBook, (newBook) => {
   .dialogue-box {
     left: 1%;
     right: 1%;
-    bottom: 4px;
-    padding: 8px 10px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 1px);
+    padding: 7px 8px;
   }
 
   .dialogue-text {
@@ -1807,20 +2598,101 @@ watch(activeBook, (newBook) => {
     font-size: 0.6rem;
   }
 
+  .top-menu-panel {
+    top: 40px;
+    left: 8px;
+    min-width: 134px;
+    padding: 4px;
+  }
+
+  .top-menu-btn {
+    padding: 5px 8px;
+    font-size: 0.64rem;
+  }
+
   /* 隐藏部分按钮，只保留核心功能 */
   .action-button.action-cg {
     display: none;
   }
+
+  .generate-panel {
+    width: 92%;
+    max-width: 360px;
+    z-index: 50;
+    border-radius: 10px;
+    border-width: 2px;
+  }
+
+  .generate-panel-header {
+    padding: 12px 14px;
+  }
+
+  .generate-title {
+    font-size: 0.85rem;
+  }
+
+  .generate-close {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    max-width: 28px !important;
+    max-height: 28px !important;
+    flex: 0 0 28px !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    font-size: 0.85rem !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .generate-panel-body {
+    padding: 12px;
+    max-height: 45vh;
+  }
+
+  .generate-panel-footer {
+    padding: 10px 14px;
+  }
+
+  .generate-btn {
+    padding: 10px 14px;
+    min-height: 40px;
+    font-size: 0.85rem;
+  }
+
+  .choices-panel {
+    width: 92%;
+    max-width: 340px;
+    z-index: 50;
+    border-radius: 10px;
+  }
 }
 
 /* 选项面板样式 */
+.choices-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 28px);
+  background: color-mix(in srgb, var(--background) 45%, transparent);
+  backdrop-filter: blur(6px);
+}
+
 .choices-panel {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 11;
-  width: min(90%, 480px);
+  position: relative;
+  width: min(92vw, 520px);
+  max-height: min(80vh, 720px);
+  display: flex;
+  flex-direction: column;
   border: 4px solid var(--accent-yellow);
   border-radius: 0;
   background: color-mix(in srgb, var(--background) 88%, transparent);
@@ -1848,10 +2720,14 @@ watch(activeBook, (newBook) => {
 }
 
 .choices-panel-body {
+  flex: 1 1 auto;
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
 }
 
 .choices-options {
@@ -1994,8 +2870,8 @@ watch(activeBook, (newBook) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--background) 75%, transparent);
-  backdrop-filter: blur(8px);
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .generating-modal {
@@ -2053,48 +2929,76 @@ watch(activeBook, (newBook) => {
   animation-delay: 0.2s;
 }
 
-/* 存档按钮和面板样式 */
-.save-actions {
+/* 顶部折叠菜单样式 */
+.top-menu-panel {
+  position: absolute;
+  top: 68px;
+  left: 20px;
+  z-index: 16;
   display: flex;
-  gap: 8px;
-  margin-left: auto;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 168px;
+  padding: 8px;
+  border: 2px solid var(--accent-cyan);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background) 95%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 0 20px color-mix(in srgb, var(--accent-cyan) 30%, transparent),
+    6px 6px 0 color-mix(in srgb, var(--accent-purple) 70%, transparent);
 }
 
-.save-button {
+.top-menu-btn {
   appearance: none;
+  min-width: 100%;
   border: 2px solid var(--accent-magenta);
   border-radius: 8px;
-  padding: 8px 16px;
-  font: 600 0.85rem/1 var(--font-body);
+  padding: 8px 12px;
+  font: 700 0.78rem/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
   color: var(--accent-magenta);
   background: color-mix(in srgb, var(--accent-magenta) 15%, transparent);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
-.save-button:hover:not(:disabled) {
+.top-menu-btn:hover:not(:disabled) {
   background: var(--accent-magenta);
   color: var(--bg);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
-.save-button:disabled {
+.top-menu-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.save-button.quick-save {
+.top-menu-btn.top-menu-back {
+  border-color: var(--accent-yellow);
+  color: var(--accent-yellow);
+  background: color-mix(in srgb, var(--accent-yellow) 16%, transparent);
+}
+
+.top-menu-btn.top-menu-back:hover:not(:disabled) {
+  background: var(--accent-yellow);
+  color: var(--bg);
+}
+
+.top-menu-btn.top-menu-quick {
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
   background: color-mix(in srgb, var(--accent-cyan) 15%, transparent);
 }
 
-.save-button.quick-save:hover:not(:disabled) {
+.top-menu-btn.top-menu-quick:hover:not(:disabled) {
   background: var(--accent-cyan);
   color: var(--bg);
 }
 
-.save-button.is-active {
+.top-menu-btn.top-menu-save.is-active {
   background: var(--accent-magenta);
   color: var(--bg);
 }
@@ -2275,15 +3179,15 @@ watch(activeBook, (newBook) => {
 }
 
 @media (max-width: 768px) {
-  .save-actions {
-    position: absolute;
-    top: 8px;
-    right: 8px;
+  .top-menu-panel {
+    left: 8px;
+    top: 56px;
   }
 
   .save-panel {
     width: 280px;
     right: 10px;
+    top: 72px;
   }
 }
 
@@ -2453,4 +3357,5 @@ watch(activeBook, (newBook) => {
     gap: 8px;
   }
 }
+
 </style>

@@ -33,6 +33,7 @@ const createEmptySaveData = () => ({
   },
   game: {
     worldBookId: 'default_world_book',
+    narratorId: null,
     currentLineIndex: 0,
     dialogueScript: [],
     sceneCharacters: [],
@@ -156,14 +157,28 @@ const saveGame = async (gameData, slotId = null) => {
  * @returns {Promise<Object>} 存档数据
  */
 const loadGame = async (slotId) => {
+  const attachSlotId = (result) => {
+    if (!result?.success || !result.data || typeof result.data !== 'object') {
+      return result
+    }
+    return {
+      ...result,
+      data: {
+        ...result.data,
+        __slotId: slotId,
+      },
+    }
+  }
+
   // Electron 环境优先使用 IPC
   if (isElectron() && window.avgLLM?.save?.loadGame) {
-    return await window.avgLLM.save.loadGame(slotId)
+    const result = await window.avgLLM.save.loadGame(slotId)
+    return attachSlotId(result)
   }
-  
+
   // 使用存储抽象层
   const result = await saveStorage.load(slotId)
-  return result
+  return attachSlotId(result)
 }
 
 /**

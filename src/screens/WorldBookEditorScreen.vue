@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   WORLD_BOOK_ENTRY_DEFS,
+  WORLD_BOOK_PORTRAIT_STYLE_OPTIONS,
   createNewCharacter,
   createNewScene,
   getActiveWorldBookId,
@@ -9,12 +10,15 @@ import {
   persistWorldBooks,
   setActiveWorldBookId,
 } from '../worldbook/worldBookStore'
+import { getEnabledNarratorProfiles, loadNarratorProfiles } from '../narrator/narratorStore'
 import PortraitManager from '../components/PortraitManager.vue'
 import {
   loadBackgroundFolder,
+  loadBackgroundFiles,
   backgroundList,
   backgroundFolderPath
 } from '../background/backgroundStore'
+import { isAndroid } from '../utils/platform.js'
 
 const props = defineProps({
   bookId: {
@@ -41,6 +45,12 @@ const activeCharacterId = ref('')
 const activeSceneId = ref('')  // 新增：当前选中的场景ID
 const isSaving = ref(false)
 const isLoadingBackgrounds = ref(false)  // 新增：背景加载状态
+const narratorProfiles = ref([])
+const isAndroidPlatform = computed(() => isAndroid())
+
+// 编辑世界书名称相关
+const showEditTitleDialog = ref(false)
+const editTitle = ref('')
 
 const activeBook = computed(() =>
   worldBooks.value.find((book) => book.id === activeBookId.value) || null,
@@ -87,6 +97,18 @@ const activeCharacterDisplayName = computed(() => {
   return getCharacterDisplayName(activeCharacter.value, index)
 })
 
+const narratorOptions = computed(() => {
+  const enabledProfiles = getEnabledNarratorProfiles(narratorProfiles.value)
+  const currentId = String(activeBook.value?.defaultNarratorId || '')
+  const currentProfile = narratorProfiles.value.find((profile) => profile.id === currentId)
+
+  if (currentProfile && !enabledProfiles.some((profile) => profile.id === currentProfile.id)) {
+    return [currentProfile, ...enabledProfiles]
+  }
+
+  return enabledProfiles
+})
+
 const markBookUpdated = () => {
   if (!activeBook.value) return
   activeBook.value.updatedAt = new Date().toISOString()
@@ -106,6 +128,7 @@ const ensureCharacterSelection = () => {
 
 const loadEditorData = async () => {
   worldBooks.value = await loadWorldBooks()
+  narratorProfiles.value = await loadNarratorProfiles()
 
   const desiredBookId = props.bookId || await getActiveWorldBookId()
   const exists = worldBooks.value.some((book) => book.id === desiredBookId)
@@ -125,6 +148,15 @@ const updateActiveBookField = (field, value) => {
 const updateActiveEntry = (value) => {
   if (!activeBook.value) return
   activeBook.value.entries[activeEntryKey.value] = value
+  markBookUpdated()
+}
+
+const updateDisplaySetting = (field, value) => {
+  if (!activeBook.value) return
+  if (!activeBook.value.displaySettings || typeof activeBook.value.displaySettings !== 'object') {
+    activeBook.value.displaySettings = {}
+  }
+  activeBook.value.displaySettings[field] = value
   markBookUpdated()
 }
 
@@ -222,19 +254,79 @@ const handleLoadBackgroundFolder = async () => {
 }
 
 // 选择背景文件夹
-const handleSelectBackgroundFolder = async () => {
-  if (!window.avgLLM?.background?.selectFolder) {
-    statusMessage.value = '请在 Electron 环境中运行'
-    return
+const pickBackgroundFiles = () => {
+  if (typeof document === 'undefined') {
+    return Promise.resolve({ files: [], canceled: true })
   }
-  
+
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.multiple = true
+    input.style.position = 'fixed'
+    input.style.left = '-9999px'
+
+    let settled = false
+    const finish = (files, canceled = false) => {
+      if (settled) return
+      settled = true
+      window.removeEventListener('focus', handleFocus)
+      input.remove()
+      resolve({ files, canceled })
+    }
+
+    const handleFocus = () => {
+      window.setTimeout(() => {
+        if (!settled) {
+          const files = Array.from(input.files || [])
+          finish(files, files.length === 0)
+        }
+      }, 320)
+    }
+
+    input.addEventListener('change', () => {
+      finish(Array.from(input.files || []), false)
+    }, { once: true })
+
+    input.addEventListener('cancel', () => {
+      finish([], true)
+    }, { once: true })
+
+    window.addEventListener('focus', handleFocus, { once: true })
+    document.body.appendChild(input)
+    input.click()
+  })
+}
+
+const handleSelectBackgroundFolder = async () => {
   isLoadingBackgrounds.value = true
   try {
-    const result = await window.avgLLM.background.selectFolder()
-    if (result.success && result.path) {
-      await loadBackgroundFolder(result.path)
-      statusMessage.value = `已选择背景文件夹：${result.path}`
+    if (window.avgLLM?.background?.selectFolder) {
+      const result = await window.avgLLM.background.selectFolder()
+      if (result.success && result.path) {
+        await loadBackgroundFolder(result.path)
+        statusMessage.value = `已选择背景文件夹：${result.path}`
+      } else if (!result?.canceled) {
+        statusMessage.value = `选择背景文件夹失败：${result?.error || '未知错误'}`
+      }
+      return
     }
+
+    const picked = await pickBackgroundFiles()
+    if (picked.canceled || picked.files.length === 0) {
+      return
+    }
+
+    const sourceLabel = isAndroidPlatform.value ? 'Android本地背景图片' : '本地背景图片'
+    const result = await loadBackgroundFiles(picked.files, sourceLabel)
+    if (result.success) {
+      statusMessage.value = `已导入 ${backgroundList.value.length} 张背景图片`
+    } else if (!result.canceled) {
+      statusMessage.value = `导入背景失败：${result.error || '未知错误'}`
+    }
+  } catch (error) {
+    statusMessage.value = `选择背景失败：${error?.message || '未知错误'}`
   } finally {
     isLoadingBackgrounds.value = false
   }
@@ -247,10 +339,38 @@ const activeSceneDisplayName = computed(() => {
   return getSceneDisplayName(activeScene.value, index)
 })
 
-const saveWorldBooks = async () => {
-  if (!activeBook.value) {
-    statusMessage.value = '未找到可编辑的世界书。'
+// 打开编辑标题对话框
+const openEditTitleDialog = () => {
+  editTitle.value = activeBook.value?.title || ''
+  showEditTitleDialog.value = true
+}
+
+// 取消编辑标题
+const cancelEditTitle = () => {
+  showEditTitleDialog.value = false
+  editTitle.value = ''
+}
+
+// 确认编辑标题
+const confirmEditTitle = async () => {
+  if (!activeBook.value) return
+  
+  const newTitle = editTitle.value.trim()
+  if (!newTitle) {
+    statusMessage.value = '世界书名称不能为空'
     return
+  }
+  
+  activeBook.value.title = newTitle
+  markBookUpdated()
+  showEditTitleDialog.value = false
+  statusMessage.value = `世界书名称已更新为：${newTitle}`
+}
+
+const saveWorldBooks = async () => {
+   if (!activeBook.value) {
+     statusMessage.value = '未找到可编辑的世界书。'
+     return
   }
 
   isSaving.value = true
@@ -290,10 +410,17 @@ onMounted(async () => {
       <button type="button" class="back-button" @click="emit('back')">返回书架</button>
       <div class="worldbook-editor-title-group">
         <p class="worldbook-editor-tag">World Book Editor</p>
-        <h1 class="worldbook-editor-title">
-          <span>{{ activeBook?.title || '世界书' }}</span>
-          <span class="worldbook-editor-title-gradient">设定编辑</span>
-        </h1>
+        <div class="worldbook-editor-title-row">
+          <h1 class="worldbook-editor-title">{{ activeBook?.title || '世界书' }}</h1>
+          <button type="button" class="edit-title-btn icon-btn" @click="openEditTitleDialog" title="编辑世界书名称">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            <span class="edit-btn-text">编辑</span>
+          </button>
+        </div>
+        <p class="worldbook-editor-title-gradient">设定编辑</p>
       </div>
     </header>
 
@@ -310,50 +437,80 @@ onMounted(async () => {
       </button>
     </section>
 
-    <section v-if="activeEditorTab === 'lore'" class="worldbook-editor-layout">
-      <aside class="worldbook-entry-nav" aria-label="背景条目">
-        <button
-          v-for="entry in WORLD_BOOK_ENTRY_DEFS"
-          :key="entry.key"
-          type="button"
-          class="worldbook-entry-item"
-          :class="{ active: activeEntryKey === entry.key }"
-          @click="activeEntryKey = entry.key"
-        >
-          {{ entry.label }}
-        </button>
-      </aside>
-
+    <section v-if="activeEditorTab === 'lore'" class="worldbook-editor-single">
       <section class="worldbook-editor settings-panel-content">
         <h2 class="panel-title">世界背景</h2>
-        <p class="panel-description">当前编辑：{{ activeBook?.title || '未找到世界书' }}</p>
 
-        <div class="settings-grid two-column">
+        <section class="worldbook-global-display-settings" aria-label="整体显示设置">
+          <h3 class="subpanel-title">整体显示设置</h3>
           <label class="setting-field">
-            <span class="setting-label">世界书名称</span>
-            <input
-              :value="activeBook?.title || ''"
-              class="setting-input"
-              type="text"
-              @input="updateActiveBookField('title', $event.target.value)"
-            />
+            <span class="setting-label">立绘风格</span>
+            <div class="select-wrapper">
+              <select
+                :value="activeBook?.displaySettings?.portraitStyle || 'card'"
+                class="setting-select"
+                @change="updateDisplaySetting('portraitStyle', $event.target.value)"
+              >
+                <option
+                  v-for="option in WORLD_BOOK_PORTRAIT_STYLE_OPTIONS"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+              <span class="select-arrow">▼</span>
+            </div>
+            <p class="setting-hint portrait-style-hint">
+              参考分辨率：卡片式/半身建议 1080×1620，全身/腿部建议 1080×1920（透明 PNG/WebP）。
+            </p>
           </label>
 
           <label class="setting-field">
-            <span class="setting-label">世界书摘要</span>
-            <input
-              :value="activeBook?.summary || ''"
-              class="setting-input"
-              type="text"
-              placeholder="这本世界书主要负责什么背景模块"
-              @input="updateActiveBookField('summary', $event.target.value)"
-            />
+            <span class="setting-label">默认叙事者</span>
+            <div class="select-wrapper">
+              <select
+                :value="activeBook?.defaultNarratorId || ''"
+                class="setting-select"
+                @change="updateActiveBookField('defaultNarratorId', $event.target.value)"
+              >
+                <option
+                  v-for="profile in narratorOptions"
+                  :key="profile.id"
+                  :value="profile.id"
+                >
+                  {{ profile.name }}{{ !profile.enabled && !profile.isDefault ? '（已禁用）' : '' }}
+                </option>
+              </select>
+              <span class="select-arrow">▼</span>
+            </div>
+            <p class="setting-hint">新游戏未手动覆盖时，将使用该叙事者风格。</p>
           </label>
-        </div>
+        </section>
+        
+        <!-- 条目选择下拉框 -->
+        <label class="setting-field entry-select-field">
+          <span class="setting-label">选择条目</span>
+          <div class="select-wrapper">
+            <select
+              v-model="activeEntryKey"
+              class="setting-select entry-select"
+            >
+              <option
+                v-for="entry in WORLD_BOOK_ENTRY_DEFS"
+                :key="entry.key"
+                :value="entry.key"
+              >
+                {{ entry.label }}
+              </option>
+            </select>
+            <span class="select-arrow">▼</span>
+          </div>
+          <span class="entry-hint" v-if="activeEntryDef">{{ activeEntryDef.hint }}</span>
+        </label>
 
         <label class="setting-field">
           <span class="setting-label">{{ activeEntryDef.label }}</span>
-          <span class="entry-hint">{{ activeEntryDef.hint }}</span>
           <textarea
             :value="activeBook?.entries?.[activeEntryKey] || ''"
             class="setting-textarea"
@@ -440,28 +597,39 @@ onMounted(async () => {
       </section>
     </section>
 
-    <section v-else-if="activeEditorTab === 'char'" class="worldbook-editor-layout">
-      <aside class="worldbook-entry-nav worldbook-char-nav" aria-label="角色列表">
-        <button type="button" class="action-button action-outline worldbook-add-char-btn" @click="addCharacter">
-          ＋ 新增角色
-        </button>
-
-        <button
-          v-for="(char, index) in characters"
-          :key="char.id"
-          type="button"
-          class="worldbook-entry-item worldbook-char-item"
-          :class="{ active: activeCharacterId === char.id }"
-          @click="activeCharacterId = char.id"
-        >
-          <span class="char-name">{{ getCharacterDisplayName(char, index) }}</span>
-          <span class="char-note">{{ char.nickname || '未设置昵称' }}</span>
-        </button>
-      </aside>
-
+    <section v-else-if="activeEditorTab === 'char'" class="worldbook-editor-single">
       <section class="worldbook-editor settings-panel-content">
-        <h2 class="panel-title">char设定</h2>
-        <p class="panel-description">当前角色：{{ activeCharacterDisplayName }}</p>
+        <!-- 标题行 - 包含标题和新增按钮 -->
+        <div class="panel-title-row">
+          <h2 class="panel-title">char设定</h2>
+          <button type="button" class="action-button action-outline add-char-inline-btn" @click="addCharacter">
+            ＋ 新增角色
+          </button>
+        </div>
+        
+        <!-- 角色选择下拉框 -->
+        <label class="setting-field char-select-field">
+          <span class="setting-label">选择角色</span>
+          <div class="select-wrapper">
+            <select
+              v-model="activeCharacterId"
+              class="setting-select char-select"
+            >
+              <option value="" disabled>-- 请选择角色 --</option>
+              <option
+                v-for="(char, index) in characters"
+                :key="char.id"
+                :value="char.id"
+              >
+                {{ getCharacterDisplayName(char, index) }}{{ char.nickname ? ` (${char.nickname})` : '' }}
+              </option>
+            </select>
+            <span class="select-arrow">▼</span>
+          </div>
+        </label>
+        
+        <p class="panel-description" v-if="activeCharacter">当前编辑：{{ activeCharacterDisplayName }}</p>
+        <p class="panel-description" v-else>请选择或新增一个角色进行编辑</p>
 
         <template v-if="activeCharacter">
           <div class="settings-grid two-column">
@@ -583,7 +751,7 @@ onMounted(async () => {
             :disabled="isLoadingBackgrounds"
             @click="handleSelectBackgroundFolder"
           >
-            📁 选择背景文件夹
+            {{ isAndroidPlatform ? '🖼️ 选择背景图片' : '📁 选择背景文件夹' }}
           </button>
           <button
             type="button"
@@ -694,6 +862,30 @@ onMounted(async () => {
     </div>
 
     <p class="status-message">{{ statusMessage }}</p>
+
+    <!-- 编辑世界书名称对话框 -->
+    <Teleport to="body">
+      <div v-if="showEditTitleDialog" class="dialog-overlay" @click.self="cancelEditTitle">
+        <div class="dialog-content edit-title-dialog">
+          <h3 class="dialog-title">编辑世界书名称</h3>
+          <label class="setting-field">
+            <span class="setting-label">世界书名称</span>
+            <input
+              v-model="editTitle"
+              class="setting-input"
+              type="text"
+              placeholder="请输入世界书名称"
+              @keyup.enter="confirmEditTitle"
+              ref="editTitleInput"
+            />
+          </label>
+          <div class="dialog-actions">
+            <button type="button" class="dialog-btn dialog-btn-cancel small-btn" @click="cancelEditTitle">取消</button>
+            <button type="button" class="dialog-btn dialog-btn-confirm small-btn" @click="confirmEditTitle">确认</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </main>
 </template>
 
@@ -775,6 +967,71 @@ onMounted(async () => {
 .worldbook-editor-title-group {
   display: grid;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.edit-title-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: 2.15rem;
+  height: 2.15rem;
+  min-width: 2.15rem;
+  min-height: 2.15rem;
+  max-width: 2.15rem;
+  max-height: 2.15rem;
+  padding: 0;
+  border: 1px solid var(--accent-orange);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
+  color: var(--accent-orange);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  margin-left: auto;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  aspect-ratio: 1 / 1;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.edit-title-btn:hover {
+  background: var(--accent-orange);
+  color: var(--bg-base);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+}
+
+.edit-title-btn:active {
+  transform: translateY(0);
+}
+
+.edit-btn-text {
+  display: none;
+}
+
+.edit-title-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.platform-android.android-portrait .edit-title-btn {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  flex: 0 0 32px !important;
+  padding: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  box-sizing: border-box !important;
 }
 
 .worldbook-editor-tag {
@@ -791,17 +1048,27 @@ onMounted(async () => {
   background: color-mix(in srgb, var(--accent-magenta) 25%, transparent);
 }
 
+.worldbook-editor-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
 .worldbook-editor-title {
   margin: 0;
-  display: grid;
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-heading);
   font-size: clamp(2.1rem, 5.7vw, 4.2rem);
   line-height: 0.92;
   letter-spacing: -0.03em;
   text-shadow: var(--text-shadow-triple);
+  overflow-wrap: anywhere;
 }
 
 .worldbook-editor-title-gradient {
+  margin: 0;
   width: fit-content;
   font-family: var(--font-display);
   font-size: clamp(1.9rem, 4.8vw, 3rem);
@@ -954,6 +1221,26 @@ onMounted(async () => {
   color: color-mix(in srgb, var(--foreground) 86%, var(--accent-cyan));
 }
 
+.worldbook-global-display-settings {
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 2px solid color-mix(in srgb, var(--accent-cyan) 55%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
+}
+
+.subpanel-title {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent-cyan);
+}
+
+.portrait-style-hint {
+  margin: 8px 0 0;
+}
+
 .worldbook-editor-actions {
   position: relative;
   z-index: 2;
@@ -1099,5 +1386,640 @@ onMounted(async () => {
 
 .add-item:hover {
   opacity: 1;
+}
+
+/* 竖屏模式 - 整体页面滚动设计 */
+@media (max-width: 768px) and (orientation: portrait) {
+  .worldbook-editor-screen {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100vh !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    background: var(--background) !important;
+    display: block !important;
+  }
+
+  .worldbook-editor-bg-word {
+    display: none !important;
+  }
+
+  /* 顶部区域 */
+  .worldbook-editor-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    padding: 20px 16px !important;
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--accent-cyan) 15%, var(--background)),
+      var(--background)
+    ) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent-cyan) 30%, transparent) !important;
+  }
+
+  .back-button {
+    align-self: flex-start !important;
+    padding: 8px 16px !important;
+    font-size: 0.8rem !important;
+    border: 1px solid var(--accent-cyan) !important;
+    border-radius: 20px !important;
+    box-shadow: none !important;
+    background: color-mix(in srgb, var(--accent-cyan) 15%, transparent) !important;
+    color: var(--accent-cyan) !important;
+    margin-bottom: 12px !important;
+    min-width: auto !important;
+    width: auto !important;
+  }
+
+  .worldbook-editor-title-group {
+    gap: 6px !important;
+  }
+
+  .worldbook-editor-title-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .worldbook-editor-tag {
+    display: none !important;
+  }
+
+  .worldbook-editor-title {
+    font-size: 1.5rem !important;
+    display: block !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+    line-height: 1.1 !important;
+    color: var(--foreground) !important;
+  }
+
+  .worldbook-editor-title-gradient {
+    margin: 0 !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.15em !important;
+    color: var(--accent-cyan) !important;
+    background: none !important;
+    -webkit-text-fill-color: var(--accent-cyan) !important;
+  }
+
+  .edit-title-btn {
+    margin-left: auto !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    flex: 0 0 32px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border-width: 1px !important;
+    border-radius: 10px !important;
+  }
+
+  .edit-btn-text {
+    display: none !important;
+  }
+
+  /* 标签页导航 - 横向滚动 */
+  .worldbook-editor-tabs {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    padding: 12px 16px !important;
+    background: var(--background) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--muted) 30%, transparent) !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .worldbook-editor-tab {
+    flex: 0 0 auto !important;
+    padding: 10px 16px !important;
+    font-size: 0.85rem !important;
+    border-width: 2px !important;
+    border-radius: 20px !important;
+    min-width: auto !important;
+    width: auto !important;
+    white-space: nowrap !important;
+  }
+
+  .worldbook-editor-tab.active {
+    background: var(--accent-cyan) !important;
+    color: var(--background) !important;
+    border-color: var(--accent-cyan) !important;
+  }
+
+  /* 编辑布局 - 单列 */
+  .worldbook-editor-layout {
+    display: block !important;
+    padding: 16px !important;
+    overflow: visible !important;
+  }
+
+  .worldbook-editor-single {
+    display: block !important;
+    padding: 16px !important;
+    overflow: visible !important;
+  }
+
+  .worldbook-editor-single > .worldbook-editor {
+    overflow: visible !important;
+    min-height: auto !important;
+  }
+
+  /* 条目导航 - 横向滚动标签 */
+  .worldbook-entry-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    padding: 12px !important;
+    border-width: 1px !important;
+    border-radius: 12px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    margin-bottom: 16px !important;
+    max-height: 200px !important;
+    min-height: 80px !important;
+  }
+
+  .worldbook-entry-item {
+    flex: 0 0 auto !important;
+    padding: 8px 14px !important;
+    font-size: 0.8rem !important;
+    border-width: 2px !important;
+    border-radius: 16px !important;
+    min-width: auto !important;
+    width: auto !important;
+    white-space: nowrap !important;
+  }
+
+  /* 条目选择下拉框 */
+  .entry-select-field {
+    margin-bottom: 16px !important;
+  }
+
+  .worldbook-global-display-settings {
+    margin-bottom: 12px !important;
+    padding: 12px !important;
+    border-width: 1px !important;
+    border-radius: 10px !important;
+  }
+
+  .subpanel-title {
+    font-size: 0.9rem !important;
+    margin-bottom: 8px !important;
+  }
+
+  .entry-select {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    font-size: 1rem !important;
+    border-width: 1px !important;
+    border-radius: 10px !important;
+    background: var(--surface-field) !important;
+  }
+
+  /* 标题行 - 标题和按钮同一行 */
+  .panel-title-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .panel-title-row .panel-title {
+    margin-bottom: 0 !important;
+  }
+
+  /* 角色选择字段 */
+  .char-select-field {
+    margin-bottom: 12px !important;
+  }
+
+  /* 美化下拉框容器 */
+  .select-wrapper {
+    position: relative !important;
+    width: 100% !important;
+  }
+
+  .select-wrapper select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 100% !important;
+    padding: 14px 40px 14px 16px !important;
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    border: 2px solid var(--accent-cyan) !important;
+    border-radius: 12px !important;
+    background: var(--surface-field) !important;
+    color: var(--foreground) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .select-wrapper select:focus {
+    outline: none !important;
+    border-color: var(--accent-yellow) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-cyan) 20%, transparent) !important;
+  }
+
+  .select-wrapper .select-arrow {
+    position: absolute !important;
+    right: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    font-size: 0.7rem !important;
+    color: var(--accent-cyan) !important;
+    pointer-events: none !important;
+    transition: transform 0.2s ease !important;
+  }
+
+  .select-wrapper:focus-within .select-arrow {
+    transform: translateY(-50%) rotate(180deg) !important;
+  }
+
+  /* 新增按钮 */
+  .add-char-inline-btn {
+    flex: 0 0 auto !important;
+    padding: 10px 16px !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    border-radius: 20px !important;
+    border: 2px solid var(--accent-cyan) !important;
+    background: color-mix(in srgb, var(--accent-cyan) 15%, transparent) !important;
+    color: var(--accent-cyan) !important;
+    min-width: auto !important;
+    width: auto !important;
+    white-space: nowrap !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .add-char-inline-btn:active {
+    background: var(--accent-cyan) !important;
+    color: var(--background) !important;
+  }
+
+  .worldbook-char-item.active .char-note {
+    color: color-mix(in srgb, var(--background) 70%, var(--muted)) !important;
+  }
+
+  /* 新增角色按钮 */
+  .worldbook-add-char-btn {
+    flex: 0 0 auto !important;
+    min-width: 100px !important;
+    padding: 8px 12px !important;
+    font-size: 0.75rem !important;
+    border-radius: 16px !important;
+    white-space: nowrap !important;
+  }
+
+  .worldbook-entry-item.active {
+    background: var(--accent-cyan) !important;
+    color: var(--background) !important;
+    border-color: var(--accent-cyan) !important;
+    border-style: solid !important;
+  }
+
+  /* 编辑面板 */
+  .worldbook-editor {
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .panel-title {
+    font-size: 1.2rem !important;
+    margin-bottom: 8px !important;
+    color: var(--foreground) !important;
+  }
+
+  .panel-description {
+    font-size: 0.85rem !important;
+    color: var(--muted) !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* 设置网格 - 单列 */
+  .settings-grid.two-column {
+    display: block !important;
+    gap: 12px !important;
+  }
+
+  .settings-grid.two-column .setting-field {
+    margin-bottom: 12px !important;
+  }
+
+  /* 输入框样式 */
+  .setting-field {
+    margin-bottom: 16px !important;
+  }
+
+  .setting-label {
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    color: var(--foreground) !important;
+    margin-bottom: 6px !important;
+    display: block !important;
+  }
+
+  .setting-input {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    font-size: 1rem !important;
+    border-width: 1px !important;
+    border-radius: 10px !important;
+    background: var(--surface-field) !important;
+  }
+
+  .setting-textarea {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    font-size: 1rem !important;
+    border-width: 1px !important;
+    border-radius: 10px !important;
+    background: var(--surface-field) !important;
+    min-height: 200px !important;
+  }
+
+  .entry-hint {
+    font-size: 0.75rem !important;
+    color: var(--muted) !important;
+    margin-bottom: 8px !important;
+    display: block !important;
+  }
+
+  /* 角色列表 */
+  .character-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .character-item {
+    padding: 12px 16px !important;
+    border-width: 1px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+  }
+
+  .character-item.active {
+    border-color: var(--accent-cyan) !important;
+    background: color-mix(in srgb, var(--accent-cyan) 10%, transparent) !important;
+  }
+
+  .character-name {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+  }
+
+  .character-actions {
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .character-action-btn {
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+    border-radius: 8px !important;
+    min-width: auto !important;
+    width: auto !important;
+  }
+
+  /* 场景列表 */
+  .scene-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .scene-item {
+    padding: 12px 16px !important;
+    border-width: 1px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+  }
+
+  .scene-item.active {
+    border-color: var(--accent-cyan) !important;
+    background: color-mix(in srgb, var(--accent-cyan) 10%, transparent) !important;
+  }
+
+  .scene-name {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+  }
+
+  .scene-actions {
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .scene-action-btn {
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+    border-radius: 8px !important;
+    min-width: auto !important;
+    width: auto !important;
+  }
+
+  /* 添加按钮 */
+  .add-character-btn,
+  .add-scene-btn {
+    padding: 10px 16px !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+    min-width: auto !important;
+    width: 100% !important;
+  }
+
+  /* 场景文件夹操作 */
+  .scene-folder-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 12px !important;
+    border-radius: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .folder-path {
+    font-size: 0.8rem !important;
+  }
+
+  /* 下拉选择 */
+  .setting-select {
+    padding: 12px 16px !important;
+    font-size: 1rem !important;
+    border-width: 1px !important;
+    border-radius: 10px !important;
+  }
+
+  /* 预览区域 */
+  .scene-preview {
+    margin-top: 16px !important;
+  }
+
+  .preview-box {
+    height: 150px !important;
+    border-width: 1px !important;
+    border-radius: 10px !important;
+  }
+
+  /* 空状态 */
+  .empty-state {
+    padding: 24px 16px !important;
+  }
+
+  .empty-state p {
+    font-size: 0.95rem !important;
+  }
+
+  /* 危险操作 */
+  .scene-delete-action {
+    margin-top: 16px !important;
+    padding-top: 16px !important;
+  }
+
+  .action-danger {
+    padding: 10px 16px !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+    min-width: auto !important;
+    width: 100% !important;
+  }
+}
+
+/* 编辑标题对话框样式 */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  background: var(--surface-panel);
+  border: 3px solid var(--accent-cyan);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.edit-title-dialog .dialog-title {
+  margin: 0 0 16px 0;
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  color: var(--accent-cyan);
+  text-shadow: var(--text-shadow-single);
+}
+
+.edit-title-dialog .setting-field {
+  margin-bottom: 20px;
+}
+
+.edit-title-dialog .setting-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.edit-title-dialog .setting-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--accent-cyan);
+  border-radius: 10px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.edit-title-dialog .setting-input:focus {
+  outline: none;
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 8px rgba(255, 165, 0, 0.3);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.dialog-actions .dialog-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-cyan);
+  font: 700 0.9rem/1 var(--font-body);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  box-sizing: border-box;
+}
+
+.dialog-actions .dialog-btn:hover {
+  transform: translateY(-1px);
+}
+
+.dialog-actions .dialog-btn:active {
+  transform: translateY(0);
+}
+
+.dialog-actions .dialog-btn-cancel {
+  background: color-mix(in srgb, var(--surface-panel) 80%, transparent);
+  color: var(--foreground);
+  border-color: color-mix(in srgb, var(--accent-cyan) 60%, transparent);
+}
+
+.dialog-actions .dialog-btn-confirm {
+  background: color-mix(in srgb, var(--accent-cyan) 25%, transparent);
+  color: var(--foreground);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
+}
+
+.platform-android.android-portrait .edit-title-dialog .dialog-actions .dialog-btn {
+  min-width: 72px !important;
+  min-height: 32px !important;
+  padding: 6px 12px !important;
+  font-size: 0.85rem !important;
 }
 </style>

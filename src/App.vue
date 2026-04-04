@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, computed } from 'vue'
+import { onBeforeUnmount, onMounted, ref, computed, watch } from 'vue'
 import GameScreen from './screens/GameScreen.vue'
 import SettingsScreen from './screens/SettingsScreen.vue'
 import StartScreen from './screens/StartScreen.vue'
@@ -7,15 +7,21 @@ import WorldBookEditorScreen from './screens/WorldBookEditorScreen.vue'
 import WorldBookScreen from './screens/WorldBookScreen.vue'
 import SaveLoadScreen from './screens/SaveLoadScreen.vue'
 import PluginManagerScreen from './screens/PluginManagerScreen.vue'
+import NarratorManagerScreen from './screens/NarratorManagerScreen.vue'
 import { getPlatform, isMobileDevice, isNative, isAndroid } from './utils/platform'
+import { StatusBar, Style } from '@capacitor/status-bar'
 
-// 设计基准分辨率（16:9 横屏比例）
+// PC 端设计基准分辨率（16:9 横屏比例）
 const DESIGN_WIDTH = 1920
 const DESIGN_HEIGHT = 1080
-const DESIGN_ASPECT_RATIO = DESIGN_WIDTH / DESIGN_HEIGHT // 16:9
+
+// Android 端设计基准分辨率（9:16 竖屏比例）
+const ANDROID_DESIGN_WIDTH = 1080
+const ANDROID_DESIGN_HEIGHT = 1920
 
 const currentScreen = ref('start')
 const activeWorldBookId = ref('default_world_book')
+const activeNarratorId = ref(null)
 const uiScale = ref(1)
 const containerStyle = ref({})
 
@@ -24,6 +30,91 @@ const platform = computed(() => getPlatform())
 const isMobile = computed(() => isMobileDevice())
 const isNativeApp = computed(() => isNative())
 const isAndroidPlatform = computed(() => isAndroid())
+const logAndroidLayoutSnapshot = async (source = 'unknown') => {
+  if (!isAndroidPlatform.value) return
+
+  const gameScreen = document.querySelector('.game-screen')
+  const gameTopbar = document.querySelector('.game-topbar')
+  const appShell = document.querySelector('.app-shell')
+  const bodyStyle = getComputedStyle(document.body)
+  const shellStyle = appShell ? getComputedStyle(appShell) : null
+  const topbarStyle = gameTopbar ? getComputedStyle(gameTopbar) : null
+  const viewport = window.visualViewport
+
+  let statusInfo = null
+  try {
+    statusInfo = await StatusBar.getInfo()
+  } catch {
+    statusInfo = null
+  }
+
+  const payload = {
+    source,
+    screen: currentScreen.value,
+    windowInner: { w: window.innerWidth, h: window.innerHeight },
+    visualViewport: viewport
+      ? {
+          w: Math.round(viewport.width),
+          h: Math.round(viewport.height),
+          offsetTop: Math.round(viewport.offsetTop),
+          offsetLeft: Math.round(viewport.offsetLeft),
+          scale: viewport.scale,
+        }
+      : null,
+    statusBar: statusInfo,
+    bodyClass: document.body.className,
+    bodyPaddingTop: bodyStyle.paddingTop,
+    bodyPaddingBottom: bodyStyle.paddingBottom,
+    appShellPaddingTop: shellStyle?.paddingTop || null,
+    gameScreenRect: gameScreen ? gameScreen.getBoundingClientRect() : null,
+    gameTopbarRect: gameTopbar ? gameTopbar.getBoundingClientRect() : null,
+    gameTopbarPaddingTop: topbarStyle?.paddingTop || null,
+    gameTopbarMarginTop: topbarStyle?.marginTop || null,
+  }
+
+  console.log('[LayoutDebug][Web]', payload)
+  return payload
+}
+
+const scheduleAndroidLayoutDebug = (source = 'unknown') => {
+  if (!isAndroidPlatform.value) return
+
+  requestAnimationFrame(() => {
+    void logAndroidLayoutSnapshot(`${source}:raf`)
+    window.setTimeout(() => {
+      void logAndroidLayoutSnapshot(`${source}:t300`)
+    }, 300)
+  })
+}
+
+const applyAndroidStatusBarStyle = async () => {
+  if (!isAndroidPlatform.value) return
+
+  try {
+    await StatusBar.setOverlaysWebView({ overlay: false })
+    await StatusBar.setStyle({ style: Style.Light })
+    await StatusBar.setBackgroundColor({ color: '#0d0d1a' })
+    await StatusBar.show()
+  } catch {
+    // 非原生环境或插件不可用时忽略
+  }
+}
+
+const handleAndroidVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    void applyAndroidStatusBarStyle()
+    scheduleAndroidLayoutDebug('visibilitychange-visible')
+  }
+}
+
+const handleAndroidFocus = () => {
+  void applyAndroidStatusBarStyle()
+  scheduleAndroidLayoutDebug('window-focus')
+}
+
+const handleAndroidResize = () => {
+  scheduleAndroidLayoutDebug('window-resize')
+}
 
 // 存档数据（用于加载存档后传递给游戏界面）
 const loadedSaveData = ref(null)
@@ -32,9 +123,17 @@ const openSettings = () => {
   currentScreen.value = 'settings'
 }
 
-const openNewGame = (worldBookId = 'default_world_book') => {
+const openNewGame = (payload = 'default_world_book') => {
+  const worldBookId = typeof payload === 'object' && payload
+    ? payload.worldBookId
+    : payload
+  const narratorId = typeof payload === 'object' && payload
+    ? payload.narratorId
+    : null
+
   loadedSaveData.value = null // 新游戏清空存档数据
-  activeWorldBookId.value = worldBookId // 设置新游戏使用的世界书
+  activeWorldBookId.value = worldBookId || 'default_world_book' // 设置新游戏使用的世界书
+  activeNarratorId.value = narratorId || null // 新游戏可选叙事者覆盖
   currentScreen.value = 'game'
 }
 
@@ -55,6 +154,10 @@ const openPluginManager = () => {
   currentScreen.value = 'plugin-manager'
 }
 
+const openNarratorManager = () => {
+  currentScreen.value = 'narrator-manager'
+}
+
 const backToWorldBookShelf = () => {
   currentScreen.value = 'worldbook-shelf'
 }
@@ -66,6 +169,7 @@ const backToStart = () => {
 // 加载存档后进入游戏
 const handleLoadSave = (saveData) => {
   loadedSaveData.value = saveData
+  activeNarratorId.value = saveData?.game?.narratorId || null
   currentScreen.value = 'game'
 }
 
@@ -83,6 +187,7 @@ const handleLoadBackup = (backupData) => {
     },
     game: {
       worldBookId: 'default_world_book',
+      narratorId: null,
       currentLineIndex: 0,
       dialogueScript: backupData.messages || [],
       sceneCharacters: [],
@@ -93,40 +198,31 @@ const handleLoadBackup = (backupData) => {
 
 /**
  * 计算 UI 缩放比例
- * Android 横屏模式下，保持 16:9 设计比例，按实际屏幕尺寸缩放
+ * Android 竖屏模式下，使用 9:16 设计比例
+ * PC/Web 端使用 16:9 横屏比例
  */
 const updateUiScale = () => {
   const windowWidth = window.innerWidth
   const windowHeight = window.innerHeight
-  const currentAspectRatio = windowWidth / windowHeight
   
-  // Android 原生平台特殊处理
+  // Android 原生平台特殊处理（竖屏）
   if (isAndroidPlatform.value) {
-    // 横屏模式下，保持设计比例缩放
-    // 计算基于宽度的缩放（确保内容宽度适配屏幕）
-    const widthBasedScale = windowWidth / DESIGN_WIDTH
-    // 计算基于高度的缩放（确保内容高度适配屏幕）
-    const heightBasedScale = windowHeight / DESIGN_HEIGHT
+    // 竖屏模式：基于宽度缩放，高度自适应
+    // 设计基准：1080x1920 (9:16)
+    const widthBasedScale = windowWidth / ANDROID_DESIGN_WIDTH
     
-    // 使用较小的缩放值，确保内容完全可见
-    let nextScale = Math.min(widthBasedScale, heightBasedScale)
+    // Android 上限制缩放范围
+    // 典型手机：360-420px 宽度，缩放约 0.33-0.39
+    // 高端手机：480px+ 宽度，缩放约 0.44+
+    uiScale.value = Math.max(0.3, Math.min(0.6, Number(widthBasedScale.toFixed(3))))
     
-    // Android 上限制缩放范围，避免过小或过大
-    // 横屏平板可能缩放接近 1，手机横屏可能缩放 0.5-0.8
-    uiScale.value = Math.max(0.4, Math.min(1.2, Number(nextScale.toFixed(3))))
-    
-    // 计算容器尺寸，保持设计比例
-    const scaledWidth = DESIGN_WIDTH * uiScale.value
-    const scaledHeight = DESIGN_HEIGHT * uiScale.value
-    
+    // 竖屏模式：宽度撑满，高度自适应
     containerStyle.value = {
-      width: `${scaledWidth}px`,
-      height: `${scaledHeight}px`,
-      maxWidth: '100vw',
-      maxHeight: '100vh',
+      width: '100vw',
+      minHeight: '100vh',
     }
   } else {
-    // PC/Web 端：原有逻辑
+    // PC/Web 端：横屏逻辑
     const widthScale = windowWidth / DESIGN_WIDTH
     const heightScale = windowHeight / DESIGN_HEIGHT
     const nextScale = Math.min(widthScale, heightScale)
@@ -154,23 +250,52 @@ onMounted(() => {
   
   // Android 平台额外处理
   if (isAndroidPlatform.value) {
-    body.classList.add('android-landscape')
+    body.classList.add('android-portrait')
     // 阻止默认触摸行为（如双击缩放）
     document.addEventListener('touchstart', (e) => {
       if (e.touches.length > 1) {
         e.preventDefault()
       }
     }, { passive: false })
+
+    void applyAndroidStatusBarStyle()
+    document.addEventListener('visibilitychange', handleAndroidVisibilityChange)
+    window.addEventListener('focus', handleAndroidFocus)
+    window.addEventListener('resize', handleAndroidResize)
+    window.addEventListener('orientationchange', handleAndroidResize)
+
+    // 便于在远程调试控制台手动触发
+    window.__avgLayoutDebug = async () => {
+      const immediate = await logAndroidLayoutSnapshot('manual-trigger:direct')
+      scheduleAndroidLayoutDebug('manual-trigger')
+      return immediate
+    }
+
+    scheduleAndroidLayoutDebug('mounted-android')
   }
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateUiScale)
+
+  if (isAndroidPlatform.value) {
+    document.removeEventListener('visibilitychange', handleAndroidVisibilityChange)
+    window.removeEventListener('focus', handleAndroidFocus)
+    window.removeEventListener('resize', handleAndroidResize)
+    window.removeEventListener('orientationchange', handleAndroidResize)
+    delete window.__avgLayoutDebug
+  }
+})
+
+watch(currentScreen, (screen) => {
+  if (screen === 'game') {
+    scheduleAndroidLayoutDebug('screen-to-game')
+  }
 })
 </script>
 
 <template>
-  <div class="app-stage" :class="[`platform-${platform}`, { 'android-landscape': isAndroidPlatform }]">
+  <div class="app-stage" :class="[`platform-${platform}`, { 'android-portrait': isAndroidPlatform }]">
     <div
       class="app-shell"
       :class="{ 'game-fullscreen': currentScreen === 'game' }"
@@ -183,11 +308,13 @@ onBeforeUnmount(() => {
         @open-worldbook="openWorldBook"
         @open-save-load="openSaveLoad"
         @open-plugin-manager="openPluginManager"
+        @open-narrator-manager="openNarratorManager"
       />
       <GameScreen
         v-else-if="currentScreen === 'game'"
         :save-data="loadedSaveData"
         :world-book-id="activeWorldBookId"
+        :session-narrator-id="activeNarratorId"
         @back="backToStart"
       />
       <SettingsScreen v-else-if="currentScreen === 'settings'" @back="backToStart" />
@@ -204,6 +331,10 @@ onBeforeUnmount(() => {
       />
       <PluginManagerScreen
         v-else-if="currentScreen === 'plugin-manager'"
+        @back="backToStart"
+      />
+      <NarratorManagerScreen
+        v-else-if="currentScreen === 'narrator-manager'"
         @back="backToStart"
       />
       <WorldBookEditorScreen
@@ -268,8 +399,11 @@ onBeforeUnmount(() => {
 @media (max-width: 768px) {
   .app-stage {
     width: 100vw;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   .app-shell {
@@ -281,6 +415,8 @@ onBeforeUnmount(() => {
   
   .app-shell.game-fullscreen {
     padding: 0;
+    height: 100vh;
+    overflow: hidden;
   }
 }
 
@@ -298,35 +434,38 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 
-/* ========== Android 横屏分辨率适配 ========== */
+/* ========== Android 竖屏分辨率适配 ========== */
 /*
- * 设计基准：1920x1080 (16:9)
- * Android 横屏保持相同比例，按实际屏幕缩放
+ * 设计基准：1080x1920 (9:16 竖屏)
+ * Android 竖屏：宽度撑满，高度自适应
  */
-.platform-android.android-landscape .app-stage {
+.platform-android.android-portrait .app-stage {
   width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
+  height: auto;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: flex-start;
   align-items: center;
   background: var(--background);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.platform-android.android-landscape .app-shell {
-  /* Android 上使用固定尺寸容器 + transform 缩放 */
-  width: 1920px;
-  height: 1080px;
-  min-height: 1080px;
+.platform-android.android-portrait .app-shell {
+  /* 竖屏模式：宽度 100%，高度自适应 */
+  width: 100%;
+  min-height: 100vh;
   padding: 0;
-  transform: scale(var(--ui-scale));
-  transform-origin: center center;
+  transform: none;
   flex-shrink: 0;
-  /* 保持设计比例的容器 */
-  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
 }
 
-.platform-android.android-landscape .app-shell.game-fullscreen {
-  /* 游戏界面全屏，但保持比例 */
+.platform-android.android-portrait .app-shell.game-fullscreen {
+  /* 游戏界面全屏 */
   width: 100vw;
   height: 100vh;
   min-height: 100vh;
@@ -335,8 +474,8 @@ onBeforeUnmount(() => {
   inset: 0;
 }
 
-/* Android 横屏下的游戏界面内部缩放 */
-.platform-android.android-landscape .app-shell.game-fullscreen :deep(.game-container) {
+/* Android 竖屏下的游戏界面内部缩放 */
+.platform-android.android-portrait .app-shell.game-fullscreen :deep(.game-container) {
   /* 游戏内容按设计比例缩放 */
   --design-scale: var(--ui-scale, 1);
 }

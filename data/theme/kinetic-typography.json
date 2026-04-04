@@ -1,0 +1,206 @@
+{
+  "id": "kinetic-typography",
+  "name": "Kinetic Typography",
+  "description": "High-energy brutalism meets kinetic poster design. Typography becomes the visual structure with aggressive scale, constant motion, and acid yellow accents. Sharp corners, flat design, and dramatic hover inversions create a poster-come-to-life aesthetic.",
+  "styleProfile": "kinetic-typography",
+  "tokens": {
+    "background": "#09090B",
+    "foreground": "#FAFAFA",
+    "muted": "#27272A",
+    "mutedForeground": "#A1A1AA",
+    "accent": "#DFE104",
+    "accentForeground": "#000000",
+    "border": "#3F3F46",
+    "accentMagenta": "#DFE104",
+    "accentCyan": "#DFE104",
+    "accentYellow": "#DFE104",
+    "accentOrange": "#DFE104",
+    "accentPurple": "#DFE104",
+    "fontHeading": "'Space Grotesk', 'Inter', sans-serif",
+    "fontBody": "'Space Grotesk', 'Inter', sans-serif",
+    "fontDisplay": "'Space Grotesk', 'Inter', sans-serif",
+    "radiusButton": "0px",
+    "radiusCard": "0px",
+    "radiusPanel": "0px",
+    "textShadowSingle": "none",
+    "textShadowDouble": "none",
+    "textShadowTriple": "none",
+    "surfacePanel": "#09090B",
+    "surfaceField": "#09090B",
+    "surfaceControl": "#27272A",
+    "surfaceStatus": "rgba(223, 225, 4, 0.1)",
+    "borderPanel": "#3F3F46",
+    "borderField": "#3F3F46",
+    "borderControl": "#3F3F46",
+    "borderStatus": "#DFE104",
+    "borderAction": "#DFE104",
+    "gradientPrimary": "none",
+    "gradientSecondary": "none",
+    "shadowScreen": "none",
+    "shadowPanel": "none",
+    "shadowCard": "none",
+    "shadowField": "none",
+    "shadowButton": "none",
+    "shadowButtonDisabled": "none",
+    "shadowStatus": "none",
+    "shadowPressed": "none",
+    "blobPrimary": "rgba(223, 225, 4, 0.03)",
+    "blobSecondary": "rgba(223, 225, 4, 0.02)",
+    "blobTertiary": "rgba(39, 39, 42, 0.5)",
+    "backdropBlur": "0px",
+    "noiseTexture": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
+    "transitionDuration": "300ms",
+    "transitionEasing": "ease-in-out"
+  },
+  "typography": {
+    "hero": {
+      "fontSize": "clamp(3rem, 12vw, 14rem)",
+      "fontWeight": "700",
+      "textTransform": "uppercase",
+      "letterSpacing": "-0.05em",
+      "lineHeight": "0.8"
+    },
+    "sectionHeading": {
+      "fontSize": "clamp(2.5rem, 8vw, 6rem)",
+      "fontWeight": "700",
+      "textTransform": "uppercase",
+      "letterSpacing": "-0.03em",
+      "lineHeight": "0.9"
+    },
+    "cardTitle": {
+      "fontSize": "clamp(1.5rem, 4vw, 3rem)",
+      "fontWeight": "700",
+      "textTransform": "uppercase",
+      "letterSpacing": "-0.02em",
+      "lineHeight": "1"
+    },
+    "body": {
+      "fontSize": "clamp(1.125rem, 2vw, 1.5rem)",
+      "fontWeight": "500",
+      "textTransform": "none",
+      "letterSpacing": "-0.01em",
+      "lineHeight": "1.25"
+    },
+    "label": {
+      "fontSize": "clamp(0.75rem, 1.5vw, 1.125rem)",
+      "fontWeight": "700",
+      "textTransform": "uppercase",
+      "letterSpacing": "0.1em",
+      "lineHeight": "1"
+    },
+    "massiveNumber": {
+      "fontSize": "clamp(6rem, 10vw, 12rem)",
+      "fontWeight": "700",
+      "textTransform": "uppercase",
+      "letterSpacing": "-0.05em",
+      "lineHeight": "0.8"
+    }
+  },
+  "spacing": {
+    "sectionPadding": "8rem",
+    "cardPadding": "2rem",
+    "elementGap": "2rem",
+    "tightGap": "1rem",
+    "displayGap": "1.5rem"
+  },
+  "components": {
+    "button": {
+      "base": {
+        "height": "56px",
+        "heightSmall": "40px",
+        "heightLarge": "80px",
+        "paddingX": "2rem",
+        "paddingXSmall": "1rem",
+        "paddingXLarge": "3rem",
+        "textTransform": "uppercase",
+        "letterSpacing": "-0.05em",
+        "fontWeight": "700",
+        "borderRadius": "0px",
+        "transition": "all 200-300ms ease-in-out"
+      },
+      "primary": {
+        "background": "#DFE104",
+        "color": "#000000",
+        "border": "none",
+        "hoverBackground": "#DFE104",
+        "hoverTransform": "scale(1.05)",
+        "activeTransform": "scale(0.95)",
+        "hoverShadow": "none"
+      },
+      "outline": {
+        "background": "transparent",
+        "color": "#FAFAFA",
+        "border": "2px solid #3F3F46",
+        "hoverBackground": "#FAFAFA",
+        "hoverColor": "#000000",
+        "hoverBorder": "2px solid #FAFAFA",
+        "hoverTransition": "instant (no duration)"
+      },
+      "ghost": {
+        "background": "transparent",
+        "color": "#FAFAFA",
+        "border": "none",
+        "hoverBackground": "transparent",
+        "hoverColor": "#DFE104"
+      }
+    },
+    "card": {
+      "background": "#09090B",
+      "border": "2px solid #3F3F46",
+      "hoverBackground": "#DFE104",
+      "hoverBorder": "#DFE104",
+      "hoverColor": "#000000",
+      "transitionDuration": "300ms"
+    },
+    "input": {
+      "height": "6rem",
+      "borderBottom": "2px solid #3F3F46",
+      "focusBorder": "#DFE104",
+      "fontSize": "2.25rem",
+      "fontWeight": "700",
+      "textTransform": "uppercase",
+      "letterSpacing": "-0.02em",
+      "placeholderColor": "#27272A"
+    },
+    "marquee": {
+      "fastSpeed": 80,
+      "slowSpeed": 40,
+      "gradient": false
+    }
+  },
+  "animations": {
+    "hover": {
+      "scaleUp": "1.05",
+      "scaleDown": "0.95",
+      "translateX": "2rem",
+      "duration": "300ms"
+    },
+    "scroll": {
+      "parallaxScale": "1.2",
+      "opacityRange": [1, 0]
+    },
+    "marquee": {
+      "easing": "linear",
+      "pauseOnHover": false
+    }
+  },
+  "responsive": {
+    "breakpoints": {
+      "mobile": "320px",
+      "tablet": "768px",
+      "desktop": "1024px",
+      "wide": "1440px"
+    },
+    "mobileFirst": true,
+    "touchTarget": "44px"
+  },
+  "accessibility": {
+    "prefersReducedMotion": true,
+    "focusIndicator": "2px solid #DFE104",
+    "contrastRatio": {
+      "primaryText": "15:1",
+      "accentOnBackground": "12:1",
+      "mutedText": "6:1"
+    }
+  }
+}

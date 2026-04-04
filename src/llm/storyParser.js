@@ -259,6 +259,7 @@ export const toGameScript = (dialogues) => {
     text: d.text,
     highlight: d.highlight,
     choices: d.choices, // 保留选项数据
+    scene: d.scene, // 保留场景切换数据
   }))
 }
 

@@ -10,6 +10,7 @@ import {
   getSkinList
 } from './musicPlayerSkinManager.js'
 import { kvStorage } from '../storage/index.js'
+import { isAndroid } from '../utils/platform.js'
 
 // 播放器状态
 const isExpanded = ref(false)
@@ -21,6 +22,7 @@ const volume = ref(80)
 const isMuted = ref(false)
 const showSettings = ref(false)
 const showSkinSelector = ref(false)
+const musicPlayerRef = ref(null)
 
 // 播放列表
 const playlist = ref([])
@@ -32,13 +34,118 @@ const skinList = ref([])
 const selectedSkinId = ref('default')
 
 // 拖动状态
-const playerPosition = ref({ x: 20, y: 20 }) // 默认位置（右下角偏移）
+const getDefaultPlayerPosition = () => {
+  if (typeof window === 'undefined') {
+    return { x: 20, y: 20 }
+  }
+
+  return {
+    x: Math.max(8, window.innerWidth - 64),
+    y: Math.max(8, window.innerHeight - 180),
+  }
+}
+
+const playerPosition = ref(getDefaultPlayerPosition())
 const isDragging = ref(false)
 const dragStartPos = ref({ x: 0, y: 0 })
 const playerStartPos = ref({ x: 0, y: 0 })
+const dragMoved = ref(false)
+const activePointerId = ref(null)
+const pointerCaptureTarget = ref(null)
+const isAndroidPlatform = computed(() => isAndroid())
 
 // 音频元素
 let audioElement = null
+const webAudioObjectUrls = new Set()
+
+const AUDIO_FILE_PATTERN = /\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i
+
+const clearWebAudioObjectUrls = () => {
+  webAudioObjectUrls.forEach((url) => {
+    try {
+      URL.revokeObjectURL(url)
+    } catch {
+      // ignore
+    }
+  })
+  webAudioObjectUrls.clear()
+}
+
+const isPlayableAudioFile = (file) => {
+  if (!file) return false
+  if (typeof file.type === 'string' && file.type.startsWith('audio/')) {
+    return true
+  }
+  const name = typeof file.name === 'string' ? file.name : ''
+  return AUDIO_FILE_PATTERN.test(name)
+}
+
+const pickAudioFiles = ({ directory = false } = {}) => {
+  if (typeof document === 'undefined') {
+    return Promise.resolve({ files: [], canceled: true })
+  }
+
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus'
+    input.multiple = true
+    input.style.position = 'fixed'
+    input.style.left = '-9999px'
+
+    if (directory) {
+      input.setAttribute('webkitdirectory', '')
+      input.setAttribute('directory', '')
+    }
+
+    let settled = false
+    const finish = (files, canceled = false) => {
+      if (settled) return
+      settled = true
+      window.removeEventListener('focus', handleFocus)
+      input.remove()
+      resolve({ files, canceled })
+    }
+
+    const handleFocus = () => {
+      window.setTimeout(() => {
+        if (!settled) {
+          const files = Array.from(input.files || [])
+          finish(files, files.length === 0)
+        }
+      }, 320)
+    }
+
+    input.addEventListener('change', () => {
+      finish(Array.from(input.files || []), false)
+    }, { once: true })
+
+    input.addEventListener('cancel', () => {
+      finish([], true)
+    }, { once: true })
+
+    window.addEventListener('focus', handleFocus, { once: true })
+    document.body.appendChild(input)
+    input.click()
+  })
+}
+
+const createPlaylistFromLocalFiles = (files) => {
+  const validFiles = Array.isArray(files) ? files.filter(isPlayableAudioFile) : []
+  if (validFiles.length === 0) {
+    return []
+  }
+
+  return validFiles.map((file, index) => {
+    const objectUrl = URL.createObjectURL(file)
+    return {
+      id: index,
+      name: file.name || `音频 ${index + 1}`,
+      path: objectUrl,
+      source: 'local-file-object',
+    }
+  })
+}
 
 // 当前播放曲目
 const currentTrack = computed(() => {
@@ -93,6 +200,7 @@ const loadBgmFolder = async () => {
     if (window.avgLLM?.bgm?.selectFolder) {
       const result = await window.avgLLM.bgm.selectFolder()
       if (result.success && result.files.length > 0) {
+        clearWebAudioObjectUrls()
         bgmFolderPath.value = result.folderPath
         playlist.value = result.files.map((file, index) => ({
           id: index,
@@ -104,7 +212,30 @@ const loadBgmFolder = async () => {
         // 自动播放第一首
         playTrack(0)
       }
+      return
     }
+
+    const picked = await pickAudioFiles({ directory: isAndroidPlatform.value })
+    if (picked.canceled || picked.files.length === 0) {
+      return
+    }
+
+    const localTracks = createPlaylistFromLocalFiles(picked.files)
+    if (localTracks.length === 0) {
+      return
+    }
+
+    clearWebAudioObjectUrls()
+    localTracks.forEach((track) => {
+      if (track.path) {
+        webAudioObjectUrls.add(track.path)
+      }
+    })
+    playlist.value = localTracks
+    bgmFolderPath.value = `已选择 ${localTracks.length} 个音频文件`
+    currentTrackIndex.value = 0
+    await saveBgmSettings()
+    await playTrack(0)
   } catch (error) {
     console.error('Failed to load BGM folder:', error)
   }
@@ -120,6 +251,16 @@ const playTrack = async (index) => {
   if (!audioElement) initAudio()
   
   try {
+    if (
+      track?.source === 'local-file-object' ||
+      (typeof track?.path === 'string' && (track.path.startsWith('blob:') || track.path.startsWith('data:audio')))
+    ) {
+      audioElement.src = track.path
+      await audioElement.play()
+      isPlaying.value = true
+      return
+    }
+
     // 使用 IPC 读取音频文件为 Base64，然后使用 data URL 播放
     if (window.avgLLM?.bgm?.readAudio) {
       const audioData = await window.avgLLM.bgm.readAudio(track.path)
@@ -131,17 +272,21 @@ const playTrack = async (index) => {
       }
     }
     
-    // 如果 Base64 方式失败，尝试使用自定义协议
-    audioElement.src = `local-file://${encodeURIComponent(track.path)}`
-    await audioElement.play()
-    isPlaying.value = true
+    if (track?.path) {
+      // 如果 Base64 方式失败，尝试使用自定义协议
+      audioElement.src = `local-file://${encodeURIComponent(track.path)}`
+      await audioElement.play()
+      isPlaying.value = true
+    }
   } catch (error) {
     console.error('Failed to play track:', error)
     // 尝试直接使用路径（在某些环境下可能有效）
     try {
-      audioElement.src = track.path
-      await audioElement.play()
-      isPlaying.value = true
+      if (track?.path) {
+        audioElement.src = track.path
+        await audioElement.play()
+        isPlaying.value = true
+      }
     } catch (e) {
       console.error('Fallback play also failed:', e)
     }
@@ -224,8 +369,11 @@ const loadBgmSettings = async () => {
   try {
     const settings = await kvStorage.get('bgm-settings')
     if (settings) {
-      volume.value = settings.volume || 80
+      volume.value = Number.isFinite(Number(settings.volume)) ? Number(settings.volume) : 80
       bgmFolderPath.value = settings.bgmFolderPath || ''
+      currentTrackIndex.value = Number.isFinite(Number(settings.currentTrackIndex))
+        ? Math.max(0, Number(settings.currentTrackIndex))
+        : 0
       
       // 如果有保存的文件夹路径，重新加载播放列表
       if (bgmFolderPath.value && window.avgLLM?.bgm?.loadFolder) {
@@ -246,6 +394,10 @@ const loadBgmSettings = async () => {
 
 // 切换展开状态
 const toggleExpand = () => {
+  if (dragMoved.value) {
+    dragMoved.value = false
+    return
+  }
   isExpanded.value = !isExpanded.value
   if (!isExpanded.value) {
     showSettings.value = false
@@ -261,10 +413,27 @@ const toggleSettings = () => {
 
 // 开始拖动
 const startDrag = (event) => {
+  if (typeof event.pointerId !== 'number') return
+  if (event.pointerType === 'mouse' && event.button !== 0) return
+
   // 如果是点击展开按钮，不触发拖动
   if (event.target.closest('.icon-btn')) return
   
+  activePointerId.value = event.pointerId
+  const captureTarget = event.currentTarget
+  if (captureTarget && typeof captureTarget.setPointerCapture === 'function') {
+    try {
+      captureTarget.setPointerCapture(event.pointerId)
+      pointerCaptureTarget.value = captureTarget
+    } catch {
+      pointerCaptureTarget.value = null
+    }
+  } else {
+    pointerCaptureTarget.value = null
+  }
+
   isDragging.value = true
+  dragMoved.value = false
   dragStartPos.value = {
     x: event.clientX,
     y: event.clientY
@@ -275,19 +444,27 @@ const startDrag = (event) => {
   }
   
   // 添加全局事件监听
-  document.addEventListener('mousemove', handleDrag)
-  document.addEventListener('mouseup', stopDrag)
+  document.addEventListener('pointermove', handleDrag)
+  document.addEventListener('pointerup', stopDrag)
+  document.addEventListener('pointercancel', stopDrag)
   
   // 阻止默认行为
-  event.preventDefault()
+  if (event.cancelable) {
+    event.preventDefault()
+  }
 }
 
 // 拖动中
 const handleDrag = (event) => {
   if (!isDragging.value) return
+  if (activePointerId.value !== null && event.pointerId !== activePointerId.value) return
   
   const deltaX = event.clientX - dragStartPos.value.x
   const deltaY = event.clientY - dragStartPos.value.y
+
+  if (!dragMoved.value && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
+    dragMoved.value = true
+  }
   
   // 计算新位置
   let newX = playerStartPos.value.x + deltaX
@@ -304,18 +481,65 @@ const handleDrag = (event) => {
   newY = Math.max(0, Math.min(newY, windowHeight - playerHeight))
   
   playerPosition.value = { x: newX, y: newY }
+
+  if (event.cancelable) {
+    event.preventDefault()
+  }
 }
 
 // 结束拖动
 const stopDrag = () => {
+  if (!isDragging.value) return
+
   isDragging.value = false
+  const pointerId = activePointerId.value
+  if (
+    pointerCaptureTarget.value &&
+    typeof pointerCaptureTarget.value.releasePointerCapture === 'function' &&
+    typeof pointerId === 'number'
+  ) {
+    try {
+      pointerCaptureTarget.value.releasePointerCapture(pointerId)
+    } catch {
+      // no-op
+    }
+  }
+  pointerCaptureTarget.value = null
+  activePointerId.value = null
   
   // 移除全局事件监听
-  document.removeEventListener('mousemove', handleDrag)
-  document.removeEventListener('mouseup', stopDrag)
+  document.removeEventListener('pointermove', handleDrag)
+  document.removeEventListener('pointerup', stopDrag)
+  document.removeEventListener('pointercancel', stopDrag)
   
   // 保存位置
   savePlayerPosition()
+}
+
+const collapsePlayer = () => {
+  if (!isExpanded.value) {
+    return
+  }
+  isExpanded.value = false
+  showSettings.value = false
+}
+
+const handleDocumentPointerDown = (event) => {
+  if (!isExpanded.value || isDragging.value) {
+    return
+  }
+
+  const root = musicPlayerRef.value
+  if (!root) {
+    return
+  }
+
+  const target = event.target
+  if (target instanceof Node && root.contains(target)) {
+    return
+  }
+
+  collapsePlayer()
 }
 
 // 保存播放器位置
@@ -334,9 +558,12 @@ const loadPlayerPosition = async () => {
       if (pos.x >= 0 && pos.x < windowWidth - 48 && pos.y >= 0 && pos.y < windowHeight - 48) {
         playerPosition.value = pos
       }
+    } else {
+      playerPosition.value = getDefaultPlayerPosition()
     }
   } catch {
     // 使用默认位置
+    playerPosition.value = getDefaultPlayerPosition()
   }
 }
 
@@ -391,6 +618,8 @@ onMounted(async () => {
   skinList.value = getSkinList()
   currentSkin.value = await initSkinSystem()
   selectedSkinId.value = getCurrentSkin().name === '默认皮肤' ? 'default' : 'neon-cyber'
+
+  document.addEventListener('pointerdown', handleDocumentPointerDown, true)
 })
 
 // 组件卸载
@@ -400,16 +629,20 @@ onUnmounted(() => {
     audioElement.src = ''
     audioElement = null
   }
+  clearWebAudioObjectUrls()
   // 清理拖动事件监听
-  document.removeEventListener('mousemove', handleDrag)
-  document.removeEventListener('mouseup', stopDrag)
+  document.removeEventListener('pointermove', handleDrag)
+  document.removeEventListener('pointerup', stopDrag)
+  document.removeEventListener('pointercancel', stopDrag)
+  document.removeEventListener('pointerdown', handleDocumentPointerDown, true)
 })
 </script>
 
 <template>
   <div
+    ref="musicPlayerRef"
     class="music-player"
-    :class="{ expanded: isExpanded, dragging: isDragging }"
+    :class="{ expanded: isExpanded, dragging: isDragging, 'is-android': isAndroidPlatform }"
     :style="{
       right: 'auto',
       bottom: 'auto',
@@ -423,7 +656,7 @@ onUnmounted(() => {
       v-if="!isExpanded"
       class="player-toggle-btn"
       :style="skinStyles.toggleButton"
-      @mousedown="startDrag"
+      @pointerdown="startDrag"
       @click="toggleExpand"
       title="音乐播放器（可拖动）"
     >
@@ -435,7 +668,7 @@ onUnmounted(() => {
     <!-- 展开状态 - 播放器面板 -->
     <div v-else class="player-panel" :style="skinStyles.panel">
       <!-- 头部（可拖动区域） -->
-      <div class="player-header" :style="skinStyles.header" @mousedown="startDrag">
+      <div class="player-header" :style="skinStyles.header" @pointerdown="startDrag">
         <span class="player-title">🎵 音乐播放器</span>
         <div class="header-actions">
           <button class="icon-btn" @click="toggleSettings" title="设置">
@@ -445,7 +678,7 @@ onUnmounted(() => {
           </button>
           <button class="icon-btn" @click="toggleExpand" title="收起">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              <path d="M19 13H5v-2h14v2z"/>
             </svg>
           </button>
         </div>
@@ -453,32 +686,34 @@ onUnmounted(() => {
       
       <!-- 设置面板 -->
       <div v-if="showSettings" class="settings-panel">
-        <div class="setting-row">
+        <div class="setting-row folder-row">
           <label>BGM文件夹:</label>
           <div class="folder-path">
             {{ bgmFolderPath || '未选择' }}
           </div>
-          <button class="btn-primary" @click="loadBgmFolder">选择文件夹</button>
+          <button class="btn-primary mp-compact-btn" @click="loadBgmFolder">选择文件夹</button>
         </div>
-        <div class="setting-row">
+        <div class="setting-row volume-row">
           <label>音量:</label>
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            :value="volume" 
-            @input="handleVolumeChange($event.target.value)"
-            class="volume-slider"
-          />
-          <span class="volume-value">{{ volume }}%</span>
-          <button class="icon-btn" @click="toggleMute" :title="isMuted ? '取消静音' : '静音'">
-            <svg v-if="isMuted" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-              <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
-            </svg>
-            <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-            </svg>
-          </button>
+          <div class="volume-controls">
+            <input 
+              type="range" 
+              min="0" 
+              max="100" 
+              :value="volume" 
+              @input="handleVolumeChange($event.target.value)"
+              class="volume-slider"
+            />
+            <span class="volume-value">{{ volume }}%</span>
+            <button class="icon-btn" @click="toggleMute" :title="isMuted ? '取消静音' : '静音'">
+              <svg v-if="isMuted" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+              </svg>
+            </button>
+          </div>
         </div>
         
         <!-- 皮肤选择 -->
@@ -585,6 +820,7 @@ onUnmounted(() => {
   justify-content: center;
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
   transition: all 0.3s ease;
+  touch-action: none;
 }
 
 .player-toggle-btn:hover {
@@ -614,6 +850,7 @@ onUnmounted(() => {
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   cursor: grab;
+  touch-action: none;
 }
 
 .player-header:active {
@@ -677,6 +914,14 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
   min-width: 80px;
+}
+
+.volume-controls {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .skin-selector {
@@ -760,6 +1005,233 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
   min-width: 40px;
+}
+
+.music-player.is-android .player-panel {
+  width: min(calc(100vw - 16px), 340px);
+  max-height: min(72vh, 500px);
+  padding: 10px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.music-player.is-android .player-header {
+  margin-bottom: 0;
+  padding-bottom: 8px;
+}
+
+.music-player.is-android .header-actions {
+  gap: 4px;
+}
+
+.music-player.is-android .icon-btn {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.music-player.is-android .icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.music-player.is-android .player-title {
+  font-size: 12px;
+}
+
+.music-player.is-android .settings-panel {
+  margin-bottom: 0;
+  padding: 8px;
+  max-height: min(34vh, 280px);
+  overflow-y: auto;
+}
+
+.music-player.is-android .setting-row {
+  margin-bottom: 8px;
+}
+
+.music-player.is-android .setting-row:last-child {
+  margin-bottom: 0;
+}
+
+.music-player.is-android .folder-row {
+  align-items: stretch;
+  gap: 6px;
+}
+
+.music-player.is-android .folder-row label {
+  min-width: 0;
+  width: 100%;
+}
+
+.music-player.is-android .folder-path {
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.music-player.is-android .folder-row .btn-primary {
+  width: auto;
+  min-height: 26px;
+  padding: 4px 8px;
+  font-size: 10px;
+  border-radius: 6px;
+  align-self: flex-start;
+  box-shadow: none;
+  background: #667eea;
+}
+
+.music-player.is-android .folder-row .btn-primary:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.music-player.is-android .volume-row {
+  align-items: stretch;
+  gap: 6px;
+}
+
+.music-player.is-android .volume-row label {
+  min-width: 0;
+  width: 100%;
+}
+
+.music-player.is-android .volume-controls {
+  width: 100%;
+}
+
+.music-player.is-android .volume-slider {
+  min-width: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.music-player.is-android .volume-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.music-player.is-android .volume-slider::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: -4.5px;
+  border: 2px solid rgba(20, 20, 30, 0.9);
+  background: #7b8bff;
+}
+
+.music-player.is-android .volume-slider::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.music-player.is-android .volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(20, 20, 30, 0.9);
+  border-radius: 50%;
+  background: #7b8bff;
+}
+
+.music-player.is-android .volume-value {
+  min-width: 36px;
+  font-size: 10px;
+  text-align: right;
+}
+
+.music-player.is-android .skin-options {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.music-player.is-android .skin-option {
+  width: auto;
+  min-height: 22px;
+  padding: 2px 7px;
+  font-size: 10px;
+  border-radius: 999px;
+  text-align: center;
+}
+
+.music-player.is-android .track-info,
+.music-player.is-android .progress-section,
+.music-player.is-android .controls {
+  margin-bottom: 0;
+}
+
+.music-player.is-android .track-name {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.music-player.is-android .track-status {
+  font-size: 10px;
+}
+
+.music-player.is-android .progress-section {
+  gap: 6px;
+}
+
+.music-player.is-android .time-display {
+  min-width: 34px;
+  font-size: 10px;
+}
+
+.music-player.is-android .controls {
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.music-player.is-android .control-btn {
+  width: 30px;
+  height: 30px;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.music-player.is-android .play-btn {
+  width: 34px;
+  height: 34px;
+  aspect-ratio: 1 / 1;
+  background: #667eea;
+  box-shadow: none;
+}
+
+.music-player.is-android .control-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.music-player.is-android .play-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.music-player.is-android .playlist {
+  max-height: min(20vh, 140px);
+  padding-top: 8px;
+}
+
+.music-player.is-android .playlist-item {
+  padding: 6px 8px;
+}
+
+.music-player.is-android .track-title {
+  font-size: 10px;
 }
 
 .track-info {
@@ -945,103 +1417,147 @@ onUnmounted(() => {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
-  .music-player-plugin {
-    /* 移动端固定在底部 */
-    position: fixed !important;
-    left: auto !important;
-    top: auto !important;
-    right: 10px;
-    bottom: 60px;
+  .music-player {
+    z-index: 1200;
   }
 
-  .player-trigger {
+  .player-toggle-btn {
     width: 44px;
     height: 44px;
-    font-size: 1.3rem;
   }
 
-  .player-container {
-    width: calc(100vw - 20px);
-    max-width: 300px;
-    right: 0;
-    bottom: 54px;
-    left: auto;
-    top: auto;
-    border-radius: 16px;
+  .player-panel {
+    width: min(92vw, 320px);
+    max-height: min(64vh, 440px);
+    padding: 12px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .player-header {
-    padding: 10px 12px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    cursor: default;
+  }
+
+  .player-header:active {
+    cursor: default;
   }
 
   .player-title {
     font-size: 13px;
   }
 
-  .player-body {
-    padding: 12px;
+  .header-actions {
+    gap: 6px;
+  }
+
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border-radius: 7px;
+  }
+
+  .settings-panel {
+    padding: 10px;
+    margin-bottom: 10px;
+    max-height: 34vh;
+    overflow-y: auto;
+  }
+
+  .setting-row {
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .setting-row label {
+    min-width: 58px;
+    font-size: 11px;
+  }
+
+  .btn-primary {
+    width: 100%;
+    min-height: 34px;
+    padding: 8px 10px;
+  }
+
+  .folder-path {
+    width: 100%;
+    min-width: 0;
+    font-size: 10px;
   }
 
   .track-name {
     font-size: 13px;
   }
 
+  .track-status {
+    font-size: 11px;
+  }
+
+  .progress-section {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .time-display {
+    min-width: 34px;
+    font-size: 10px;
+  }
+
   .controls {
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 10px;
   }
 
   .control-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 1rem;
+    width: 38px;
+    height: 38px;
   }
 
   .play-btn {
-    width: 48px;
-    height: 48px;
+    width: 46px;
+    height: 46px;
   }
 
   .playlist {
-    max-height: 150px;
+    max-height: 120px;
+    padding-top: 10px;
   }
 
-  .settings-row {
-    flex-wrap: wrap;
-    gap: 8px;
+  .playlist-title {
+    margin-bottom: 6px;
   }
 
-  .folder-path {
-    font-size: 10px;
-    min-width: 60px;
+  .playlist-item {
+    padding: 7px 8px;
+  }
+
+  .track-title {
+    font-size: 11px;
   }
 }
 
 /* 横屏模式 */
 @media (max-width: 768px) and (orientation: landscape) {
-  .music-player-plugin {
-    bottom: 10px;
-    right: 10px;
-  }
-
-  .player-container {
-    width: 280px;
-    max-height: calc(100vh - 60px);
-  }
-
-  .player-body {
-    padding: 8px 10px;
+  .player-panel {
+    width: min(80vw, 300px);
+    max-height: 72vh;
+    padding: 10px;
+    border-radius: 10px;
   }
 
   .controls {
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
 
   .control-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 0.8rem;
+    width: 34px;
+    height: 34px;
   }
 
   .play-btn {
@@ -1050,21 +1566,29 @@ onUnmounted(() => {
   }
 
   .playlist {
-    max-height: 100px;
+    max-height: 96px;
+  }
+
+  .settings-panel {
+    max-height: 30vh;
   }
 }
 
 /* 超小屏幕 */
 @media (max-width: 480px) {
-  .player-container {
-    width: calc(100vw - 16px);
-    max-width: 260px;
+  .player-panel {
+    width: min(94vw, 286px);
+    max-height: min(66vh, 440px);
+    padding: 10px;
   }
 
-  .player-trigger {
+  .player-toggle-btn {
     width: 40px;
     height: 40px;
-    font-size: 1.1rem;
+  }
+
+  .player-title {
+    font-size: 12px;
   }
 
   .track-name {

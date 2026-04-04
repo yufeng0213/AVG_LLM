@@ -4,6 +4,7 @@
  */
 
 import { ref, computed } from 'vue'
+import { kvStorage } from '../storage/index.js'
 
 // 背景文件夹路径
 export const backgroundFolderPath = ref(null)
@@ -22,12 +23,180 @@ const backgroundCache = new Map()
 
 // 默认背景路径
 const DEFAULT_BACKGROUND = null
+const MOBILE_BACKGROUND_STORAGE_KEY = 'mobile_background_assets'
 
 /**
  * 检查是否在 Electron 环境中
  */
 const isElectronEnv = () => {
   return window.avgLLM?.background?.scanFolder && window.avgLLM?.background?.readImage
+}
+
+const isDataImageUrl = (value) => {
+  return typeof value === 'string' && value.startsWith('data:image')
+}
+
+const isHttpImageUrl = (value) => {
+  return typeof value === 'string' && (/^https?:\/\//i).test(value)
+}
+
+const isImageFile = (file) => {
+  if (!file) return false
+  const type = String(file.type || '').toLowerCase()
+  if (type.startsWith('image/')) {
+    return true
+  }
+
+  const name = String(file.name || '').toLowerCase()
+  return /\.(png|jpe?g|webp|gif|bmp|avif|svg)$/.test(name)
+}
+
+const readFileAsDataUrl = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(reader.error || new Error('读取文件失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
+const normalizeBackgroundEntry = (raw, index = 0) => {
+  const name = String(raw?.name || `背景_${index + 1}.png`)
+  const path = String(raw?.path || '')
+  if (!path) {
+    return null
+  }
+
+  const id = String(raw?.id || generateBackgroundId(name))
+  const label = String(raw?.label || generateBackgroundLabel(name))
+  return { id, name, path, label }
+}
+
+const normalizeWorldBookBackgroundAsset = (raw, index = 0) => {
+  const path = String(raw?.path || '').trim()
+  if (!path) return null
+
+  const name = String(raw?.name || `背景_${index + 1}`)
+  const id = String(raw?.id || generateBackgroundId(name))
+  const label = String(raw?.label || generateBackgroundLabel(name))
+  return { id, name, path, label }
+}
+
+const saveMobileBackgrounds = async () => {
+  try {
+    const files = backgroundList.value
+      .map((item, index) => normalizeBackgroundEntry(item, index))
+      .filter(Boolean)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        path: item.path,
+        label: item.label,
+      }))
+
+    await kvStorage.set(MOBILE_BACKGROUND_STORAGE_KEY, {
+      path: String(backgroundFolderPath.value || '移动端背景导入'),
+      files,
+      updatedAt: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.warn('保存移动端背景列表失败:', error)
+  }
+}
+
+const restoreMobileBackgrounds = async () => {
+  try {
+    const saved = await kvStorage.get(MOBILE_BACKGROUND_STORAGE_KEY)
+    if (!saved || !Array.isArray(saved.files) || saved.files.length === 0) {
+      return { success: false, error: 'NO_MOBILE_BACKGROUNDS' }
+    }
+
+    const normalized = saved.files
+      .map((item, index) => normalizeBackgroundEntry(item, index))
+      .filter(Boolean)
+
+    if (normalized.length === 0) {
+      return { success: false, error: 'INVALID_MOBILE_BACKGROUNDS' }
+    }
+
+    backgroundFolderPath.value = String(saved.path || '移动端背景导入')
+    backgroundList.value = normalized
+    await loadDefaultBackground()
+
+    return {
+      success: true,
+      path: backgroundFolderPath.value,
+      files: normalized,
+    }
+  } catch (error) {
+    console.warn('恢复移动端背景列表失败:', error)
+    return { success: false, error: error?.message || 'RESTORE_MOBILE_BACKGROUNDS_FAILED' }
+  }
+}
+
+export const loadBackgroundFiles = async (files, sourceLabel = '移动端背景导入') => {
+  if (!Array.isArray(files) || files.length === 0) {
+    return { success: false, canceled: true, error: 'NO_FILES' }
+  }
+
+  const imageFiles = files.filter(isImageFile)
+  if (imageFiles.length === 0) {
+    return { success: false, error: 'NO_IMAGE_FILES' }
+  }
+
+  const idCounter = new Map()
+  const loadedFiles = []
+
+  for (const file of imageFiles) {
+    const name = String(file?.name || `背景_${loadedFiles.length + 1}.png`)
+    const dataUrl = await readFileAsDataUrl(file)
+    const baseId = generateBackgroundId(name)
+    const seenCount = idCounter.get(baseId) || 0
+    idCounter.set(baseId, seenCount + 1)
+    const id = seenCount === 0 ? baseId : `${baseId}_${seenCount + 1}`
+
+    loadedFiles.push({
+      id,
+      name,
+      path: dataUrl,
+      label: generateBackgroundLabel(name),
+    })
+  }
+
+  backgroundFolderPath.value = String(sourceLabel || '移动端背景导入')
+  backgroundList.value = loadedFiles
+  await loadDefaultBackground()
+  await saveMobileBackgrounds()
+
+  return {
+    success: true,
+    path: backgroundFolderPath.value,
+    files: loadedFiles,
+  }
+}
+
+export const applyWorldBookBackgroundAssets = async (assets, sourceLabel = '世界书背景') => {
+  if (!Array.isArray(assets) || assets.length === 0) {
+    return { success: false, error: 'NO_WORLD_BOOK_BACKGROUND_ASSETS' }
+  }
+
+  const normalized = assets
+    .map((item, index) => normalizeWorldBookBackgroundAsset(item, index))
+    .filter(Boolean)
+
+  if (normalized.length === 0) {
+    return { success: false, error: 'INVALID_WORLD_BOOK_BACKGROUND_ASSETS' }
+  }
+
+  backgroundFolderPath.value = String(sourceLabel || '世界书背景')
+  backgroundList.value = normalized
+  await loadDefaultBackground()
+
+  return {
+    success: true,
+    path: backgroundFolderPath.value,
+    files: normalized,
+  }
 }
 
 /**
@@ -37,7 +206,12 @@ const isElectronEnv = () => {
  */
 export const loadBackgroundFolder = async (folderPath = null) => {
   if (!isElectronEnv()) {
-    console.warn('背景 API 不可用，请在 Electron 环境中运行')
+    const restored = await restoreMobileBackgrounds()
+    if (restored.success) {
+      return restored
+    }
+
+    console.warn('背景 API 不可用，且未找到移动端已导入背景')
     return { success: false, error: 'NOT_ELECTRON_ENV' }
   }
 
@@ -95,6 +269,13 @@ export const switchBackground = async (scene) => {
   // 检查缓存
   if (backgroundCache.has(backgroundFile.path)) {
     currentBackgroundUrl.value = backgroundCache.get(backgroundFile.path)
+    currentScene.value = scene
+    return { success: true }
+  }
+
+  if (isHttpImageUrl(backgroundFile.path)) {
+    backgroundCache.set(backgroundFile.path, backgroundFile.path)
+    currentBackgroundUrl.value = backgroundFile.path
     currentScene.value = scene
     return { success: true }
   }
@@ -171,6 +352,12 @@ const loadDefaultBackground = async () => {
     currentBackgroundUrl.value = backgroundCache.get(defaultFile.path)
     return
   }
+
+  if (isHttpImageUrl(defaultFile.path)) {
+    backgroundCache.set(defaultFile.path, defaultFile.path)
+    currentBackgroundUrl.value = defaultFile.path
+    return
+  }
   
   // 读取默认背景图片
   try {
@@ -219,6 +406,19 @@ const findBackgroundFile = (backgroundIdOrName) => {
  * @returns {Promise<Object>} 读取结果
  */
 const readBackgroundImage = async (filePath) => {
+  if (isDataImageUrl(filePath)) {
+    const match = String(filePath).match(/^data:(image\/[^;]+);base64,(.+)$/)
+    if (match) {
+      return {
+        success: true,
+        mimeType: match[1],
+        base64: match[2],
+      }
+    }
+
+    return { success: false, error: 'INVALID_DATA_URL' }
+  }
+
   if (!isElectronEnv()) {
     return { success: false, error: 'NOT_ELECTRON_ENV' }
   }

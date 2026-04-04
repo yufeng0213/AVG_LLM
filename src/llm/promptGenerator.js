@@ -9,6 +9,7 @@ import { EMOTION_PRESETS } from '../worldbook/emotionPresets'
  * 生成完整的剧情生成 Prompt
  * @param {Object} params - 参数对象
  * @param {Object} params.worldBook - 世界书数据
+ * @param {Object} params.narratorProfile - 叙事者配置（可选）
  * @param {Array} params.dialogueHistory - 对话历史
  * @param {Object} params.currentLine - 当前对话行
  * @param {Array} params.sceneCharacters - 场景角色列表
@@ -17,7 +18,7 @@ import { EMOTION_PRESETS } from '../worldbook/emotionPresets'
  * @returns {string} 完整的 prompt
  */
 export const buildStoryPrompt = (params) => {
-  const { worldBook, dialogueHistory, currentLine, sceneCharacters, userInput, messageCount = 3, selectedChoice } = params
+  const { worldBook, narratorProfile, dialogueHistory, currentLine, sceneCharacters, userInput, messageCount = 3, selectedChoice } = params
 
   const sections = []
 
@@ -26,17 +27,22 @@ export const buildStoryPrompt = (params) => {
     sections.push(buildWorldSettingSection(worldBook))
   }
 
-  // 2. 角色信息部分
+  // 2. 叙事者风格部分
+  if (narratorProfile) {
+    sections.push(buildNarratorSection(narratorProfile))
+  }
+
+  // 3. 角色信息部分
   if (sceneCharacters && sceneCharacters.length > 0) {
     sections.push(buildCharactersSection(worldBook, sceneCharacters))
   }
 
-  // 3. 当前剧情上下文
+  // 4. 当前剧情上下文
   if (dialogueHistory && dialogueHistory.length > 0) {
     sections.push(buildDialogueHistorySection(dialogueHistory, currentLine))
   }
 
-  // 4. 用户指令（包含消息条数和选择的选项）
+  // 5. 用户指令（包含消息条数和选择的选项）
   sections.push(buildInstructionSection(userInput, messageCount, selectedChoice, worldBook))
 
   return sections.filter(Boolean).join('\n\n---\n\n')
@@ -303,4 +309,30 @@ export const buildQuickPrompt = (worldBook, recentLines) => {
 export default {
   buildStoryPrompt,
   buildQuickPrompt,
+}
+
+const buildNarratorSection = (narratorProfile) => {
+  const lines = ['## 叙事者风格']
+
+  if (narratorProfile.name) {
+    lines.push(`**叙事者**: ${narratorProfile.name}`)
+  }
+
+  if (narratorProfile.summary) {
+    lines.push(`**风格定位**: ${narratorProfile.summary}`)
+  }
+
+  if (narratorProfile.stylePrompt && narratorProfile.stylePrompt.trim()) {
+    lines.push('')
+    lines.push('### 文风要求')
+    lines.push(narratorProfile.stylePrompt.trim())
+  }
+
+  if (narratorProfile.instructionPrompt && narratorProfile.instructionPrompt.trim()) {
+    lines.push('')
+    lines.push('### 叙事约束')
+    lines.push(narratorProfile.instructionPrompt.trim())
+  }
+
+  return lines.join('\n')
 }

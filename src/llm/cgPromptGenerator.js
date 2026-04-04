@@ -79,7 +79,7 @@ export const generateCGPrompt = async (params) => {
   const userPrompt = buildUserPrompt(sceneContext, userInstruction)
 
   // 获取 API 配置
-  const config = getActiveApiConfig()
+  const config = await getActiveApiConfig()
   if (!config) {
     return {
       success: false,
