@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { onMounted, ref } from 'vue'
 import {
   applyThemeById,
@@ -206,46 +206,5 @@ onMounted(async () => {
   </section>
 </template>
 
-<style scoped>
-.theme-summary {
-  margin: 0;
-  font-size: 0.9rem;
-  color: color-mix(in srgb, var(--foreground) 88%, var(--accent-cyan));
-}
+<style scoped src="./ThemeSettingsPanel.css"></style>
 
-.import-section {
-  margin-top: 1rem;
-}
-
-.import-file-area {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.import-file-row {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.file-input-hidden {
-  display: none;
-}
-
-.import-file-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.import-icon {
-  font-size: 1.1rem;
-}
-
-.import-hint {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-</style>

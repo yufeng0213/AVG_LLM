@@ -1,0 +1,31 @@
+﻿.settings-subpanel {
+  margin: 8px 0 14px;
+  padding: 14px;
+  border: 2px solid color-mix(in srgb, var(--accent-cyan) 45%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
+}
+
+.subpanel-title {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent-cyan);
+}
+
+.settings-grid.three-column {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-grid.four-column {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .settings-grid.three-column,
+  .settings-grid.four-column {
+    grid-template-columns: 1fr;
+  }
+}
+

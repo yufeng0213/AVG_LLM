@@ -15,10 +15,7 @@ import {
   DUNGEON_MAP_MAX_SIZE,
   DUNGEON_MAP_MIN_SIZE,
   DUNGEON_TILE_BOSS,
-  DUNGEON_TILE_EMPTY,
-  DUNGEON_TILE_EXIT,
   DUNGEON_TILE_MONSTER,
-  DUNGEON_TILE_START,
   DUNGEON_TILE_TREASURE,
 } from './logic/dungeonMapEngine.js'
 
@@ -39,6 +36,8 @@ const EQUIPMENT_PITY_LIMIT = 70
 const MAX_LOG_COUNT = 420
 const MAX_TEAMMATE_COUNT = 240
 const MAX_EQUIPMENT_COUNT = 360
+const MAX_BACKPACK_ITEM_COUNT = 240
+const MAX_BACKPACK_ITEM_STACK = 99
 const MAX_CAMPFIRE_COMPANIONS = MAX_TEAMMATE_COUNT
 const MAX_CAMPFIRE_VISIBLE = 4
 const MAX_CAMPFIRE_LLM_COUNT = 48
@@ -152,6 +151,7 @@ const campfireFieldRef = ref(null)
 const currentView = ref('home')
 const draggingCampfireKey = ref('')
 const selectedPartyMemberId = ref('')
+const selectedBackpackItemKey = ref('')
 
 const VIEW_LABELS = {
   home: '营地',
@@ -184,7 +184,6 @@ const {
   normalizeDungeonMap,
   countDungeonBossRemainingByMap,
   cloneDungeonMapState,
-  findDungeonCellIndex,
   isDungeonMapUsable,
   createLocalDungeonMapDraft,
 } = createDungeonMapRuntime({
@@ -479,6 +478,135 @@ const getCampfireSpriteSrc = (camper, index = 0) => {
   return uri
 }
 
+const sortTeammatesByPower = (list = []) => {
+  const teammates = Array.isArray(list) ? list : []
+  return [...teammates].sort((a, b) => {
+    if ((b.power || 0) !== (a.power || 0)) return (b.power || 0) - (a.power || 0)
+    return rarityValue(b.rarity) - rarityValue(a.rarity)
+  })
+}
+
+const resolvePartyMemberLevelByState = (targetState, member, index = 0) => {
+  const teamLevel = clampInt(targetState?.level, 1, 999, 1)
+  const power = clampInt(member?.power, 1, 9999, 20 + index * 4)
+  const delta = Math.floor((power - 36) / 26)
+  return clampInt(teamLevel + delta, 1, 999, teamLevel)
+}
+
+const resolvePartyMemberMaxHpByState = (targetState, member, index = 0) => {
+  const level = resolvePartyMemberLevelByState(targetState, member, index)
+  const power = clampInt(member?.power, 1, 9999, 36)
+  return clampInt(Math.round(90 + level * 10 + power * 2.4), 1, 999999, 120)
+}
+
+const normalizeConsumableEffectType = (rawValue, fallback = 'heal_hp') => {
+  const text = String(rawValue || '').trim().toLowerCase()
+  if (text === 'heal_hp' || text === 'heal' || text === 'hp' || text === 'recover') return 'heal_hp'
+  return fallback
+}
+
+const normalizeConsumableTarget = (rawValue, fallback = 'ally') => {
+  const text = String(rawValue || '').trim().toLowerCase()
+  if (text === 'ally') return 'ally'
+  return fallback
+}
+
+const buildBackpackStackKey = (item) => {
+  const effectType = normalizeConsumableEffectType(item?.effectType, 'heal_hp')
+  const target = normalizeConsumableTarget(item?.target, 'ally')
+  const value = clampInt(item?.value, 1, 9999, 20)
+  const name = String(item?.name || '').trim().slice(0, 24) || '回复道具'
+  return `${name}|${effectType}|${target}|${value}`
+}
+
+const normalizeBackpackItem = (rawValue, index = 0) => {
+  if (!rawValue || typeof rawValue !== 'object') return null
+  const effectType = normalizeConsumableEffectType(rawValue.effectType || rawValue.type || rawValue.effect, 'heal_hp')
+  const target = normalizeConsumableTarget(rawValue.target || rawValue.targetType, 'ally')
+  const value = clampInt(rawValue.value ?? rawValue.effectValue ?? rawValue.hp, 1, 9999, 20)
+  const amount = clampInt(rawValue.amount ?? rawValue.count ?? rawValue.quantity, 1, MAX_BACKPACK_ITEM_STACK, 1)
+  const name = String(rawValue.name || `回复药剂${index + 1}`).trim().slice(0, 24) || `回复药剂${index + 1}`
+  const descFallback = effectType === 'heal_hp' ? `恢复 ${value} 点生命` : '可在战斗中使用'
+  const desc = String(rawValue.desc || rawValue.description || descFallback).trim().slice(0, 40) || descFallback
+  const normalized = {
+    id: String(rawValue.id || makeId('bag')).trim().slice(0, 80) || makeId('bag'),
+    name,
+    effectType,
+    target,
+    value,
+    amount,
+    desc,
+  }
+  return {
+    ...normalized,
+    stackKey: buildBackpackStackKey(normalized),
+  }
+}
+
+const normalizeBackpackItems = (rawList) => {
+  const list = Array.isArray(rawList) ? rawList : []
+  const stackMap = new Map()
+  for (let index = 0; index < list.length; index += 1) {
+    const normalized = normalizeBackpackItem(list[index], index)
+    if (!normalized) continue
+    const prev = stackMap.get(normalized.stackKey)
+    if (!prev) {
+      stackMap.set(normalized.stackKey, normalized)
+      continue
+    }
+    prev.amount = clampInt(prev.amount + normalized.amount, 1, MAX_BACKPACK_ITEM_STACK, prev.amount)
+  }
+  return [...stackMap.values()]
+    .slice(0, MAX_BACKPACK_ITEM_COUNT)
+    .map((item) => ({ ...item }))
+}
+
+const mergeBackpackItems = (baseList, incomingList) => normalizeBackpackItems([...(Array.isArray(baseList) ? baseList : []), ...(Array.isArray(incomingList) ? incomingList : [])])
+
+const normalizePartyMemberHpMap = (rawMap, targetState) => {
+  const source = rawMap && typeof rawMap === 'object' ? rawMap : {}
+  const teammates = sortTeammatesByPower(targetState?.teammates)
+  const ratio = Math.max(0, Math.min(1, (Number(targetState?.hp) || 0) / Math.max(1, Number(targetState?.maxHp) || 1)))
+  const result = {}
+  teammates.forEach((member, index) => {
+    const maxHp = resolvePartyMemberMaxHpByState(targetState, member, index)
+    const rawHp = Number(source?.[member.id])
+    if (Number.isFinite(rawHp)) {
+      result[member.id] = clampInt(rawHp, 0, maxHp, maxHp)
+      return
+    }
+    result[member.id] = clampInt(Math.round(maxHp * ratio), 0, maxHp, maxHp)
+  })
+  return result
+}
+
+const syncPartyMemberHpMapByGlobalHp = (targetState) => {
+  const ratio = Math.max(0, Math.min(1, (Number(targetState?.hp) || 0) / Math.max(1, Number(targetState?.maxHp) || 1)))
+  const teammates = sortTeammatesByPower(targetState?.teammates)
+  const map = {}
+  teammates.forEach((member, index) => {
+    const maxHp = resolvePartyMemberMaxHpByState(targetState, member, index)
+    map[member.id] = clampInt(Math.round(maxHp * ratio), 0, maxHp, maxHp)
+  })
+  targetState.partyMemberHpMap = map
+}
+
+const rebuildGlobalHpFromPartyMemberHpMap = (targetState) => {
+  const activeMembers = sortTeammatesByPower(targetState?.teammates).slice(0, 4)
+  if (activeMembers.length < 1) return
+  const map = targetState?.partyMemberHpMap && typeof targetState.partyMemberHpMap === 'object'
+    ? targetState.partyMemberHpMap
+    : {}
+  let ratioSum = 0
+  activeMembers.forEach((member, index) => {
+    const maxHp = resolvePartyMemberMaxHpByState(targetState, member, index)
+    const hp = clampInt(map[member.id], 0, maxHp, maxHp)
+    ratioSum += maxHp > 0 ? hp / maxHp : 1
+  })
+  const avgRatio = Math.max(0, Math.min(1, ratioSum / activeMembers.length))
+  targetState.hp = clampInt(Math.round((Number(targetState?.maxHp) || 1) * avgRatio), 0, targetState.maxHp, targetState.hp)
+}
+
 const buildDefaultState = () => ({
   floor: 1,
   level: 1,
@@ -505,6 +633,8 @@ const buildDefaultState = () => ({
   campfireCompanions: [],
   campfireLayout: {},
   equipments: [],
+  backpackItems: [],
+  partyMemberHpMap: {},
   equipped: {
     weapon: null,
     armor: null,
@@ -532,6 +662,33 @@ const applyAutoEquip = (targetState) => {
   }
 }
 
+const buildGuaranteedLocalDungeonMap = (targetState, maxAttempts = 4) => {
+  const floor = clampInt(targetState?.floor, 1, 999, 1)
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const draft = createLocalDungeonMapDraft({ floor })
+    const normalized = normalizeDungeonMap(draft, floor)
+    if (isDungeonMapUsable(normalized)) {
+      return normalized
+    }
+  }
+  return normalizeDungeonMap({
+    id: makeId('map-fallback'),
+    floor,
+    theme: '灰烬地宫',
+    width: 5,
+    height: 5,
+    start: { x: 0, y: 4 },
+    exit: { x: 4, y: 0 },
+    player: { x: 0, y: 4 },
+    tiles: [
+      { x: 1, y: 4, type: DUNGEON_TILE_MONSTER },
+      { x: 2, y: 3, type: DUNGEON_TILE_MONSTER },
+      { x: 3, y: 2, type: DUNGEON_TILE_BOSS },
+      { x: 2, y: 1, type: DUNGEON_TILE_TREASURE },
+    ],
+  }, floor)
+}
+
 const normalizeState = (rawValue) => {
   const defaults = buildDefaultState()
   if (!rawValue || typeof rawValue !== 'object') {
@@ -547,12 +704,15 @@ const normalizeState = (rawValue) => {
   }
   const campfireCompanions = normalizeCampfireCompanionList(rawValue.campfireCompanions)
   const campfireLayout = normalizeCampfireLayoutMap(rawValue.campfireLayout)
-  const dungeonMap = normalizeDungeonMap(rawValue.dungeonMap, clampInt(rawValue.floor, 1, 999, defaults.floor))
+  const floor = clampInt(rawValue.floor, 1, 999, defaults.floor)
+  const normalizedDungeonMap = normalizeDungeonMap(rawValue.dungeonMap, floor)
+  const dungeonMap = isDungeonMapUsable(normalizedDungeonMap) ? normalizedDungeonMap : null
 
   const equipments = (Array.isArray(rawValue.equipments) ? rawValue.equipments : [])
     .map((item, index) => normalizeEquipment(item, index))
     .filter(Boolean)
     .slice(-MAX_EQUIPMENT_COUNT)
+  const backpackItems = normalizeBackpackItems(rawValue.backpackItems)
 
   const logs = (Array.isArray(rawValue.logs) ? rawValue.logs : [])
     .map((item) => String(item || '').trim())
@@ -563,7 +723,7 @@ const normalizeState = (rawValue) => {
   }
 
   const next = {
-    floor: clampInt(rawValue.floor, 1, 999, defaults.floor),
+    floor,
     level: clampInt(rawValue.level, 1, 999, defaults.level),
     exp: clampInt(rawValue.exp, 0, 999999, defaults.exp),
     hp: clampInt(rawValue.hp, 1, 999999, defaults.hp),
@@ -580,6 +740,7 @@ const normalizeState = (rawValue) => {
     campfireCompanions,
     campfireLayout,
     equipments,
+    backpackItems,
     equipped: {
       weapon: normalizeEquipment(rawValue?.equipped?.weapon || null),
       armor: normalizeEquipment(rawValue?.equipped?.armor || null),
@@ -596,6 +757,7 @@ const normalizeState = (rawValue) => {
   if (next.hp > next.maxHp) {
     next.hp = next.maxHp
   }
+  next.partyMemberHpMap = normalizePartyMemberHpMap(rawValue.partyMemberHpMap, next)
 
   applyAutoEquip(next)
   return next
@@ -606,10 +768,7 @@ const storageScopeKey = computed(() => resolveStorageScopeKey())
 
 const dungeonPartySorted = computed(() => {
   const list = Array.isArray(state.value.teammates) ? state.value.teammates : []
-  return [...list].sort((a, b) => {
-    if ((b.power || 0) !== (a.power || 0)) return (b.power || 0) - (a.power || 0)
-    return rarityValue(b.rarity) - rarityValue(a.rarity)
-  })
+  return sortTeammatesByPower(list)
 })
 
 const dungeonActiveParty = computed(() => dungeonPartySorted.value.slice(0, 4))
@@ -624,20 +783,22 @@ const dungeonActivePartySlots = computed(() => {
 })
 
 const resolvePartyMemberLevel = (member, index = 0) => {
-  const teamLevel = clampInt(state.value.level, 1, 999, 1)
-  const power = clampInt(member?.power, 1, 9999, 20 + index * 4)
-  const delta = Math.floor((power - 36) / 26)
-  return clampInt(teamLevel + delta, 1, 999, teamLevel)
+  return resolvePartyMemberLevelByState(state.value, member, index)
 }
 
 const resolvePartyMemberMaxHp = (member, index = 0) => {
-  const level = resolvePartyMemberLevel(member, index)
-  const power = clampInt(member?.power, 1, 9999, 36)
-  return clampInt(Math.round(90 + level * 10 + power * 2.4), 1, 999999, 120)
+  return resolvePartyMemberMaxHpByState(state.value, member, index)
 }
 
 const resolvePartyMemberHp = (member, index = 0) => {
   const maxHp = resolvePartyMemberMaxHp(member, index)
+  const map = state.value?.partyMemberHpMap && typeof state.value.partyMemberHpMap === 'object'
+    ? state.value.partyMemberHpMap
+    : {}
+  const rawHp = Number(map?.[member?.id])
+  if (Number.isFinite(rawHp)) {
+    return clampInt(rawHp, 0, maxHp, maxHp)
+  }
   const hpRatio = Math.max(0, Math.min(1, (Number(state.value.hp) || 0) / Math.max(1, Number(state.value.maxHp) || 1)))
   return clampInt(Math.round(maxHp * hpRatio), 0, maxHp, maxHp)
 }
@@ -665,60 +826,249 @@ const selectPartyMember = (member) => {
   selectedPartyMemberId.value = String(member.id)
 }
 
+const backpackItems = computed(() => {
+  return normalizeBackpackItems(state.value?.backpackItems)
+})
+
+const selectedBackpackItem = computed(() => {
+  const key = String(selectedBackpackItemKey.value || '').trim()
+  if (!key) return null
+  return backpackItems.value.find((item) => item.stackKey === key) || null
+})
+
+const selectBackpackItem = (item) => {
+  const key = String(item?.stackKey || '').trim()
+  if (!key) return
+  selectedBackpackItemKey.value = selectedBackpackItemKey.value === key ? '' : key
+}
+
 const activeDungeonMap = computed(() => {
   const map = state.value?.dungeonMap
   if (!map || typeof map !== 'object') return null
   if (!Array.isArray(map.cells) || !Number.isFinite(map.width) || !Number.isFinite(map.height)) return null
+  if (!isDungeonMapUsable(map)) return null
   return map
 })
 
 const hasDungeonMap = computed(() => Boolean(activeDungeonMap.value))
 
-const dungeonMapBossRemaining = computed(() => {
+const dungeonEnemyPreviewList = computed(() => {
   const map = activeDungeonMap.value
-  if (!map) return 0
-  return Math.max(0, (Number(map.bossTotal) || 0) - (Number(map.bossCleared) || 0))
+  if (!map || !Array.isArray(map.cells)) return []
+  const floor = clampInt(state.value?.floor, 1, 999, 1)
+  const monsters = []
+  const bosses = []
+  map.cells.forEach((cell, index) => {
+    if (cell?.type !== DUNGEON_TILE_BOSS && cell?.type !== DUNGEON_TILE_MONSTER) return
+    const isBoss = cell.type === DUNGEON_TILE_BOSS
+    const enemy = normalizeDungeonEnemy(cell.enemy, floor, isBoss, index)
+    const item = {
+      id: String(cell.id || `${isBoss ? 'boss' : 'mob'}-${index}`),
+      type: cell.type,
+      name: enemy.name,
+      hp: enemy.hp,
+      attack: enemy.attack,
+      drops: Array.isArray(enemy?.drops) ? enemy.drops : [],
+      cleared: Boolean(cell.cleared),
+    }
+    if (isBoss) {
+      bosses.push(item)
+      return
+    }
+    monsters.push(item)
+  })
+  return [...monsters, ...bosses]
+})
+
+const dungeonEnemyRemainingCount = computed(() => dungeonEnemyPreviewList.value.filter((item) => !item.cleared).length)
+
+const currentDungeonEnemy = computed(() => {
+  return dungeonEnemyPreviewList.value.find((item) => !item.cleared) || null
+})
+
+const dungeonMapBossRemaining = computed(() => {
+  return dungeonEnemyPreviewList.value.filter((item) => item.type === DUNGEON_TILE_BOSS && !item.cleared).length
 })
 
 const dungeonMapStatusText = computed(() => {
   const map = activeDungeonMap.value
-  if (!map) return '未生成'
-  return `地图 ${map.width}x${map.height} / Boss 剩余 ${dungeonMapBossRemaining.value}`
+  if (!map) return '未生成敌群'
+  const bossRemain = dungeonMapBossRemaining.value
+  const mobRemain = dungeonEnemyPreviewList.value.filter((item) => item.type === DUNGEON_TILE_MONSTER && !item.cleared).length
+  return `Boss 剩余 ${bossRemain} / 小怪剩余 ${mobRemain}`
 })
 
-const dungeonMapGridStyle = computed(() => {
-  const map = activeDungeonMap.value
-  if (!map) return {}
-  return {
-    '--xx-dungeon-cols': String(map.width || 6),
-  }
+const dungeonAdvanceButtonText = computed(() => {
+  if (loading.value) return '生成中...'
+  if (!hasDungeonMap.value) return '前进（生成敌群）'
+  if (dungeonEnemyRemainingCount.value <= 0) return '前进（进入下一层）'
+  return '前进'
 })
 
-const isDungeonPlayerCell = (cell, map) => {
-  if (!cell || !map) return false
-  return cell.x === map.player?.x && cell.y === map.player?.y
-}
-
-const getDungeonCellVisualToken = (cell) => {
-  const map = activeDungeonMap.value
-  if (!cell || !map) return '?'
-  if (isDungeonPlayerCell(cell, map)) return '你'
-  if (!cell.discovered) return '■'
-  if (cell.type === DUNGEON_TILE_START) return '营'
-  if (cell.type === DUNGEON_TILE_EXIT) return dungeonMapBossRemaining.value <= 0 ? '门' : '锁'
-  if (cell.type === DUNGEON_TILE_BOSS) return cell.cleared ? '✓' : '王'
-  if (cell.type === DUNGEON_TILE_MONSTER) return cell.cleared ? '·' : '怪'
-  if (cell.type === DUNGEON_TILE_TREASURE) return cell.cleared ? '开' : '宝'
-  return '·'
-}
-
-const getDungeonCellClassList = (cell) => {
-  const map = activeDungeonMap.value
-  const isPlayer = isDungeonPlayerCell(cell, map)
+const getDungeonEnemyCardClass = (enemy) => {
+  const isBoss = enemy?.type === DUNGEON_TILE_BOSS
   return [
-    `is-${cell?.type || DUNGEON_TILE_EMPTY}`,
-    { 'is-player': isPlayer, 'is-fog': !cell?.discovered, 'is-cleared': Boolean(cell?.cleared) },
+    isBoss ? 'is-boss' : 'is-monster',
+    {
+      'is-cleared': Boolean(enemy?.cleared),
+    },
   ]
+}
+
+const formatEnemyDropText = (drops = []) => {
+  const list = Array.isArray(drops) ? drops : []
+  if (list.length < 1) return '无掉落'
+  return list
+    .map((drop) => {
+      const name = String(drop?.name || '未知道具').trim().slice(0, 16) || '未知道具'
+      const effectType = normalizeConsumableEffectType(drop?.effectType, 'heal_hp')
+      const value = clampInt(drop?.value, 1, 9999, 0)
+      const amount = clampInt(drop?.amount, 1, MAX_BACKPACK_ITEM_STACK, 1)
+      const descRaw = String(drop?.desc || '').replace(/\s+/g, ' ').trim()
+      const fallbackDesc = effectType === 'heal_hp' ? `恢复 ${value} 点生命` : '可在战斗中使用'
+      const desc = (descRaw || fallbackDesc).slice(0, 24)
+      return `${name} x${amount}（${desc}）`
+    })
+    .join('，')
+}
+
+const findNextDungeonEncounterIndex = (map) => {
+  if (!map || !Array.isArray(map.cells)) return -1
+  const monsterIndex = map.cells.findIndex((cell) => cell.type === DUNGEON_TILE_MONSTER && !cell.cleared)
+  if (monsterIndex >= 0) return monsterIndex
+  return map.cells.findIndex((cell) => cell.type === DUNGEON_TILE_BOSS && !cell.cleared)
+}
+
+const countDungeonEnemyRemainingByMap = (map) => {
+  if (!map || !Array.isArray(map.cells)) return 0
+  return map.cells.filter(
+    (cell) => (cell.type === DUNGEON_TILE_BOSS || cell.type === DUNGEON_TILE_MONSTER) && !cell.cleared,
+  ).length
+}
+
+const mapEnemyDropsToBackpackItems = (drops = []) => {
+  const source = Array.isArray(drops) ? drops : []
+  return source
+    .map((item, index) => normalizeBackpackItem({
+      id: makeId(`drop-${index + 1}`),
+      name: item?.name,
+      effectType: item?.effectType,
+      target: item?.target,
+      value: item?.value,
+      amount: item?.amount,
+      desc: item?.desc,
+    }, index))
+    .filter(Boolean)
+}
+
+const useBackpackItemOnMember = (item, member) => {
+  if (!item || !member?.id) return false
+  const baseState = normalizeState(state.value)
+  const teammates = sortTeammatesByPower(baseState.teammates)
+  const memberIndex = teammates.findIndex((target) => target.id === member.id)
+  if (memberIndex < 0) {
+    errorText.value = '目标角色不存在'
+    return false
+  }
+  const targetMember = teammates[memberIndex]
+  const maxHp = resolvePartyMemberMaxHpByState(baseState, targetMember, memberIndex)
+  const hpMap = baseState.partyMemberHpMap && typeof baseState.partyMemberHpMap === 'object' ? { ...baseState.partyMemberHpMap } : {}
+  const currentHp = clampInt(hpMap[targetMember.id], 0, maxHp, maxHp)
+
+  let effectText = ''
+  if (item.effectType === 'heal_hp') {
+    const nextHp = Math.min(maxHp, currentHp + item.value)
+    const healed = Math.max(0, nextHp - currentHp)
+    if (healed <= 0) {
+      errorText.value = `${targetMember.name} 生命已满`
+      return false
+    }
+    hpMap[targetMember.id] = nextHp
+    effectText = `${targetMember.name} 恢复 ${healed} HP`
+  } else {
+    errorText.value = '该道具当前不可用'
+    return false
+  }
+
+  const nextBackpack = normalizeBackpackItems(baseState.backpackItems)
+    .map((bagItem) => ({ ...bagItem }))
+  const bagIndex = nextBackpack.findIndex((bagItem) => bagItem.stackKey === item.stackKey)
+  if (bagIndex < 0) {
+    errorText.value = '道具不存在'
+    return false
+  }
+  nextBackpack[bagIndex].amount = clampInt(nextBackpack[bagIndex].amount - 1, 0, MAX_BACKPACK_ITEM_STACK, 0)
+  const filteredBackpack = nextBackpack.filter((bagItem) => bagItem.amount > 0)
+
+  baseState.partyMemberHpMap = hpMap
+  baseState.backpackItems = filteredBackpack
+  rebuildGlobalHpFromPartyMemberHpMap(baseState)
+  state.value = normalizeState({
+    ...baseState,
+    updatedAt: Date.now(),
+  })
+  if (!filteredBackpack.some((bagItem) => bagItem.stackKey === item.stackKey)) {
+    selectedBackpackItemKey.value = ''
+  }
+  pushLogs(`使用道具：${item.name}，${effectText}。`)
+  errorText.value = `${targetMember.name} 使用了 ${item.name}`
+  return true
+}
+
+const handleDungeonMemberClick = (member) => {
+  if (!member?.id) return
+  const selectedItem = selectedBackpackItem.value
+  if (selectedItem) {
+    selectPartyMember(member)
+    void useBackpackItemOnMember(selectedItem, member)
+    return
+  }
+  selectPartyMember(member)
+}
+
+const enterNextDungeonFloor = (targetState) => {
+  const nextState = normalizeState(targetState)
+  nextState.floor += 1
+  nextState.hp = Math.min(nextState.maxHp, nextState.hp + randomInt(10, 24))
+  nextState.dungeonMap = null
+  syncPartyMemberHpMapByGlobalHp(nextState)
+  nextState.lastScene = `地下城第 ${nextState.floor} 层入口`
+  state.value = normalizeState({
+    ...nextState,
+    updatedAt: Date.now(),
+  })
+  errorText.value = `已进入第 ${nextState.floor} 层，请继续前进`
+}
+
+const generateDungeonEncounterBoard = async () => {
+  if (isBusy.value) return false
+  if (hasDungeonMap.value) {
+    errorText.value = '本层敌群已生成，点击“前进”开始战斗'
+    return true
+  }
+  errorText.value = ''
+  loading.value = true
+  try {
+    const baseState = normalizeState(state.value)
+    const nextMap = await buildDungeonMapForFloor(baseState)
+    if (!nextMap) {
+      throw new Error('no usable dungeon map generated')
+    }
+    state.value = normalizeState({
+      ...baseState,
+      dungeonMap: nextMap,
+      lastScene: `${nextMap.theme}（敌群已出现）`,
+      updatedAt: Date.now(),
+    })
+    errorText.value = `敌群已出现：${nextMap.theme}`
+    return true
+  } catch (e) {
+    console.error('[xx-dungeon] enemy board generation failed:', e)
+    errorText.value = '敌群生成失败，请稍后重试'
+    return false
+  } finally {
+    loading.value = false
+  }
 }
 
 const campfireCompanions = computed(() => {
@@ -785,7 +1135,7 @@ const battleRecentLogs = computed(() => {
   const logs = Array.isArray(state.value.logs) ? state.value.logs : []
   const battleOnly = logs.filter((line) => {
     const text = String(line || '')
-    return /被击败|遭遇|反击伤害|首领已清空|失利|撤回营地起点/.test(text)
+    return /被击败|遭遇|反击伤害|首领已清空|首领已全部击败|失利|撤回营地起点|掉落|使用道具/.test(text)
   })
   return [...battleOnly].reverse().slice(0, MAX_LOG_COUNT)
 })
@@ -1798,7 +2148,7 @@ const drawEquipment = async (count = 1) => {
 
 const buildDungeonMapForFloor = async (targetState) => {
   const baseState = normalizeState(targetState)
-  const fallbackMap = normalizeDungeonMap(createLocalDungeonMapDraft(baseState), baseState.floor)
+  const fallbackMap = buildGuaranteedLocalDungeonMap(baseState)
   const worldSnapshot = await loadActiveWorldBookSnapshot()
   const partySummary = dungeonActiveParty.value
     .map((item) => `${item.name}(${item.role || '冒险者'})`)
@@ -1831,115 +2181,83 @@ const tryGrantDungeonEquipmentDrop = (targetState, chance = 0.16) => {
   return drawn.equipment
 }
 
-const moveDungeon = (direction) => {
+const advanceDungeon = async () => {
   if (isBusy.value) return
-  const map = activeDungeonMap.value
-  if (!map) {
-    errorText.value = '请先点击“推进地下城”生成布局'
+  errorText.value = ''
+
+  if (!hasDungeonMap.value) {
+    const generated = await generateDungeonEncounterBoard()
+    if (!generated) return
     return
   }
-  const delta = {
-    up: { x: 0, y: -1 },
-    down: { x: 0, y: 1 },
-    left: { x: -1, y: 0 },
-    right: { x: 1, y: 0 },
-  }[direction]
-  if (!delta) return
 
-  const nextX = clampInt(map.player?.x, 0, map.width - 1, 0) + delta.x
-  const nextY = clampInt(map.player?.y, 0, map.height - 1, 0) + delta.y
-  if (nextX < 0 || nextX >= map.width || nextY < 0 || nextY >= map.height) {
-    errorText.value = '前方是墙壁，无法前进'
+  const map = activeDungeonMap.value
+  if (!map) return
+
+  if (countDungeonEnemyRemainingByMap(map) <= 0) {
+    enterNextDungeonFloor(state.value)
     return
   }
 
   const nextState = normalizeState(state.value)
   const nextMap = cloneDungeonMapState(map)
   if (!nextMap) return
-  const targetIndex = findDungeonCellIndex(nextMap, nextX, nextY)
-  if (targetIndex < 0) return
+  const targetIndex = findNextDungeonEncounterIndex(nextMap)
+  if (targetIndex < 0) {
+    enterNextDungeonFloor(nextState)
+    return
+  }
+
   const targetCell = nextMap.cells[targetIndex]
+  const isBoss = targetCell.type === DUNGEON_TILE_BOSS
+  const enemy = normalizeDungeonEnemy(targetCell.enemy, nextState.floor, isBoss, targetIndex)
+  const reward = normalizeDungeonReward(targetCell.reward, nextState.floor, isBoss)
+  nextState.lastScene = `${nextMap.theme} · ${isBoss ? '首领' : '小怪'} ${enemy.name}`
 
-  nextMap.player = { x: nextX, y: nextY }
-  targetCell.discovered = true
-  nextState.lastScene = `${nextMap.theme} (${nextX + 1},${nextY + 1})`
-  errorText.value = ''
   const logs = []
-  let hasBattleLog = false
+  const playerRoll = calcTotalPower(nextState) + Math.round(nextState.hp * 0.06) + randomInt(16, 66)
+  const enemyRoll = enemy.attack + Math.round(enemy.hp * 0.18) + randomInt(12, 58)
+  const win = playerRoll >= enemyRoll
 
-  if ((targetCell.type === DUNGEON_TILE_MONSTER || targetCell.type === DUNGEON_TILE_BOSS) && !targetCell.cleared) {
-    hasBattleLog = true
-    const isBoss = targetCell.type === DUNGEON_TILE_BOSS
-    const enemy = normalizeDungeonEnemy(targetCell.enemy, nextState.floor, isBoss, targetIndex)
-    const reward = normalizeDungeonReward(targetCell.reward, nextState.floor, isBoss)
-    const playerRoll = calcTotalPower(nextState) + Math.round(nextState.hp * 0.06) + randomInt(16, 66)
-    const enemyRoll = enemy.attack + Math.round(enemy.hp * 0.18) + randomInt(12, 58)
-    const win = playerRoll >= enemyRoll
-    if (win) {
-      const damage = Math.max(8, Math.round(enemy.attack * 0.38 + randomInt(4, 14)))
-      nextState.hp = Math.max(1, nextState.hp - damage)
-      nextState.coins += reward.coins
-      nextState.gems += reward.gems
-      nextState.exp += reward.exp
-      const levelUps = promoteByExp(nextState)
-      targetCell.cleared = true
-      logs.push(`${isBoss ? '首领' : '怪物'} ${enemy.name} 被击败，受到 ${damage} 点反击伤害。`)
-      logs.push(`获得 +${reward.coins} 金币 / +${reward.gems} 星钻 / +${reward.exp} EXP。`)
-      const loot = tryGrantDungeonEquipmentDrop(nextState, reward.equipmentChance)
-      if (loot) {
-        logs.push(`掉落装备：${loot.name}(${loot.rarity})。`)
-      }
-      if (levelUps > 0) {
-        logs.push(`队伍等级提升 ${levelUps} 级，当前 Lv.${nextState.level}。`)
-      }
-      if (isBoss) {
-        const remainingAfter = Math.max(0, countDungeonBossRemainingByMap(nextMap))
-        if (remainingAfter <= 0) {
-          logs.push('本层首领已清空，出口封印解除。')
-        }
-      }
-    } else {
-      const damage = Math.max(16, Math.round(enemy.attack * 0.82 + randomInt(10, 26)))
-      nextState.hp -= damage
-      logs.push(`遭遇 ${enemy.name} 失利，受到 ${damage} 点伤害。`)
-      if (nextState.hp <= 0) {
-        nextState.hp = Math.max(1, Math.floor(nextState.maxHp * 0.55))
-        const startX = clampInt(nextMap.start?.x, 0, nextMap.width - 1, 0)
-        const startY = clampInt(nextMap.start?.y, 0, nextMap.height - 1, nextMap.height - 1)
-        nextMap.player = { x: startX, y: startY }
-        const startIndex = findDungeonCellIndex(nextMap, startX, startY)
-        if (startIndex >= 0) {
-          nextMap.cells[startIndex].discovered = true
-        }
-        logs.push('队伍被迫撤回营地起点，HP 已回稳。')
-      }
-    }
-  } else if (targetCell.type === DUNGEON_TILE_TREASURE && !targetCell.cleared) {
-    const reward = normalizeDungeonReward(targetCell.reward, nextState.floor, false)
-    targetCell.cleared = true
+  if (win) {
+    const damage = Math.max(8, Math.round(enemy.attack * 0.38 + randomInt(4, 14)))
+    nextState.hp = Math.max(1, nextState.hp - damage)
     nextState.coins += reward.coins
     nextState.gems += reward.gems
-    nextState.exp += Math.round(reward.exp * 0.75)
-    promoteByExp(nextState)
-    tryGrantDungeonEquipmentDrop(nextState, reward.equipmentChance * 0.9)
-  } else if (targetCell.type === DUNGEON_TILE_EXIT) {
-    const remainingBoss = countDungeonBossRemainingByMap(nextMap)
-    if (remainingBoss > 0) {
-      errorText.value = `出口被封印，仍有 ${remainingBoss} 个首领存活`
-    } else {
-      nextState.floor += 1
-      nextState.hp = Math.min(nextState.maxHp, nextState.hp + randomInt(10, 24))
-      nextState.dungeonMap = null
-      nextState.lastScene = `地下城第 ${nextState.floor} 层入口`
-      state.value = normalizeState({
-        ...nextState,
-        updatedAt: Date.now(),
-      })
-      errorText.value = `已进入第 ${nextState.floor} 层，请继续推进地下城`
-      return
+    nextState.exp += reward.exp
+    const levelUps = promoteByExp(nextState)
+    targetCell.cleared = true
+    logs.push(`${isBoss ? '首领' : '怪物'} ${enemy.name} 被击败，受到 ${damage} 点反击伤害。`)
+    logs.push(`获得 +${reward.coins} 金币 / +${reward.gems} 星钻 / +${reward.exp} EXP。`)
+    const droppedItems = mapEnemyDropsToBackpackItems(enemy.drops)
+    if (droppedItems.length > 0) {
+      nextState.backpackItems = mergeBackpackItems(nextState.backpackItems, droppedItems)
+      logs.push(`掉落：${formatEnemyDropText(droppedItems)}。`)
+    }
+    const loot = tryGrantDungeonEquipmentDrop(nextState, reward.equipmentChance)
+    if (loot) {
+      logs.push(`掉落装备：${loot.name}(${loot.rarity})。`)
+    }
+    if (levelUps > 0) {
+      logs.push(`队伍等级提升 ${levelUps} 级，当前 Lv.${nextState.level}。`)
+    }
+    if (isBoss) {
+      const remainingAfter = Math.max(0, countDungeonBossRemainingByMap(nextMap))
+      if (remainingAfter <= 0) {
+        logs.push('本层首领已全部击败。')
+      }
+    }
+  } else {
+    const damage = Math.max(16, Math.round(enemy.attack * 0.82 + randomInt(10, 26)))
+    nextState.hp -= damage
+    logs.push(`遭遇 ${enemy.name} 失利，受到 ${damage} 点伤害。`)
+    if (nextState.hp <= 0) {
+      nextState.hp = Math.max(1, Math.floor(nextState.maxHp * 0.55))
+      logs.push('队伍被击退，短暂休整后继续前进。')
     }
   }
 
+  syncPartyMemberHpMapByGlobalHp(nextState)
   nextMap.bossTotal = nextMap.cells.filter((cell) => cell.type === DUNGEON_TILE_BOSS).length
   nextMap.bossCleared = nextMap.cells.filter((cell) => cell.type === DUNGEON_TILE_BOSS && cell.cleared).length
   nextState.dungeonMap = nextMap
@@ -1947,34 +2265,11 @@ const moveDungeon = (direction) => {
     ...nextState,
     updatedAt: Date.now(),
   })
-  if (hasBattleLog && logs.length > 0) {
+  if (countDungeonEnemyRemainingByMap(nextMap) <= 0) {
+    logs.push('本层敌群已清空，再次点击“前进”进入下一层。')
+  }
+  if (logs.length > 0) {
     pushLogs(logs)
-  }
-}
-
-const exploreDungeon = async () => {
-  if (isBusy.value) return
-  if (hasDungeonMap.value) {
-    errorText.value = '地下城布局已生成，请直接使用方向键探索'
-    return
-  }
-  errorText.value = ''
-  loading.value = true
-  try {
-    const baseState = normalizeState(state.value)
-    const nextMap = await buildDungeonMapForFloor(baseState)
-    state.value = normalizeState({
-      ...baseState,
-      dungeonMap: nextMap,
-      lastScene: `${nextMap.theme}（${nextMap.width}x${nextMap.height}）`,
-      updatedAt: Date.now(),
-    })
-    errorText.value = `地下城已生成：${nextMap.theme}（${nextMap.width}x${nextMap.height}）`
-  } catch (e) {
-    console.error('[xx-dungeon] explore failed:', e)
-    errorText.value = '地下城布局生成失败，请稍后重试'
-  } finally {
-    loading.value = false
   }
 }
 
@@ -2040,6 +2335,7 @@ const restAtCamp = async () => {
     next.gems += gainGems
     next.exp += gainExp
     const levelUps = promoteByExp(next)
+    syncPartyMemberHpMapByGlobalHp(next)
     state.value = normalizeState(next)
 
     const logs = [
@@ -2344,72 +2640,61 @@ onUnmounted(() => {
                 </div>
                 <p class="xx-hp-text">HP {{ state.hp }}/{{ state.maxHp }}</p>
                 <p class="xx-banter">
-                  {{ hasDungeonMap ? dungeonMapStatusText : '点击“推进地下城”可生成本层随机地下城布局。' }}
+                  {{ hasDungeonMap ? dungeonMapStatusText : '点击“前进”可生成本层敌群（首领与小怪）。' }}
                 </p>
               </section>
 
               <section class="xx-dungeon-map-card">
                 <div class="xx-dungeon-map-head">
-                  <p class="xx-dungeon-map-title">{{ activeDungeonMap?.theme || '未生成地图' }}</p>
+                  <p class="xx-dungeon-map-title">{{ activeDungeonMap?.theme || '未生成敌群' }}</p>
                   <span class="xx-dungeon-map-meta">{{ dungeonMapStatusText }}</span>
                 </div>
-                <div v-if="hasDungeonMap && activeDungeonMap" class="xx-dungeon-grid" :style="dungeonMapGridStyle">
+                <div v-if="hasDungeonMap && currentDungeonEnemy" class="xx-dungeon-current-enemy">
                   <div
-                    v-for="cell in activeDungeonMap.cells"
-                    :key="cell.id"
-                    class="xx-dungeon-cell"
-                    :class="getDungeonCellClassList(cell)"
+                    class="xx-dungeon-enemy-card"
+                    :class="getDungeonEnemyCardClass(currentDungeonEnemy)"
                   >
-                    <span class="xx-dungeon-cell-token">{{ getDungeonCellVisualToken(cell) }}</span>
+                    <p class="xx-dungeon-enemy-name">
+                      {{ currentDungeonEnemy.type === 'boss' ? 'Boss' : '小怪' }} · {{ currentDungeonEnemy.name }}
+                    </p>
+                    <p class="xx-dungeon-enemy-hp">
+                      HP {{ currentDungeonEnemy.hp }}
+                    </p>
+                    <p class="xx-dungeon-enemy-drop">掉落：{{ formatEnemyDropText(currentDungeonEnemy.drops) }}</p>
                   </div>
                 </div>
-                <p v-else class="xx-dungeon-empty-tip">点击下方“推进地下城”后会生成随机网格地图。</p>
+                <p v-else-if="hasDungeonMap" class="xx-dungeon-empty-tip">本层敌群已清空，再次点击“前进”进入下一层。</p>
+                <p v-else class="xx-dungeon-empty-tip">点击下方“前进”后会生成本层首领与小怪列表。</p>
               </section>
 
               <section class="xx-action-grid xx-dungeon-actions">
-                <button class="xx-btn is-primary" type="button" :disabled="isBusy" @click="exploreDungeon">
-                  {{ loading ? '生成中...' : '推进地下城' }}
+                <button class="xx-btn is-primary" type="button" :disabled="isBusy" @click="advanceDungeon">
+                  {{ dungeonAdvanceButtonText }}
                 </button>
               </section>
 
-              <section class="xx-dungeon-move-card">
-                <p class="xx-dungeon-move-title">移动控制</p>
-                <div class="xx-move-pad">
+              <section class="xx-backpack-card">
+                <div class="xx-card-head">
+                  <p>背包</p>
+                  <span>{{ backpackItems.length }} 格</span>
+                </div>
+                <div v-if="backpackItems.length > 0" class="xx-backpack-list">
                   <button
-                    class="xx-move-btn is-up"
+                    v-for="item in backpackItems"
+                    :key="item.stackKey"
+                    class="xx-backpack-item"
                     type="button"
-                    :disabled="!hasDungeonMap || isBusy"
-                    @click="moveDungeon('up')"
+                    :class="{ 'is-selected': selectedBackpackItem && selectedBackpackItem.stackKey === item.stackKey }"
+                    @click="selectBackpackItem(item)"
                   >
-                    ↑
-                  </button>
-                  <button
-                    class="xx-move-btn is-left"
-                    type="button"
-                    :disabled="!hasDungeonMap || isBusy"
-                    @click="moveDungeon('left')"
-                  >
-                    ←
-                  </button>
-                  <button class="xx-move-btn is-center" type="button" disabled>·</button>
-                  <button
-                    class="xx-move-btn is-right"
-                    type="button"
-                    :disabled="!hasDungeonMap || isBusy"
-                    @click="moveDungeon('right')"
-                  >
-                    →
-                  </button>
-                  <button
-                    class="xx-move-btn is-down"
-                    type="button"
-                    :disabled="!hasDungeonMap || isBusy"
-                    @click="moveDungeon('down')"
-                  >
-                    ↓
+                    <span class="xx-backpack-name">{{ item.name }} x{{ item.amount }}</span>
+                    <span class="xx-backpack-effect">{{ item.desc }}</span>
                   </button>
                 </div>
-                <p class="xx-dungeon-move-tip">生成地图后，用方向键推进；遭遇战斗与掉落均在本地自动结算。</p>
+                <p v-else class="xx-backpack-empty">暂无道具，击败敌人后会掉落。</p>
+                <p class="xx-backpack-tip">
+                  {{ selectedBackpackItem ? `已选中：${selectedBackpackItem.name}，点击队友使用` : '选中道具后，点击下方队友使用' }}
+                </p>
               </section>
 
               <section class="xx-roster-card">
@@ -2428,7 +2713,7 @@ onUnmounted(() => {
                       'is-empty': !member,
                     }"
                     :disabled="!member"
-                    @click="selectPartyMember(member)"
+                    @click="handleDungeonMemberClick(member)"
                   >
                     {{ member ? member.name : '空位' }}
                   </button>

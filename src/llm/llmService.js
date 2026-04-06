@@ -3465,14 +3465,28 @@ const HANDHELD_DUNGEON_MAP_SYSTEM_PROMPT = `你是“掌机RPG地下城网格生
       "x":2,
       "y":4,
       "type":"monster",
-      "enemy":{"name":"腐骨战兵","hp":180,"attack":26},
+      "enemy":{
+        "name":"腐骨战兵",
+        "hp":180,
+        "attack":26,
+        "drops":[
+          {"name":"小型回复瓶","effectType":"heal_hp","target":"ally","value":20,"amount":1,"desc":"恢复20点生命"}
+        ]
+      },
       "reward":{"coins":120,"gems":28,"exp":64,"equipmentChance":0.22}
     },
     {
       "x":4,
       "y":1,
       "type":"boss",
-      "enemy":{"name":"断刃督军","hp":560,"attack":52},
+      "enemy":{
+        "name":"断刃督军",
+        "hp":560,
+        "attack":52,
+        "drops":[
+          {"name":"王者回复药","effectType":"heal_hp","target":"ally","value":48,"amount":1,"desc":"恢复48点生命"}
+        ]
+      },
       "reward":{"coins":420,"gems":120,"exp":220,"equipmentChance":0.58}
     },
     {
@@ -3491,8 +3505,10 @@ const HANDHELD_DUNGEON_MAP_SYSTEM_PROMPT = `你是“掌机RPG地下城网格生
 4) 每层必须同时有 boss 与 monster，且至少 2 个 boss、6 个 monster。
 5) 同一坐标最多 1 个 tile；不要占用 start/exit。
 6) monster/boss 必须包含 enemy + reward；treasure 至少包含 reward。
-7) reward 的 equipmentChance 为 0-1 浮点数。
-8) 数值要与楼层递增相关，但不要夸张。`
+7) enemy 必须包含 drops 数组，至少 1 条掉落；每条掉落含 name/effectType/target/value/amount/desc。
+8) effectType 仅使用 "heal_hp"，target 仅使用 "ally"。
+9) reward 的 equipmentChance 为 0-1 浮点数。
+10) 数值要与楼层递增相关，但不要夸张。`
 
 const normalizeDungeonMapTileType = (value, fallback = 'empty') => {
   const type = String(value || '').trim().toLowerCase()
@@ -3546,16 +3562,47 @@ const normalizeHandheldDungeonMap = (rawValue, options = {}) => {
   const tiles = []
   const monsterNames = ['洞窟狼', '骸骨兵', '腐沼蜥', '巡逻石像', '暗影潜伏者', '裂隙蠕虫']
   const bossNames = ['灰烬领主', '深井守门者', '幽冥主教', '巨械监工', '碎星骑士', '虚影女王']
+  const monsterDropNames = ['小型回复瓶', '应急绷带', '草本药剂', '止痛药水']
+  const bossDropNames = ['王者回复药', '圣愈药剂', '战地急救包', '炽焰回生药']
+
+  const normalizeDrop = (rawDrop, isBoss = false, index = 0) => {
+    const drop = rawDrop && typeof rawDrop === 'object' ? rawDrop : {}
+    const fallbackValue = isBoss ? Math.round(42 + floor * 3) : Math.round(18 + floor * 2)
+    const fallbackName = isBoss ? bossDropNames[index % bossDropNames.length] : monsterDropNames[index % monsterDropNames.length]
+    const effectTypeRaw = String(drop.effectType || drop.type || drop.effect || '').trim().toLowerCase()
+    const effectType = effectTypeRaw === 'heal_hp' ? 'heal_hp' : 'heal_hp'
+    const targetRaw = String(drop.target || drop.targetType || '').trim().toLowerCase()
+    const target = targetRaw === 'ally' ? 'ally' : 'ally'
+    const value = clampInt(drop.value ?? drop.effectValue ?? drop.hp, 1, 9999, fallbackValue)
+    const amount = clampInt(drop.amount ?? drop.count ?? drop.quantity, 1, 99, 1)
+    const name = String(drop.name || fallbackName).trim().slice(0, 24) || fallbackName
+    const desc = String(drop.desc || drop.description || `恢复${value}点生命`).trim().slice(0, 40) || `恢复${value}点生命`
+    return {
+      name,
+      effectType,
+      target,
+      value,
+      amount,
+      desc,
+    }
+  }
 
   const normalizeEnemy = (rawEnemy, isBoss = false, index = 0) => {
     const enemy = rawEnemy && typeof rawEnemy === 'object' ? rawEnemy : {}
     const fallbackName = isBoss
       ? `${bossNames[index % bossNames.length]}`
       : `${monsterNames[index % monsterNames.length]}`
+    const rawDrops = Array.isArray(enemy.drops)
+      ? enemy.drops
+      : (Array.isArray(enemy.dropItems) ? enemy.dropItems : [])
+    const drops = (rawDrops.length > 0 ? rawDrops : [null])
+      .map((item, dropIndex) => normalizeDrop(item, isBoss, index + dropIndex))
+      .slice(0, 3)
     return {
       name: String(enemy.name || fallbackName).trim().slice(0, 24) || fallbackName,
       hp: clampInt(enemy.hp, 20, 999999, Math.round((isBoss ? 230 : 108) + floor * (isBoss ? 40 : 20))),
       attack: clampInt(enemy.attack, 6, 99999, Math.round((isBoss ? 34 : 17) + floor * (isBoss ? 4 : 2))),
+      drops,
     }
   }
 
@@ -3706,7 +3753,7 @@ export const generateHandheldDungeonMap = async (params = {}) => {
     worldTitle ? `【世界书标题】${worldTitle}` : '',
     worldSummary ? `【世界背景】${worldSummary}` : '',
     partySummary ? `【队伍】${partySummary}` : '',
-    '要求：给出随机主题、地图尺寸、小怪/Boss、血量、奖励配置；每层必须同时有 Boss 和小怪；可玩性优先，数值随楼层递增。',
+    '要求：给出随机主题、地图尺寸、小怪/Boss、血量、奖励配置；每层必须同时有 Boss 和小怪；每个怪都必须给 drops（至少1项，可直接用于背包消耗品）；可玩性优先，数值随楼层递增。',
     '只返回 JSON 对象。',
   ]
     .filter(Boolean)
@@ -3970,6 +4017,186 @@ export const generateHandheldCampfireCompanions = async (params = {}) => {
   }
 }
 
+const WORLDBOOK_OPENING_SYSTEM_PROMPT = `你是“AVG世界书开场对白生成器”。
+你只输出 JSON，不要输出 markdown，不要解释。
+
+输出格式必须是：
+{
+  "openingDialogue": [
+    { "speaker": "旁白", "text": "......", "emotion": null },
+    { "speaker": "角色名", "text": "......", "emotion": "neutral" }
+  ]
+}
+
+硬性要求：
+1) openingDialogue 必须是 10-15 条。
+2) 每条必须包含 speaker 与 text；emotion 可为 null 或常见情绪英文词（如 neutral/happy/worried/angry/sad/excited/confident）。
+3) 文本为中文自然叙事，单条建议 12-80 字。
+4) 对白必须显著依赖给定世界书（世界观、角色、user设定），不能写成通用模板。
+5) 不要包含多余字段，不要输出 JSON 以外的任何内容。`
+
+const parseFirstJsonArray = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return null
+
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  const parseJson = (text) => {
+    try {
+      return JSON.parse(text)
+    } catch {
+      return null
+    }
+  }
+
+  let parsed = parseJson(candidate)
+  if (Array.isArray(parsed)) return parsed
+
+  const start = candidate.indexOf('[')
+  const end = candidate.lastIndexOf(']')
+  if (start >= 0 && end > start) {
+    parsed = parseJson(candidate.slice(start, end + 1))
+    if (Array.isArray(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+const normalizeWorldBookOpeningDialogue = (rawValue, options = {}) => {
+  const minLines = clampInt(options.minLines, 1, 50, 10)
+  const maxLines = clampInt(options.maxLines, minLines, 80, 15)
+  const sourceList = Array.isArray(rawValue)
+    ? rawValue
+    : (Array.isArray(rawValue?.openingDialogue) ? rawValue.openingDialogue : [])
+  const normalized = sourceList
+    .map((line) => ({
+      speaker: String(line?.speaker || '旁白').trim() || '旁白',
+      text: String(line?.text || '').trim(),
+      emotion: line?.emotion || null,
+    }))
+    .filter((line) => line.text)
+    .slice(0, maxLines)
+
+  if (normalized.length < minLines) {
+    return null
+  }
+
+  return normalized
+}
+
+export const generateWorldBookOpeningDialogue = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      openingDialogue: [],
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : {}
+  const minLines = clampInt(params.minLines, 10, 15, 10)
+  const maxLines = clampInt(params.maxLines, minLines, 15, 15)
+  const worldTitle = String(worldBook?.title || params.worldTitle || '未命名世界书').trim()
+  const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
+  const worldEntries = worldBook?.entries && typeof worldBook.entries === 'object' ? worldBook.entries : {}
+  const entryLines = Object.entries(worldEntries)
+    .map(([key, value]) => {
+      const text = String(value || '').trim()
+      if (!text) return ''
+      return `- ${String(key)}: ${text}`
+    })
+    .filter(Boolean)
+    .slice(0, 12)
+
+  const userProfile = worldBook?.userProfile && typeof worldBook.userProfile === 'object'
+    ? worldBook.userProfile
+    : {}
+  const userProfileLines = [
+    `名字: ${String(userProfile.name || userProfile.nickname || '你').trim() || '你'}`,
+    String(userProfile.identity || '').trim() ? `身份: ${String(userProfile.identity).trim()}` : '',
+    String(userProfile.appearance || '').trim() ? `外表: ${String(userProfile.appearance).trim()}` : '',
+    String(userProfile.background || '').trim() ? `背景: ${String(userProfile.background).trim()}` : '',
+  ]
+    .filter(Boolean)
+    .slice(0, 6)
+
+  const characterLines = (Array.isArray(worldBook?.characters) ? worldBook.characters : [])
+    .map((char, index) => {
+      const name = String(char?.name || char?.nickname || `角色${index + 1}`).trim() || `角色${index + 1}`
+      const identity = String(char?.identity || '').trim()
+      const appearance = String(char?.appearance || '').trim()
+      const background = String(char?.background || '').trim()
+      return [
+        `角色${index + 1}: ${name}`,
+        identity ? `身份=${identity}` : '',
+        appearance ? `外表=${appearance}` : '',
+        background ? `背景=${background}` : '',
+      ].filter(Boolean).join(' | ')
+    })
+    .filter(Boolean)
+    .slice(0, 16)
+
+  const userPrompt = [
+    '【任务】根据下面世界书信息生成游戏开场对白。',
+    `【条数要求】${minLines}-${maxLines} 条`,
+    worldTitle ? `【世界书标题】${worldTitle}` : '',
+    worldSummary ? `【世界书摘要】${worldSummary}` : '',
+    entryLines.length > 0 ? `【世界条目】\n${entryLines.join('\n')}` : '',
+    userProfileLines.length > 0 ? `【User设定】\n${userProfileLines.join('\n')}` : '',
+    characterLines.length > 0 ? `【角色设定】\n${characterLines.join('\n')}` : '',
+    '要求：开场应有叙述推进与人物互动，逻辑自然，可直接作为新游戏前 10-15 句台词。',
+    '请严格返回 JSON 对象，字段仅为 openingDialogue。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: WORLDBOOK_OPENING_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.84,
+    maxTokens: params.options?.maxTokens ?? 1500,
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '开场白生成失败',
+      openingDialogue: [],
+    }
+  }
+
+  const parsedObject = parseFirstJsonObject(result.data)
+  const parsedArray = parseFirstJsonArray(result.data)
+  const normalized = normalizeWorldBookOpeningDialogue(
+    parsedObject?.openingDialogue ? parsedObject : parsedArray,
+    { minLines, maxLines },
+  )
+
+  if (!normalized) {
+    return {
+      success: false,
+      error: '开场白解析失败（返回结果不符合 10-15 句格式）',
+      openingDialogue: [],
+      data: result.data,
+      rawResponse: result.rawResponse,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    openingDialogue: normalized,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
 /**
  * 获取系统提示词
  * @returns {string} 系统提示词
@@ -4074,5 +4301,6 @@ export default {
   generateHandheldDungeonScene,
   generateHandheldDungeonBanter,
   generateHandheldCampfireCompanions,
+  generateWorldBookOpeningDialogue,
   getActiveApiConfig,
 }

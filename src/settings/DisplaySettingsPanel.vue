@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { onMounted, reactive, ref, computed } from 'vue'
 import { kvStorage } from '../storage/index.js'
 import { isAndroid, isElectron, isWeb } from '../utils/platform.js'
@@ -196,26 +196,5 @@ onMounted(loadCurrentDisplaySettings)
   </section>
 </template>
 
-<style scoped>
-.android-settings-section {
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  background: linear-gradient(135deg, rgba(0, 245, 212, 0.1), rgba(255, 58, 242, 0.1));
-  border-radius: 12px;
-  border: 1px solid var(--accent-cyan, #00f5d4);
-}
+<style scoped src="./DisplaySettingsPanel.css"></style>
 
-.subsection-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--accent-cyan, #00f5d4);
-  margin-bottom: 0.75rem;
-}
-
-.android-note {
-  font-size: 0.85rem;
-  color: var(--muted, #888);
-  margin-top: 0.5rem;
-  opacity: 0.8;
-}
-</style>

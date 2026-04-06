@@ -19,7 +19,9 @@
     "cap:add": "npx cap add android",
     "cap:sync": "npx cap sync",
     "cap:open": "npx cap open android",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ctx": "node scripts/context-router.mjs",
+    "ctx:list": "node scripts/context-router.mjs --list"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",

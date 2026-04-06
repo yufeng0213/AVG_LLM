@@ -27,6 +27,56 @@ export const WORLD_BOOK_PORTRAIT_STYLE_OPTIONS = [
 const WORLD_BOOK_PORTRAIT_STYLE_VALUES = WORLD_BOOK_PORTRAIT_STYLE_OPTIONS.map((item) => item.value)
 export const RELATIONSHIP_METRIC_MIN = -100
 export const RELATIONSHIP_METRIC_MAX = 100
+const OPENING_DIALOGUE_MODE_SET = new Set(['auto', 'custom'])
+const LEGACY_DEFAULT_OPENING_DIALOGUE = [
+  { speaker: '旁白', text: '雨夜的图书馆只剩你与断续的电流声，窗外的霓虹正把地面切成碎片。', emotion: null },
+  { speaker: '伊芙', text: '终于等到你了，档案室的门只会在今晚开启，过了零点就会再次封存。', emotion: 'happy' },
+  { speaker: '你', text: '我来找失踪案的原始记录，线索应该在禁区最深处的那排手稿里。', emotion: 'neutral' },
+  { speaker: '零号', text: '再往前一步，你会看到不该被公开的名字，也会看到你自己的过去。', emotion: 'worried' },
+  { speaker: '旁白', text: '你握紧终端，屏幕上的微光把三道身影叠在一起，像命运重写前的倒计时。', emotion: null },
+]
+
+const normalizeOpeningDialogueMode = (rawMode, fallback = 'auto') => {
+  const mode = String(rawMode || '').trim().toLowerCase()
+  if (OPENING_DIALOGUE_MODE_SET.has(mode)) {
+    return mode
+  }
+  return fallback
+}
+
+const normalizeOpeningDialogue = (rawDialogue) => {
+  if (!Array.isArray(rawDialogue)) {
+    return []
+  }
+
+  return rawDialogue
+    .map((line) => ({
+      speaker: String(line?.speaker || '旁白').trim() || '旁白',
+      text: String(line?.text || '').trim(),
+      emotion: line?.emotion || null,
+    }))
+    .filter((line) => line.text)
+}
+
+const isSameOpeningDialogue = (a, b) => {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
+    return false
+  }
+
+  for (let index = 0; index < a.length; index += 1) {
+    const left = a[index]
+    const right = b[index]
+    if (
+      String(left?.speaker || '').trim() !== String(right?.speaker || '').trim() ||
+      String(left?.text || '').trim() !== String(right?.text || '').trim() ||
+      String(left?.emotion || '') !== String(right?.emotion || '')
+    ) {
+      return false
+    }
+  }
+
+  return true
+}
 
 const clampRelationshipMetric = (value, fallback = 0) => {
   const parsed = Number.parseFloat(String(value))
@@ -445,13 +495,8 @@ export const createDefaultWorldBook = () => ({
   scenes: [],  // 新增：场景列表
   backgroundAssets: createEmptyBackgroundAssets(),
   displaySettings: createDefaultDisplaySettings(),
-  openingDialogue: [
-    { speaker: '旁白', text: '雨夜的图书馆只剩你与断续的电流声，窗外的霓虹正把地面切成碎片。', emotion: null },
-    { speaker: '伊芙', text: '终于等到你了，档案室的门只会在今晚开启，过了零点就会再次封存。', emotion: 'happy' },
-    { speaker: '你', text: '我来找失踪案的原始记录，线索应该在禁区最深处的那排手稿里。', emotion: 'neutral' },
-    { speaker: '零号', text: '再往前一步，你会看到不该被公开的名字，也会看到你自己的过去。', emotion: 'worried' },
-    { speaker: '旁白', text: '你握紧终端，屏幕上的微光把三道身影叠在一起，像命运重写前的倒计时。', emotion: null },
-  ],
+  openingDialogueMode: 'auto',
+  openingDialogue: [],
 })
 
 export const normalizeWorldBook = (rawBook, index = 0) => {
@@ -466,18 +511,12 @@ export const normalizeWorldBook = (rawBook, index = 0) => {
 
   const isDefault = Boolean(rawBook?.isDefault) || rawBook?.id === fallback.id
   const id = isDefault ? fallback.id : String(rawBook?.id || `world_book_${Date.now()}_${index}`)
-
-  // 规范化开场对话
-  const normalizeOpeningDialogue = (rawDialogue) => {
-    if (!Array.isArray(rawDialogue) || rawDialogue.length === 0) {
-      return fallback.openingDialogue
-    }
-    return rawDialogue.map(line => ({
-      speaker: String(line?.speaker || '旁白'),
-      text: String(line?.text || ''),
-      emotion: line?.emotion || null,
-    })).filter(line => line.text)
-  }
+  const normalizedOpeningDialogue = normalizeOpeningDialogue(rawBook?.openingDialogue)
+  const rawOpeningMode = String(rawBook?.openingDialogueMode || rawBook?.openingMode || '').trim().toLowerCase()
+  const hasLegacyDefaultOpening = !rawOpeningMode && isSameOpeningDialogue(normalizedOpeningDialogue, LEGACY_DEFAULT_OPENING_DIALOGUE)
+  const openingDialogueMode = rawOpeningMode
+    ? normalizeOpeningDialogueMode(rawOpeningMode, 'auto')
+    : (normalizedOpeningDialogue.length > 0 && !hasLegacyDefaultOpening ? 'custom' : 'auto')
 
   return {
     id,
@@ -494,7 +533,8 @@ export const normalizeWorldBook = (rawBook, index = 0) => {
     scenes: normalizeScenes(rawBook?.scenes),
     backgroundAssets: normalizeBackgroundAssets(rawBook?.backgroundAssets),
     displaySettings: normalizeDisplaySettings(rawBook?.displaySettings),
-    openingDialogue: normalizeOpeningDialogue(rawBook?.openingDialogue),
+    openingDialogueMode,
+    openingDialogue: hasLegacyDefaultOpening ? [] : normalizedOpeningDialogue,
   }
 }
 

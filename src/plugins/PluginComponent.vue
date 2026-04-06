@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, ref, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import {
   getPluginComponents,
@@ -198,57 +198,5 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
-.plugin-component-wrapper {
-  width: 100%;
-  height: 100%;
-}
+<style scoped src="./PluginComponent.css"></style>
 
-.plugin-loading,
-.plugin-error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  min-height: 100px;
-}
-
-.plugin-loading-default,
-.plugin-error-default {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-}
-
-.plugin-loading-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.plugin-error-default button {
-  padding: 4px 12px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.plugin-error-default button:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-</style>

@@ -47,6 +47,21 @@ const createEnemyFallback = (floor, isBoss = false, index = 0) => {
   }
 }
 
+const createDropFallback = (floor, isBoss = false, index = 0) => {
+  const healValue = isBoss ? Math.round(42 + floor * 3) : Math.round(18 + floor * 2)
+  const bossNames = ['王者回复药', '神圣绷带', '战场急救包', '炽焰药剂']
+  const mobNames = ['小型回复瓶', '应急绷带', '止痛药剂', '草本药水']
+  const name = isBoss ? bossNames[index % bossNames.length] : mobNames[index % mobNames.length]
+  return {
+    name,
+    effectType: 'heal_hp',
+    target: 'ally',
+    value: healValue,
+    amount: 1,
+    desc: `恢复 ${healValue} 点生命`,
+  }
+}
+
 export const createDungeonMapRuntime = (deps = {}) => {
   const clampInt = typeof deps.clampInt === 'function' ? deps.clampInt : fallbackClampInt
   const makeId = typeof deps.makeId === 'function' ? deps.makeId : fallbackCreateId
@@ -55,12 +70,40 @@ export const createDungeonMapRuntime = (deps = {}) => {
 
   const createDungeonCellId = (x, y) => `${x}:${y}`
 
+  const normalizeDungeonDrop = (rawValue, floor = 1, isBoss = false, index = 0) => {
+    const fallback = createDropFallback(floor, isBoss, index)
+    const raw = rawValue && typeof rawValue === 'object' ? rawValue : {}
+    const effectTypeRaw = String(raw.effectType || raw.type || raw.effect || '').trim().toLowerCase()
+    const effectType = effectTypeRaw === 'heal_hp' ? 'heal_hp' : 'heal_hp'
+    const targetRaw = String(raw.target || raw.targetType || '').trim().toLowerCase()
+    const target = targetRaw === 'ally' ? 'ally' : 'ally'
+    const value = clampInt(raw.value ?? raw.effectValue ?? raw.hp, 1, 9999, fallback.value)
+    const amount = clampInt(raw.amount ?? raw.count ?? raw.quantity, 1, 99, fallback.amount)
+    const name = String(raw.name || fallback.name).trim().slice(0, 24) || fallback.name
+    const desc = String(raw.desc || raw.description || fallback.desc || '').trim().slice(0, 40) || fallback.desc
+    return {
+      name,
+      effectType,
+      target,
+      value,
+      amount,
+      desc,
+    }
+  }
+
   const normalizeDungeonEnemy = (rawValue, floor = 1, isBoss = false, index = 0) => {
     const fallback = createEnemyFallback(floor, isBoss, index)
+    const rawDrops = Array.isArray(rawValue?.drops)
+      ? rawValue.drops
+      : (Array.isArray(rawValue?.dropItems) ? rawValue.dropItems : [])
+    const drops = (rawDrops.length > 0 ? rawDrops : [null])
+      .map((item, dropIndex) => normalizeDungeonDrop(item, floor, isBoss, index + dropIndex))
+      .slice(0, 3)
     return {
       name: String(rawValue?.name || fallback.name || `${isBoss ? '首领' : '怪物'}${index + 1}`).trim().slice(0, 24) || `${isBoss ? '首领' : '怪物'}${index + 1}`,
       hp: clampInt(rawValue?.hp, 20, 999999, fallback.hp),
       attack: clampInt(rawValue?.attack, 6, 99999, fallback.attack),
+      drops,
     }
   }
 
@@ -129,7 +172,18 @@ export const createDungeonMapRuntime = (deps = {}) => {
       cleared: false,
     })
 
-    const tiles = Array.isArray(rawMap.tiles) ? rawMap.tiles : []
+    const tilesFromCells = Array.isArray(rawMap.cells)
+      ? rawMap.cells.map((cell) => ({
+          x: cell?.x,
+          y: cell?.y,
+          type: cell?.type,
+          enemy: cell?.enemy || null,
+          reward: cell?.reward || null,
+          cleared: Boolean(cell?.cleared),
+          discovered: Boolean(cell?.discovered),
+        }))
+      : []
+    const tiles = Array.isArray(rawMap.tiles) && rawMap.tiles.length > 0 ? rawMap.tiles : tilesFromCells
     let monsterIndex = 0
     let bossIndex = 0
     for (const tile of tiles) {
@@ -228,7 +282,14 @@ export const createDungeonMapRuntime = (deps = {}) => {
       player: { ...(map.player || map.start || { x: 0, y: 0 }) },
       cells: (Array.isArray(map.cells) ? map.cells : []).map((cell) => ({
         ...cell,
-        enemy: cell?.enemy ? { ...cell.enemy } : null,
+        enemy: cell?.enemy
+          ? {
+              ...cell.enemy,
+              drops: Array.isArray(cell?.enemy?.drops)
+                ? cell.enemy.drops.map((item) => ({ ...item }))
+                : [],
+            }
+          : null,
         reward: cell?.reward ? { ...cell.reward } : null,
       })),
     }
@@ -284,6 +345,7 @@ export const createDungeonMapRuntime = (deps = {}) => {
           name: pickRandomItem(bossNames, `首领${index + 1}`),
           hp: Math.round(220 + floor * 46 + randomInt(0, 90)),
           attack: Math.round(30 + floor * 4.8 + randomInt(0, 10)),
+          drops: [createDropFallback(floor, true, index)],
         },
         reward: {
           coins: Math.round(280 + floor * 56 + randomInt(0, 120)),
@@ -304,6 +366,7 @@ export const createDungeonMapRuntime = (deps = {}) => {
           name: pickRandomItem(monsterNames, `魔物${index + 1}`),
           hp: Math.round(106 + floor * 22 + randomInt(0, 44)),
           attack: Math.round(15 + floor * 2.3 + randomInt(0, 6)),
+          drops: [createDropFallback(floor, false, index)],
         },
         reward: {
           coins: Math.round(74 + floor * 16 + randomInt(0, 26)),
@@ -354,4 +417,3 @@ export const createDungeonMapRuntime = (deps = {}) => {
     createLocalDungeonMapDraft,
   }
 }
-

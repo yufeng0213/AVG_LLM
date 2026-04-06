@@ -21,6 +21,7 @@ export {
   generateHandheldDungeonMap,
   generateHandheldDungeonBanter,
   generateHandheldCampfireCompanions,
+  generateWorldBookOpeningDialogue,
   getActiveApiConfig,
 } from './llmService'
 export { buildStoryPrompt, buildQuickPrompt } from './promptGenerator'
