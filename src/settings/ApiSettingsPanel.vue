@@ -4,6 +4,84 @@ import { kvStorage } from '../storage/index.js'
 
 const CONFIG_STORAGE_KEY = 'api_configs'
 const ACTIVE_CONFIG_KEY = 'active_api_id'
+const DEFAULT_TTS_API = 'https://api.minimaxi.com/v1/t2a_v2'
+const DEFAULT_TTS_MODEL = 'speech-2.8-hd'
+
+const clampNumber = (value, min, max, fallback) => {
+  const parsed = Number.parseFloat(String(value))
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(max, Math.max(min, parsed))
+}
+
+const parseNumber = (value, fallback) => {
+  const parsed = Number.parseFloat(String(value))
+  if (!Number.isFinite(parsed)) return fallback
+  return parsed
+}
+
+const clampInteger = (value, min, max, fallback) => {
+  const parsed = Number.parseInt(String(value), 10)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(max, Math.max(min, parsed))
+}
+
+const normalizeTtsFormat = (value) => {
+  const raw = String(value || '').trim().toLowerCase()
+  if (raw === 'wav' || raw === 'flac' || raw === 'mp3') {
+    return raw
+  }
+  return 'mp3'
+}
+
+const createDefaultTtsVoiceSetting = () => ({
+  voiceId: '',
+  speed: 1,
+  vol: 1,
+  pitch: 0,
+  emotion: '',
+})
+
+const createDefaultTtsAudioSetting = () => ({
+  sampleRate: 32000,
+  bitrate: 128000,
+  format: 'mp3',
+  channel: 1,
+})
+
+const normalizeConfig = (rawConfig = {}) => {
+  const fallbackVoice = createDefaultTtsVoiceSetting()
+  const fallbackAudio = createDefaultTtsAudioSetting()
+  const voiceSetting = rawConfig.ttsDefaultVoice && typeof rawConfig.ttsDefaultVoice === 'object'
+    ? rawConfig.ttsDefaultVoice
+    : {}
+  const audioSetting = rawConfig.ttsDefaultAudio && typeof rawConfig.ttsDefaultAudio === 'object'
+    ? rawConfig.ttsDefaultAudio
+    : {}
+
+  return {
+    id: String(rawConfig.id || '').trim(),
+    name: String(rawConfig.name || '').trim() || '未命名配置',
+    customApi: String(rawConfig.customApi || '').trim(),
+    apiKey: String(rawConfig.apiKey || '').trim(),
+    model: String(rawConfig.model || '').trim() || 'gpt-5.2',
+    ttsApi: String(rawConfig.ttsApi || DEFAULT_TTS_API).trim(),
+    ttsApiKey: String(rawConfig.ttsApiKey || '').trim(),
+    ttsModel: String(rawConfig.ttsModel || DEFAULT_TTS_MODEL).trim() || DEFAULT_TTS_MODEL,
+    ttsDefaultVoice: {
+      voiceId: String(voiceSetting.voiceId || '').trim(),
+      speed: clampNumber(voiceSetting.speed, 0.5, 2, fallbackVoice.speed),
+      vol: parseNumber(voiceSetting.vol, fallbackVoice.vol),
+      pitch: clampNumber(voiceSetting.pitch, -12, 12, fallbackVoice.pitch),
+      emotion: String(voiceSetting.emotion || '').trim(),
+    },
+    ttsDefaultAudio: {
+      sampleRate: clampInteger(audioSetting.sampleRate, 8000, 48000, fallbackAudio.sampleRate),
+      bitrate: clampInteger(audioSetting.bitrate, 32000, 320000, fallbackAudio.bitrate),
+      format: normalizeTtsFormat(audioSetting.format),
+      channel: clampInteger(audioSetting.channel, 1, 2, fallbackAudio.channel),
+    },
+  }
+}
 
 const configs = ref([])
 const selectedConfigId = ref('')
@@ -16,6 +94,11 @@ const form = reactive({
   customApi: '',
   apiKey: '',
   model: 'gpt-5.2',
+  ttsApi: DEFAULT_TTS_API,
+  ttsApiKey: '',
+  ttsModel: DEFAULT_TTS_MODEL,
+  ttsDefaultVoice: createDefaultTtsVoiceSetting(),
+  ttsDefaultAudio: createDefaultTtsAudioSetting(),
 })
 
 const activeConfigName = computed(() => {
@@ -25,11 +108,17 @@ const activeConfigName = computed(() => {
 })
 
 const applyToForm = (config) => {
-  form.id = config.id
-  form.name = config.name
-  form.customApi = config.customApi
-  form.apiKey = config.apiKey
-  form.model = config.model
+  const normalized = normalizeConfig(config)
+  form.id = normalized.id
+  form.name = normalized.name
+  form.customApi = normalized.customApi
+  form.apiKey = normalized.apiKey
+  form.model = normalized.model
+  form.ttsApi = normalized.ttsApi
+  form.ttsApiKey = normalized.ttsApiKey
+  form.ttsModel = normalized.ttsModel
+  form.ttsDefaultVoice = { ...normalized.ttsDefaultVoice }
+  form.ttsDefaultAudio = { ...normalized.ttsDefaultAudio }
 }
 
 const createEmptyDraft = () => {
@@ -38,6 +127,11 @@ const createEmptyDraft = () => {
   form.customApi = ''
   form.apiKey = ''
   form.model = 'gpt-5.2'
+  form.ttsApi = DEFAULT_TTS_API
+  form.ttsApiKey = ''
+  form.ttsModel = DEFAULT_TTS_MODEL
+  form.ttsDefaultVoice = createDefaultTtsVoiceSetting()
+  form.ttsDefaultAudio = createDefaultTtsAudioSetting()
 }
 
 const persistConfigs = async () => {
@@ -47,7 +141,7 @@ const persistConfigs = async () => {
 const loadStorage = async () => {
   try {
     const parsed = await kvStorage.get(CONFIG_STORAGE_KEY)
-    configs.value = Array.isArray(parsed) ? parsed : []
+    configs.value = Array.isArray(parsed) ? parsed.map((item) => normalizeConfig(item)) : []
   } catch {
     configs.value = []
   }
@@ -80,19 +174,36 @@ const saveConfig = async () => {
     customApi: form.customApi.trim(),
     apiKey: form.apiKey.trim(),
     model: form.model.trim() || 'gpt-5.2',
+    ttsApi: form.ttsApi.trim() || DEFAULT_TTS_API,
+    ttsApiKey: form.ttsApiKey.trim(),
+    ttsModel: form.ttsModel.trim() || DEFAULT_TTS_MODEL,
+    ttsDefaultVoice: {
+      voiceId: String(form.ttsDefaultVoice?.voiceId || '').trim(),
+      speed: clampNumber(form.ttsDefaultVoice?.speed, 0.5, 2, 1),
+      vol: parseNumber(form.ttsDefaultVoice?.vol, 1),
+      pitch: clampNumber(form.ttsDefaultVoice?.pitch, -12, 12, 0),
+      emotion: String(form.ttsDefaultVoice?.emotion || '').trim(),
+    },
+    ttsDefaultAudio: {
+      sampleRate: clampInteger(form.ttsDefaultAudio?.sampleRate, 8000, 48000, 32000),
+      bitrate: clampInteger(form.ttsDefaultAudio?.bitrate, 32000, 320000, 128000),
+      format: normalizeTtsFormat(form.ttsDefaultAudio?.format),
+      channel: clampInteger(form.ttsDefaultAudio?.channel, 1, 2, 1),
+    },
   }
 
-  const index = configs.value.findIndex((item) => item.id === nextConfig.id)
+  const normalizedNextConfig = normalizeConfig(nextConfig)
+  const index = configs.value.findIndex((item) => item.id === normalizedNextConfig.id)
   if (index === -1) {
-    configs.value.push(nextConfig)
+    configs.value.push(normalizedNextConfig)
   } else {
-    configs.value[index] = nextConfig
+    configs.value[index] = normalizedNextConfig
   }
 
-  applyToForm(nextConfig)
-  selectedConfigId.value = nextConfig.id
+  applyToForm(normalizedNextConfig)
+  selectedConfigId.value = normalizedNextConfig.id
   await persistConfigs()
-  statusMessage.value = `已保存配置：${nextConfig.name}`
+  statusMessage.value = `已保存配置：${normalizedNextConfig.name}`
 }
 
 const applyConfig = async () => {
@@ -166,6 +277,121 @@ onMounted(loadStorage)
       </label>
     </div>
 
+    <section class="settings-subpanel" aria-label="语音模型设置">
+      <h3 class="subpanel-title">语音模型设置（MiniMax TTS）</h3>
+      <div class="settings-grid two-column">
+        <label class="setting-field">
+          <span class="setting-label">TTS API 地址</span>
+          <input
+            v-model="form.ttsApi"
+            class="setting-input"
+            type="url"
+            placeholder="https://api.minimaxi.com/v1/t2a_v2"
+          />
+        </label>
+        <label class="setting-field">
+          <span class="setting-label">TTS 模型名</span>
+          <input
+            v-model="form.ttsModel"
+            class="setting-input"
+            type="text"
+            placeholder="speech-2.8-hd"
+          />
+        </label>
+      </div>
+
+      <div class="settings-grid single-column">
+        <label class="setting-field">
+          <span class="setting-label">TTS API Key（可选，留空则复用上方 API Key）</span>
+          <input
+            v-model="form.ttsApiKey"
+            class="setting-input"
+            type="password"
+            placeholder="可留空"
+          />
+        </label>
+      </div>
+
+      <div class="settings-grid three-column">
+        <label class="setting-field">
+          <span class="setting-label">默认 speed</span>
+          <input
+            v-model.number="form.ttsDefaultVoice.speed"
+            class="setting-input"
+            type="number"
+            inputmode="decimal"
+            min="0.5"
+            max="2"
+            step="0.05"
+          />
+        </label>
+        <label class="setting-field">
+          <span class="setting-label">默认 vol</span>
+          <input
+            v-model.number="form.ttsDefaultVoice.vol"
+            class="setting-input"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+          />
+        </label>
+        <label class="setting-field">
+          <span class="setting-label">默认 pitch</span>
+          <input
+            v-model.number="form.ttsDefaultVoice.pitch"
+            class="setting-input"
+            type="number"
+            inputmode="decimal"
+            min="-12"
+            max="12"
+            step="0.5"
+          />
+        </label>
+      </div>
+
+      <div class="settings-grid four-column">
+        <label class="setting-field">
+          <span class="setting-label">默认 sample_rate</span>
+          <input
+            v-model.number="form.ttsDefaultAudio.sampleRate"
+            class="setting-input"
+            type="number"
+            inputmode="numeric"
+            min="8000"
+            max="48000"
+            step="1000"
+          />
+        </label>
+        <label class="setting-field">
+          <span class="setting-label">默认 bitrate</span>
+          <input
+            v-model.number="form.ttsDefaultAudio.bitrate"
+            class="setting-input"
+            type="number"
+            inputmode="numeric"
+            min="32000"
+            max="320000"
+            step="1000"
+          />
+        </label>
+        <label class="setting-field">
+          <span class="setting-label">默认 format</span>
+          <select v-model="form.ttsDefaultAudio.format" class="setting-select">
+            <option value="mp3">mp3</option>
+            <option value="wav">wav</option>
+            <option value="flac">flac</option>
+          </select>
+        </label>
+        <label class="setting-field">
+          <span class="setting-label">默认 channel</span>
+          <select v-model.number="form.ttsDefaultAudio.channel" class="setting-select">
+            <option :value="1">1</option>
+            <option :value="2">2</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
     <div class="settings-grid two-column">
       <label class="setting-field">
         <span class="setting-label">已保存配置</span>
@@ -194,3 +420,36 @@ onMounted(loadStorage)
     <p class="status-message">{{ statusMessage }}</p>
   </section>
 </template>
+
+<style scoped>
+.settings-subpanel {
+  margin: 8px 0 14px;
+  padding: 14px;
+  border: 2px solid color-mix(in srgb, var(--accent-cyan) 45%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
+}
+
+.subpanel-title {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent-cyan);
+}
+
+.settings-grid.three-column {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-grid.four-column {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .settings-grid.three-column,
+  .settings-grid.four-column {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

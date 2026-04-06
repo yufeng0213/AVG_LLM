@@ -1,12 +1,18 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import {
+  createDefaultCharacterVoiceConfig,
+  RELATIONSHIP_METRIC_MAX,
+  RELATIONSHIP_METRIC_MIN,
   WORLD_BOOK_ENTRY_DEFS,
   WORLD_BOOK_PORTRAIT_STYLE_OPTIONS,
+  createDirectorEventTemplate,
   createNewCharacter,
   createNewScene,
   getActiveWorldBookId,
   loadWorldBooks,
+  normalizeDirectorEvents,
+  normalizeCharacterVoiceConfig,
   persistWorldBooks,
   setActiveWorldBookId,
 } from '../worldbook/worldBookStore'
@@ -47,6 +53,10 @@ const isSaving = ref(false)
 const isLoadingBackgrounds = ref(false)  // 新增：背景加载状态
 const narratorProfiles = ref([])
 const isAndroidPlatform = computed(() => isAndroid())
+const directorEventsText = ref('[]')
+const directorEventsError = ref('')
+const relationshipMetricMin = RELATIONSHIP_METRIC_MIN
+const relationshipMetricMax = RELATIONSHIP_METRIC_MAX
 
 // 编辑世界书名称相关
 const showEditTitleDialog = ref(false)
@@ -114,6 +124,48 @@ const markBookUpdated = () => {
   activeBook.value.updatedAt = new Date().toISOString()
 }
 
+const clampRelationshipMetric = (value, fallback = 0) => {
+  const parsed = Number.parseFloat(String(value))
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return Math.min(relationshipMetricMax, Math.max(relationshipMetricMin, Math.round(parsed)))
+}
+
+const ensureCharacterRelationshipBase = (character) => {
+  if (!character || typeof character !== 'object') return
+  if (!character.relationshipBase || typeof character.relationshipBase !== 'object') {
+    character.relationshipBase = {
+      favor: 50,
+      trust: 50,
+      stance: 0,
+    }
+    return
+  }
+
+  character.relationshipBase.favor = clampRelationshipMetric(character.relationshipBase.favor, 50)
+  character.relationshipBase.trust = clampRelationshipMetric(character.relationshipBase.trust, 50)
+  character.relationshipBase.stance = clampRelationshipMetric(character.relationshipBase.stance, 0)
+}
+
+const ensureCharacterVoiceConfig = (character) => {
+  if (!character || typeof character !== 'object') return
+  character.voiceConfig = normalizeCharacterVoiceConfig(character.voiceConfig || createDefaultCharacterVoiceConfig())
+}
+
+const syncDirectorEventsTextFromBook = () => {
+  if (!activeBook.value) {
+    directorEventsText.value = '[]'
+    directorEventsError.value = ''
+    return
+  }
+
+  const events = normalizeDirectorEvents(activeBook.value.directorEvents)
+  activeBook.value.directorEvents = events
+  directorEventsText.value = JSON.stringify(events, null, 2)
+  directorEventsError.value = ''
+}
+
 const ensureCharacterSelection = () => {
   if (characters.value.length === 0) {
     activeCharacterId.value = ''
@@ -137,6 +189,8 @@ const loadEditorData = async () => {
   activeBookId.value = nextId
   await setActiveWorldBookId(nextId)
   ensureCharacterSelection()
+  ensureSceneSelection()
+  syncDirectorEventsTextFromBook()
 }
 
 const updateActiveBookField = (field, value) => {
@@ -182,6 +236,46 @@ const updateActiveCharacterField = (field, value) => {
   activeCharacter.value[field] = value
   activeCharacter.value.updatedAt = new Date().toISOString()
   markBookUpdated()
+}
+
+const updateActiveCharacterRelationshipField = (field, value) => {
+  if (!activeCharacter.value) return
+  ensureCharacterRelationshipBase(activeCharacter.value)
+
+  const fallbackValue = field === 'stance' ? 0 : 50
+  activeCharacter.value.relationshipBase[field] = clampRelationshipMetric(value, fallbackValue)
+  activeCharacter.value.updatedAt = new Date().toISOString()
+  markBookUpdated()
+}
+
+const updateActiveCharacterVoiceField = (field, value) => {
+  if (!activeCharacter.value) return
+  ensureCharacterVoiceConfig(activeCharacter.value)
+  const nextVoiceConfig = normalizeCharacterVoiceConfig({
+    ...activeCharacter.value.voiceConfig,
+    [field]: value,
+  })
+  activeCharacter.value.voiceConfig = nextVoiceConfig
+  activeCharacter.value.updatedAt = new Date().toISOString()
+  markBookUpdated()
+}
+
+const updateActiveCharacterVoiceToneText = (value) => {
+  if (!activeCharacter.value) return
+  ensureCharacterVoiceConfig(activeCharacter.value)
+  const nextTones = String(value || '')
+    .split(/\r?\n/g)
+    .map((line) => String(line || '').trim())
+    .filter(Boolean)
+  updateActiveCharacterVoiceField('pronunciationTone', nextTones)
+}
+
+const getActiveCharacterVoiceToneText = () => {
+  const toneList = activeCharacter.value?.voiceConfig?.pronunciationTone
+  if (!Array.isArray(toneList)) {
+    return ''
+  }
+  return toneList.join('\n')
 }
 
 // ========== 场景管理功能 ==========
@@ -339,6 +433,44 @@ const activeSceneDisplayName = computed(() => {
   return getSceneDisplayName(activeScene.value, index)
 })
 
+const applyDirectorEventsJson = () => {
+  if (!activeBook.value) return
+
+  try {
+    const parsed = JSON.parse(directorEventsText.value || '[]')
+    if (!Array.isArray(parsed)) {
+      directorEventsError.value = 'directorEvents 必须是 JSON 数组。'
+      return
+    }
+
+    const normalized = normalizeDirectorEvents(parsed)
+    activeBook.value.directorEvents = normalized
+    directorEventsText.value = JSON.stringify(normalized, null, 2)
+    directorEventsError.value = ''
+    markBookUpdated()
+    statusMessage.value = `导演事件已更新，共 ${normalized.length} 条`
+  } catch (error) {
+    directorEventsError.value = `JSON 格式错误：${error?.message || '未知错误'}`
+  }
+}
+
+const insertDirectorEventTemplate = () => {
+  if (!activeBook.value) return
+
+  const currentEvents = normalizeDirectorEvents(activeBook.value.directorEvents)
+  const template = createDirectorEventTemplate(currentEvents.length + 1)
+  activeBook.value.directorEvents = [...currentEvents, template]
+  directorEventsText.value = JSON.stringify(activeBook.value.directorEvents, null, 2)
+  directorEventsError.value = ''
+  markBookUpdated()
+  statusMessage.value = '已插入导演事件模板'
+}
+
+const resetDirectorEventsJson = () => {
+  syncDirectorEventsTextFromBook()
+  statusMessage.value = '已重置为当前保存中的导演事件配置'
+}
+
 // 打开编辑标题对话框
 const openEditTitleDialog = () => {
   editTitle.value = activeBook.value?.title || ''
@@ -394,7 +526,18 @@ watch(
   () => activeBook.value?.id,
   () => {
     ensureCharacterSelection()
+    ensureSceneSelection()
+    syncDirectorEventsTextFromBook()
   },
+)
+
+watch(
+  () => activeCharacter.value?.id,
+  () => {
+    ensureCharacterRelationshipBase(activeCharacter.value)
+    ensureCharacterVoiceConfig(activeCharacter.value)
+  },
+  { immediate: true },
 )
 
 onMounted(async () => {
@@ -486,6 +629,35 @@ onMounted(async () => {
             </div>
             <p class="setting-hint">新游戏未手动覆盖时，将使用该叙事者风格。</p>
           </label>
+        </section>
+
+        <section class="worldbook-director-settings" aria-label="事件导演器配置">
+          <h3 class="subpanel-title">事件导演器（高级）</h3>
+          <p class="setting-hint">
+            可按剧情行号/场景/选项/关系阈值触发事件，并注入 Prompt 指令、关系变化、导演标记。
+          </p>
+          <div class="director-actions">
+            <button type="button" class="action-button action-outline" @click="insertDirectorEventTemplate">
+              ＋ 插入模板
+            </button>
+            <button type="button" class="action-button action-outline" @click="resetDirectorEventsJson">
+              重置文本
+            </button>
+            <button type="button" class="action-button action-strong" @click="applyDirectorEventsJson">
+              应用 JSON
+            </button>
+          </div>
+          <label class="setting-field">
+            <span class="setting-label">directorEvents JSON</span>
+            <textarea
+              v-model="directorEventsText"
+              class="setting-textarea director-json-textarea"
+              rows="10"
+              placeholder="[]"
+              spellcheck="false"
+            ></textarea>
+          </label>
+          <p v-if="directorEventsError" class="setting-error">{{ directorEventsError }}</p>
         </section>
         
         <!-- 条目选择下拉框 -->
@@ -700,6 +872,195 @@ onMounted(async () => {
               @input="updateActiveCharacterField('notes', $event.target.value)"
             ></textarea>
           </label>
+
+          <section class="relationship-settings-card" aria-label="角色关系初始值">
+            <h3 class="subpanel-title">角色关系初始值</h3>
+            <p class="setting-hint">范围：{{ relationshipMetricMin }} ~ {{ relationshipMetricMax }}，会在新游戏时作为初始关系状态。</p>
+            <div class="settings-grid relationship-grid">
+              <label class="setting-field">
+                <span class="setting-label">好感 (favor)</span>
+                <input
+                  :value="activeCharacter.relationshipBase?.favor ?? 50"
+                  class="setting-input"
+                  type="number"
+                  inputmode="numeric"
+                  :min="relationshipMetricMin"
+                  :max="relationshipMetricMax"
+                  @input="updateActiveCharacterRelationshipField('favor', $event.target.value)"
+                />
+              </label>
+              <label class="setting-field">
+                <span class="setting-label">信任 (trust)</span>
+                <input
+                  :value="activeCharacter.relationshipBase?.trust ?? 50"
+                  class="setting-input"
+                  type="number"
+                  inputmode="numeric"
+                  :min="relationshipMetricMin"
+                  :max="relationshipMetricMax"
+                  @input="updateActiveCharacterRelationshipField('trust', $event.target.value)"
+                />
+              </label>
+              <label class="setting-field">
+                <span class="setting-label">立场 (stance)</span>
+                <input
+                  :value="activeCharacter.relationshipBase?.stance ?? 0"
+                  class="setting-input"
+                  type="number"
+                  inputmode="numeric"
+                  :min="relationshipMetricMin"
+                  :max="relationshipMetricMax"
+                  @input="updateActiveCharacterRelationshipField('stance', $event.target.value)"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section class="voice-settings-card" aria-label="角色TTS语音配置">
+            <h3 class="subpanel-title">角色 TTS 语音配置</h3>
+            <p class="setting-hint">在游戏中点击“语音”按钮时会使用这里的设置调用 TTS。需要先在 API 设置中配置语音模型。</p>
+
+            <label class="setting-field">
+              <span class="setting-label">启用角色语音</span>
+              <select
+                :value="activeCharacter.voiceConfig?.enabled ? '1' : '0'"
+                class="setting-select"
+                @change="updateActiveCharacterVoiceField('enabled', $event.target.value === '1')"
+              >
+                <option value="0">关闭</option>
+                <option value="1">开启</option>
+              </select>
+            </label>
+
+            <div class="settings-grid two-column">
+              <label class="setting-field">
+                <span class="setting-label">voice_id</span>
+                <input
+                  :value="activeCharacter.voiceConfig?.voiceId || ''"
+                  class="setting-input"
+                  type="text"
+                  placeholder="例如：male-qn-qingse"
+                  @input="updateActiveCharacterVoiceField('voiceId', $event.target.value)"
+                />
+              </label>
+              <label class="setting-field">
+                <span class="setting-label">emotion（可选）</span>
+                <input
+                  :value="activeCharacter.voiceConfig?.emotion || ''"
+                  class="setting-input"
+                  type="text"
+                  placeholder="例如：happy"
+                  @input="updateActiveCharacterVoiceField('emotion', $event.target.value)"
+                />
+              </label>
+            </div>
+
+            <div class="settings-grid three-column">
+              <label class="setting-field">
+                <span class="setting-label">speed</span>
+                <input
+                  :value="activeCharacter.voiceConfig?.speed ?? 1"
+                  class="setting-input"
+                  type="number"
+                  inputmode="decimal"
+                  min="0.5"
+                  max="2"
+                  step="0.05"
+                  @input="updateActiveCharacterVoiceField('speed', $event.target.value)"
+                />
+              </label>
+              <label class="setting-field">
+                <span class="setting-label">vol</span>
+                <input
+                  :value="activeCharacter.voiceConfig?.vol ?? 1"
+                  class="setting-input"
+                  type="number"
+                  inputmode="decimal"
+                  step="0.01"
+                  @change="updateActiveCharacterVoiceField('vol', $event.target.value)"
+                  @blur="updateActiveCharacterVoiceField('vol', $event.target.value)"
+                />
+              </label>
+              <label class="setting-field">
+                <span class="setting-label">pitch（-12 ~ 12）</span>
+                <input
+                  :value="activeCharacter.voiceConfig?.pitch ?? 0"
+                  class="setting-input"
+                  type="number"
+                  inputmode="decimal"
+                  min="-12"
+                  max="12"
+                  step="0.5"
+                  @change="updateActiveCharacterVoiceField('pitch', $event.target.value)"
+                  @blur="updateActiveCharacterVoiceField('pitch', $event.target.value)"
+                />
+              </label>
+            </div>
+
+            <div class="settings-grid four-column">
+              <label class="setting-field">
+                <span class="setting-label">sample_rate</span>
+                <input
+                  :value="activeCharacter.voiceConfig?.sampleRate ?? 32000"
+                  class="setting-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="8000"
+                  max="48000"
+                  step="1000"
+                  @input="updateActiveCharacterVoiceField('sampleRate', $event.target.value)"
+                />
+              </label>
+              <label class="setting-field">
+                <span class="setting-label">bitrate</span>
+                <input
+                  :value="activeCharacter.voiceConfig?.bitrate ?? 128000"
+                  class="setting-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="32000"
+                  max="320000"
+                  step="1000"
+                  @input="updateActiveCharacterVoiceField('bitrate', $event.target.value)"
+                />
+              </label>
+              <label class="setting-field">
+                <span class="setting-label">format</span>
+                <select
+                  :value="activeCharacter.voiceConfig?.format || 'mp3'"
+                  class="setting-select"
+                  @change="updateActiveCharacterVoiceField('format', $event.target.value)"
+                >
+                  <option value="mp3">mp3</option>
+                  <option value="wav">wav</option>
+                  <option value="flac">flac</option>
+                </select>
+              </label>
+              <label class="setting-field">
+                <span class="setting-label">channel</span>
+                <select
+                  :value="String(activeCharacter.voiceConfig?.channel ?? 1)"
+                  class="setting-select"
+                  @change="updateActiveCharacterVoiceField('channel', $event.target.value)"
+                >
+                  <option value="1">1 (mono)</option>
+                  <option value="2">2 (stereo)</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="setting-field">
+              <span class="setting-label">pronunciation_dict.tone（每行一条，可选）</span>
+              <textarea
+                :value="getActiveCharacterVoiceToneText()"
+                class="setting-textarea"
+                rows="4"
+                placeholder="处理/(chu3)(li3)"
+                spellcheck="false"
+                @input="updateActiveCharacterVoiceToneText($event.target.value)"
+              ></textarea>
+            </label>
+          </section>
 
           <label class="setting-field">
             <span class="setting-label">立绘配置</span>
@@ -1229,6 +1590,63 @@ onMounted(async () => {
   background: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
 }
 
+.worldbook-director-settings {
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 2px solid color-mix(in srgb, var(--accent-magenta) 48%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-magenta) 10%, transparent);
+}
+
+.director-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.director-json-textarea {
+  min-height: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.setting-error {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--accent-magenta);
+}
+
+.relationship-settings-card {
+  margin: 4px 0 8px;
+  padding: 12px;
+  border: 2px solid color-mix(in srgb, var(--accent-yellow) 45%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-yellow) 10%, transparent);
+}
+
+.voice-settings-card {
+  margin: 4px 0 8px;
+  padding: 12px;
+  border: 2px solid color-mix(in srgb, var(--accent-cyan) 45%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
+}
+
+.relationship-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-grid.three-column {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-grid.four-column {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .subpanel-title {
   margin: 0 0 10px;
   font-size: 0.95rem;
@@ -1278,6 +1696,15 @@ onMounted(async () => {
   .worldbook-editor-bg-word {
     font-size: clamp(4.5rem, 24vw, 8rem);
     right: -7%;
+  }
+
+  .relationship-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-grid.three-column,
+  .settings-grid.four-column {
+    grid-template-columns: 1fr;
   }
 }
 

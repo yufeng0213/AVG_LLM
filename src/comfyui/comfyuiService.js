@@ -12,25 +12,34 @@
  */
 
 import { kvStorage } from '../storage/index.js'
+import { CapacitorHttp } from '@capacitor/core'
 
 // 存储 key 常量
 const COMFYUI_CONFIG_KEY = 'comfyui_config'
+const LEGACY_DEFAULT_WORKFLOW_PATH = './data/comfyui/workflow_default.json'
+const BUNDLED_DEFAULT_WORKFLOW_PATH = '/data/comfyui/workflow_default.json'
+
+const normalizeWorkflowPath = (workflowPath) => {
+  if (!workflowPath) return BUNDLED_DEFAULT_WORKFLOW_PATH
+  if (workflowPath === LEGACY_DEFAULT_WORKFLOW_PATH) return BUNDLED_DEFAULT_WORKFLOW_PATH
+  return workflowPath
+}
 
 // 默认配置
 const DEFAULT_CONFIG = {
   serverUrl: 'http://127.0.0.1:8188',
   timeout: 300000, // 5分钟超时
-  workflowPath: './data/comfyui/workflow_default.json',
+  workflowPath: BUNDLED_DEFAULT_WORKFLOW_PATH,
   // 默认生成参数
-  model: '',
-  vae: '',
-  clip: '',
-  width: 512,
-  height: 768,
-  steps: 20,
-  cfgScale: 7,
-  sampler: 'euler',
-  scheduler: 'normal',
+  model: 'z-image-turbo-fp8-e4m3fn.safetensors',
+  vae: 'ae.safetensors',
+  clip: 'qwen_3_4b_fp8_mixed.safetensors',
+  width: 1024,
+  height: 1024,
+  steps: 8,
+  cfgScale: 1,
+  sampler: 'res_multistep',
+  scheduler: 'simple',
   seed: -1, // -1 表示随机
 }
 
@@ -40,6 +49,112 @@ const DEFAULT_CONFIG = {
  */
 const isElectron = () => {
   return typeof window !== 'undefined' && window.avgLLM?.comfyui
+}
+
+const isNativeRuntime = () => {
+  return typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.() === true
+}
+
+const parseJsonPayload = (payload) => {
+  if (typeof payload !== 'string') return payload
+  try {
+    return JSON.parse(payload)
+  } catch {
+    return payload
+  }
+}
+
+const requestJson = async (url, { method = 'GET', headers = {}, body = null } = {}) => {
+  if (isNativeRuntime() && CapacitorHttp?.request) {
+    const nativeHeaders = {
+      Accept: 'application/json',
+      ...headers,
+    }
+    if (body !== null && body !== undefined && !nativeHeaders['Content-Type']) {
+      nativeHeaders['Content-Type'] = 'application/json'
+    }
+
+    const response = await CapacitorHttp.request({
+      url,
+      method,
+      headers: nativeHeaders,
+      data: body,
+      connectTimeout: 15000,
+      readTimeout: 300000,
+    })
+
+    const parsed = parseJsonPayload(response.data)
+    return {
+      ok: response.status >= 200 && response.status < 300,
+      status: response.status,
+      data: parsed,
+      text: typeof response.data === 'string' ? response.data : JSON.stringify(response.data ?? ''),
+    }
+  }
+
+  const fetchOptions = {
+    method,
+    headers: {
+      Accept: 'application/json',
+      ...headers,
+    },
+  }
+  if (body !== null && body !== undefined) {
+    fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body)
+  }
+
+  const response = await fetch(url, fetchOptions)
+  const text = await response.text()
+  return {
+    ok: response.ok,
+    status: response.status,
+    data: parseJsonPayload(text),
+    text,
+  }
+}
+
+const getHeaderValue = (headers, key) => {
+  if (!headers) return ''
+  if (Object.prototype.hasOwnProperty.call(headers, key)) return headers[key]
+  const lowerKey = key.toLowerCase()
+  for (const [k, v] of Object.entries(headers)) {
+    if (String(k).toLowerCase() === lowerKey) return v
+  }
+  return ''
+}
+
+const getMimeTypeFromHeaders = (headers) => {
+  const raw = getHeaderValue(headers, 'content-type')
+  if (!raw) return 'image/png'
+  return String(raw).split(';')[0].trim() || 'image/png'
+}
+
+const arrayBufferToBase64 = (buffer) => {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize)
+    binary += String.fromCharCode(...chunk)
+  }
+  return btoa(binary)
+}
+
+const normalizeNativeBinaryToBase64 = (data) => {
+  if (!data) return null
+  if (typeof data === 'string') {
+    return data.trim()
+  }
+  if (data instanceof ArrayBuffer) {
+    return arrayBufferToBase64(data)
+  }
+  if (Array.isArray(data)) {
+    return arrayBufferToBase64(new Uint8Array(data).buffer)
+  }
+  if (typeof data === 'object' && Array.isArray(data.data)) {
+    return arrayBufferToBase64(new Uint8Array(data.data).buffer)
+  }
+  return null
 }
 
 /**
@@ -52,12 +167,19 @@ export const getComfyUIConfig = async () => {
   try {
     const raw = await kvStorage.get(COMFYUI_CONFIG_KEY)
     if (raw) {
-      return { ...DEFAULT_CONFIG, ...raw }
+      return {
+        ...DEFAULT_CONFIG,
+        ...raw,
+        workflowPath: normalizeWorkflowPath(raw.workflowPath),
+      }
     }
   } catch {
     // 忽略解析错误
   }
-  return DEFAULT_CONFIG
+  return {
+    ...DEFAULT_CONFIG,
+    workflowPath: normalizeWorkflowPath(DEFAULT_CONFIG.workflowPath),
+  }
 }
 
 /**
@@ -68,7 +190,10 @@ export const saveComfyUIConfig = async (config) => {
   if (typeof window === 'undefined') return
 
   try {
-    await kvStorage.set(COMFYUI_CONFIG_KEY, config)
+    await kvStorage.set(COMFYUI_CONFIG_KEY, {
+      ...config,
+      workflowPath: normalizeWorkflowPath(config?.workflowPath),
+    })
   } catch {
     // 忽略存储错误
   }
@@ -80,7 +205,8 @@ export const saveComfyUIConfig = async (config) => {
  * @returns {Promise<boolean>} 是否可用
  */
 export const checkComfyUIAvailable = async (serverUrl) => {
-  const url = serverUrl || getComfyUIConfig().serverUrl
+  const config = await getComfyUIConfig()
+  const url = serverUrl || config.serverUrl
 
   // Electron 环境：使用 IPC 代理
   if (isElectron()) {
@@ -88,12 +214,9 @@ export const checkComfyUIAvailable = async (serverUrl) => {
     return result.available
   }
 
-  // Web 环境：直接 fetch（可能遇到 CORS）
+  // Web/Native 环境：直接请求（Native 优先走 CapacitorHttp，规避 WebView CORS）
   try {
-    const response = await fetch(`${url}/system_stats`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
-    })
+    const response = await requestJson(`${url}/system_stats`)
     return response.ok
   } catch {
     return false
@@ -106,21 +229,38 @@ export const checkComfyUIAvailable = async (serverUrl) => {
  * @returns {Promise<string[]>} 模型名称列表
  */
 export const getAvailableModels = async (serverUrl) => {
-  const url = serverUrl || getComfyUIConfig().serverUrl
+  const config = await getComfyUIConfig()
+  const url = serverUrl || config.serverUrl
 
   try {
     let data
+    if (isElectron()) {
+      const unetResult = await window.avgLLM.comfyui.getObjectInfo(url, 'UNETLoader')
+      if (unetResult.success) {
+        const unetModels = unetResult.data?.UNETLoader?.input?.required?.unet_name?.[0] || []
+        if (Array.isArray(unetModels) && unetModels.length > 0) {
+          return unetModels
+        }
+      }
+    } else {
+      const unetResponse = await requestJson(`${url}/object_info/UNETLoader`)
+      if (unetResponse.ok) {
+        const unetModels = unetResponse.data?.UNETLoader?.input?.required?.unet_name?.[0] || []
+        if (Array.isArray(unetModels) && unetModels.length > 0) {
+          return unetModels
+        }
+      }
+    }
+
+    // 回退到 CheckpointLoaderSimple（兼容旧工作流）
     if (isElectron()) {
       const result = await window.avgLLM.comfyui.getObjectInfo(url, 'CheckpointLoaderSimple')
       if (!result.success) return []
       data = result.data
     } else {
-      const response = await fetch(`${url}/object_info/CheckpointLoaderSimple`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      })
+      const response = await requestJson(`${url}/object_info/CheckpointLoaderSimple`)
       if (!response.ok) return []
-      data = await response.json()
+      data = response.data
     }
     return data?.CheckpointLoaderSimple?.input?.required?.ckpt_name?.[0] || []
   } catch {
@@ -134,7 +274,8 @@ export const getAvailableModels = async (serverUrl) => {
  * @returns {Promise<string[]>} VAE 名称列表
  */
 export const getAvailableVAEs = async (serverUrl) => {
-  const url = serverUrl || getComfyUIConfig().serverUrl
+  const config = await getComfyUIConfig()
+  const url = serverUrl || config.serverUrl
 
   try {
     let data
@@ -143,12 +284,9 @@ export const getAvailableVAEs = async (serverUrl) => {
       if (!result.success) return []
       data = result.data
     } else {
-      const response = await fetch(`${url}/object_info/VAELoader`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      })
+      const response = await requestJson(`${url}/object_info/VAELoader`)
       if (!response.ok) return []
-      data = await response.json()
+      data = response.data
     }
     return data?.VAELoader?.input?.required?.vae_name?.[0] || []
   } catch {
@@ -162,7 +300,8 @@ export const getAvailableVAEs = async (serverUrl) => {
  * @returns {Promise<string[]>} CLIP 名称列表
  */
 export const getAvailableCLIPs = async (serverUrl) => {
-  const url = serverUrl || getComfyUIConfig().serverUrl
+  const config = await getComfyUIConfig()
+  const url = serverUrl || config.serverUrl
 
   try {
     let data
@@ -171,12 +310,9 @@ export const getAvailableCLIPs = async (serverUrl) => {
       if (!result.success) return []
       data = result.data
     } else {
-      const response = await fetch(`${url}/object_info/CLIPLoader`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      })
+      const response = await requestJson(`${url}/object_info/CLIPLoader`)
       if (!response.ok) return []
-      data = await response.json()
+      data = response.data
     }
     return data?.CLIPLoader?.input?.required?.clip_name?.[0] || []
   } catch {
@@ -190,7 +326,8 @@ export const getAvailableCLIPs = async (serverUrl) => {
  * @returns {Promise<string[]>} 采样器名称列表
  */
 export const getAvailableSamplers = async (serverUrl) => {
-  const url = serverUrl || getComfyUIConfig().serverUrl
+  const config = await getComfyUIConfig()
+  const url = serverUrl || config.serverUrl
 
   try {
     let data
@@ -199,12 +336,9 @@ export const getAvailableSamplers = async (serverUrl) => {
       if (!result.success) return ['euler', 'euler_ancestral', 'dpmpp_2m', 'dpmpp_2m_sde', 'ddim']
       data = result.data
     } else {
-      const response = await fetch(`${url}/object_info/KSampler`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      })
+      const response = await requestJson(`${url}/object_info/KSampler`)
       if (!response.ok) return ['euler', 'euler_ancestral', 'dpmpp_2m', 'dpmpp_2m_sde', 'ddim']
-      data = await response.json()
+      data = response.data
     }
     return data?.KSampler?.input?.required?.sampler_name?.[0] || ['euler', 'euler_ancestral', 'dpmpp_2m']
   } catch {
@@ -218,7 +352,8 @@ export const getAvailableSamplers = async (serverUrl) => {
  * @returns {Promise<string[]>} 调度器名称列表
  */
 export const getAvailableSchedulers = async (serverUrl) => {
-  const url = serverUrl || getComfyUIConfig().serverUrl
+  const config = await getComfyUIConfig()
+  const url = serverUrl || config.serverUrl
 
   try {
     let data
@@ -227,12 +362,9 @@ export const getAvailableSchedulers = async (serverUrl) => {
       if (!result.success) return ['normal', 'karras', 'exponential', 'sgm_uniform']
       data = result.data
     } else {
-      const response = await fetch(`${url}/object_info/KSampler`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      })
+      const response = await requestJson(`${url}/object_info/KSampler`)
       if (!response.ok) return ['normal', 'karras', 'exponential', 'sgm_uniform']
-      data = await response.json()
+      data = response.data
     }
     return data?.KSampler?.input?.required?.scheduler?.[0] || ['normal', 'karras', 'exponential']
   } catch {
@@ -246,7 +378,8 @@ export const getAvailableSchedulers = async (serverUrl) => {
  * @returns {Promise<Object>} 工作流对象
  */
 export const loadWorkflow = async (workflowPath) => {
-  const path = workflowPath || getComfyUIConfig().workflowPath
+  const config = await getComfyUIConfig()
+  const path = normalizeWorkflowPath(workflowPath || config.workflowPath)
   
   try {
     // Electron 环境：使用文件 API
@@ -282,56 +415,18 @@ export const loadWorkflow = async (workflowPath) => {
  */
 const getDefaultWorkflow = () => {
   return {
-    "4": {
+    "39": {
       "inputs": {
-        "seed": "%seed%",
-        "steps": "%steps%",
-        "cfg": "%cfg_scale%",
-        "sampler_name": "%sampler%",
-        "scheduler": "%scheduler%",
-        "denoise": 1,
-        "model": ["15", 0],
-        "positive": ["6", 0],
-        "negative": ["7", 0],
-        "latent_image": ["5", 0]
+        "clip_name": "%clip%",
+        "type": "lumina2",
+        "device": "default"
       },
-      "class_type": "KSampler",
+      "class_type": "CLIPLoader",
       "_meta": {
-        "title": "K采样器"
+        "title": "加载CLIP"
       }
     },
-    "5": {
-      "inputs": {
-        "width": "%width%",
-        "height": "%height%",
-        "batch_size": 1
-      },
-      "class_type": "EmptyLatentImage",
-      "_meta": {
-        "title": "空Latent图像"
-      }
-    },
-    "6": {
-      "inputs": {
-        "text": "%positive_prompt%",
-        "clip": ["15", 1]
-      },
-      "class_type": "CLIPTextEncode",
-      "_meta": {
-        "title": "正向提示词"
-      }
-    },
-    "7": {
-      "inputs": {
-        "text": "%negative_prompt%",
-        "clip": ["15", 1]
-      },
-      "class_type": "CLIPTextEncode",
-      "_meta": {
-        "title": "反向提示词"
-      }
-    },
-    "8": {
+    "40": {
       "inputs": {
         "vae_name": "%vae%"
       },
@@ -340,33 +435,102 @@ const getDefaultWorkflow = () => {
         "title": "加载VAE"
       }
     },
-    "9": {
+    "41": {
       "inputs": {
-        "samples": ["4", 0],
-        "vae": ["8", 0]
+        "width": "%width%",
+        "height": "%height%",
+        "batch_size": 1
+      },
+      "class_type": "EmptySD3LatentImage",
+      "_meta": {
+        "title": "空Latent图像(SD3)"
+      }
+    },
+    "45": {
+      "inputs": {
+        "text": "%positive_prompt%",
+        "clip": [
+          "39",
+          0
+        ]
+      },
+      "class_type": "CLIPTextEncode",
+      "_meta": {
+        "title": "正向提示词"
+      }
+    },
+    "59": {
+      "inputs": {
+        "text": "%negative_prompt%",
+        "clip": [
+          "39",
+          0
+        ]
+      },
+      "class_type": "CLIPTextEncode",
+      "_meta": {
+        "title": "反向提示词"
+      }
+    },
+    "46": {
+      "inputs": {
+        "unet_name": "%model%",
+        "weight_dtype": "default"
+      },
+      "class_type": "UNETLoader",
+      "_meta": {
+        "title": "加载UNET"
+      }
+    },
+    "47": {
+      "inputs": {
+        "model": [
+          "46",
+          0
+        ],
+        "shift": 3
+      },
+      "class_type": "ModelSamplingAuraFlow",
+      "_meta": {
+        "title": "ModelSamplingAuraFlow"
+      }
+    },
+    "44": {
+      "inputs": {
+        "seed": "%seed%",
+        "steps": "%steps%",
+        "cfg": "%cfg_scale%",
+        "sampler_name": "%sampler%",
+        "scheduler": "%scheduler%",
+        "denoise": 1,
+        "model": ["47", 0],
+        "positive": ["45", 0],
+        "negative": ["59", 0],
+        "latent_image": ["41", 0]
+      },
+      "class_type": "KSampler",
+      "_meta": {
+        "title": "K采样器"
+      }
+    },
+    "43": {
+      "inputs": {
+        "samples": ["44", 0],
+        "vae": ["40", 0]
       },
       "class_type": "VAEDecode",
       "_meta": {
         "title": "VAE解码"
       }
     },
-    "10": {
+    "58": {
       "inputs": {
         "filename_prefix": "avg_cg",
-        "images": ["9", 0]
+        "images": ["43", 0]
       },
       "class_type": "SaveImage",
       "_meta": {
         "title": "保存图像"
-      }
-    },
-    "15": {
-      "inputs": {
-        "ckpt_name": "%model%"
-      },
-      "class_type": "CheckpointLoaderSimple",
-      "_meta": {
-        "title": "Checkpoint加载器"
       }
     }
   }
@@ -378,8 +542,8 @@ const getDefaultWorkflow = () => {
  * @param {Object} params - 参数对象
  * @returns {Object} 替换后的工作流对象
  */
-export const fillWorkflowParams = (workflow, params) => {
-  const config = getComfyUIConfig()
+export const fillWorkflowParams = async (workflow, params) => {
+  const config = await getComfyUIConfig()
   
   // 合并参数，使用传入参数或默认配置
   const finalParams = {
@@ -392,7 +556,7 @@ export const fillWorkflowParams = (workflow, params) => {
     height: params.height ?? config.height,
     model: params.model ?? config.model,
     vae: params.vae ?? config.vae,
-    clip: params.clip ?? config.clip,
+    clip: params.clip ?? config.clip ?? DEFAULT_CONFIG.clip,
     positive_prompt: params.positivePrompt || '',
     negative_prompt: params.negativePrompt || 'low quality, bad quality, blurry, ugly, distorted, deformed',
   }
@@ -405,6 +569,14 @@ export const fillWorkflowParams = (workflow, params) => {
   // 递归替换占位符
   const replacePlaceholders = (obj) => {
     if (typeof obj === 'string') {
+      const exactPlaceholderMatch = obj.match(/^%([a-zA-Z0-9_]+)%$/)
+      if (exactPlaceholderMatch) {
+        const key = exactPlaceholderMatch[1]
+        if (Object.prototype.hasOwnProperty.call(finalParams, key)) {
+          return finalParams[key]
+        }
+      }
+
       // 替换所有占位符
       let result = obj
       for (const [key, value] of Object.entries(finalParams)) {
@@ -438,7 +610,8 @@ export const fillWorkflowParams = (workflow, params) => {
  * @returns {Promise<Object>} 执行结果
  */
 export const submitWorkflow = async (workflow, serverUrl) => {
-  const url = serverUrl || getComfyUIConfig().serverUrl
+  const config = await getComfyUIConfig()
+  const url = serverUrl || config.serverUrl
 
   // Electron 环境：使用 IPC 代理
   if (isElectron()) {
@@ -457,26 +630,25 @@ export const submitWorkflow = async (workflow, serverUrl) => {
     }
   }
 
-  // Web 环境：直接 fetch
+  // Web/Native 环境：直接请求（Native 优先走 CapacitorHttp）
   try {
-    const response = await fetch(`${url}/prompt`, {
+    const response = await requestJson(`${url}/prompt`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ prompt: workflow }),
+      body: { prompt: workflow },
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
       return {
         success: false,
-        error: `提交工作流失败: ${response.status} ${errorText}`,
+        error: `提交工作流失败: ${response.status} ${response.text || ''}`,
         data: null,
       }
     }
 
-    const data = await response.json()
+    const data = response.data
     return {
       success: true,
       promptId: data.prompt_id,
@@ -500,7 +672,8 @@ export const submitWorkflow = async (workflow, serverUrl) => {
  * @returns {Promise<Object>} 执行结果
  */
 export const waitForResult = async (promptId, serverUrl, timeout = 300000, onProgress = null) => {
-  const url = serverUrl || getComfyUIConfig().serverUrl
+  const config = await getComfyUIConfig()
+  const url = serverUrl || config.serverUrl
   const startTime = Date.now()
 
   // 轮询检查执行状态
@@ -517,22 +690,19 @@ export const waitForResult = async (promptId, serverUrl, timeout = 300000, onPro
         }
         history = result.data
       } else {
-        const response = await fetch(`${url}/history/${promptId}`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-        })
-
+        const response = await requestJson(`${url}/history/${promptId}`)
         if (!response.ok) {
           await new Promise(resolve => setTimeout(resolve, 1000))
           continue
         }
-
-        history = await response.json()
+        history = response.data
       }
 
-      // 检查是否完成
-      if (history[promptId]?.outputs) {
-        const outputs = history[promptId].outputs
+      const historyEntry = history[promptId]
+
+      // 检查是否有图片输出
+      if (historyEntry?.outputs) {
+        const outputs = historyEntry.outputs
 
         // 查找保存的图片
         for (const nodeId in outputs) {
@@ -564,8 +734,28 @@ export const waitForResult = async (promptId, serverUrl, timeout = 300000, onPro
               }
             }
             
-            // Web 环境：返回 URL
+            // Native 环境：直接转 data URL，避免 WebView 直接加载 http 图片失败
             const imageUrl = `${url}/view?filename=${encodeURIComponent(image.filename)}&type=${image.type || 'output'}&subfolder=${image.subfolder || ''}`
+            if (isNativeRuntime()) {
+              try {
+                const dataUrl = await getImageBase64(imageUrl)
+                return {
+                  success: true,
+                  image: {
+                    filename: image.filename,
+                    subfolder: image.subfolder || '',
+                    type: image.type || 'output',
+                    url: dataUrl,
+                    base64: dataUrl,
+                  },
+                  data: outputs,
+                }
+              } catch (nativeImageErr) {
+                console.warn('ComfyUI: Native 图片转 data URL 失败，回退普通 URL', nativeImageErr)
+              }
+            }
+
+            // Web 环境：返回 URL
             return {
               success: true,
               image: {
@@ -576,6 +766,29 @@ export const waitForResult = async (promptId, serverUrl, timeout = 300000, onPro
               },
               data: outputs,
             }
+          }
+        }
+      }
+
+      // 已完成但没有图片输出时，直接返回明确错误，避免一直轮询到超时
+      const statusInfo = historyEntry?.status
+      if (statusInfo?.completed) {
+        if (statusInfo.status_str === 'error') {
+          const errorMessage = statusInfo.messages?.find?.((msg) => msg?.[0] === 'execution_error')?.[1]?.exception_message
+            || statusInfo.messages?.find?.((msg) => msg?.[0] === 'execution_error')?.[1]?.error
+            || 'ComfyUI 执行失败'
+          return {
+            success: false,
+            error: errorMessage,
+            data: historyEntry,
+          }
+        }
+
+        if (statusInfo.status_str === 'success') {
+          return {
+            success: false,
+            error: '任务执行完成但未返回图片（可能命中缓存）。请尝试更换种子后重试。',
+            data: historyEntry,
           }
         }
       }
@@ -617,21 +830,24 @@ export const waitForResult = async (promptId, serverUrl, timeout = 300000, onPro
  * @param {number} params.seed - 随机种子
  * @param {string} params.sampler - 采样器
  * @param {string} params.scheduler - 调度器
+ * @param {string} params.serverUrl - ComfyUI 服务器地址（可选，优先于配置）
  * @param {string} params.workflowPath - 工作流文件路径（可选）
  * @param {Function} onProgress - 进度回调函数
  * @returns {Promise<Object>} 生成结果
  */
 export const generateCG = async (params, onProgress = null) => {
-  const config = getComfyUIConfig()
+  const config = await getComfyUIConfig()
+  const runtimeServerUrl = (params?.serverUrl || config.serverUrl || '').trim()
+  const runtimeWorkflowPath = params?.workflowPath || config.workflowPath
 
   // 检查服务是否可用
   if (onProgress) onProgress({ status: 'connecting', message: '正在连接 ComfyUI...' })
 
-  const available = await checkComfyUIAvailable(config.serverUrl)
+  const available = await checkComfyUIAvailable(runtimeServerUrl)
   if (!available) {
     return {
       success: false,
-      error: '无法连接到 ComfyUI 服务，请确保 ComfyUI 已启动并运行在 ' + config.serverUrl,
+      error: '无法连接到 ComfyUI 服务，请确保 ComfyUI 已启动并运行在 ' + runtimeServerUrl,
       data: null,
     }
   }
@@ -639,15 +855,15 @@ export const generateCG = async (params, onProgress = null) => {
   // 加载工作流
   if (onProgress) onProgress({ status: 'loading_workflow', message: '正在加载工作流...' })
 
-  const workflow = await loadWorkflow(params.workflowPath || config.workflowPath)
+  const workflow = await loadWorkflow(runtimeWorkflowPath)
 
   // 填充参数
   if (onProgress) onProgress({ status: 'preparing', message: '正在准备生成任务...' })
 
-  const filledWorkflow = fillWorkflowParams(workflow, params)
+  const filledWorkflow = await fillWorkflowParams(workflow, params)
 
   // 提交工作流
-  const submitResult = await submitWorkflow(filledWorkflow, config.serverUrl)
+  const submitResult = await submitWorkflow(filledWorkflow, runtimeServerUrl)
   if (!submitResult.success) {
     return submitResult
   }
@@ -657,7 +873,7 @@ export const generateCG = async (params, onProgress = null) => {
 
   const result = await waitForResult(
     submitResult.promptId,
-    config.serverUrl,
+    runtimeServerUrl,
     config.timeout,
     onProgress
   )
@@ -672,6 +888,40 @@ export const generateCG = async (params, onProgress = null) => {
  */
 export const getImageBase64 = async (imageUrl) => {
   try {
+    if (!imageUrl) {
+      throw new Error('图片地址为空')
+    }
+
+    if (imageUrl.startsWith('data:')) {
+      return imageUrl
+    }
+
+    if (isNativeRuntime() && CapacitorHttp?.request) {
+      const response = await CapacitorHttp.request({
+        url: imageUrl,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        connectTimeout: 15000,
+        readTimeout: 300000,
+      })
+
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`原生请求图片失败: ${response.status}`)
+      }
+
+      const mimeType = getMimeTypeFromHeaders(response.headers)
+      const base64 = normalizeNativeBinaryToBase64(response.data)
+      if (!base64) {
+        throw new Error('原生响应图片数据为空')
+      }
+
+      if (base64.startsWith('data:')) {
+        return base64
+      }
+
+      return `data:${mimeType};base64,${base64}`
+    }
+
     const response = await fetch(imageUrl)
     if (!response.ok) {
       throw new Error(`获取图片失败: ${response.status}`)

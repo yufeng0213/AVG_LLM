@@ -25,6 +25,233 @@ export const WORLD_BOOK_PORTRAIT_STYLE_OPTIONS = [
 ]
 
 const WORLD_BOOK_PORTRAIT_STYLE_VALUES = WORLD_BOOK_PORTRAIT_STYLE_OPTIONS.map((item) => item.value)
+export const RELATIONSHIP_METRIC_MIN = -100
+export const RELATIONSHIP_METRIC_MAX = 100
+
+const clampRelationshipMetric = (value, fallback = 0) => {
+  const parsed = Number.parseFloat(String(value))
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return Math.min(RELATIONSHIP_METRIC_MAX, Math.max(RELATIONSHIP_METRIC_MIN, Math.round(parsed)))
+}
+
+export const createDefaultRelationshipBase = () => ({
+  favor: 50,
+  trust: 50,
+  stance: 0,
+})
+
+export const createDefaultCharacterVoiceConfig = () => ({
+  enabled: false,
+  voiceId: '',
+  speed: 1,
+  vol: 1,
+  pitch: 0,
+  emotion: '',
+  sampleRate: 32000,
+  bitrate: 128000,
+  format: 'mp3',
+  channel: 1,
+  pronunciationTone: [],
+  subtitleEnable: false,
+})
+
+export const normalizeRelationshipBase = (rawBase) => {
+  const fallback = createDefaultRelationshipBase()
+  return {
+    favor: clampRelationshipMetric(rawBase?.favor, fallback.favor),
+    trust: clampRelationshipMetric(rawBase?.trust, fallback.trust),
+    stance: clampRelationshipMetric(rawBase?.stance, fallback.stance),
+  }
+}
+
+const clampVoiceNumber = (value, min, max, fallback) => {
+  const parsed = Number.parseFloat(String(value))
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return Math.min(max, Math.max(min, parsed))
+}
+
+const parseVoiceNumber = (value, fallback) => {
+  const parsed = Number.parseFloat(String(value))
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return parsed
+}
+
+const clampVoiceInteger = (value, min, max, fallback) => {
+  const parsed = Number.parseInt(String(value), 10)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return Math.min(max, Math.max(min, parsed))
+}
+
+const normalizeVoiceFormat = (value) => {
+  const raw = String(value || '').trim().toLowerCase()
+  if (raw === 'wav' || raw === 'flac' || raw === 'mp3') {
+    return raw
+  }
+  return 'mp3'
+}
+
+export const normalizeCharacterVoiceConfig = (rawConfig) => {
+  const fallback = createDefaultCharacterVoiceConfig()
+  return {
+    enabled: Boolean(rawConfig?.enabled),
+    voiceId: String(rawConfig?.voiceId || '').trim(),
+    speed: clampVoiceNumber(rawConfig?.speed, 0.5, 2, fallback.speed),
+    vol: parseVoiceNumber(rawConfig?.vol, fallback.vol),
+    pitch: clampVoiceNumber(rawConfig?.pitch, -12, 12, fallback.pitch),
+    emotion: String(rawConfig?.emotion || '').trim(),
+    sampleRate: clampVoiceInteger(rawConfig?.sampleRate, 8000, 48000, fallback.sampleRate),
+    bitrate: clampVoiceInteger(rawConfig?.bitrate, 32000, 320000, fallback.bitrate),
+    format: normalizeVoiceFormat(rawConfig?.format),
+    channel: clampVoiceInteger(rawConfig?.channel, 1, 2, fallback.channel),
+    pronunciationTone: toStringArray(rawConfig?.pronunciationTone),
+    subtitleEnable: Boolean(rawConfig?.subtitleEnable),
+  }
+}
+
+const toStringArray = (rawValue) => {
+  if (!Array.isArray(rawValue)) return []
+  return rawValue
+    .map((item) => String(item ?? '').trim())
+    .filter(Boolean)
+}
+
+const parseOptionalInteger = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  const parsed = Number.parseInt(String(value), 10)
+  if (!Number.isFinite(parsed)) {
+    return null
+  }
+  return parsed
+}
+
+const parseOptionalRelationshipMetric = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  const parsed = Number.parseFloat(String(value))
+  if (!Number.isFinite(parsed)) {
+    return null
+  }
+  return Math.min(RELATIONSHIP_METRIC_MAX, Math.max(RELATIONSHIP_METRIC_MIN, Math.round(parsed)))
+}
+
+const normalizeDirectorRelationshipRule = (rawRule, index = 0) => {
+  const fallbackId = `rule_${index + 1}`
+  return {
+    characterId: String(rawRule?.characterId || '').trim(),
+    characterName: String(rawRule?.characterName || '').trim(),
+    favorMin: parseOptionalRelationshipMetric(rawRule?.favorMin),
+    favorMax: parseOptionalRelationshipMetric(rawRule?.favorMax),
+    trustMin: parseOptionalRelationshipMetric(rawRule?.trustMin),
+    trustMax: parseOptionalRelationshipMetric(rawRule?.trustMax),
+    stanceMin: parseOptionalRelationshipMetric(rawRule?.stanceMin),
+    stanceMax: parseOptionalRelationshipMetric(rawRule?.stanceMax),
+    id: String(rawRule?.id || fallbackId),
+  }
+}
+
+const normalizeDirectorCondition = (rawCondition) => {
+  return {
+    minLine: parseOptionalInteger(rawCondition?.minLine),
+    maxLine: parseOptionalInteger(rawCondition?.maxLine),
+    scenes: toStringArray(rawCondition?.scenes),
+    requireChoice: Boolean(rawCondition?.requireChoice),
+    choiceIncludes: toStringArray(rawCondition?.choiceIncludes),
+    choiceActions: toStringArray(rawCondition?.choiceActions),
+    customInputOnly: Boolean(rawCondition?.customInputOnly),
+    userInputIncludes: toStringArray(rawCondition?.userInputIncludes),
+    requiredFlags: toStringArray(rawCondition?.requiredFlags),
+    blockedFlags: toStringArray(rawCondition?.blockedFlags),
+    relationship: Array.isArray(rawCondition?.relationship)
+      ? rawCondition.relationship.map((rule, index) => normalizeDirectorRelationshipRule(rule, index))
+      : [],
+  }
+}
+
+const normalizeDirectorRelationshipDelta = (rawDelta, index = 0) => {
+  const fallbackId = `delta_${index + 1}`
+  return {
+    id: String(rawDelta?.id || fallbackId),
+    target: String(rawDelta?.target || rawDelta?.characterId || '').trim(),
+    characterId: String(rawDelta?.characterId || '').trim(),
+    characterName: String(rawDelta?.characterName || '').trim(),
+    favor: clampRelationshipMetric(rawDelta?.favor, 0),
+    trust: clampRelationshipMetric(rawDelta?.trust, 0),
+    stance: clampRelationshipMetric(rawDelta?.stance, 0),
+  }
+}
+
+const normalizeDirectorEffects = (rawEffects) => {
+  return {
+    promptHint: String(rawEffects?.promptHint || '').trim(),
+    promptDirectives: toStringArray(rawEffects?.promptDirectives),
+    relationshipDeltas: Array.isArray(rawEffects?.relationshipDeltas)
+      ? rawEffects.relationshipDeltas.map((delta, index) => normalizeDirectorRelationshipDelta(delta, index))
+      : [],
+    setFlags: toStringArray(rawEffects?.setFlags),
+    clearFlags: toStringArray(rawEffects?.clearFlags),
+  }
+}
+
+export const createDirectorEventTemplate = (index = 1) => ({
+  id: `director_event_${Date.now()}_${index}`,
+  name: `导演事件 ${index}`,
+  enabled: true,
+  once: true,
+  promptHint: '',
+  promptDirectives: [],
+  condition: {
+    minLine: null,
+    maxLine: null,
+    scenes: [],
+    requireChoice: false,
+    choiceIncludes: [],
+    choiceActions: [],
+    customInputOnly: false,
+    userInputIncludes: [],
+    requiredFlags: [],
+    blockedFlags: [],
+    relationship: [],
+  },
+  effects: {
+    promptHint: '',
+    promptDirectives: [],
+    relationshipDeltas: [],
+    setFlags: [],
+    clearFlags: [],
+  },
+})
+
+export const normalizeDirectorEvent = (rawEvent, index = 0) => {
+  const fallback = createDirectorEventTemplate(index + 1)
+  return {
+    id: String(rawEvent?.id || fallback.id),
+    name: String(rawEvent?.name || fallback.name),
+    enabled: rawEvent?.enabled !== false,
+    once: rawEvent?.once !== false,
+    promptHint: String(rawEvent?.promptHint || '').trim(),
+    promptDirectives: toStringArray(rawEvent?.promptDirectives),
+    condition: normalizeDirectorCondition(rawEvent?.condition),
+    effects: normalizeDirectorEffects(rawEvent?.effects),
+  }
+}
+
+export const normalizeDirectorEvents = (rawEvents) => {
+  if (!Array.isArray(rawEvents)) {
+    return []
+  }
+  return rawEvents.map((event, index) => normalizeDirectorEvent(event, index))
+}
 
 export const createEmptyEntries = () => {
   const entries = {}
@@ -81,6 +308,8 @@ export const createCharacterSkeleton = (index = 1) => ({
   identity: '',
   background: '',
   notes: '',
+  relationshipBase: createDefaultRelationshipBase(),
+  voiceConfig: createDefaultCharacterVoiceConfig(),
   portraits: [],  // 新增：立绘列表
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -129,6 +358,8 @@ const normalizeCharacter = (rawCharacter, index = 0) => {
     identity: String(rawCharacter?.identity || ''),
     background: String(rawCharacter?.background || ''),
     notes: String(rawCharacter?.notes || ''),
+    relationshipBase: normalizeRelationshipBase(rawCharacter?.relationshipBase),
+    voiceConfig: normalizeCharacterVoiceConfig(rawCharacter?.voiceConfig),
     portraits: normalizePortraits(rawCharacter?.portraits),
     createdAt: String(rawCharacter?.createdAt || fallback.createdAt),
     updatedAt: String(rawCharacter?.updatedAt || fallback.updatedAt),
@@ -210,6 +441,7 @@ export const createDefaultWorldBook = () => ({
   entries: createEmptyEntries(),
   userProfile: createEmptyUserProfile(),
   characters: [createCharacterSkeleton(1)],
+  directorEvents: [],
   scenes: [],  // 新增：场景列表
   backgroundAssets: createEmptyBackgroundAssets(),
   displaySettings: createDefaultDisplaySettings(),
@@ -258,6 +490,7 @@ export const normalizeWorldBook = (rawBook, index = 0) => {
     entries: nextEntries,
     userProfile: normalizeUserProfile(rawBook?.userProfile),
     characters: normalizeCharacters(rawBook?.characters),
+    directorEvents: normalizeDirectorEvents(rawBook?.directorEvents),
     scenes: normalizeScenes(rawBook?.scenes),
     backgroundAssets: normalizeBackgroundAssets(rawBook?.backgroundAssets),
     displaySettings: normalizeDisplaySettings(rawBook?.displaySettings),
@@ -331,6 +564,7 @@ export const createNewWorldBook = (books = []) => {
     entries: createEmptyEntries(),
     userProfile: createEmptyUserProfile(),
     characters: [createCharacterSkeleton(1)],
+    directorEvents: [],
     backgroundAssets: createEmptyBackgroundAssets(),
     displaySettings: createDefaultDisplaySettings(),
   })

@@ -13,12 +13,27 @@ import { EMOTION_PRESETS } from '../worldbook/emotionPresets'
  * @param {Array} params.dialogueHistory - 对话历史
  * @param {Object} params.currentLine - 当前对话行
  * @param {Array} params.sceneCharacters - 场景角色列表
+ * @param {Array} params.relationshipSnapshot - 角色关系快照（可选）
+ * @param {Array} params.directorDirectives - 导演器指令列表（可选）
  * @param {string} params.userInput - 用户输入（可选）
  * @param {number} params.messageCount - 生成消息条数（默认3）
+ * @param {number} params.contextLineCount - 发送给 LLM 的剧情上下文条数（默认10）
  * @returns {string} 完整的 prompt
  */
 export const buildStoryPrompt = (params) => {
-  const { worldBook, narratorProfile, dialogueHistory, currentLine, sceneCharacters, userInput, messageCount = 3, selectedChoice } = params
+  const {
+    worldBook,
+    narratorProfile,
+    dialogueHistory,
+    currentLine,
+    sceneCharacters,
+    relationshipSnapshot,
+    directorDirectives,
+    userInput,
+    messageCount = 3,
+    selectedChoice,
+    contextLineCount = 10,
+  } = params
 
   const sections = []
 
@@ -37,12 +52,22 @@ export const buildStoryPrompt = (params) => {
     sections.push(buildCharactersSection(worldBook, sceneCharacters))
   }
 
-  // 4. 当前剧情上下文
-  if (dialogueHistory && dialogueHistory.length > 0) {
-    sections.push(buildDialogueHistorySection(dialogueHistory, currentLine))
+  // 4. 角色关系状态
+  if (Array.isArray(relationshipSnapshot) && relationshipSnapshot.length > 0) {
+    sections.push(buildRelationshipSection(relationshipSnapshot))
   }
 
-  // 5. 用户指令（包含消息条数和选择的选项）
+  // 5. 导演器约束
+  if (Array.isArray(directorDirectives) && directorDirectives.length > 0) {
+    sections.push(buildDirectorDirectiveSection(directorDirectives))
+  }
+
+  // 6. 当前剧情上下文
+  if (dialogueHistory && dialogueHistory.length > 0) {
+    sections.push(buildDialogueHistorySection(dialogueHistory, currentLine, contextLineCount))
+  }
+
+  // 7. 用户指令（包含消息条数和选择的选项）
   sections.push(buildInstructionSection(userInput, messageCount, selectedChoice, worldBook))
 
   return sections.filter(Boolean).join('\n\n---\n\n')
@@ -150,13 +175,15 @@ const buildCharactersSection = (worldBook, sceneCharacters) => {
  * @param {Object} currentLine - 当前对话
  * @returns {string} 对话历史文本
  */
-const buildDialogueHistorySection = (history, currentLine) => {
+const buildDialogueHistorySection = (history, currentLine, contextLineCount = 10) => {
   const lines = ['## 剧情上下文']
   lines.push('')
   lines.push('### 已发生的对话')
   
   // 只取最近的对话，避免 prompt 过长
-  const recentHistory = history.slice(-10)
+  const parsedCount = Number.parseInt(String(contextLineCount), 10)
+  const safeCount = Number.isFinite(parsedCount) ? Math.max(0, Math.min(400, parsedCount)) : 10
+  const recentHistory = safeCount > 0 ? history.slice(-safeCount) : []
   
   for (const line of recentHistory) {
     const emotionLabel = getEmotionDisplay(line.emotion)
@@ -332,6 +359,38 @@ const buildNarratorSection = (narratorProfile) => {
     lines.push('')
     lines.push('### 叙事约束')
     lines.push(narratorProfile.instructionPrompt.trim())
+  }
+
+  return lines.join('\n')
+}
+
+const buildRelationshipSection = (relationshipSnapshot) => {
+  const lines = ['## 角色关系状态']
+  lines.push('以下数值范围为 -100 ~ 100，越高表示越正向。')
+
+  for (const item of relationshipSnapshot) {
+    const name = String(item?.name || item?.characterName || item?.id || '未命名角色').trim()
+    const nickname = String(item?.nickname || '').trim()
+    const favor = Number.isFinite(item?.favor) ? item.favor : 0
+    const trust = Number.isFinite(item?.trust) ? item.trust : 0
+    const stance = Number.isFinite(item?.stance) ? item.stance : 0
+    const aliasText = nickname ? `（${nickname}）` : ''
+    lines.push(`- ${name}${aliasText}: favor=${favor}, trust=${trust}, stance=${stance}`)
+  }
+
+  lines.push('请保持角色行为、语气、信息披露程度与上述关系状态一致。')
+  return lines.join('\n')
+}
+
+const buildDirectorDirectiveSection = (directorDirectives) => {
+  const lines = ['## 导演器约束']
+  lines.push('以下约束来自剧情导演器，请优先遵守：')
+
+  for (const directive of directorDirectives) {
+    const text = String(directive || '').trim()
+    if (text) {
+      lines.push(`- ${text}`)
+    }
   }
 
   return lines.join('\n')

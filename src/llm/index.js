@@ -4,9 +4,23 @@
 
 export {
   generateStory,
+  generateCgPrompt,
+  generateCharacterSpeech,
   generatePhoneSmsReply,
   generatePhoneMomentsReplies,
   generatePhoneMomentsBatchReplies,
+  generatePhoneForumPosts,
+  generatePhoneNewsFeed,
+  generatePhoneMapData,
+  generatePhoneShopItems,
+  generateBackpackUseResult,
+  generateHandheldBrickLevel,
+  generateHandheldPetProfile,
+  generateHandheldPetReply,
+  generateHandheldDungeonScene,
+  generateHandheldDungeonMap,
+  generateHandheldDungeonBanter,
+  generateHandheldCampfireCompanions,
   getActiveApiConfig,
 } from './llmService'
 export { buildStoryPrompt, buildQuickPrompt } from './promptGenerator'

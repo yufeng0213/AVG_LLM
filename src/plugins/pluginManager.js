@@ -10,7 +10,9 @@ export const PluginTypes = {
   MUSIC_PLAYER: 'music-player',
   COMPONENT: 'component',
   THEME: 'theme',
-  PHONE: 'phone'
+  PHONE: 'phone',
+  HANDHELD: 'handheld',
+  BACKPACK: 'backpack',
 }
 
 // 插件状态
@@ -31,10 +33,13 @@ const PLUGIN_CONFIG_KEY = 'plugin_config'
 const NATIVE_PLUGIN_MANIFESTS_KEY = 'native_plugin_manifests'
 const SCAN_TIMEOUT_MS = 8000
 const BUILTIN_PLUGIN_INIT_FLAG = '__builtinDefaultsInitialized'
+const BUILTIN_PLUGIN_SEEN_PREFIX = '__builtinSeen:'
 
 const BUILTIN_PLUGIN_IDS_BY_TYPE = {
   [PluginTypes.MUSIC_PLAYER]: 'builtin-music-player',
   [PluginTypes.PHONE]: 'builtin-phone',
+  [PluginTypes.HANDHELD]: 'builtin-handheld',
+  [PluginTypes.BACKPACK]: 'builtin-backpack',
 }
 
 const BUILTIN_PLUGIN_DEFINITIONS = [
@@ -72,7 +77,63 @@ const BUILTIN_PLUGIN_DEFINITIONS = [
     runtime: 'built-in',
     builtIn: true,
   },
+  {
+    id: BUILTIN_PLUGIN_IDS_BY_TYPE[PluginTypes.HANDHELD],
+    name: '默认掌机（2048）',
+    version: '1.0.0',
+    author: 'AVG_LLM',
+    description: '内置掌机插件，包含 2048 小游戏，可在插件管理中启用或禁用。',
+    type: PluginTypes.HANDHELD,
+    entry: 'builtin://handheld',
+    icon: '🎮',
+    replaces: ['HandheldConsole'],
+    config: {
+      game: '2048',
+      boardSize: 4,
+    },
+    runtime: 'built-in',
+    builtIn: true,
+  },
+  {
+    id: BUILTIN_PLUGIN_IDS_BY_TYPE[PluginTypes.BACKPACK],
+    name: '默认背包',
+    version: '1.0.0',
+    author: 'AVG_LLM',
+    description: '内置背包插件，可存放与使用物品，并触发剧情反馈。',
+    type: PluginTypes.BACKPACK,
+    entry: 'builtin://backpack',
+    icon: '🎒',
+    replaces: ['Backpack'],
+    config: {
+      maxItems: 60,
+    },
+    runtime: 'built-in',
+    builtIn: true,
+  },
 ]
+
+const BUNDLED_PLUGIN_DEFINITIONS = [
+  {
+    id: 'handheld-xx-dungeon-adventure',
+    name: 'xx大冒险',
+    version: '1.0.0',
+    author: 'AVG_LLM',
+    description: '独立掌机插件：LLM 地下城 + 队友/装备抽卡 + 队友吐槽。',
+    type: PluginTypes.HANDHELD,
+    entry: 'index.vue',
+    icon: '⚔️',
+    replaces: ['HandheldConsole'],
+    config: {
+      mode: 'dungeon-rpg',
+    },
+    runtime: 'bundled',
+    builtIn: true,
+  },
+]
+
+const BUNDLED_PLUGIN_COMPONENT_LOADERS = {
+  'handheld-xx-dungeon-adventure': () => import('./handheld-xx-dungeon-adventure/index.vue'),
+}
 
 let initPromise = null
 let initialized = false
@@ -156,6 +217,10 @@ const normalizePluginManifest = (manifest) => {
 }
 
 const getBuiltInPluginManifests = () => BUILTIN_PLUGIN_DEFINITIONS
+  .map((manifest) => normalizePluginManifest(manifest))
+  .filter(Boolean)
+
+const getBundledPluginManifests = () => BUNDLED_PLUGIN_DEFINITIONS
   .map((manifest) => normalizePluginManifest(manifest))
   .filter(Boolean)
 
@@ -245,6 +310,7 @@ export async function scanPlugins() {
   
   try {
     candidates.push(...getBuiltInPluginManifests())
+    candidates.push(...getBundledPluginManifests())
 
     // 通过 Electron API 扫描插件目录
     if (window.avgLLM?.plugins?.scan) {
@@ -266,7 +332,7 @@ export async function scanPlugins() {
     console.error('Failed to scan plugins:', e)
   }
 
-  // 同 ID 去重，按添加顺序优先（内置 > 扫描到的外部 > Android 导入 manifest）
+  // 同 ID 去重，按添加顺序优先（内置 > 打包插件 > 扫描到的外部 > Android 导入 manifest）
   const seen = new Set()
   candidates.forEach((plugin) => {
     if (!plugin?.id || seen.has(plugin.id)) {
@@ -319,6 +385,17 @@ export async function loadPluginManifest(pluginId) {
  */
 export async function loadPluginComponent(plugin) {
   try {
+    // 打包内置插件：优先走本地静态加载器
+    if (plugin.runtime === 'bundled') {
+      const loader = BUNDLED_PLUGIN_COMPONENT_LOADERS[plugin.id]
+      if (!loader) {
+        console.error(`Bundled plugin loader not found: ${plugin.id}`)
+        return null
+      }
+      const module = await loader()
+      return module?.default || module || null
+    }
+
     // 通过 Electron API 加载组件
     if (window.avgLLM?.plugins?.loadComponent) {
       const result = await window.avgLLM.plugins.loadComponent(plugin.id)
@@ -356,10 +433,10 @@ export async function enablePlugin(pluginId) {
   
   try {
     let component = null
-    const isBuiltIn = Boolean(plugin.builtIn) || plugin.runtime === 'built-in'
+    const isBuiltInRuntime = plugin.runtime === 'built-in'
 
     // 内置插件不需要加载外部组件，渲染层使用默认组件
-    if (!isBuiltIn) {
+    if (!isBuiltInRuntime) {
       component = await loadPluginComponent(plugin)
       if (!component) {
         console.error(`Failed to load component for plugin: ${pluginId}`)
@@ -457,6 +534,21 @@ export function getPluginComponent(type) {
   return null
 }
 
+/**
+ * 获取指定类型的全部启用插件组件（按启用顺序）
+ * @param {string} type - 插件类型
+ * @returns {Object[]} Vue组件数组
+ */
+export function getPluginComponents(type) {
+  const components = []
+  for (const plugin of enabledPlugins.values()) {
+    if (plugin.type === type && plugin.component) {
+      components.push(plugin.component)
+    }
+  }
+  return components
+}
+
 export function getBuiltinPluginIdByType(type) {
   return BUILTIN_PLUGIN_IDS_BY_TYPE[type] || null
 }
@@ -500,17 +592,44 @@ export async function initPluginSystem() {
     const config = await getPluginConfig()
     if (!config.settings[BUILTIN_PLUGIN_INIT_FLAG]) {
       const enabledSet = new Set(config.enabled)
+      const nextSettings = {
+        ...config.settings,
+      }
       Object.values(BUILTIN_PLUGIN_IDS_BY_TYPE).forEach((pluginId) => {
         if (loadedPlugins.has(pluginId)) {
           enabledSet.add(pluginId)
+          nextSettings[`${BUILTIN_PLUGIN_SEEN_PREFIX}${pluginId}`] = true
         }
       })
       config.enabled = Array.from(enabledSet)
       config.settings = {
-        ...config.settings,
+        ...nextSettings,
         [BUILTIN_PLUGIN_INIT_FLAG]: true,
       }
       await savePluginConfig(config)
+    } else {
+      // 对“新引入”的内置插件做一次性默认启用，不覆盖用户后续手动禁用行为
+      const enabledSet = new Set(config.enabled)
+      const nextSettings = {
+        ...config.settings,
+      }
+      let changed = false
+
+      Object.values(BUILTIN_PLUGIN_IDS_BY_TYPE).forEach((pluginId) => {
+        if (!loadedPlugins.has(pluginId)) return
+        const seenKey = `${BUILTIN_PLUGIN_SEEN_PREFIX}${pluginId}`
+        if (!nextSettings[seenKey]) {
+          enabledSet.add(pluginId)
+          nextSettings[seenKey] = true
+          changed = true
+        }
+      })
+
+      if (changed) {
+        config.enabled = Array.from(enabledSet)
+        config.settings = nextSettings
+        await savePluginConfig(config)
+      }
     }
 
     // 恢复已启用的插件
@@ -638,6 +757,7 @@ export default {
   disablePlugin,
   getEnabledPlugins,
   getPluginComponent,
+  getPluginComponents,
   getBuiltinPluginIdByType,
   isPluginEnabled,
   getAllPlugins,

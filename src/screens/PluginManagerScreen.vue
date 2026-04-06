@@ -29,7 +29,9 @@ const typeLabels = {
   [PluginTypes.MUSIC_PLAYER]: '音乐播放器',
   [PluginTypes.COMPONENT]: '组件',
   [PluginTypes.THEME]: '主题',
-  [PluginTypes.PHONE]: '手机'
+  [PluginTypes.PHONE]: '手机',
+  [PluginTypes.HANDHELD]: '掌机',
+  [PluginTypes.BACKPACK]: '背包',
 }
 
 const isAndroidPlatform = computed(() => isAndroid())
@@ -52,6 +54,8 @@ const getGroupIcon = (type) => {
   if (type === PluginTypes.MUSIC_PLAYER) return '🎵'
   if (type === PluginTypes.THEME) return '🎨'
   if (type === PluginTypes.PHONE) return '📱'
+  if (type === PluginTypes.HANDHELD) return '🎮'
+  if (type === PluginTypes.BACKPACK) return '🎒'
   return '🧩'
 }
 

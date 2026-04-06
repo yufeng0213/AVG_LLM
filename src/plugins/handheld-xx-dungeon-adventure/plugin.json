@@ -1,0 +1,12 @@
+{
+  "id": "handheld-xx-dungeon-adventure",
+  "name": "xx大冒险",
+  "version": "1.0.0",
+  "author": "AVG_LLM",
+  "description": "独立掌机插件：LLM 地下城 + 队友/装备抽卡 + 队友吐槽。",
+  "type": "handheld",
+  "entry": "index.vue",
+  "icon": "⚔️",
+  "replaces": ["HandheldConsole"],
+  "runtime": "bundled"
+}

@@ -805,7 +805,7 @@ body.platform-android.android-portrait {
 
 /* Android 竖屏下的按钮尺寸适配 - 更大的触控区域 */
 .platform-android.android-portrait .action-button,
-.platform-android.android-portrait button:not(.spine-action-btn):not(.icon-btn):not(.small-btn):not(.menu-toggle-btn):not(.top-menu-btn):not(.player-toggle-btn):not(.control-btn):not(.play-btn):not(.skin-option):not(.mp-compact-btn):not(.phone-trigger):not(.app-icon):not(.back-btn):not(.contact-item):not(.messages-conversation-item):not(.sms-send-btn):not(.nav-btn):not(.moments-new-btn):not(.moments-refresh-btn):not(.moments-reply-btn):not(.moments-reply-submit-btn):not(.moments-reply-cancel-btn) {
+.platform-android.android-portrait button:not(.spine-action-btn):not(.icon-btn):not(.small-btn):not(.menu-toggle-btn):not(.top-menu-btn):not(.player-toggle-btn):not(.control-btn):not(.play-btn):not(.skin-option):not(.mp-compact-btn):not(.phone-trigger):not(.app-icon):not(.back-btn):not(.contact-item):not(.messages-conversation-item):not(.sms-send-btn):not(.nav-btn):not(.moments-new-btn):not(.moments-refresh-btn):not(.moments-reply-btn):not(.moments-reply-submit-btn):not(.moments-reply-cancel-btn):not(.forum-refresh-btn):not(.forum-post-item):not(.alerts-read-all-btn):not(.alerts-filter-btn):not(.collect-clue-btn):not(.clue-action-btn):not(.news-refresh-btn):not(.news-version-tab):not(.news-channel-btn):not(.map-refresh-btn):not(.map-node-btn):not(.map-travel-btn):not(.shop-wallet-link):not(.wallet-shop-link):not(.shop-search-btn):not(.shop-buy-btn):not(.cg-btn):not(.dialogue-tts-btn):not(.dialogue-tts-save-inline):not(.dialogue-tts-save-corner-floating):not(.history-dialogue-close):not(.history-dialogue-voice-btn) {
   min-height: 48px;
   min-width: 100%;
   padding: 12px 16px;
@@ -823,9 +823,9 @@ body.platform-android.android-portrait {
 }
 
 /* Android 竖屏下的输入框适配 */
-.platform-android.android-portrait input:not([type="range"]):not(.sms-input):not(.moments-reply-input),
-.platform-android.android-portrait select,
-.platform-android.android-portrait textarea:not(.moments-input) {
+.platform-android.android-portrait input:not([type="range"]):not(.sms-input):not(.moments-reply-input):not(.clues-search):not(.cg-input),
+.platform-android.android-portrait select:not(.clues-select):not(.cg-select),
+.platform-android.android-portrait textarea:not(.moments-input):not(.cg-textarea) {
   min-height: 48px;
   font-size: 16px;
   padding: 12px;
