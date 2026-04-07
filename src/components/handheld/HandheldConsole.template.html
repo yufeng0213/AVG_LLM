@@ -1,0 +1,829 @@
+  <div
+    ref="handheldRef"
+    class="handheld-plugin"
+    :class="{ dragging: isDragging, 'is-open': isOpen, 'is-android': isAndroidPlatform }"
+    :style="{
+      left: `${pluginPosition.x}px`,
+      top: `${pluginPosition.y}px`,
+    }"
+  >
+    <button
+      type="button"
+      class="handheld-trigger small-btn"
+      aria-label="打开掌机"
+      @pointerdown="startDrag"
+      @click="toggleOpen"
+    >
+      <span class="trigger-icon">🎮</span>
+    </button>
+
+    <Transition name="handheld-slide">
+      <section
+        v-if="isOpen"
+        class="handheld-panel"
+        :class="{
+          'is-mines-layout': isInMinesweeperGame,
+          'is-mines-dense-layout': isInMinesweeperGame && currentMinesConfig.cols >= 11,
+          'is-tetris-layout': isInTetrisGame,
+          'is-brick-layout': isInBrickGame,
+          'is-klotski-layout': isInKlotskiGame,
+          'is-pet-layout': isInPetGame,
+          'is-dungeon-layout': isInDungeonGame,
+        }"
+      >
+        <header class="handheld-header" @pointerdown="startDrag">
+          <div class="title-group">
+            <p class="title-main">掌机</p>
+            <p class="title-sub">{{ currentSubtitle }}</p>
+          </div>
+          <div class="header-actions">
+            <button
+              v-if="isInAnyGame"
+              type="button"
+              class="small-btn reset-btn back-btn"
+              @pointerdown.stop
+              @click.stop="resetToLibraryView"
+            >
+              游戏库
+            </button>
+            <button
+              v-if="isInAnyGame"
+              type="button"
+              class="small-btn reset-btn"
+              @pointerdown.stop
+              @click.stop="restartGame"
+            >
+              重开
+            </button>
+          </div>
+        </header>
+
+        <div v-if="!isInAnyGame" class="game-library">
+          <div class="game-grid">
+            <button
+              v-for="game in games"
+              :key="game.id"
+              type="button"
+              class="small-btn game-icon-btn"
+              :class="{ 'is-disabled': !game.enabled }"
+              :disabled="!game.enabled"
+              @pointerdown.stop
+              @click.stop="openGame(game.id)"
+            >
+              <span class="game-icon-emoji">{{ game.icon }}</span>
+              <span class="game-icon-name">{{ game.name }}</span>
+              <span class="game-icon-sub">{{ game.subtitle }}</span>
+            </button>
+          </div>
+          <p class="library-hint">点击游戏图标进入</p>
+        </div>
+
+        <template v-else>
+          <template v-if="isIn2048Game">
+            <div class="score-row">
+              <div class="score-chip">
+                <span class="chip-label">分数</span>
+                <span class="chip-value">{{ score }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">最高</span>
+                <span class="chip-value">{{ bestScore }}</span>
+              </div>
+            </div>
+
+            <div
+              ref="boardRef"
+              class="board"
+              @pointerdown="handleBoardPointerDown"
+              @pointerup="handleBoardPointerUp"
+              @pointercancel="resetSwipe"
+            >
+              <div
+                v-for="(value, index) in flatBoard"
+                :key="index"
+                class="tile"
+                :class="getTileClass(value)"
+              >
+                {{ value || '' }}
+              </div>
+            </div>
+
+            <div class="controls">
+              <button type="button" class="small-btn ctrl-btn" @pointerdown.stop @click="moveBoard('up')">↑</button>
+              <button type="button" class="small-btn ctrl-btn" @pointerdown.stop @click="moveBoard('left')">←</button>
+              <button type="button" class="small-btn ctrl-btn" @pointerdown.stop @click="moveBoard('down')">↓</button>
+              <button type="button" class="small-btn ctrl-btn" @pointerdown.stop @click="moveBoard('right')">→</button>
+            </div>
+
+            <p v-if="gameOver" class="game-state state-over">已无可移动位置</p>
+            <p v-else-if="reached2048" class="game-state state-win">已达到 2048，可继续挑战更高分</p>
+            <p v-else class="game-state state-hint">支持滑动、方向键、WASD</p>
+
+            <div v-if="showGameOverModal" class="mini-modal-mask">
+              <div class="mini-modal" @pointerdown.stop>
+                <p class="mini-title">游戏结束</p>
+                <p class="mini-desc">已经没有可移动位置</p>
+                <div class="mini-actions">
+                  <button
+                    type="button"
+                    class="small-btn mini-btn mini-btn-primary"
+                    @pointerdown.stop
+                    @click.stop="restartGame"
+                  >
+                    再来一局
+                  </button>
+                  <button
+                    type="button"
+                    class="small-btn mini-btn"
+                    @pointerdown.stop
+                    @click.stop="handleGameOverBackToLibrary"
+                  >
+                    返回游戏库
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="isInMinesweeperGame">
+            <div class="mines-stats">
+              <div class="score-chip">
+                <span class="chip-label">剩余雷</span>
+                <span class="chip-value">{{ minesRemaining }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">用时</span>
+                <span class="chip-value">{{ minesElapsed }}s</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">最佳</span>
+                <span class="chip-value">{{ currentMinesBestTime === null ? '--' : `${currentMinesBestTime}s` }}</span>
+              </div>
+            </div>
+
+            <div class="mines-difficulty">
+              <button
+                v-for="difficulty in MINES_DIFFICULTIES"
+                :key="difficulty.id"
+                type="button"
+                class="small-btn mines-diff-btn"
+                :class="{ active: minesDifficulty === difficulty.id }"
+                @pointerdown.stop
+                @click.stop="setMinesDifficulty(difficulty.id)"
+              >
+                {{ difficulty.name }}
+              </button>
+            </div>
+
+            <div class="mines-mode">
+              <button
+                type="button"
+                class="small-btn mines-mode-btn"
+                :class="{ active: minesMode === 'reveal' }"
+                @pointerdown.stop
+                @click.stop="minesMode = 'reveal'"
+              >
+                挖开
+              </button>
+              <button
+                type="button"
+                class="small-btn mines-mode-btn"
+                :class="{ active: minesMode === 'flag' }"
+                @pointerdown.stop
+                @click.stop="minesMode = 'flag'"
+              >
+                插旗
+              </button>
+            </div>
+
+            <div class="mines-board" :class="minesBoardClass" :style="minesBoardStyle" @contextmenu.prevent>
+              <button
+                v-for="item in minesCells"
+                :key="item.key"
+                type="button"
+                class="small-btn mines-cell"
+                :class="getMinesCellClass(item.cell)"
+                @pointerdown.stop="handleMinesCellPointerDown(item.row, item.col, $event)"
+                @pointerup.stop="handleMinesCellPointerUp($event)"
+                @pointercancel.stop="handleMinesCellPointerCancel"
+                @pointerleave.stop="handleMinesCellPointerCancel"
+                @click.stop="handleMinesCellPrimary(item.row, item.col)"
+                @contextmenu.prevent.stop="handleMinesCellSecondary(item.row, item.col)"
+              >
+                {{ getMinesCellText(item.cell) }}
+              </button>
+            </div>
+
+            <p v-if="minesOver && minesWon" class="game-state state-win">排雷成功</p>
+            <p v-else-if="minesOver" class="game-state state-over">踩雷了</p>
+            <p v-else class="game-state state-hint">左键挖开，右键插旗，手机长按可插旗</p>
+
+            <div v-if="showMinesResultModal" class="mini-modal-mask">
+              <div class="mini-modal" :class="{ 'is-win': minesWon }" @pointerdown.stop>
+                <p class="mini-title">{{ minesWon ? '排雷成功' : '踩雷了' }}</p>
+                <p class="mini-desc">
+                  {{ minesWon ? (minesNewRecord ? `新纪录 ${minesElapsed}s` : `用时 ${minesElapsed}s`) : '触发地雷，再来一局' }}
+                </p>
+                <div class="mini-actions">
+                  <button
+                    type="button"
+                    class="small-btn mini-btn mini-btn-primary"
+                    @pointerdown.stop
+                    @click.stop="restartGame"
+                  >
+                    再来一局
+                  </button>
+                  <button
+                    type="button"
+                    class="small-btn mini-btn"
+                    @pointerdown.stop
+                    @click.stop="handleGameOverBackToLibrary"
+                  >
+                    返回游戏库
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="isInTetrisGame">
+            <div class="tetris-stats">
+              <div class="score-chip">
+                <span class="chip-label">分数</span>
+                <span class="chip-value">{{ tetrisScore }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">最高</span>
+                <span class="chip-value">{{ tetrisBestScore }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">行数</span>
+                <span class="chip-value">{{ tetrisLines }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">等级</span>
+                <span class="chip-value">{{ tetrisLevel }}</span>
+              </div>
+            </div>
+
+            <div class="tetris-stage">
+              <div class="tetris-board">
+                <div
+                  v-for="item in tetrisDisplayCells"
+                  :key="item.key"
+                  class="tetris-cell"
+                  :class="`is-c${item.value || 0}`"
+                ></div>
+              </div>
+
+              <div class="tetris-side">
+                <p class="tetris-next-title">下一个</p>
+                <div class="tetris-next">
+                  <div
+                    v-for="item in tetrisNextCells"
+                    :key="item.key"
+                    class="tetris-next-cell"
+                    :class="`is-c${item.value || 0}`"
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tetris-controls">
+              <button
+                type="button"
+                class="small-btn tetris-ctrl-btn tetris-ctrl-wide"
+                @pointerdown.stop
+                @click.stop="rotateTetrisPiece"
+              >
+                旋转
+              </button>
+              <button
+                type="button"
+                class="small-btn tetris-ctrl-btn tetris-ctrl-wide"
+                @pointerdown.stop
+                @click.stop="hardDropTetrisPiece"
+              >
+                速降
+              </button>
+              <button
+                type="button"
+                class="small-btn tetris-ctrl-btn"
+                @pointerdown.stop
+                @click.stop="moveTetrisPiece(0, -1)"
+              >
+                ←
+              </button>
+              <button
+                type="button"
+                class="small-btn tetris-ctrl-btn"
+                @pointerdown.stop
+                @click.stop="softDropTetrisPiece"
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                class="small-btn tetris-ctrl-btn"
+                @pointerdown.stop
+                @click.stop="moveTetrisPiece(0, 1)"
+              >
+                →
+              </button>
+            </div>
+
+            <p v-if="tetrisOver" class="game-state state-over">方块堆满，游戏结束</p>
+            <p v-else class="game-state state-hint">方向键/WASD控制，空格速降</p>
+
+            <div v-if="showTetrisOverModal" class="mini-modal-mask">
+              <div class="mini-modal" @pointerdown.stop>
+                <p class="mini-title">游戏结束</p>
+                <p class="mini-desc">分数 {{ tetrisScore }}，消除 {{ tetrisLines }} 行</p>
+                <div class="mini-actions">
+                  <button
+                    type="button"
+                    class="small-btn mini-btn mini-btn-primary"
+                    @pointerdown.stop
+                    @click.stop="restartGame"
+                  >
+                    再来一局
+                  </button>
+                  <button
+                    type="button"
+                    class="small-btn mini-btn"
+                    @pointerdown.stop
+                    @click.stop="handleGameOverBackToLibrary"
+                  >
+                    返回游戏库
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="isInBrickGame">
+            <div class="brick-stats">
+              <div class="score-chip">
+                <span class="chip-label">分数</span>
+                <span class="chip-value">{{ brickScore }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">最高</span>
+                <span class="chip-value">{{ brickBestScore }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">生命</span>
+                <span class="chip-value">{{ brickLives }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">关卡</span>
+                <span class="chip-value">{{ brickStage }}</span>
+              </div>
+            </div>
+
+            <div class="brick-source-row">
+              <span class="brick-source-tag">{{ brickSourceLabel }}</span>
+              <p v-if="brickLoadingLevel" class="brick-tip">第 {{ brickStage }} 关生成中...</p>
+              <p v-else-if="brickConfigError" class="brick-tip is-warning">智能关卡失败，已切换本地关卡</p>
+              <p v-else-if="brickLevelCleared" class="brick-tip is-clear">本关完成，点“下一关”继续</p>
+              <p v-else-if="brickBall.stuck" class="brick-tip">拖动挡板，点击场地或发球按钮开始</p>
+              <p v-else class="brick-tip">剩余砖块 {{ brickRemainingBricks }}</p>
+            </div>
+
+            <div class="brick-field-wrap">
+              <div
+                ref="brickFieldRef"
+                class="brick-field"
+                @pointerdown.stop="handleBrickFieldPointerDown"
+                @pointermove.stop="handleBrickFieldPointerMove"
+                @pointerup.stop="handleBrickFieldPointerUp"
+                @pointercancel.stop="handleBrickFieldPointerCancel"
+                @pointerleave.stop="handleBrickFieldPointerCancel"
+              >
+                <div
+                  v-for="brick in brickBricks"
+                  v-show="brick.hp > 0"
+                  :key="brick.id"
+                  class="brick-tile"
+                  :class="getBrickClass(brick)"
+                  :style="getBrickStyle(brick)"
+                ></div>
+                <div class="brick-paddle" :style="brickPaddleStyle"></div>
+                <div class="brick-ball" :style="brickBallStyle"></div>
+              </div>
+            </div>
+
+            <div class="brick-controls">
+              <button
+                type="button"
+                class="small-btn brick-btn"
+                @pointerdown.stop.prevent="startBrickDirectionControl(-1)"
+                @pointerup.stop.prevent="stopBrickDirectionControl"
+                @pointerleave.stop.prevent="stopBrickDirectionControl"
+                @pointercancel.stop.prevent="stopBrickDirectionControl"
+              >
+                左移
+              </button>
+              <button
+                type="button"
+                class="small-btn brick-btn brick-btn-primary"
+                @pointerdown.stop
+                @click.stop="handleBrickPrimaryAction"
+              >
+                {{ brickLevelCleared ? '下一关' : '发球' }}
+              </button>
+              <button
+                type="button"
+                class="small-btn brick-btn"
+                @pointerdown.stop.prevent="startBrickDirectionControl(1)"
+                @pointerup.stop.prevent="stopBrickDirectionControl"
+                @pointerleave.stop.prevent="stopBrickDirectionControl"
+                @pointercancel.stop.prevent="stopBrickDirectionControl"
+              >
+                右移
+              </button>
+            </div>
+
+            <p v-if="brickOver" class="game-state state-over">生命耗尽，最终分 {{ brickScore }}</p>
+            <p v-else-if="brickLevelCleared" class="game-state state-win">第 {{ brickStage }} 关已清空</p>
+            <p v-else class="game-state state-hint">键盘支持：← → 发球空格，R 重开</p>
+
+            <div v-if="showBrickOverModal" class="mini-modal-mask">
+              <div class="mini-modal" @pointerdown.stop>
+                <p class="mini-title">挑战结束</p>
+                <p class="mini-desc">分数 {{ brickScore }}，最高 {{ brickBestScore }}</p>
+                <div class="mini-actions">
+                  <button
+                    type="button"
+                    class="small-btn mini-btn mini-btn-primary"
+                    @pointerdown.stop
+                    @click.stop="restartGame"
+                  >
+                    再来一局
+                  </button>
+                  <button
+                    type="button"
+                    class="small-btn mini-btn"
+                    @pointerdown.stop
+                    @click.stop="handleGameOverBackToLibrary"
+                  >
+                    返回游戏库
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="isInKlotskiGame">
+            <div class="klotski-stats">
+              <div class="score-chip">
+                <span class="chip-label">步数</span>
+                <span class="chip-value">{{ klotskiMoves }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">最佳</span>
+                <span class="chip-value">{{ klotskiBestSteps > 0 ? klotskiBestSteps : '--' }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">难度</span>
+                <span class="chip-value">{{ klotskiDifficultyLabel }}</span>
+              </div>
+              <button
+                type="button"
+                class="small-btn klotski-refresh-btn"
+                @pointerdown.stop
+                @click.stop="initializeKlotski({ regenerate: true })"
+              >
+                换一关
+              </button>
+            </div>
+
+            <div class="klotski-board-wrap">
+              <div class="klotski-board">
+                <div v-for="cell in klotskiBoardCells" :key="cell.key" class="klotski-cell-bg"></div>
+                <button
+                  v-for="piece in klotskiPieces"
+                  :key="piece.id"
+                  type="button"
+                  class="small-btn klotski-piece"
+                  :class="[`kind-${piece.kind}`, { active: klotskiSelectedPieceId === piece.id }]"
+                  :style="getKlotskiPieceStyle(piece)"
+                  @pointerdown.stop
+                  @click.stop="handleKlotskiPieceTap(piece.id)"
+                >
+                  {{ piece.label }}
+                </button>
+                <div class="klotski-exit">出口</div>
+              </div>
+            </div>
+
+            <div class="klotski-controls">
+              <button
+                v-for="direction in KLOTSKI_DIRECTIONS"
+                :key="direction.key"
+                type="button"
+                class="small-btn klotski-ctrl-btn"
+                :disabled="!klotskiMoveMap[direction.key] || klotskiGenerating || klotskiSolved"
+                @pointerdown.stop
+                @click.stop="moveKlotskiPieceByDirection(direction.key)"
+              >
+                {{ direction.label }}
+              </button>
+            </div>
+
+            <p v-if="klotskiGenerating" class="game-state state-hint">正在生成算法关卡...</p>
+            <p v-else-if="klotskiSolved" class="game-state state-win">通关成功，用时 {{ klotskiMoves }} 步</p>
+            <p v-else class="game-state state-hint">
+              选中棋子：{{ klotskiSelectedPiece?.label || '--' }}，点击棋子或方向按钮移动
+            </p>
+            <p class="klotski-meta">
+              扰动步数 {{ klotskiMeta.scrambleSteps }} | 探索状态 {{ klotskiMeta.uniqueStates }}
+            </p>
+
+            <div v-if="showKlotskiWinModal" class="mini-modal-mask">
+              <div class="mini-modal is-win" @pointerdown.stop>
+                <p class="mini-title">闯关成功</p>
+                <p class="mini-desc">本关 {{ klotskiMoves }} 步，最佳 {{ klotskiBestSteps || klotskiMoves }} 步</p>
+                <div class="mini-actions">
+                  <button
+                    type="button"
+                    class="small-btn mini-btn mini-btn-primary"
+                    @pointerdown.stop
+                    @click.stop="initializeKlotski({ regenerate: true })"
+                  >
+                    下一关
+                  </button>
+                  <button
+                    type="button"
+                    class="small-btn mini-btn"
+                    @pointerdown.stop
+                    @click.stop="handleGameOverBackToLibrary"
+                  >
+                    返回游戏库
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="isInDungeonGame">
+            <div class="dungeon-stats">
+              <div class="score-chip">
+                <span class="chip-label">楼层</span>
+                <span class="chip-value">F{{ dungeonState.floor }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">等级</span>
+                <span class="chip-value">Lv.{{ dungeonState.level }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">战力</span>
+                <span class="chip-value">{{ dungeonTotalPower }}</span>
+              </div>
+              <div class="score-chip">
+                <span class="chip-label">星钻</span>
+                <span class="chip-value">{{ dungeonState.gems }}</span>
+              </div>
+            </div>
+
+            <div class="dungeon-scene-box">
+              <p class="dungeon-scene-title">{{ dungeonState.lastScene || '地下城入口' }}</p>
+              <div class="dungeon-hp-track">
+                <span class="dungeon-hp-fill" :style="{ width: `${dungeonHpPercent}%` }"></span>
+              </div>
+              <p class="dungeon-hp-text">
+                生命 {{ dungeonState.hp }}/{{ dungeonState.maxHp }} · EXP {{ dungeonState.exp }}/{{ dungeonLevelNeedExp }}
+              </p>
+            </div>
+
+            <div class="dungeon-party-box">
+              <div class="dungeon-box-head">
+                <span>队伍（前排4人）</span>
+                <span>金币 {{ dungeonState.coins }}</span>
+              </div>
+              <div class="dungeon-party-list">
+                <div v-for="member in dungeonActiveParty" :key="member.id" class="dungeon-party-item">
+                  <span class="dungeon-rarity-tag" :class="`is-${member.rarity.toLowerCase()}`">{{ member.rarity }}</span>
+                  <span class="dungeon-member-name">{{ member.name }}</span>
+                  <span class="dungeon-member-power">{{ member.power }}</span>
+                </div>
+              </div>
+              <p v-if="dungeonState.lastBanter" class="dungeon-banter">{{ dungeonState.lastBanter }}</p>
+            </div>
+
+            <div class="dungeon-equip-box">
+              <div class="dungeon-box-head">
+                <span>当前装备</span>
+                <span>保底 {{ dungeonState.equipmentPity }}/{{ DUNGEON_EQUIPMENT_PITY_LIMIT - 1 }}</span>
+              </div>
+              <div class="dungeon-equip-grid">
+                <div class="dungeon-equip-item">
+                  <span class="dungeon-equip-slot">武器</span>
+                  <span class="dungeon-equip-name">{{ dungeonState.equipped.weapon?.name || '暂无' }}</span>
+                </div>
+                <div class="dungeon-equip-item">
+                  <span class="dungeon-equip-slot">护甲</span>
+                  <span class="dungeon-equip-name">{{ dungeonState.equipped.armor?.name || '暂无' }}</span>
+                </div>
+                <div class="dungeon-equip-item">
+                  <span class="dungeon-equip-slot">饰品</span>
+                  <span class="dungeon-equip-name">{{ dungeonState.equipped.relic?.name || '暂无' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="dungeon-actions">
+              <button
+                type="button"
+                class="small-btn dungeon-action-btn is-main"
+                :disabled="isDungeonExploring || isDungeonDrawing"
+                @pointerdown.stop
+                @click.stop="handleDungeonExplore"
+              >
+                {{ isDungeonExploring ? '探索中...' : '推进地下城' }}
+              </button>
+              <button
+                type="button"
+                class="small-btn dungeon-action-btn"
+                :disabled="isDungeonGeneratingBanter || isDungeonExploring || isDungeonDrawing"
+                @pointerdown.stop
+                @click.stop="requestDungeonBanter"
+              >
+                {{ isDungeonGeneratingBanter ? '生成中...' : '队友吐槽' }}
+              </button>
+              <button
+                type="button"
+                class="small-btn dungeon-action-btn"
+                :disabled="isDungeonExploring || isDungeonDrawing"
+                @pointerdown.stop
+                @click.stop="resetDungeonProgress"
+              >
+                重置冒险
+              </button>
+            </div>
+
+            <div class="dungeon-gacha-grid">
+              <div class="dungeon-gacha-card">
+                <p class="dungeon-gacha-title">队友招募</p>
+                <p class="dungeon-gacha-desc">SSR 保底 {{ dungeonState.teammatePity }}/{{ DUNGEON_TEAMMATE_PITY_LIMIT - 1 }}</p>
+                <div class="dungeon-gacha-actions">
+                  <button
+                    type="button"
+                    class="small-btn dungeon-gacha-btn"
+                    :disabled="!dungeonCanDrawTeammateSingle"
+                    @pointerdown.stop
+                    @click.stop="executeDungeonTeammateGacha(1)"
+                  >
+                    单抽 {{ DUNGEON_TEAMMATE_SINGLE_COST }}
+                  </button>
+                  <button
+                    type="button"
+                    class="small-btn dungeon-gacha-btn"
+                    :disabled="!dungeonCanDrawTeammateTen"
+                    @pointerdown.stop
+                    @click.stop="executeDungeonTeammateGacha(10)"
+                  >
+                    十连 {{ DUNGEON_TEAMMATE_SINGLE_COST * 10 }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="dungeon-gacha-card">
+                <p class="dungeon-gacha-title">装备抽取</p>
+                <p class="dungeon-gacha-desc">SR+ 保底十连，SSR 长保底</p>
+                <div class="dungeon-gacha-actions">
+                  <button
+                    type="button"
+                    class="small-btn dungeon-gacha-btn"
+                    :disabled="!dungeonCanDrawEquipmentSingle"
+                    @pointerdown.stop
+                    @click.stop="executeDungeonEquipmentGacha(1)"
+                  >
+                    单抽 {{ DUNGEON_EQUIPMENT_SINGLE_COST }}
+                  </button>
+                  <button
+                    type="button"
+                    class="small-btn dungeon-gacha-btn"
+                    :disabled="!dungeonCanDrawEquipmentTen"
+                    @pointerdown.stop
+                    @click.stop="executeDungeonEquipmentGacha(10)"
+                  >
+                    十连 {{ DUNGEON_EQUIPMENT_SINGLE_COST * 10 }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="dungeon-log-box">
+              <p class="dungeon-log-title">战报</p>
+              <div class="dungeon-log-list">
+                <p v-for="(line, index) in dungeonRecentLogs" :key="`${index}-${line}`" class="dungeon-log-line">
+                  {{ line }}
+                </p>
+              </div>
+            </div>
+
+            <p v-if="dungeonError" class="dungeon-error-text">{{ dungeonError }}</p>
+          </template>
+
+          <template v-else-if="isInPetGame">
+            <div v-if="!petState.adopted" class="pet-empty">
+              <div class="pet-empty-icon">🥚</div>
+              <p class="pet-empty-title">像素宠物领养中心</p>
+              <p class="pet-empty-desc">通过 LLM 生成一只专属宠物，开始你的照料日常</p>
+              <button
+                type="button"
+                class="small-btn pet-main-btn"
+                :disabled="isAdoptingPet"
+                @pointerdown.stop
+                @click.stop="adoptPet"
+              >
+                {{ isAdoptingPet ? '领养中...' : '领养宠物' }}
+              </button>
+              <p v-if="petError" class="pet-error-text">{{ petError }}</p>
+            </div>
+
+            <template v-else>
+              <div class="pet-header-row">
+                <div class="pet-title-wrap">
+                  <p class="pet-name">{{ petName }}</p>
+                  <p class="pet-meta">{{ petProfile?.title || '口袋小伙伴' }} · {{ petMoodText }}</p>
+                </div>
+                <div class="pet-wallet">
+                  <span class="pet-wallet-label">金币</span>
+                  <span class="pet-wallet-value">{{ petCoins }}</span>
+                </div>
+              </div>
+
+              <div class="pet-stage">
+                <div class="pet-sprite-wrap">
+                  <div class="pet-sprite" :class="[petColorThemeClass, petSpriteClass]">
+                    <span
+                      v-for="pixel in petPixelCells"
+                      :key="pixel.key"
+                      class="pet-pixel"
+                      :class="`is-${pixel.type}`"
+                      :style="{
+                        gridColumn: pixel.x + 1,
+                        gridRow: pixel.y + 1,
+                      }"
+                    ></span>
+                  </div>
+                </div>
+                <p class="pet-dialogue">{{ isPetReplying ? '...' : (petState.dialogue || '...') }}</p>
+              </div>
+
+              <div class="pet-stats">
+                <div v-for="item in petStatusCards" :key="item.key" class="pet-stat-card">
+                  <div class="pet-stat-top">
+                    <span>{{ item.label }}</span>
+                    <span>{{ item.value }}</span>
+                  </div>
+                  <div class="pet-progress">
+                    <span class="pet-progress-inner" :style="{ width: `${item.value}%` }"></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pet-food-row">
+                <span>库存食物：{{ petFoodCount }}</span>
+                <span>单价：{{ PET_FOOD_PRICE }} 金币</span>
+                <span>最爱：{{ petProfile?.favoriteFood || '宠物饼干' }}</span>
+              </div>
+
+              <div class="pet-actions">
+                <button
+                  type="button"
+                  class="small-btn pet-action-btn is-feed"
+                  :disabled="petFoodCount <= 0 || isPetReplying"
+                  @pointerdown.stop
+                  @click.stop="feedPet"
+                >
+                  喂食
+                </button>
+                <button
+                  type="button"
+                  class="small-btn pet-action-btn"
+                  :disabled="!canBuyPetFood || isPetReplying"
+                  @pointerdown.stop
+                  @click.stop="buyPetFood"
+                >
+                  买食物
+                </button>
+                <button
+                  type="button"
+                  class="small-btn pet-action-btn"
+                  :disabled="isPetReplying"
+                  @pointerdown.stop
+                  @click.stop="petCompanion"
+                >
+                  摸摸
+                </button>
+              </div>
+              <p v-if="petError" class="pet-error-text">{{ petError }}</p>
+            </template>
+          </template>
+        </template>
+      </section>
+    </Transition>
+  </div>

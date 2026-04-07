@@ -1,7 +1,12 @@
-﻿<script setup>
+<script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import {
+  CHARACTER_MBTI_OPTIONS,
+  CHARACTER_PERSONALITY_DIMENSION_DEFS,
+  CHARACTER_PERSONALITY_SCORE_MAX,
+  CHARACTER_PERSONALITY_SCORE_MIN,
   createDefaultCharacterVoiceConfig,
+  createDefaultPersonalityProfile,
   RELATIONSHIP_METRIC_MAX,
   RELATIONSHIP_METRIC_MIN,
   WORLD_BOOK_ENTRY_DEFS,
@@ -13,6 +18,7 @@ import {
   loadWorldBooks,
   normalizeDirectorEvents,
   normalizeCharacterVoiceConfig,
+  normalizePersonalityProfile,
   persistWorldBooks,
   setActiveWorldBookId,
 } from '../worldbook/worldBookStore'
@@ -60,6 +66,24 @@ const openingDialogueText = ref('[]')
 const openingDialogueError = ref('')
 const relationshipMetricMin = RELATIONSHIP_METRIC_MIN
 const relationshipMetricMax = RELATIONSHIP_METRIC_MAX
+const personalityDimensionMin = CHARACTER_PERSONALITY_SCORE_MIN
+const personalityDimensionMax = CHARACTER_PERSONALITY_SCORE_MAX
+const mbtiOptions = CHARACTER_MBTI_OPTIONS
+const personalityDimensions = CHARACTER_PERSONALITY_DIMENSION_DEFS
+const charBasicOpen = ref(true)
+const charIdentityOpen = ref(false)
+const charAppearanceOpen = ref(false)
+const charBackgroundOpen = ref(false)
+const charPersonalityOpen = ref(true)
+const charNotesOpen = ref(false)
+const charRelationshipOpen = ref(false)
+const charVoiceOpen = ref(false)
+const charPortraitsOpen = ref(false)
+const userBasicOpen = ref(true)
+const userIdentityOpen = ref(false)
+const userAppearanceOpen = ref(false)
+const userBackgroundOpen = ref(false)
+const userPortraitsOpen = ref(false)
 
 // 编辑世界书名称相关
 const showEditTitleDialog = ref(false)
@@ -158,6 +182,13 @@ const ensureCharacterRelationshipBase = (character) => {
 const ensureCharacterVoiceConfig = (character) => {
   if (!character || typeof character !== 'object') return
   character.voiceConfig = normalizeCharacterVoiceConfig(character.voiceConfig || createDefaultCharacterVoiceConfig())
+}
+
+const ensureCharacterPersonalityProfile = (character) => {
+  if (!character || typeof character !== 'object') return
+  character.personalityProfile = normalizePersonalityProfile(
+    character.personalityProfile || createDefaultPersonalityProfile(),
+  )
 }
 
 const syncDirectorEventsTextFromBook = () => {
@@ -326,6 +357,47 @@ const updateActiveCharacterField = (field, value) => {
   activeCharacter.value[field] = value
   activeCharacter.value.updatedAt = new Date().toISOString()
   markBookUpdated()
+}
+
+const updateActiveCharacterPersonalityField = (field, value) => {
+  if (!activeCharacter.value) return
+  ensureCharacterPersonalityProfile(activeCharacter.value)
+
+  const nextProfile = normalizePersonalityProfile({
+    ...activeCharacter.value.personalityProfile,
+    [field]: value,
+  })
+  activeCharacter.value.personalityProfile = nextProfile
+  activeCharacter.value.updatedAt = new Date().toISOString()
+  markBookUpdated()
+}
+
+const updateActiveCharacterPersonalityDimension = (dimensionKey, value) => {
+  if (!activeCharacter.value) return
+  ensureCharacterPersonalityProfile(activeCharacter.value)
+
+  const nextDimensions = {
+    ...(activeCharacter.value.personalityProfile?.cognitiveDimensions || {}),
+    [dimensionKey]: value,
+  }
+  updateActiveCharacterPersonalityField('cognitiveDimensions', nextDimensions)
+}
+
+const updateActiveCharacterBehaviorTagsText = (value) => {
+  const nextTags = String(value || '')
+    .split(/\r?\n/g)
+    .map((line) => String(line || '').trim())
+    .filter(Boolean)
+    .slice(0, 12)
+  updateActiveCharacterPersonalityField('behaviorTags', nextTags)
+}
+
+const getActiveCharacterBehaviorTagsText = () => {
+  const tags = activeCharacter.value?.personalityProfile?.behaviorTags
+  if (!Array.isArray(tags)) {
+    return ''
+  }
+  return tags.join('\n')
 }
 
 const updateActiveCharacterRelationshipField = (field, value) => {
@@ -625,6 +697,7 @@ watch(
 watch(
   () => activeCharacter.value?.id,
   () => {
+    ensureCharacterPersonalityProfile(activeCharacter.value)
     ensureCharacterRelationshipBase(activeCharacter.value)
     ensureCharacterVoiceConfig(activeCharacter.value)
   },
@@ -636,769 +709,10 @@ onMounted(async () => {
 })
 </script>
 
-<template>
-  <main class="worldbook-editor-screen" role="main">
-    <p class="worldbook-editor-bg-word" aria-hidden="true">BOOK</p>
 
-    <header class="worldbook-editor-header">
-      <button type="button" class="back-button" @click="emit('back')">返回书架</button>
-      <div class="worldbook-editor-title-group">
-        <p class="worldbook-editor-tag">World Book Editor</p>
-        <div class="worldbook-editor-title-row">
-          <h1 class="worldbook-editor-title">{{ activeBook?.title || '世界书' }}</h1>
-          <button type="button" class="edit-title-btn icon-btn" @click="openEditTitleDialog" title="编辑世界书名称">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            <span class="edit-btn-text">编辑</span>
-          </button>
-        </div>
-        <p class="worldbook-editor-title-gradient">设定编辑</p>
-      </div>
-    </header>
+<template src="./worldbook-editor/WorldBookEditorScreen.template.html"></template>
 
-    <section class="worldbook-editor-tabs" aria-label="设定分类">
-      <button
-        v-for="tab in editorTabs"
-        :key="tab.id"
-        type="button"
-        class="worldbook-editor-tab"
-        :class="{ active: activeEditorTab === tab.id }"
-        @click="activeEditorTab = tab.id"
-      >
-        {{ tab.label }}
-      </button>
-    </section>
-
-    <section v-if="activeEditorTab === 'lore'" class="worldbook-editor-single">
-      <section class="worldbook-editor settings-panel-content">
-        <h2 class="panel-title">世界背景</h2>
-
-        <section class="worldbook-global-display-settings" aria-label="整体显示设置">
-          <h3 class="subpanel-title">整体显示设置</h3>
-          <label class="setting-field">
-            <span class="setting-label">立绘风格</span>
-            <div class="select-wrapper">
-              <select
-                :value="activeBook?.displaySettings?.portraitStyle || 'card'"
-                class="setting-select"
-                @change="updateDisplaySetting('portraitStyle', $event.target.value)"
-              >
-                <option
-                  v-for="option in WORLD_BOOK_PORTRAIT_STYLE_OPTIONS"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </option>
-              </select>
-              <span class="select-arrow">▼</span>
-            </div>
-            <p class="setting-hint portrait-style-hint">
-              参考分辨率：卡片式/半身建议 1080×1620，全身/腿部建议 1080×1920（透明 PNG/WebP）。
-            </p>
-          </label>
-
-          <label class="setting-field">
-            <span class="setting-label">默认叙事者</span>
-            <div class="select-wrapper">
-              <select
-                :value="activeBook?.defaultNarratorId || ''"
-                class="setting-select"
-                @change="updateActiveBookField('defaultNarratorId', $event.target.value)"
-              >
-                <option
-                  v-for="profile in narratorOptions"
-                  :key="profile.id"
-                  :value="profile.id"
-                >
-                  {{ profile.name }}{{ !profile.enabled && !profile.isDefault ? '（已禁用）' : '' }}
-                </option>
-              </select>
-              <span class="select-arrow">▼</span>
-            </div>
-            <p class="setting-hint">新游戏未手动覆盖时，将使用该叙事者风格。</p>
-          </label>
-        </section>
-
-        <section class="worldbook-director-settings" aria-label="事件导演器配置">
-          <h3 class="subpanel-title">事件导演器（高级）</h3>
-          <p class="setting-hint">
-            可按剧情行号/场景/选项/关系阈值触发事件，并注入 Prompt 指令、关系变化、导演标记。
-          </p>
-          <div class="director-actions">
-            <button type="button" class="action-button action-outline" @click="insertDirectorEventTemplate">
-              ＋ 插入模板
-            </button>
-            <button type="button" class="action-button action-outline" @click="resetDirectorEventsJson">
-              重置文本
-            </button>
-            <button type="button" class="action-button action-strong" @click="applyDirectorEventsJson">
-              应用 JSON
-            </button>
-          </div>
-          <label class="setting-field">
-            <span class="setting-label">directorEvents JSON</span>
-            <textarea
-              v-model="directorEventsText"
-              class="setting-textarea director-json-textarea"
-              rows="10"
-              placeholder="[]"
-              spellcheck="false"
-            ></textarea>
-          </label>
-          <p v-if="directorEventsError" class="setting-error">{{ directorEventsError }}</p>
-        </section>
-        
-        <!-- 条目选择下拉框 -->
-        <label class="setting-field entry-select-field">
-          <span class="setting-label">选择条目</span>
-          <div class="select-wrapper">
-            <select
-              v-model="activeEntryKey"
-              class="setting-select entry-select"
-            >
-              <option
-                v-for="entry in WORLD_BOOK_ENTRY_DEFS"
-                :key="entry.key"
-                :value="entry.key"
-              >
-                {{ entry.label }}
-              </option>
-            </select>
-            <span class="select-arrow">▼</span>
-          </div>
-          <span class="entry-hint" v-if="activeEntryDef">{{ activeEntryDef.hint }}</span>
-        </label>
-
-        <label class="setting-field">
-          <span class="setting-label">{{ activeEntryDef.label }}</span>
-          <textarea
-            :value="activeBook?.entries?.[activeEntryKey] || ''"
-            class="setting-textarea"
-            rows="14"
-            placeholder="在这里填写这个条目的详细背景设定"
-            spellcheck="false"
-            @input="updateActiveEntry($event.target.value)"
-          ></textarea>
-        </label>
-      </section>
-    </section>
-
-    <section v-else-if="activeEditorTab === 'opening'" class="worldbook-editor-single">
-      <section class="worldbook-editor settings-panel-content">
-        <h2 class="panel-title">开场白设置</h2>
-        <p class="panel-description">
-          新游戏开场对白设置。若未启用自定义，将在开始新游戏时根据当前世界书自动生成 10-15 句。
-        </p>
-
-        <div class="director-actions">
-          <button
-            type="button"
-            class="action-button action-outline"
-            :class="{ active: openingDialogueMode === 'auto' }"
-            @click="setOpeningDialogueMode('auto')"
-          >
-            自动生成
-          </button>
-          <button
-            type="button"
-            class="action-button action-outline"
-            :class="{ active: openingDialogueMode === 'custom' }"
-            @click="setOpeningDialogueMode('custom')"
-          >
-            自定义
-          </button>
-          <button type="button" class="action-button action-outline" @click="clearOpeningDialogueToAuto">
-            清空并自动
-          </button>
-        </div>
-
-        <label class="setting-field">
-          <span class="setting-label">openingDialogue JSON</span>
-          <textarea
-            v-model="openingDialogueText"
-            class="setting-textarea director-json-textarea"
-            rows="14"
-            :disabled="openingDialogueMode === 'auto'"
-            placeholder='[{"speaker":"旁白","text":"...","emotion":null}]'
-            spellcheck="false"
-          ></textarea>
-          <p class="setting-hint">每行格式：speaker / text / emotion（emotion 可留空）。</p>
-        </label>
-
-        <div class="director-actions">
-          <button type="button" class="action-button action-outline" @click="resetOpeningDialogueText">
-            重置文本
-          </button>
-          <button
-            type="button"
-            class="action-button action-strong"
-            :disabled="openingDialogueMode === 'auto'"
-            @click="applyOpeningDialogueJson"
-          >
-            应用自定义
-          </button>
-        </div>
-        <p v-if="openingDialogueError" class="setting-error">{{ openingDialogueError }}</p>
-      </section>
-    </section>
-
-    <section v-else-if="activeEditorTab === 'user'" class="worldbook-editor-single">
-      <section class="worldbook-editor settings-panel-content">
-        <h2 class="panel-title">user设定</h2>
-        <p class="panel-description">用于设定当前用户/主视角人物的基本信息。</p>
-
-        <div class="settings-grid two-column">
-          <label class="setting-field">
-            <span class="setting-label">名字</span>
-            <input
-              :value="activeBook?.userProfile?.name || ''"
-              class="setting-input"
-              type="text"
-              placeholder="例如：林川"
-              @input="updateUserField('name', $event.target.value)"
-            />
-          </label>
-
-          <label class="setting-field">
-            <span class="setting-label">昵称</span>
-            <input
-              :value="activeBook?.userProfile?.nickname || ''"
-              class="setting-input"
-              type="text"
-              placeholder="例如：小川"
-              @input="updateUserField('nickname', $event.target.value)"
-            />
-          </label>
-        </div>
-
-        <label class="setting-field">
-          <span class="setting-label">身份</span>
-          <input
-            :value="activeBook?.userProfile?.identity || ''"
-            class="setting-input"
-            type="text"
-            placeholder="例如：学院调查员 / 前特勤队员"
-            @input="updateUserField('identity', $event.target.value)"
-          />
-        </label>
-
-        <label class="setting-field">
-          <span class="setting-label">外表</span>
-          <textarea
-            :value="activeBook?.userProfile?.appearance || ''"
-            class="setting-textarea"
-            rows="7"
-            placeholder="记录体型、发色、穿着、标志性特征等"
-            spellcheck="false"
-            @input="updateUserField('appearance', $event.target.value)"
-          ></textarea>
-        </label>
-
-        <label class="setting-field">
-          <span class="setting-label">背景补充</span>
-          <textarea
-            :value="activeBook?.userProfile?.background || ''"
-            class="setting-textarea"
-            rows="7"
-            placeholder="经历、性格、动机、禁忌等补充信息"
-            spellcheck="false"
-            @input="updateUserField('background', $event.target.value)"
-          ></textarea>
-        </label>
-
-        <label class="setting-field">
-          <span class="setting-label">立绘配置</span>
-          <PortraitManager
-            :portraits="activeBook?.userProfile?.portraits || []"
-            @update="updateUserField('portraits', $event)"
-          />
-        </label>
-      </section>
-    </section>
-
-    <section v-else-if="activeEditorTab === 'char'" class="worldbook-editor-single">
-      <section class="worldbook-editor settings-panel-content">
-        <!-- 标题行 - 包含标题和新增按钮 -->
-        <div class="panel-title-row">
-          <h2 class="panel-title">char设定</h2>
-          <button type="button" class="action-button action-outline add-char-inline-btn" @click="addCharacter">
-            ＋ 新增角色
-          </button>
-        </div>
-        
-        <!-- 角色选择下拉框 -->
-        <label class="setting-field char-select-field">
-          <span class="setting-label">选择角色</span>
-          <div class="select-wrapper">
-            <select
-              v-model="activeCharacterId"
-              class="setting-select char-select"
-            >
-              <option value="" disabled>-- 请选择角色 --</option>
-              <option
-                v-for="(char, index) in characters"
-                :key="char.id"
-                :value="char.id"
-              >
-                {{ getCharacterDisplayName(char, index) }}{{ char.nickname ? ` (${char.nickname})` : '' }}
-              </option>
-            </select>
-            <span class="select-arrow">▼</span>
-          </div>
-        </label>
-        
-        <p class="panel-description" v-if="activeCharacter">当前编辑：{{ activeCharacterDisplayName }}</p>
-        <p class="panel-description" v-else>请选择或新增一个角色进行编辑</p>
-
-        <template v-if="activeCharacter">
-          <div class="settings-grid two-column">
-            <label class="setting-field">
-              <span class="setting-label">名字</span>
-              <input
-                :value="activeCharacter.name"
-                class="setting-input"
-                type="text"
-                @input="updateActiveCharacterField('name', $event.target.value)"
-              />
-            </label>
-
-            <label class="setting-field">
-              <span class="setting-label">昵称</span>
-              <input
-                :value="activeCharacter.nickname"
-                class="setting-input"
-                type="text"
-                @input="updateActiveCharacterField('nickname', $event.target.value)"
-              />
-            </label>
-          </div>
-
-          <label class="setting-field">
-            <span class="setting-label">身份</span>
-            <input
-              :value="activeCharacter.identity"
-              class="setting-input"
-              type="text"
-              placeholder="例如：反抗军联络官 / 学院导师"
-              @input="updateActiveCharacterField('identity', $event.target.value)"
-            />
-          </label>
-
-          <label class="setting-field">
-            <span class="setting-label">外表</span>
-            <textarea
-              :value="activeCharacter.appearance"
-              class="setting-textarea"
-              rows="7"
-              placeholder="体型、发色、衣着、配件、动作习惯等"
-              spellcheck="false"
-              @input="updateActiveCharacterField('appearance', $event.target.value)"
-            ></textarea>
-          </label>
-
-          <label class="setting-field">
-            <span class="setting-label">背景</span>
-            <textarea
-              :value="activeCharacter.background"
-              class="setting-textarea"
-              rows="7"
-              placeholder="经历、立场、目标、关系网"
-              spellcheck="false"
-              @input="updateActiveCharacterField('background', $event.target.value)"
-            ></textarea>
-          </label>
-
-          <label class="setting-field">
-            <span class="setting-label">备注</span>
-            <textarea
-              :value="activeCharacter.notes"
-              class="setting-textarea"
-              rows="6"
-              placeholder="口癖、禁忌、剧情伏笔、台词风格"
-              spellcheck="false"
-              @input="updateActiveCharacterField('notes', $event.target.value)"
-            ></textarea>
-          </label>
-
-          <section class="relationship-settings-card" aria-label="角色关系初始值">
-            <h3 class="subpanel-title">角色关系初始值</h3>
-            <p class="setting-hint">范围：{{ relationshipMetricMin }} ~ {{ relationshipMetricMax }}，会在新游戏时作为初始关系状态。</p>
-            <div class="settings-grid relationship-grid">
-              <label class="setting-field">
-                <span class="setting-label">好感 (favor)</span>
-                <input
-                  :value="activeCharacter.relationshipBase?.favor ?? 50"
-                  class="setting-input"
-                  type="number"
-                  inputmode="numeric"
-                  :min="relationshipMetricMin"
-                  :max="relationshipMetricMax"
-                  @input="updateActiveCharacterRelationshipField('favor', $event.target.value)"
-                />
-              </label>
-              <label class="setting-field">
-                <span class="setting-label">信任 (trust)</span>
-                <input
-                  :value="activeCharacter.relationshipBase?.trust ?? 50"
-                  class="setting-input"
-                  type="number"
-                  inputmode="numeric"
-                  :min="relationshipMetricMin"
-                  :max="relationshipMetricMax"
-                  @input="updateActiveCharacterRelationshipField('trust', $event.target.value)"
-                />
-              </label>
-              <label class="setting-field">
-                <span class="setting-label">立场 (stance)</span>
-                <input
-                  :value="activeCharacter.relationshipBase?.stance ?? 0"
-                  class="setting-input"
-                  type="number"
-                  inputmode="numeric"
-                  :min="relationshipMetricMin"
-                  :max="relationshipMetricMax"
-                  @input="updateActiveCharacterRelationshipField('stance', $event.target.value)"
-                />
-              </label>
-            </div>
-          </section>
-
-          <section class="voice-settings-card" aria-label="角色TTS语音配置">
-            <h3 class="subpanel-title">角色 TTS 语音配置</h3>
-            <p class="setting-hint">在游戏中点击“语音”按钮时会使用这里的设置调用 TTS。需要先在 API 设置中配置语音模型。</p>
-
-            <label class="setting-field">
-              <span class="setting-label">启用角色语音</span>
-              <select
-                :value="activeCharacter.voiceConfig?.enabled ? '1' : '0'"
-                class="setting-select"
-                @change="updateActiveCharacterVoiceField('enabled', $event.target.value === '1')"
-              >
-                <option value="0">关闭</option>
-                <option value="1">开启</option>
-              </select>
-            </label>
-
-            <div class="settings-grid two-column">
-              <label class="setting-field">
-                <span class="setting-label">voice_id</span>
-                <input
-                  :value="activeCharacter.voiceConfig?.voiceId || ''"
-                  class="setting-input"
-                  type="text"
-                  placeholder="例如：male-qn-qingse"
-                  @input="updateActiveCharacterVoiceField('voiceId', $event.target.value)"
-                />
-              </label>
-              <label class="setting-field">
-                <span class="setting-label">emotion（可选）</span>
-                <input
-                  :value="activeCharacter.voiceConfig?.emotion || ''"
-                  class="setting-input"
-                  type="text"
-                  placeholder="例如：happy"
-                  @input="updateActiveCharacterVoiceField('emotion', $event.target.value)"
-                />
-              </label>
-            </div>
-
-            <div class="settings-grid three-column">
-              <label class="setting-field">
-                <span class="setting-label">speed</span>
-                <input
-                  :value="activeCharacter.voiceConfig?.speed ?? 1"
-                  class="setting-input"
-                  type="number"
-                  inputmode="decimal"
-                  min="0.5"
-                  max="2"
-                  step="0.05"
-                  @input="updateActiveCharacterVoiceField('speed', $event.target.value)"
-                />
-              </label>
-              <label class="setting-field">
-                <span class="setting-label">vol</span>
-                <input
-                  :value="activeCharacter.voiceConfig?.vol ?? 1"
-                  class="setting-input"
-                  type="number"
-                  inputmode="decimal"
-                  step="0.01"
-                  @change="updateActiveCharacterVoiceField('vol', $event.target.value)"
-                  @blur="updateActiveCharacterVoiceField('vol', $event.target.value)"
-                />
-              </label>
-              <label class="setting-field">
-                <span class="setting-label">pitch（-12 ~ 12）</span>
-                <input
-                  :value="activeCharacter.voiceConfig?.pitch ?? 0"
-                  class="setting-input"
-                  type="number"
-                  inputmode="decimal"
-                  min="-12"
-                  max="12"
-                  step="0.5"
-                  @change="updateActiveCharacterVoiceField('pitch', $event.target.value)"
-                  @blur="updateActiveCharacterVoiceField('pitch', $event.target.value)"
-                />
-              </label>
-            </div>
-
-            <div class="settings-grid four-column">
-              <label class="setting-field">
-                <span class="setting-label">sample_rate</span>
-                <input
-                  :value="activeCharacter.voiceConfig?.sampleRate ?? 32000"
-                  class="setting-input"
-                  type="number"
-                  inputmode="numeric"
-                  min="8000"
-                  max="48000"
-                  step="1000"
-                  @input="updateActiveCharacterVoiceField('sampleRate', $event.target.value)"
-                />
-              </label>
-              <label class="setting-field">
-                <span class="setting-label">bitrate</span>
-                <input
-                  :value="activeCharacter.voiceConfig?.bitrate ?? 128000"
-                  class="setting-input"
-                  type="number"
-                  inputmode="numeric"
-                  min="32000"
-                  max="320000"
-                  step="1000"
-                  @input="updateActiveCharacterVoiceField('bitrate', $event.target.value)"
-                />
-              </label>
-              <label class="setting-field">
-                <span class="setting-label">format</span>
-                <select
-                  :value="activeCharacter.voiceConfig?.format || 'mp3'"
-                  class="setting-select"
-                  @change="updateActiveCharacterVoiceField('format', $event.target.value)"
-                >
-                  <option value="mp3">mp3</option>
-                  <option value="wav">wav</option>
-                  <option value="flac">flac</option>
-                </select>
-              </label>
-              <label class="setting-field">
-                <span class="setting-label">channel</span>
-                <select
-                  :value="String(activeCharacter.voiceConfig?.channel ?? 1)"
-                  class="setting-select"
-                  @change="updateActiveCharacterVoiceField('channel', $event.target.value)"
-                >
-                  <option value="1">1 (mono)</option>
-                  <option value="2">2 (stereo)</option>
-                </select>
-              </label>
-            </div>
-
-            <label class="setting-field">
-              <span class="setting-label">pronunciation_dict.tone（每行一条，可选）</span>
-              <textarea
-                :value="getActiveCharacterVoiceToneText()"
-                class="setting-textarea"
-                rows="4"
-                placeholder="处理/(chu3)(li3)"
-                spellcheck="false"
-                @input="updateActiveCharacterVoiceToneText($event.target.value)"
-              ></textarea>
-            </label>
-          </section>
-
-          <label class="setting-field">
-            <span class="setting-label">立绘配置</span>
-            <PortraitManager
-              :portraits="activeCharacter?.portraits || []"
-              @update="updateActiveCharacterField('portraits', $event)"
-            />
-          </label>
-        </template>
-      </section>
-    </section>
-
-    <!-- 场景管理标签页 -->
-    <section v-if="activeEditorTab === 'scenes'" class="worldbook-editor-layout">
-      <aside class="worldbook-entry-nav" aria-label="场景列表">
-        <button
-          v-for="(scene, index) in scenes"
-          :key="scene.id"
-          type="button"
-          class="worldbook-entry-item worldbook-char-item"
-          :class="{ active: activeSceneId === scene.id }"
-          @click="activeSceneId = scene.id"
-        >
-          <span class="char-name">{{ getSceneDisplayName(scene, index) }}</span>
-          <span class="char-note">{{ scene.description?.substring(0, 10) || '无描述' }}</span>
-        </button>
-        
-        <button
-          type="button"
-          class="worldbook-entry-item add-item"
-          @click="addScene"
-        >
-          + 新增场景
-        </button>
-      </aside>
-
-      <section class="worldbook-editor settings-panel-content">
-        <h2 class="panel-title">场景管理</h2>
-        <p class="panel-description">
-          当前场景：{{ activeSceneDisplayName }}
-          <span v-if="backgroundList.length > 0"> | 已加载 {{ backgroundList.length }} 个背景</span>
-        </p>
-
-        <!-- 背景文件夹操作 -->
-        <div class="scene-folder-actions">
-          <button
-            type="button"
-            class="action-button"
-            :disabled="isLoadingBackgrounds"
-            @click="handleSelectBackgroundFolder"
-          >
-            {{ isAndroidPlatform ? '🖼️ 选择背景图片' : '📁 选择背景文件夹' }}
-          </button>
-          <button
-            type="button"
-            class="action-button"
-            :disabled="isLoadingBackgrounds"
-            @click="handleLoadBackgroundFolder"
-          >
-            🔄 刷新背景列表
-          </button>
-          <span v-if="backgroundFolderPath" class="folder-path">
-            {{ backgroundFolderPath }}
-          </span>
-        </div>
-
-        <template v-if="activeScene">
-          <div class="settings-grid two-column">
-            <label class="setting-field">
-              <span class="setting-label">场景ID</span>
-              <input
-                :value="activeScene.id"
-                class="setting-input"
-                type="text"
-                disabled
-                placeholder="自动生成"
-              />
-            </label>
-
-            <label class="setting-field">
-              <span class="setting-label">场景名称</span>
-              <input
-                :value="activeScene.name"
-                class="setting-input"
-                type="text"
-                placeholder="例如：旧图书馆、雨夜街道"
-                @input="updateActiveSceneField('name', $event.target.value)"
-              />
-            </label>
-          </div>
-
-          <label class="setting-field">
-            <span class="setting-label">背景图片</span>
-            <select
-              :value="activeScene.background"
-              class="setting-select"
-              @change="updateActiveSceneField('background', $event.target.value)"
-            >
-              <option value="">-- 选择背景图片 --</option>
-              <option
-                v-for="bg in backgroundList"
-                :key="bg.id"
-                :value="bg.id"
-              >
-                {{ bg.label }}
-              </option>
-            </select>
-            <p class="setting-hint">
-              从已加载的背景列表中选择，或手动输入背景ID
-            </p>
-          </label>
-
-          <label class="setting-field">
-            <span class="setting-label">场景描述</span>
-            <textarea
-              :value="activeScene.description"
-              class="setting-textarea"
-              rows="4"
-              placeholder="场景的详细描述，用于 LLM 生成剧情时参考"
-              spellcheck="false"
-              @input="updateActiveSceneField('description', $event.target.value)"
-            ></textarea>
-          </label>
-
-          <!-- 背景预览 -->
-          <div v-if="activeScene.background" class="scene-preview">
-            <p class="preview-label">背景预览</p>
-            <div class="preview-box">
-              <p class="preview-placeholder">
-                已选择: {{ activeScene.background }}
-              </p>
-            </div>
-          </div>
-
-          <!-- 删除场景按钮 -->
-          <div class="scene-delete-action">
-            <button
-              type="button"
-              class="action-button action-danger"
-              @click="deleteScene(activeScene.id)"
-            >
-              🗑️ 删除此场景
-            </button>
-          </div>
-        </template>
-
-        <div v-else class="empty-state">
-          <p>暂无场景配置</p>
-          <button type="button" class="action-button" @click="addScene">
-            + 添加第一个场景
-          </button>
-        </div>
-      </section>
-    </section>
-
-    <div class="setting-actions worldbook-editor-actions">
-      <button type="button" class="action-button action-strong" :disabled="isSaving" @click="saveWorldBooks">
-        {{ isSaving ? '保存中...' : '保存世界书' }}
-      </button>
-    </div>
-
-    <p class="status-message">{{ statusMessage }}</p>
-
-    <!-- 编辑世界书名称对话框 -->
-    <Teleport to="body">
-      <div v-if="showEditTitleDialog" class="dialog-overlay" @click.self="cancelEditTitle">
-        <div class="dialog-content edit-title-dialog">
-          <h3 class="dialog-title">编辑世界书名称</h3>
-          <label class="setting-field">
-            <span class="setting-label">世界书名称</span>
-            <input
-              v-model="editTitle"
-              class="setting-input"
-              type="text"
-              placeholder="请输入世界书名称"
-              @keyup.enter="confirmEditTitle"
-              ref="editTitleInput"
-            />
-          </label>
-          <div class="dialog-actions">
-            <button type="button" class="dialog-btn dialog-btn-cancel small-btn" @click="cancelEditTitle">取消</button>
-            <button type="button" class="dialog-btn dialog-btn-confirm small-btn" @click="confirmEditTitle">确认</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-  </main>
-</template>
-
-<style scoped src="./WorldBookEditorScreen.css"></style>
+<style scoped src="./worldbook-editor/styles/worldbook-editor-01.css"></style>
+<style scoped src="./worldbook-editor/styles/worldbook-editor-02.css"></style>
+<style scoped src="./worldbook-editor/styles/worldbook-editor-03.css"></style>
 

@@ -1,368 +1,45 @@
-﻿.worldbook-editor-screen {
-  position: relative;
-  width: 100%;
-  height: calc(100vh - clamp(40px, 8vw, 110px));
-  max-height: calc(100vh - clamp(40px, 8vw, 110px));
-  border: 8px solid var(--accent-cyan);
-  border-radius: 34px 20px 30px 18px;
-  background: var(--surface-panel);
-  backdrop-filter: blur(var(--backdrop-blur));
-  box-shadow: var(--shadow-screen);
-  padding: clamp(18px, 3vw, 32px);
-  display: grid;
-  grid-template-rows: auto auto 1fr auto auto;
-  gap: clamp(12px, 2vw, 20px);
-  overflow: hidden;
+
+
+.collapsible-trigger:hover {
+  background: color-mix(in srgb, var(--accent-cyan) 18%, transparent);
 }
 
-.worldbook-editor-screen::before,
-.worldbook-editor-screen::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+.collapsible-trigger.expanded {
+  border-bottom-color: color-mix(in srgb, var(--accent-cyan) 35%, transparent);
 }
 
-.worldbook-editor-screen::before {
-  opacity: 0.14;
-  background-image:
-    radial-gradient(circle, var(--accent-cyan) 1px, transparent 1px),
-    repeating-linear-gradient(
-      -40deg,
-      transparent 0 12px,
-      color-mix(in srgb, var(--accent-orange) 35%, transparent) 12px 22px
-    );
-  background-size:
-    24px 24px,
-    100% 100%;
-}
-
-.worldbook-editor-screen::after {
-  opacity: 0.1;
-  background-image: conic-gradient(
-    from 90deg at 1px 1px,
-    transparent 90deg,
-    color-mix(in srgb, var(--accent-magenta) 28%, transparent) 0
-  );
-  background-size: 44px 44px;
-}
-
-.worldbook-editor-bg-word {
-  position: absolute;
-  margin: 0;
-  right: -2%;
-  top: -5%;
-  font-family: var(--font-heading);
-  font-size: clamp(6rem, 20vw, 14rem);
-  line-height: 0.8;
-  letter-spacing: -0.07em;
-  color: color-mix(in srgb, var(--accent-yellow) 32%, transparent);
-  opacity: 0.22;
-  pointer-events: none;
-  user-select: none;
-}
-
-.worldbook-editor-header {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-.worldbook-editor-title-group {
-  display: grid;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-}
-
-.edit-title-btn {
-  display: flex;
+.collapse-arrow {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  width: 2.15rem;
-  height: 2.15rem;
-  min-width: 2.15rem;
-  min-height: 2.15rem;
-  max-width: 2.15rem;
-  max-height: 2.15rem;
-  padding: 0;
-  border: 1px solid var(--accent-orange);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
-  color: var(--accent-orange);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  margin-left: auto;
   flex: 0 0 auto;
-  align-self: flex-start;
-  aspect-ratio: 1 / 1;
-  line-height: 1;
-  box-sizing: border-box;
+  font-size: 0.72rem;
+  color: var(--accent-cyan);
+  transform: rotate(-90deg);
+  transition: transform 180ms ease;
 }
 
-.edit-title-btn:hover {
-  background: var(--accent-orange);
-  color: var(--bg-base);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+.collapsible-trigger.expanded .collapse-arrow {
+  transform: rotate(0deg);
 }
 
-.edit-title-btn:active {
-  transform: translateY(0);
+.collapsible-content {
+  padding: 12px 12px 2px;
 }
 
-.edit-btn-text {
-  display: none;
+.user-appearance-block {
+  overflow: visible;
 }
 
-.edit-title-btn svg {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
+.user-appearance-content {
+  padding-top: 10px;
+  padding-bottom: 12px;
 }
 
-.platform-android.android-portrait .edit-title-btn {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  min-height: 32px !important;
-  max-width: 32px !important;
-  max-height: 32px !important;
-  flex: 0 0 32px !important;
-  padding: 0 !important;
-  aspect-ratio: 1 / 1 !important;
-  box-sizing: border-box !important;
-}
-
-.worldbook-editor-tag {
-  margin: 0;
-  width: fit-content;
-  padding: 8px 14px;
-  border: 4px solid var(--accent-orange);
-  border-radius: 9999px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  text-shadow: var(--text-shadow-single);
-  background: color-mix(in srgb, var(--accent-magenta) 25%, transparent);
-}
-
-.worldbook-editor-title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  width: 100%;
-}
-
-.worldbook-editor-title {
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-heading);
-  font-size: clamp(2.1rem, 5.7vw, 4.2rem);
-  line-height: 0.92;
-  letter-spacing: -0.03em;
-  text-shadow: var(--text-shadow-triple);
-  overflow-wrap: anywhere;
-}
-
-.worldbook-editor-title-gradient {
-  margin: 0;
-  width: fit-content;
-  font-family: var(--font-display);
-  font-size: clamp(1.9rem, 4.8vw, 3rem);
-  letter-spacing: 0.08em;
-  background: linear-gradient(
-    90deg,
-    var(--accent-magenta),
-    var(--accent-cyan),
-    var(--accent-yellow),
-    var(--accent-magenta)
-  );
-  background-size: 250% 250%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: avg-gradient-shift 4s linear infinite;
-}
-
-.worldbook-editor-tabs {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.worldbook-editor-tab {
-  appearance: none;
-  border: 4px dashed var(--accent-magenta);
-  border-radius: var(--radius-button);
-  padding: 10px 16px;
-  font: 800 0.82rem/1 var(--font-body);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--accent-purple) 35%, transparent);
-  box-shadow: var(--shadow-field);
-  cursor: pointer;
-  transition: transform 220ms ease, box-shadow 220ms ease, border-style 220ms ease;
-}
-
-.worldbook-editor-tab:hover {
-  transform: translateY(-2px);
-}
-
-.worldbook-editor-tab.active {
+.user-appearance-textarea {
+  min-height: 190px;
+  border-width: 2px;
   border-style: solid;
-  border-color: var(--accent-yellow);
-  background: var(--gradient-primary);
-  box-shadow: var(--shadow-button);
-}
-
-.worldbook-editor-layout {
-  position: relative;
-  z-index: 2;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
-  gap: clamp(12px, 2vw, 20px);
-  overflow: hidden;
-}
-
-.worldbook-editor-single {
-  position: relative;
-  z-index: 2;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.worldbook-editor-single > .worldbook-editor {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.worldbook-entry-nav {
-  border: 4px solid var(--border-panel);
-  border-radius: 20px;
-  background: var(--surface-field);
-  padding: 12px;
-  display: grid;
-  gap: 10px;
-  align-content: start;
-  overflow: auto;
-  box-shadow: var(--shadow-panel);
-}
-
-.worldbook-entry-item {
-  appearance: none;
-  text-align: left;
-  border: 4px dashed var(--accent-cyan);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--accent-purple) 30%, transparent);
-  color: var(--foreground);
-  padding: 10px 12px;
-  font: 700 0.84rem/1.2 var(--font-body);
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition: transform 220ms ease, box-shadow 220ms ease, border-style 220ms ease;
-  box-shadow: var(--shadow-field);
-}
-
-.worldbook-entry-item:hover {
-  transform: translateX(3px);
-}
-
-.worldbook-entry-item.active {
-  border-style: solid;
-  border-color: var(--accent-yellow);
-  background: var(--gradient-secondary);
-  box-shadow: var(--shadow-button);
-}
-
-.worldbook-char-nav {
-  align-content: start;
-}
-
-.worldbook-add-char-btn {
-  width: 100%;
-}
-
-.worldbook-char-item {
-  display: grid;
-  gap: 4px;
-}
-
-.char-name {
-  font-weight: 800;
-}
-
-.char-note {
-  font-size: 0.74rem;
-  opacity: 0.88;
-}
-
-.worldbook-editor {
-  border: 4px dotted var(--border-panel);
-  border-radius: 20px;
-  background: var(--surface-panel);
-  box-shadow: var(--shadow-card);
-  padding: clamp(14px, 2vw, 22px);
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.entry-hint {
-  font-size: 0.82rem;
-  color: color-mix(in srgb, var(--foreground) 86%, var(--accent-cyan));
-}
-
-.worldbook-global-display-settings {
-  margin-bottom: 16px;
-  padding: 14px;
-  border: 2px solid color-mix(in srgb, var(--accent-cyan) 55%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
-}
-
-.worldbook-director-settings {
-  margin-bottom: 16px;
-  padding: 14px;
-  border: 2px solid color-mix(in srgb, var(--accent-magenta) 48%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--accent-magenta) 10%, transparent);
-}
-
-.director-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.director-json-textarea {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
-  font-size: 0.85rem;
-  line-height: 1.4;
-}
-
-.setting-error {
-  margin: 6px 0 0;
-  font-size: 0.82rem;
-  color: var(--accent-magenta);
 }
 
 .relationship-settings-card {
@@ -371,6 +48,14 @@
   border: 2px solid color-mix(in srgb, var(--accent-yellow) 45%, transparent);
   border-radius: 12px;
   background: color-mix(in srgb, var(--accent-yellow) 10%, transparent);
+}
+
+.personality-settings-card {
+  margin: 4px 0 8px;
+  padding: 12px;
+  border: 2px solid color-mix(in srgb, var(--accent-orange) 45%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-orange) 10%, transparent);
 }
 
 .voice-settings-card {
@@ -384,6 +69,15 @@
 .relationship-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+}
+
+.personality-dimension-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.personality-dimension-hint {
+  margin-top: 6px;
 }
 
 .settings-grid.three-column {
@@ -449,6 +143,10 @@
     grid-template-columns: 1fr;
   }
 
+  .personality-dimension-grid {
+    grid-template-columns: 1fr;
+  }
+
   .settings-grid.three-column,
   .settings-grid.four-column {
     grid-template-columns: 1fr;
@@ -456,6 +154,7 @@
 }
 
 /* 场景管理样式 */
+
 .scene-folder-actions {
   display: flex;
   flex-wrap: wrap;
@@ -563,6 +262,7 @@
 }
 
 /* 竖屏模式 - 整体页面滚动设计 */
+
 @media (max-width: 768px) and (orientation: portrait) {
   .worldbook-editor-screen {
     height: auto !important;
@@ -898,9 +598,28 @@
     margin-bottom: 12px !important;
   }
 
+  .personality-dimension-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   /* 输入框样式 */
   .setting-field {
     margin-bottom: 16px !important;
+  }
+
+  .collapsible-block {
+    border-width: 1px !important;
+    border-radius: 10px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .collapsible-trigger {
+    padding: 11px 12px !important;
+    font-size: 0.88rem !important;
+  }
+
+  .collapsible-content {
+    padding: 10px 10px 2px !important;
   }
 
   .setting-label {
@@ -1084,116 +803,3 @@
     width: 100% !important;
   }
 }
-
-/* 编辑标题对话框样式 */
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.dialog-content {
-  background: var(--surface-panel);
-  border: 3px solid var(--accent-cyan);
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 400px;
-  width: 90%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.edit-title-dialog .dialog-title {
-  margin: 0 0 16px 0;
-  font-family: var(--font-heading);
-  font-size: 1.4rem;
-  color: var(--accent-cyan);
-  text-shadow: var(--text-shadow-single);
-}
-
-.edit-title-dialog .setting-field {
-  margin-bottom: 20px;
-}
-
-.edit-title-dialog .setting-label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.edit-title-dialog .setting-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid var(--accent-cyan);
-  border-radius: 10px;
-  background: var(--bg-base);
-  color: var(--text-primary);
-  font-size: 1rem;
-}
-
-.edit-title-dialog .setting-input:focus {
-  outline: none;
-  border-color: var(--accent-orange);
-  box-shadow: 0 0 8px rgba(255, 165, 0, 0.3);
-}
-
-.dialog-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.dialog-actions .dialog-btn {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 88px;
-  min-height: 36px;
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--accent-cyan);
-  font: 700 0.9rem/1 var(--font-body);
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
-  box-sizing: border-box;
-}
-
-.dialog-actions .dialog-btn:hover {
-  transform: translateY(-1px);
-}
-
-.dialog-actions .dialog-btn:active {
-  transform: translateY(0);
-}
-
-.dialog-actions .dialog-btn-cancel {
-  background: color-mix(in srgb, var(--surface-panel) 80%, transparent);
-  color: var(--foreground);
-  border-color: color-mix(in srgb, var(--accent-cyan) 60%, transparent);
-}
-
-.dialog-actions .dialog-btn-confirm {
-  background: color-mix(in srgb, var(--accent-cyan) 25%, transparent);
-  color: var(--foreground);
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
-}
-
-.platform-android.android-portrait .edit-title-dialog .dialog-actions .dialog-btn {
-  min-width: 72px !important;
-  min-height: 32px !important;
-  padding: 6px 12px !important;
-  font-size: 0.85rem !important;
-}
-

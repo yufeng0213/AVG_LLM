@@ -1,0 +1,1177 @@
+  <div
+    ref="phonePluginRef"
+    class="phone-plugin"
+    :class="{ dragging: isDragging }"
+    :style="{
+      right: 'auto',
+      bottom: 'auto',
+      left: phonePosition.x + 'px',
+      top: phonePosition.y + 'px'
+    }"
+  >
+    <button
+      class="phone-trigger"
+      @pointerdown="startDrag"
+      @click="togglePhone"
+      title="打开手机"
+      aria-label="打开手机"
+    >
+      <span class="trigger-icon" aria-hidden="true">
+        <span class="trigger-cutout"></span>
+      </span>
+    </button>
+
+    <Transition name="phone-slide">
+      <div v-if="isPhoneVisible" class="phone-container">
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="phone-island" @pointerdown="startDrag"></div>
+
+            <div class="status-bar" @pointerdown="startDrag">
+              <span class="time">{{ currentTime }}</span>
+              <div class="status-icons">
+                <div class="signal-bars" aria-hidden="true">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span class="network-text">5G</span>
+                <div class="battery-icon" aria-hidden="true">
+                  <span class="battery-level"></span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="!currentApp" class="home-screen">
+              <div class="home-glow" aria-hidden="true"></div>
+              <div class="lock-time">
+                <div class="big-time">{{ currentTime }}</div>
+                <div class="date">{{ new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }) }}</div>
+              </div>
+
+              <div class="app-grid">
+                <button
+                  v-for="app in apps"
+                  :key="app.id"
+                  class="app-icon"
+                  type="button"
+                  @click="openApp(app.id)"
+                >
+                  <div class="app-icon-bg" :style="{ backgroundColor: app.color }">
+                    {{ app.icon }}
+                    <span
+                      v-if="app.id === 'alerts' && unreadAlertCount > 0"
+                      class="app-badge"
+                    >
+                      {{ unreadAlertCount > 99 ? '99+' : unreadAlertCount }}
+                    </span>
+                  </div>
+                  <span class="app-name">{{ app.name }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-else-if="currentApp === 'alerts'" class="app-screen alerts-app">
+              <div class="app-header alerts-header">
+                <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                  <span class="chevron">‹</span>
+                </button>
+                <span class="app-title">通知中心</span>
+                <button
+                  type="button"
+                  class="alerts-read-all-btn"
+                  :disabled="unreadAlertCount === 0"
+                  @click="markAllAlertsRead"
+                >
+                  全部已读
+                </button>
+              </div>
+
+              <div class="alerts-toolbar">
+                <button
+                  type="button"
+                  class="alerts-filter-btn"
+                  :class="{ active: !isAlertsViewOnlyUnread }"
+                  @click="isAlertsViewOnlyUnread = false"
+                >
+                  全部
+                </button>
+                <button
+                  type="button"
+                  class="alerts-filter-btn"
+                  :class="{ active: isAlertsViewOnlyUnread }"
+                  @click="isAlertsViewOnlyUnread = true"
+                >
+                  未读 ({{ unreadAlertCount }})
+                </button>
+              </div>
+
+              <div class="alerts-page">
+                <p v-if="filteredAlerts.length === 0" class="alerts-empty">暂无通知</p>
+                <article
+                  v-for="item in filteredAlerts"
+                  :key="item.id"
+                  class="alert-item"
+                  :class="{ unread: !item.isRead }"
+                  role="button"
+                  tabindex="0"
+                  @click="jumpByAlert(item)"
+                  @keydown.enter.prevent="jumpByAlert(item)"
+                  @keydown.space.prevent="jumpByAlert(item)"
+                >
+                  <div class="alert-dot" aria-hidden="true"></div>
+                  <div class="alert-main">
+                    <p class="alert-title">{{ item.title }}</p>
+                    <p class="alert-content">{{ item.content }}</p>
+                    <div class="alert-meta">
+                      <span class="alert-type">{{ item.type }}</span>
+                      <time class="alert-time">{{ formatMomentTime(item.timestamp) }}</time>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div v-else-if="currentApp === 'phone'" class="app-screen phone-app">
+              <div class="app-header">
+                <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                  <span class="chevron">‹</span>
+                </button>
+                <span class="app-title">电话</span>
+                <span class="header-action">编辑</span>
+              </div>
+              <div class="phone-content">
+                <div class="contacts-list">
+                  <button
+                    v-for="contact in contacts"
+                    :key="contact.id"
+                    class="contact-item"
+                    type="button"
+                    @click="openContactMessages(contact.id)"
+                  >
+                    <span class="contact-avatar">{{ contact.avatar }}</span>
+                    <div class="contact-info">
+                      <span class="contact-name">{{ contact.name }}</span>
+                      <span class="contact-phone">{{ contact.subtitle }}</span>
+                    </div>
+                    <span class="contact-chevron">›</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="currentApp === 'messages'" class="app-screen messages-app">
+              <template v-if="!isMessagesThreadView">
+                <div class="app-header messages-header">
+                  <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                    <span class="chevron">‹</span>
+                  </button>
+                  <span class="app-title">短信</span>
+                  <span class="header-action">{{ contacts.length }}人</span>
+                </div>
+
+                <div class="messages-list-page">
+                  <div class="messages-list-toolbar">
+                    <p class="messages-list-title">信息</p>
+                  </div>
+
+                  <div class="messages-search-shell" aria-hidden="true">
+                    <div class="messages-search-pill">
+                      <span class="messages-search-icon">⌕</span>
+                      <span class="messages-search-text">搜索</span>
+                    </div>
+                  </div>
+
+                  <div class="messages-conversation-list">
+                    <button
+                      v-for="contact in contacts"
+                      :key="`msg_list_${contact.id}`"
+                      type="button"
+                      class="messages-conversation-item"
+                      @click="selectMessageContact(contact.id)"
+                    >
+                      <span class="messages-conversation-avatar">{{ contact.avatar }}</span>
+                      <div class="messages-conversation-main">
+                        <div class="messages-conversation-top">
+                          <span class="messages-conversation-name">{{ contact.name }}</span>
+                          <span class="messages-conversation-time">{{ getContactLastMessageTime(contact.id) }}</span>
+                        </div>
+                        <p class="messages-conversation-preview">{{ getContactLastMessageText(contact.id) }}</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="app-header messages-header">
+                  <button class="back-btn" type="button" @click="showMessagesList" aria-label="返回短信列表">
+                    <span class="chevron">‹</span>
+                  </button>
+                  <span class="app-title">{{ selectedContact?.name || '短信' }}</span>
+                  <span class="header-action messages-thread-avatar-mini">
+                    {{ selectedContact?.avatar || '' }}
+                  </span>
+                </div>
+
+                <div class="messages-thread-page">
+                  <div ref="messagesThreadRef" class="messages-thread">
+                    <p v-if="selectedThread.length === 0" class="messages-empty">发送一条消息开始对话</p>
+                    <article
+                      v-for="message in selectedThread"
+                      :key="message.id"
+                      class="sms-row"
+                      :class="message.role === 'user' ? 'from-user' : 'from-assistant'"
+                    >
+                      <p class="sms-bubble">{{ message.text }}</p>
+                      <div class="sms-meta">
+                        <time class="sms-time">{{ formatSmsTime(message.timestamp) }}</time>
+                      </div>
+                    </article>
+                  </div>
+
+                  <p v-if="smsError" class="sms-error">{{ smsError }}</p>
+
+                  <div class="messages-compose">
+                    <input
+                      v-model="smsDraft"
+                      class="sms-input"
+                      type="text"
+                      placeholder="iMessage"
+                      :disabled="isSendingSms || !selectedContact"
+                      @keydown.enter.prevent="handleSendSms"
+                    />
+                    <button
+                      type="button"
+                      class="sms-send-btn"
+                      :disabled="isSendingSms || !smsDraft.trim() || !selectedContact"
+                      @click="handleSendSms"
+                    >
+                      {{ isSendingSms ? '...' : '↑' }}
+                    </button>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <div v-else-if="currentApp === 'moments'" class="app-screen moments-app">
+              <div class="app-header moments-header">
+                <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                  <span class="chevron">‹</span>
+                </button>
+                <span class="app-title">朋友圈</span>
+                <div class="moments-header-actions">
+                  <span class="header-action">{{ momentsFeed.length }}条</span>
+                  <button
+                    type="button"
+                    class="moments-refresh-btn"
+                    :disabled="isRefreshingMoments || isPublishingMoment || !hasMomentRefreshTask"
+                    @click="handleRefreshMoments"
+                  >
+                    {{ isRefreshingMoments ? '刷新中' : momentRefreshLabel }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="moments-page">
+                <div class="moments-composer">
+                  <span class="moments-composer-avatar">我</span>
+                  <div class="moments-composer-panel">
+                    <textarea
+                      v-model="momentsDraft"
+                      class="moments-input"
+                      placeholder="写点什么，分享这一刻..."
+                      maxlength="180"
+                    ></textarea>
+                    <div class="moments-composer-footer">
+                      <span class="moments-limit">{{ momentsDraft.trim().length }}/180</span>
+                      <button
+                        type="button"
+                        class="moments-new-btn"
+                        :disabled="isPublishingMoment || !momentsDraft.trim()"
+                        @click="handlePublishMoment"
+                      >
+                        {{ isPublishingMoment ? '发布中' : '发布' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <p v-if="momentsError" class="moments-error">{{ momentsError }}</p>
+
+                <div class="moments-feed">
+                  <p v-if="momentsFeed.length === 0" class="moments-empty">还没有朋友圈动态，发布第一条吧</p>
+
+                  <article
+                    v-for="post in momentsFeed"
+                    :key="post.id"
+                    class="moments-post"
+                  >
+                    <header class="moments-post-header">
+                      <span class="moments-post-avatar">{{ post.authorAvatar }}</span>
+                      <div class="moments-post-meta">
+                        <p class="moments-post-name">{{ post.authorName }}</p>
+                        <time class="moments-post-time">{{ formatMomentTime(post.timestamp) }}</time>
+                      </div>
+                    </header>
+
+                    <p class="moments-post-content">{{ post.content }}</p>
+
+                    <p v-if="post.needsInitComments" class="moments-post-hint">
+                      已发布，点击顶部刷新生成角色评论
+                    </p>
+
+                    <section v-if="post.comments.length > 0" class="moments-comments">
+                      <article
+                        v-for="comment in post.comments"
+                        :key="comment.id"
+                        class="moments-comment"
+                        :class="{
+                          'moments-comment-user': comment.role === 'user',
+                          'moments-comment-pending': comment.role === 'user' && comment.awaitingReply,
+                        }"
+                      >
+                        <span class="moments-comment-name">{{ comment.authorName }}：</span>
+                        <span class="moments-comment-text">{{ comment.text }}</span>
+                        <button
+                          v-if="comment.role !== 'user'"
+                          type="button"
+                          class="moments-reply-btn"
+                          @click="startMomentReply(post.id, comment)"
+                        >
+                          回复
+                        </button>
+                        <span
+                          v-else-if="comment.awaitingReply"
+                          class="moments-comment-state"
+                        >
+                          待刷新
+                        </span>
+                      </article>
+                    </section>
+
+                    <section
+                      v-if="getMomentReplyTarget(post.id)"
+                      class="moments-reply-composer"
+                    >
+                      <p class="moments-reply-target">
+                        回复 {{ getMomentReplyTarget(post.id)?.authorName }}
+                      </p>
+                      <div class="moments-reply-row">
+                        <input
+                          :value="getMomentReplyDraft(post.id)"
+                          class="moments-reply-input"
+                          type="text"
+                          placeholder="输入回复内容..."
+                          maxlength="120"
+                          :disabled="isRefreshingMoments"
+                          @input="setMomentReplyDraft(post.id, $event.target.value)"
+                          @keydown.enter.prevent="submitMomentReply(post.id)"
+                        />
+                        <button
+                          type="button"
+                          class="moments-reply-submit-btn"
+                          :disabled="isRefreshingMoments || !getMomentReplyDraft(post.id).trim()"
+                          @click="submitMomentReply(post.id)"
+                        >
+                          暂存
+                        </button>
+                        <button
+                          type="button"
+                          class="moments-reply-cancel-btn"
+                          :disabled="isRefreshingMoments"
+                          @click="clearMomentReplyComposer(post.id)"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </section>
+                  </article>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="currentApp === 'forum'" class="app-screen forum-app">
+              <template v-if="!isForumThreadView">
+                <div class="app-header forum-header">
+                  <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                    <span class="chevron">‹</span>
+                  </button>
+                  <span class="app-title">论坛</span>
+                  <div class="forum-header-actions">
+                    <span class="header-action forum-count">{{ forumPosts.length }}帖</span>
+                    <button
+                      type="button"
+                      class="forum-refresh-btn"
+                      :disabled="isRefreshingForum"
+                      @click="handleRefreshForum"
+                    >
+                      {{ isRefreshingForum ? '刷新中' : '刷新' }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="forum-page">
+                  <p v-if="forumError" class="forum-error">{{ forumError }}</p>
+
+                  <div class="forum-list">
+                    <p v-if="forumPosts.length === 0" class="forum-empty">暂无帖子，点击刷新获取最新讨论</p>
+
+                    <article
+                      v-for="post in forumPosts"
+                      :key="post.id"
+                      class="forum-post-item"
+                      role="button"
+                      tabindex="0"
+                      @click="openForumPost(post.id)"
+                      @keydown.enter.prevent="openForumPost(post.id)"
+                      @keydown.space.prevent="openForumPost(post.id)"
+                    >
+                      <div class="forum-post-topline">
+                        <span class="forum-tag">{{ post.tag }}</span>
+                        <span v-if="post.isHot" class="forum-hot">HOT</span>
+                      </div>
+                      <p class="forum-post-title">{{ post.title }}</p>
+                      <p class="forum-post-preview">{{ post.preview }}</p>
+                      <div class="forum-post-meta">
+                        <span class="forum-post-author">{{ post.authorName }}</span>
+                        <span class="forum-post-time">{{ formatMomentTime(post.timestamp) }}</span>
+                      </div>
+                      <div class="forum-post-stats">
+                        <span>👁 {{ formatForumMetric(post.views) }}</span>
+                        <span>💬 {{ formatForumMetric(post.replies) }}</span>
+                        <span>👍 {{ formatForumMetric(post.likes) }}</span>
+                      </div>
+                      <div class="forum-post-actions">
+                        <button
+                          type="button"
+                          class="collect-clue-btn"
+                          :disabled="isClueCollected(`forum:${post.id}`)"
+                          @click.stop="addClueFromForumPost(post)"
+                        >
+                          {{ isClueCollected(`forum:${post.id}`) ? '已收录' : '收线索' }}
+                        </button>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="app-header forum-header">
+                  <button class="back-btn" type="button" @click="showForumList" aria-label="返回论坛列表">
+                    <span class="chevron">‹</span>
+                  </button>
+                  <span class="app-title">{{ selectedForumPost?.tag || '帖子详情' }}</span>
+                  <span class="header-action">详情</span>
+                </div>
+
+                <div v-if="selectedForumPost" class="forum-thread-page">
+                  <article class="forum-thread-card">
+                    <div class="forum-post-topline">
+                      <span class="forum-tag">{{ selectedForumPost.tag }}</span>
+                      <span v-if="selectedForumPost.isHot" class="forum-hot">HOT</span>
+                    </div>
+                    <h4 class="forum-thread-title">{{ selectedForumPost.title }}</h4>
+                    <p class="forum-thread-content">{{ selectedForumPost.content }}</p>
+                    <div class="forum-post-meta">
+                      <span class="forum-post-author">{{ selectedForumPost.authorName }}</span>
+                      <span class="forum-post-time">{{ formatMomentTime(selectedForumPost.timestamp) }}</span>
+                    </div>
+                    <div class="forum-post-stats">
+                      <span>👁 {{ formatForumMetric(selectedForumPost.views) }}</span>
+                      <span>💬 {{ formatForumMetric(selectedForumPost.replies) }}</span>
+                      <span>👍 {{ formatForumMetric(selectedForumPost.likes) }}</span>
+                    </div>
+                    <div class="forum-post-actions">
+                      <button
+                        type="button"
+                        class="collect-clue-btn"
+                        :disabled="isClueCollected(`forum:${selectedForumPost.id}`)"
+                        @click.stop="addClueFromForumPost(selectedForumPost)"
+                      >
+                        {{ isClueCollected(`forum:${selectedForumPost.id}`) ? '已收录' : '收线索' }}
+                      </button>
+                    </div>
+                  </article>
+
+                  <section class="forum-thread-comments">
+                    <p class="forum-thread-comments-title">回帖讨论</p>
+                    <article
+                      v-for="comment in selectedForumPost.comments"
+                      :key="comment.id"
+                      class="forum-thread-comment"
+                    >
+                      <div class="forum-thread-comment-head">
+                        <span class="forum-thread-comment-author">{{ comment.authorName }}</span>
+                        <span class="forum-thread-comment-time">{{ formatMomentTime(comment.timestamp) }}</span>
+                      </div>
+                      <p class="forum-thread-comment-text">{{ comment.text }}</p>
+                    </article>
+                  </section>
+                </div>
+
+                <div v-else class="forum-page">
+                  <p class="forum-empty">帖子不存在，返回列表刷新试试</p>
+                </div>
+              </template>
+            </div>
+
+            <div v-else-if="currentApp === 'news'" class="app-screen news-app">
+              <template v-if="!isNewsDetailView">
+                <div class="app-header news-header">
+                  <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                    <span class="chevron">‹</span>
+                  </button>
+                  <div class="news-brand">
+                    <span class="news-brand-logo">今日X条</span>
+                    <span class="news-brand-sub">推荐</span>
+                  </div>
+                  <div class="news-header-actions">
+                    <button
+                      type="button"
+                      class="news-refresh-btn"
+                      :disabled="isRefreshingNews"
+                      @click="handleRefreshNews"
+                    >
+                      {{ isRefreshingNews ? '刷新中' : '刷新' }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="news-channel-strip">
+                  <button
+                    v-for="channel in NEWS_CHANNELS"
+                    :key="channel"
+                    type="button"
+                    class="news-channel-btn"
+                    :class="{ active: channel === selectedNewsChannel }"
+                    @click="selectNewsChannel(channel)"
+                  >
+                    {{ channel }}
+                  </button>
+                </div>
+
+                <div class="news-page news-feed-page">
+                  <p v-if="newsError" class="news-error">{{ newsError }}</p>
+
+                  <div class="news-list">
+                    <p v-if="newsEventsForList.length === 0" class="news-empty">该频道暂无内容，点击刷新获取报道</p>
+
+                    <article
+                      v-for="event in newsEventsForList"
+                      :key="event.id"
+                      class="news-item news-feed-item"
+                      role="button"
+                      tabindex="0"
+                      @click="openNewsEvent(event.id)"
+                      @keydown.enter.prevent="openNewsEvent(event.id)"
+                      @keydown.space.prevent="openNewsEvent(event.id)"
+                    >
+                      <div class="news-item-main">
+                        <div class="news-item-topline">
+                          <span class="news-importance" :class="`importance-${event.importance}`">
+                            热度{{ formatNewsImportanceLabel(event.importance) }}
+                          </span>
+                          <span
+                            class="news-credibility"
+                            :class="`cred-${getNewsPrimaryVersion(event)?.credibility || 'analysis'}`"
+                          >
+                            {{ formatNewsCredibilityLabel(getNewsPrimaryVersion(event)?.credibility) }}
+                          </span>
+                        </div>
+                        <h4 class="news-item-headline">
+                          {{ getNewsPrimaryVersion(event)?.headline || event.topic }}
+                        </h4>
+                        <p class="news-item-summary">{{ getNewsPrimaryVersion(event)?.summary }}</p>
+                        <div class="news-item-meta">
+                          <span class="news-outlet">{{ getNewsPrimaryVersion(event)?.outlet || '综合来源' }}</span>
+                          <span class="news-meta-dot">·</span>
+                          <time class="news-item-time">{{ formatMomentTime(event.timestamp) }}</time>
+                          <span class="news-meta-dot">·</span>
+                          <span class="news-version-count">{{ event.versions.length }}版</span>
+                          <button
+                            type="button"
+                            class="collect-clue-btn news-collect-btn"
+                            :disabled="isClueCollected(`news:${event.id}`)"
+                            @click.stop="addClueFromNewsEvent(event)"
+                          >
+                            {{ isClueCollected(`news:${event.id}`) ? '已收录' : '收线索' }}
+                          </button>
+                        </div>
+                      </div>
+                      <div class="news-thumb" :class="`thumb-${event.importance}`" aria-hidden="true">
+                        <span class="news-thumb-label">{{ getNewsTopicBadge(event) }}</span>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="app-header news-header">
+                  <button class="back-btn" type="button" @click="showNewsList" aria-label="返回新闻列表">
+                    <span class="chevron">‹</span>
+                  </button>
+                  <span class="app-title">{{ selectedNewsEvent?.topic || '新闻详情' }}</span>
+                  <span class="header-action">详情</span>
+                </div>
+
+                <div v-if="selectedNewsEvent" class="news-thread-page">
+                  <div class="news-version-tabs" role="tablist" aria-label="媒体版本">
+                    <button
+                      v-for="(version, versionIndex) in selectedNewsEvent.versions"
+                      :key="version.id"
+                      type="button"
+                      class="news-version-tab"
+                      :class="{ active: versionIndex === selectedNewsVersionIndex }"
+                      @click="selectNewsVersion(versionIndex)"
+                    >
+                      <span class="news-version-outlet">{{ version.outlet }}</span>
+                      <span class="news-version-credibility">
+                        {{ formatNewsCredibilityLabel(version.credibility) }}
+                      </span>
+                    </button>
+                  </div>
+
+                  <article v-if="selectedNewsVersion" class="news-detail-card">
+                    <div class="news-detail-meta">
+                      <span class="news-importance" :class="`importance-${selectedNewsEvent.importance}`">
+                        热度{{ formatNewsImportanceLabel(selectedNewsEvent.importance) }}
+                      </span>
+                      <span
+                        class="news-credibility"
+                        :class="`cred-${selectedNewsVersion.credibility || 'analysis'}`"
+                      >
+                        {{ formatNewsCredibilityLabel(selectedNewsVersion.credibility) }}
+                      </span>
+                      <time class="news-item-time">
+                        {{ formatMomentTime(selectedNewsVersion.timestamp || selectedNewsEvent.timestamp) }}
+                      </time>
+                    </div>
+
+                    <h4 class="news-detail-headline">{{ selectedNewsVersion.headline }}</h4>
+                    <p class="news-detail-summary">{{ selectedNewsVersion.summary }}</p>
+                    <p v-if="selectedNewsVersion.angle" class="news-detail-angle">
+                      角度：{{ selectedNewsVersion.angle }}
+                    </p>
+                    <p v-if="selectedNewsVersion.style" class="news-detail-style">
+                      风格：{{ selectedNewsVersion.style }}
+                    </p>
+                    <div class="news-detail-actions">
+                      <button
+                        type="button"
+                        class="collect-clue-btn"
+                        :disabled="isClueCollected(`news:${selectedNewsEvent.id}`)"
+                        @click.stop="addClueFromNewsEvent(selectedNewsEvent)"
+                      >
+                        {{ isClueCollected(`news:${selectedNewsEvent.id}`) ? '已收录' : '收线索' }}
+                      </button>
+                    </div>
+                  </article>
+
+                  <p v-else class="news-empty">当前版本内容为空，请返回刷新</p>
+                </div>
+
+                <div v-else class="news-page">
+                  <p class="news-empty">新闻不存在，返回列表刷新试试</p>
+                </div>
+              </template>
+            </div>
+
+            <div v-else-if="currentApp === 'map'" class="app-screen map-app">
+              <div class="app-header map-header">
+                <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                  <span class="chevron">‹</span>
+                </button>
+                <span class="app-title">{{ mapData?.title || '地图' }}</span>
+                <button
+                  type="button"
+                  class="map-refresh-btn"
+                  :disabled="isRefreshingMap"
+                  @click="handleRefreshMap"
+                >
+                  {{ isRefreshingMap ? '刷新中' : '刷新' }}
+                </button>
+              </div>
+
+              <div class="map-page">
+                <p v-if="mapError" class="map-error">{{ mapError }}</p>
+
+                <div class="map-canvas" role="list" aria-label="地图地点">
+                  <p v-if="mapLocations.length === 0" class="map-empty">暂无地点，请点击刷新</p>
+                  <button
+                    v-for="node in mapLocations"
+                    :key="node.id"
+                    type="button"
+                    class="map-node-btn"
+                    :class="[
+                      `risk-${node.risk || 'medium'}`,
+                      {
+                        active: selectedMapNode?.id === node.id,
+                        current: mapData?.currentLocationId === node.id,
+                      },
+                    ]"
+                    :style="getMapNodeStyle(node)"
+                    @click="selectMapNode(node.id)"
+                  >
+                    <span class="map-node-dot" aria-hidden="true"></span>
+                    <span class="map-node-name">{{ node.name }}</span>
+                  </button>
+                </div>
+
+                <article v-if="selectedMapNode" class="map-detail-card">
+                  <div class="map-detail-head">
+                    <p class="map-detail-name">{{ selectedMapNode.name }}</p>
+                    <span class="map-risk-badge" :class="`risk-${selectedMapNode.risk || 'medium'}`">
+                      {{
+                        selectedMapNode.risk === 'high'
+                          ? '高风险'
+                          : (selectedMapNode.risk === 'low' ? '低风险' : '中风险')
+                      }}
+                    </span>
+                  </div>
+                  <p class="map-detail-desc">{{ selectedMapNode.desc || '暂无地点说明。' }}</p>
+
+                  <div v-if="selectedMapNode.tags?.length" class="map-tags">
+                    <span
+                      v-for="(tag, tagIndex) in selectedMapNode.tags"
+                      :key="`${selectedMapNode.id}_tag_${tagIndex}`"
+                      class="map-tag"
+                    >
+                      {{ tag }}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="map-travel-btn"
+                    :disabled="isRefreshingMap || mapData?.currentLocationId === selectedMapNode.id"
+                    @click="handleTravelToMapNode(selectedMapNode)"
+                  >
+                    {{ mapData?.currentLocationId === selectedMapNode.id ? '当前位置' : '前往此地' }}
+                  </button>
+                </article>
+              </div>
+            </div>
+
+            <div v-else-if="currentApp === 'shop'" class="app-screen shop-app">
+              <div class="app-header shop-header">
+                <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                  <span class="chevron">‹</span>
+                </button>
+                <span class="app-title">点购网</span>
+                <div class="shop-header-right">
+                  <span class="shop-header-balance">{{ walletBalanceText }}</span>
+                  <button
+                    type="button"
+                    class="header-action shop-wallet-link"
+                    @click="openApp('wallet')"
+                  >
+                    余额
+                  </button>
+                </div>
+              </div>
+
+              <div class="shop-page">
+                <section class="shop-search-card">
+                  <div class="shop-search-row">
+                    <input
+                      v-model="shopQuery"
+                      class="shop-search-input"
+                      type="text"
+                      maxlength="40"
+                      placeholder="搜索道具/装备/补给"
+                      @keydown.enter.prevent="handleSearchShop"
+                    />
+                    <button
+                      type="button"
+                      class="shop-search-btn"
+                      :disabled="isSearchingShop"
+                      @click="handleSearchShop"
+                    >
+                      {{ isSearchingShop ? '搜索中' : '搜索' }}
+                    </button>
+                  </div>
+                </section>
+
+                <p v-if="shopError" class="shop-error">{{ shopError }}</p>
+
+                <section class="shop-results">
+                  <p v-if="shopResults.length === 0" class="shop-empty">
+                    输入关键词后点击搜索，生成符合当前剧情的商品
+                  </p>
+
+                  <article
+                    v-for="item in shopResults"
+                    :key="item.id"
+                    class="shop-item"
+                  >
+                    <div class="shop-item-main">
+                      <p class="shop-item-name">{{ item.name }}</p>
+                      <p class="shop-item-desc">{{ item.description || '暂无描述' }}</p>
+                      <div v-if="item.tags.length > 0" class="shop-item-tags">
+                        <span
+                          v-for="(tag, tagIndex) in item.tags"
+                          :key="`${item.id}_tag_${tagIndex}`"
+                          class="shop-item-tag"
+                        >
+                          {{ tag }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="shop-item-side">
+                      <p class="shop-item-price">{{ item.priceText }}</p>
+                      <button
+                        type="button"
+                        class="shop-buy-btn"
+                        :disabled="isBuyingItemId === item.id || walletBalanceCents < item.priceCents"
+                        @click="handleBuyShopItem(item)"
+                      >
+                        {{ isBuyingItemId === item.id ? '购买中' : '购买' }}
+                      </button>
+                    </div>
+                  </article>
+                </section>
+
+                <section class="shop-orders">
+                  <p class="shop-orders-title">最近购买</p>
+                  <p v-if="shopOrderHistory.length === 0" class="shop-orders-empty">暂无购买记录</p>
+                  <div v-else class="shop-orders-list">
+                    <article
+                      v-for="order in shopOrderHistory.slice(0, 8)"
+                      :key="order.id"
+                      class="shop-order-item"
+                    >
+                      <div class="shop-order-main">
+                        <p class="shop-order-name">{{ order.name }}</p>
+                        <time class="shop-order-time">{{ formatMomentTime(order.timestamp) }}</time>
+                      </div>
+                      <p class="shop-order-price">-{{ formatCents(order.totalCents) }}</p>
+                    </article>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <div v-else-if="currentApp === 'wallet'" class="app-screen wallet-app">
+              <div class="app-header wallet-header">
+                <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                  <span class="chevron">‹</span>
+                </button>
+                <span class="app-title">余额</span>
+                <button type="button" class="header-action wallet-shop-link" @click="openApp('shop')">
+                  商城
+                </button>
+              </div>
+
+              <div class="wallet-page">
+                <section class="wallet-balance-card">
+                  <p class="wallet-balance-label">当前余额</p>
+                  <p class="wallet-balance-value">{{ walletBalanceText }}</p>
+                  <p class="wallet-balance-hint">购买时将本地计算扣款，不依赖 LLM 运算。</p>
+                </section>
+
+                <section class="wallet-orders">
+                  <p class="wallet-orders-title">消费记录</p>
+                  <p v-if="shopOrderHistory.length === 0" class="wallet-orders-empty">暂无消费记录</p>
+                  <div v-else class="wallet-orders-list">
+                    <article
+                      v-for="order in shopOrderHistory.slice(0, 20)"
+                      :key="`wallet_${order.id}`"
+                      class="wallet-order-item"
+                    >
+                      <div class="wallet-order-main">
+                        <p class="wallet-order-name">{{ order.name }}</p>
+                        <time class="wallet-order-time">{{ formatMomentTime(order.timestamp) }}</time>
+                      </div>
+                      <p class="wallet-order-price">-{{ formatCents(order.totalCents) }}</p>
+                    </article>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <div v-else-if="currentApp === 'clues'" class="app-screen clues-app">
+              <template v-if="!isClueDetailView">
+                <div class="app-header clues-header">
+                  <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                    <span class="chevron">‹</span>
+                  </button>
+                  <span class="app-title">线索板</span>
+                  <span class="header-action">{{ clues.length }}条</span>
+                </div>
+
+                <div class="clues-toolbar">
+                  <input
+                    v-model="clueKeyword"
+                    class="clues-search"
+                    type="text"
+                    placeholder="搜索标题/摘要/标签"
+                  />
+                  <div class="clues-filters">
+                    <select v-model="clueSourceFilter" class="clues-select">
+                      <option value="all">全部来源</option>
+                      <option value="news">新闻</option>
+                      <option value="forum">论坛</option>
+                    </select>
+                    <select v-model="clueStatusFilter" class="clues-select">
+                      <option value="all">全部状态</option>
+                      <option value="open">未解</option>
+                      <option value="resolved">已解</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="clues-page">
+                  <p v-if="clueError" class="clues-error">{{ clueError }}</p>
+                  <p v-if="filteredClues.length === 0" class="clues-empty">暂无线索，请在论坛/新闻中收录</p>
+
+                  <article
+                    v-for="item in filteredClues"
+                    :key="item.id"
+                    class="clue-item clue-item-clickable"
+                    role="button"
+                    tabindex="0"
+                    @click="openClueDetail(item.id)"
+                    @keydown.enter.prevent="openClueDetail(item.id)"
+                    @keydown.space.prevent="openClueDetail(item.id)"
+                  >
+                    <div class="clue-topline">
+                      <span class="clue-source">{{ getClueSourceLabel(item.sourceType) }}</span>
+                      <span class="clue-status" :class="`status-${item.status}`">
+                        {{ item.status === 'resolved' ? '已解' : '未解' }}
+                      </span>
+                    </div>
+                    <h4 class="clue-title">{{ item.title }}</h4>
+                    <p class="clue-summary">{{ item.summary }}</p>
+                    <div v-if="item.tags.length > 0" class="clue-tags">
+                      <span
+                        v-for="(tag, tagIndex) in item.tags"
+                        :key="`${item.id}_tag_${tagIndex}`"
+                        class="clue-tag"
+                      >
+                        {{ tag }}
+                      </span>
+                    </div>
+                    <div class="clue-meta">
+                      <time class="clue-time">{{ formatMomentTime(item.timestamp) }}</time>
+                      <span class="clue-enter-detail">查看详情 ›</span>
+                    </div>
+                  </article>
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="app-header clues-header">
+                  <button class="back-btn" type="button" @click="showClueList" aria-label="返回线索列表">
+                    <span class="chevron">‹</span>
+                  </button>
+                  <span class="app-title">线索详情</span>
+                  <span class="header-action">{{ getClueSourceLabel(selectedClue?.sourceType) }}</span>
+                </div>
+
+                <div v-if="selectedClue" class="clues-detail-page">
+                  <article class="clue-detail-card">
+                    <div class="clue-topline">
+                      <span class="clue-source">{{ getClueSourceLabel(selectedClue.sourceType) }}</span>
+                      <span class="clue-status" :class="`status-${selectedClue.status}`">
+                        {{ selectedClue.status === 'resolved' ? '已解' : '未解' }}
+                      </span>
+                    </div>
+                    <h4 class="clue-title">{{ selectedClue.title }}</h4>
+                    <p class="clue-summary">{{ selectedClue.summary }}</p>
+                    <div v-if="selectedClue.tags.length > 0" class="clue-tags">
+                      <span
+                        v-for="(tag, tagIndex) in selectedClue.tags"
+                        :key="`detail_${selectedClue.id}_tag_${tagIndex}`"
+                        class="clue-tag"
+                      >
+                        {{ tag }}
+                      </span>
+                    </div>
+                    <div class="clue-meta">
+                      <time class="clue-time">{{ formatMomentTime(selectedClue.timestamp) }}</time>
+                    </div>
+                  </article>
+
+                  <div class="clue-detail-actions">
+                    <button type="button" class="clue-action-btn" @click="toggleClueStatus(selectedClue.id)">
+                      {{ selectedClue.status === 'resolved' ? '标记未解' : '标记已解' }}
+                    </button>
+                    <button type="button" class="clue-action-btn" @click="openClueForwardPicker">
+                      转发到短信
+                    </button>
+                    <button type="button" class="clue-action-btn danger" @click="handleDeleteCurrentClue">
+                      删除线索
+                    </button>
+                  </div>
+
+                  <section v-if="isClueForwardPickerOpen" class="clue-forward-card">
+                    <p class="clue-forward-title">选择转发对象</p>
+                    <select v-model="clueForwardTargetId" class="clues-select clue-forward-target">
+                      <option value="">选择转发角色</option>
+                      <option
+                        v-for="contact in contacts"
+                        :key="`clue_forward_target_${contact.id}`"
+                        :value="contact.id"
+                      >
+                        {{ contact.name }}
+                      </option>
+                    </select>
+                    <div class="clue-forward-actions">
+                      <button
+                        type="button"
+                        class="clue-action-btn"
+                        :disabled="isForwardingClue || !clueForwardTargetId"
+                        @click="handleForwardCurrentClue"
+                      >
+                        {{ isForwardingClue ? '转发中...' : '确认转发' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="clue-action-btn"
+                        :disabled="isForwardingClue"
+                        @click="closeClueForwardPicker"
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </section>
+
+                  <p v-if="clueError" class="clues-error">{{ clueError }}</p>
+                </div>
+
+                <div v-else class="clues-page">
+                  <p class="clues-empty">线索不存在，返回列表后重试</p>
+                </div>
+              </template>
+            </div>
+
+            <div v-else-if="currentApp === 'settings'" class="app-screen phone-settings-app">
+              <div class="app-header phone-settings-header">
+                <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                  <span class="chevron">‹</span>
+                </button>
+                <span class="app-title">频率设置</span>
+                <span class="header-action">LLM</span>
+              </div>
+
+              <div class="phone-settings-page">
+                <article class="phone-settings-card">
+                  <p class="phone-settings-title">新闻刷新冷却</p>
+                  <p class="phone-settings-value">{{ phoneSettings.newsRefreshCooldownSec }} 秒</p>
+                  <input
+                    class="phone-settings-range"
+                    type="range"
+                    min="0"
+                    max="180"
+                    step="5"
+                    :value="phoneSettings.newsRefreshCooldownSec"
+                    @input="updatePhoneRefreshCooldown('newsRefreshCooldownSec', $event.target.value)"
+                  />
+                  <p class="phone-settings-hint">0 秒表示不限制刷新频率</p>
+                </article>
+
+                <article class="phone-settings-card">
+                  <p class="phone-settings-title">论坛刷新冷却</p>
+                  <p class="phone-settings-value">{{ phoneSettings.forumRefreshCooldownSec }} 秒</p>
+                  <input
+                    class="phone-settings-range"
+                    type="range"
+                    min="0"
+                    max="180"
+                    step="5"
+                    :value="phoneSettings.forumRefreshCooldownSec"
+                    @input="updatePhoneRefreshCooldown('forumRefreshCooldownSec', $event.target.value)"
+                  />
+                  <p class="phone-settings-hint">建议 30-60 秒，兼顾实时性与 token 成本</p>
+                </article>
+
+                <article class="phone-settings-card">
+                  <p class="phone-settings-title">短信上下文（条数）</p>
+                  <div class="phone-settings-grid">
+                    <label class="phone-settings-field">
+                      <span class="phone-settings-field-label">短信历史条数</span>
+                      <input
+                        class="phone-settings-number"
+                        type="number"
+                        inputmode="numeric"
+                        min="0"
+                        max="300"
+                        :value="phoneSettings.smsHistoryLineCount"
+                        @input="updatePhoneSmsSetting('smsHistoryLineCount', $event.target.value)"
+                      />
+                    </label>
+                    <label class="phone-settings-field">
+                      <span class="phone-settings-field-label">剧情上下文条数</span>
+                      <input
+                        class="phone-settings-number"
+                        type="number"
+                        inputmode="numeric"
+                        min="0"
+                        max="300"
+                        :value="phoneSettings.smsDialogueLineCount"
+                        @input="updatePhoneSmsSetting('smsDialogueLineCount', $event.target.value)"
+                      />
+                    </label>
+                  </div>
+                  <p class="phone-settings-hint">0 表示不发送对应历史；条数越高，上下文越完整</p>
+                </article>
+
+                <article class="phone-settings-card">
+                  <p class="phone-settings-title">短信输出 token 上限</p>
+                  <p class="phone-settings-value">{{ phoneSettings.smsMaxTokens }}</p>
+                  <input
+                    class="phone-settings-number"
+                    type="number"
+                    inputmode="numeric"
+                    min="128"
+                    max="200000"
+                    :value="phoneSettings.smsMaxTokens"
+                    @input="updatePhoneSmsSetting('smsMaxTokens', $event.target.value)"
+                  />
+                  <p class="phone-settings-hint">受模型上限约束，设置过大可能被 API 拒绝</p>
+                </article>
+              </div>
+            </div>
+
+            <div v-else class="app-screen">
+              <div class="app-header">
+                <button class="back-btn" type="button" @click="goHome" aria-label="返回主页">
+                  <span class="chevron">‹</span>
+                </button>
+                <span class="app-title">{{ apps.find(a => a.id === currentApp)?.name }}</span>
+                <span class="header-action">更多</span>
+              </div>
+              <div class="app-placeholder">
+                <p>应用开发中...</p>
+              </div>
+            </div>
+
+            <div class="nav-bar">
+              <button class="nav-btn" type="button" @click="goHome" aria-label="主页">
+                <span class="nav-home-icon">⌂</span>
+              </button>
+              <button class="nav-btn" type="button" @click="togglePhone" aria-label="收起手机">
+                <span class="nav-close-icon">×</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="phone-toast">
+      <button
+        v-if="toastAlert"
+        type="button"
+        class="phone-toast"
+        @click="handleToastClick"
+      >
+        <span class="phone-toast-title">{{ toastAlert.title }}</span>
+        <span class="phone-toast-content">{{ toastAlert.content }}</span>
+      </button>
+    </Transition>
+  </div>

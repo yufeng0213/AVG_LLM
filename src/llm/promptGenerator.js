@@ -4,6 +4,50 @@
  */
 
 import { EMOTION_PRESETS } from '../worldbook/emotionPresets'
+import {
+  CHARACTER_PERSONALITY_DIMENSION_DEFS,
+  normalizePersonalityProfile,
+} from '../worldbook/worldBookStore'
+
+const personalityDimensionDefs = CHARACTER_PERSONALITY_DIMENSION_DEFS
+
+const parsePersonalityDimensionValue = (value) => {
+  const parsed = Number.parseFloat(String(value))
+  if (!Number.isFinite(parsed)) {
+    return 50
+  }
+  return Math.min(100, Math.max(0, Math.round(parsed)))
+}
+
+const getCharacterPersonalityProfile = (char) => {
+  return normalizePersonalityProfile(
+    char?.personalityProfile ||
+    char?.personality_profile ||
+    char?.personality ||
+    char,
+  )
+}
+
+const getCustomPersonalityDimensions = (cognitiveDimensions) => {
+  return personalityDimensionDefs
+    .map((dimension) => {
+      const value = parsePersonalityDimensionValue(cognitiveDimensions?.[dimension.key])
+      return {
+        key: dimension.key,
+        value,
+      }
+    })
+    .filter((item) => item.value !== 50)
+}
+
+const normalizeStoryTimeText = (value) => String(value || '').trim()
+
+const resolveLineStoryTime = (line) => {
+  if (!line || typeof line !== 'object') {
+    return ''
+  }
+  return normalizeStoryTimeText(line.storyTime || line.time || line.date)
+}
 
 /**
  * 生成完整的剧情生成 Prompt
@@ -16,6 +60,7 @@ import { EMOTION_PRESETS } from '../worldbook/emotionPresets'
  * @param {Array} params.relationshipSnapshot - 角色关系快照（可选）
  * @param {Array} params.directorDirectives - 导演器指令列表（可选）
  * @param {string} params.userInput - 用户输入（可选）
+ * @param {string} params.currentStoryTime - 当前剧情时间（可选）
  * @param {number} params.messageCount - 生成消息条数（默认3）
  * @param {number} params.contextLineCount - 发送给 LLM 的剧情上下文条数（默认10）
  * @returns {string} 完整的 prompt
@@ -30,6 +75,7 @@ export const buildStoryPrompt = (params) => {
     relationshipSnapshot,
     directorDirectives,
     userInput,
+    currentStoryTime,
     messageCount = 3,
     selectedChoice,
     contextLineCount = 10,
@@ -64,11 +110,11 @@ export const buildStoryPrompt = (params) => {
 
   // 6. 当前剧情上下文
   if (dialogueHistory && dialogueHistory.length > 0) {
-    sections.push(buildDialogueHistorySection(dialogueHistory, currentLine, contextLineCount))
+    sections.push(buildDialogueHistorySection(dialogueHistory, currentLine, contextLineCount, currentStoryTime))
   }
 
   // 7. 用户指令（包含消息条数和选择的选项）
-  sections.push(buildInstructionSection(userInput, messageCount, selectedChoice, worldBook))
+  sections.push(buildInstructionSection(userInput, messageCount, selectedChoice, worldBook, currentStoryTime))
 
   return sections.filter(Boolean).join('\n\n---\n\n')
 }
@@ -120,6 +166,8 @@ const buildWorldSettingSection = (worldBook) => {
 const buildCharactersSection = (worldBook, sceneCharacters) => {
   const lines = ['## 角色信息']
   lines.push('')
+  lines.push('当角色提供“人格结构化设定”时，优先按该设定生成角色行为与语气。')
+  lines.push('')
   lines.push('### 可用表情列表')
   
   // 列出所有可用表情
@@ -153,6 +201,29 @@ const buildCharactersSection = (worldBook, sceneCharacters) => {
       if (char.appearance) charInfo.push(`  - 外貌: ${char.appearance}`)
       if (char.identity) charInfo.push(`  - 身份: ${char.identity}`)
       if (char.background) charInfo.push(`  - 背景: ${char.background}`)
+
+      const personalityProfile = getCharacterPersonalityProfile(char)
+      const hasMbti = Boolean(personalityProfile.mbti)
+      const hasBehaviorTags = Array.isArray(personalityProfile.behaviorTags) && personalityProfile.behaviorTags.length > 0
+      const customDimensions = getCustomPersonalityDimensions(personalityProfile.cognitiveDimensions)
+      const hasStructuredPersonality = hasMbti || hasBehaviorTags || customDimensions.length > 0
+      if (hasStructuredPersonality) {
+        charInfo.push('  - 人格结构化设定:')
+        if (hasMbti) {
+          charInfo.push(`    - MBTI: ${personalityProfile.mbti}`)
+        }
+        if (hasBehaviorTags) {
+          charInfo.push(`    - 行为倾向标签: ${personalityProfile.behaviorTags.join('、')}`)
+        }
+        if (customDimensions.length > 0) {
+          const dimensionsText = customDimensions
+            .map((item) => `${item.key}=${item.value}`)
+            .join(', ')
+          charInfo.push(`    - 认知八维(0-100, 仅列出偏离50的维度): ${dimensionsText}`)
+        }
+        charInfo.push('    - 解释规则: 以上结构化设定优先，背景和备注用于补充细节。')
+      }
+
       if (char.notes) charInfo.push(`  - 备注: ${char.notes}`)
       
       lines.push(charInfo.join('\n'))
@@ -175,9 +246,15 @@ const buildCharactersSection = (worldBook, sceneCharacters) => {
  * @param {Object} currentLine - 当前对话
  * @returns {string} 对话历史文本
  */
-const buildDialogueHistorySection = (history, currentLine, contextLineCount = 10) => {
+const buildDialogueHistorySection = (history, currentLine, contextLineCount = 10, currentStoryTime = '') => {
   const lines = ['## 剧情上下文']
   lines.push('')
+  const normalizedCurrentStoryTime = normalizeStoryTimeText(currentStoryTime)
+  if (normalizedCurrentStoryTime) {
+    lines.push(`### 当前剧情时间`)
+    lines.push(normalizedCurrentStoryTime)
+    lines.push('')
+  }
   lines.push('### 已发生的对话')
   
   // 只取最近的对话，避免 prompt 过长
@@ -187,10 +264,12 @@ const buildDialogueHistorySection = (history, currentLine, contextLineCount = 10
   
   for (const line of recentHistory) {
     const emotionLabel = getEmotionDisplay(line.emotion)
+    const storyTime = resolveLineStoryTime(line)
+    const storyTimePrefix = storyTime ? `[${storyTime}] ` : ''
     if (line.speaker === '旁白') {
-      lines.push(`[旁白] ${line.text}`)
+      lines.push(`${storyTimePrefix}[旁白] ${line.text}`)
     } else {
-      lines.push(`**${line.speaker}**${emotionLabel}: ${line.text}`)
+      lines.push(`${storyTimePrefix}**${line.speaker}**${emotionLabel}: ${line.text}`)
     }
   }
 
@@ -198,10 +277,12 @@ const buildDialogueHistorySection = (history, currentLine, contextLineCount = 10
     lines.push('')
     lines.push('### 当前对话')
     const emotionLabel = getEmotionDisplay(currentLine.emotion)
+    const currentLineStoryTime = resolveLineStoryTime(currentLine)
+    const currentLineStoryTimePrefix = currentLineStoryTime ? `[${currentLineStoryTime}] ` : ''
     if (currentLine.speaker === '旁白') {
-      lines.push(`[旁白] ${currentLine.text}`)
+      lines.push(`${currentLineStoryTimePrefix}[旁白] ${currentLine.text}`)
     } else {
-      lines.push(`**${currentLine.speaker}**${emotionLabel}: ${currentLine.text}`)
+      lines.push(`${currentLineStoryTimePrefix}**${currentLine.speaker}**${emotionLabel}: ${currentLine.text}`)
     }
   }
 
@@ -215,20 +296,34 @@ const buildDialogueHistorySection = (history, currentLine, contextLineCount = 10
  * @param {Object} selectedChoice - 用户选择的选项（可选）
  * @returns {string} 指令文本
  */
-const buildInstructionSection = (userInput, messageCount = 3, selectedChoice = null, worldBook = null) => {
+const buildInstructionSection = (
+  userInput,
+  messageCount = 3,
+  selectedChoice = null,
+  worldBook = null,
+  currentStoryTime = '',
+) => {
   const lines = ['## 生成指令']
   lines.push('')
   lines.push('请根据以上世界设定、角色信息和剧情上下文，生成接下来的剧情发展。')
+  const normalizedCurrentStoryTime = normalizeStoryTimeText(currentStoryTime)
+  if (normalizedCurrentStoryTime) {
+    lines.push(`当前剧情时间：${normalizedCurrentStoryTime}`)
+  }
   lines.push('')
   lines.push('### 输出要求')
   lines.push('1. 严格按照 JSON 数组格式输出')
-  lines.push('2. 每条对话包含: speaker(说话者)、emotion(表情)、text(内容)、highlight(是否高亮)')
+  lines.push('2. 每条对话包含: speaker(说话者)、emotion(表情)、text(内容)、highlight(是否高亮)、storyTime(剧情时间)')
   lines.push('3. 说话者必须是已定义的角色名称或"旁白"')
   lines.push('4. 表情必须使用指定的表情标识')
   lines.push('5. highlight 为 true 时表示该角色立绘需要高亮')
   lines.push(`6. 必须生成 ${messageCount} 条对话`)
   lines.push('7. 在剧情关键节点，为最后一条对话添加 choices 字段提供选项')
   lines.push('8. 可选: 使用 scene 字段切换场景背景')
+  lines.push('9. 若角色存在“人格结构化设定”，角色行为与语气必须优先符合该设定')
+  lines.push('10. storyTime 纪年格式由你根据世界观决定（如星历、王朝年号、公历等），不要被固定格式限制')
+  lines.push('11. 所有生成对话都必须包含 storyTime，并在同一世界内保持纪年体系与书写风格一致')
+  lines.push('12. 本次剧情推进后，最后一条对话的 storyTime 必须相对当前剧情时间发生推进（不能原地不变、不能回退）')
   
   // 添加场景指令说明
   lines.push('')
@@ -312,6 +407,33 @@ export const buildQuickPrompt = (worldBook, recentLines) => {
   }
   if (charNames.length > 0) {
     lines.push(`角色: ${charNames.join('、')}`)
+  }
+
+  const personalityBriefs = Array.isArray(worldBook?.characters)
+    ? worldBook.characters
+      .map((char) => {
+        const profile = getCharacterPersonalityProfile(char)
+        const customDimensions = getCustomPersonalityDimensions(profile.cognitiveDimensions)
+        const chunks = []
+        if (profile.mbti) {
+          chunks.push(`MBTI=${profile.mbti}`)
+        }
+        if (Array.isArray(profile.behaviorTags) && profile.behaviorTags.length > 0) {
+          chunks.push(`标签=${profile.behaviorTags.slice(0, 3).join('/')}`)
+        }
+        if (customDimensions.length > 0) {
+          const topDimension = customDimensions[0]
+          chunks.push(`${topDimension.key}=${topDimension.value}`)
+        }
+        if (chunks.length === 0) {
+          return ''
+        }
+        return `${char.name || '角色'}(${chunks.join(', ')})`
+      })
+      .filter(Boolean)
+    : []
+  if (personalityBriefs.length > 0) {
+    lines.push(`角色人格: ${personalityBriefs.join('；')}`)
   }
   
   // 最近对话

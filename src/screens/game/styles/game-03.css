@@ -1,0 +1,560 @@
+
+
+/* 横屏模式优化 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .game-topbar {
+    padding: 4px 8px;
+  }
+
+  .menu-toggle-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 0.9rem;
+  }
+
+  .top-menu-panel {
+    top: 44px;
+    left: 8px;
+    min-width: 140px;
+  }
+
+  .hud-chip {
+    padding: 3px 6px;
+    font-size: 0.6rem;
+  }
+
+  .character-layer {
+    padding-bottom: 84px;
+  }
+
+  .character-portrait {
+    height: 70vh;
+  }
+
+  .dialogue-box {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
+    padding: 7px 10px;
+    max-height: 28vh;
+  }
+
+  .dialogue-text {
+    font-size: 0.85rem;
+    line-height: 1.35;
+  }
+
+  .dialogue-actions {
+    gap: 4px;
+  }
+
+  .action-button {
+    padding: 6px 10px;
+    min-height: 28px;
+    font-size: 0.65rem;
+  }
+
+  .generate-panel {
+    width: min(80%, 320px);
+    z-index: 50;
+    border-radius: 12px;
+    border-width: 2px;
+    box-shadow:
+      0 0 20px color-mix(in srgb, var(--accent-purple) 30%, transparent),
+      0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .generate-panel-header {
+    padding: 14px 16px;
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-purple) 25%, transparent),
+      color-mix(in srgb, var(--accent-magenta) 15%, transparent)
+    );
+  }
+
+  .generate-title {
+    font-size: 0.95rem;
+  }
+
+  .generate-close {
+    width: 32px;
+    height: 32px;
+  }
+
+  .generate-panel-body {
+    padding: 14px;
+    gap: 10px;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
+  .generate-warning {
+    padding: 10px;
+    font-size: 0.8rem;
+  }
+
+  .generate-config-row {
+    gap: 10px;
+  }
+
+  .generate-count-group {
+    min-width: 100%;
+  }
+
+  .generate-custom-range {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .generate-custom-item {
+    gap: 6px;
+  }
+
+  .generate-custom-label {
+    font-size: 0.76rem;
+  }
+
+  .generate-input-group {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .generate-label {
+    font-size: 0.8rem;
+  }
+
+  .generate-select,
+  .generate-input,
+  .generate-custom-number {
+    padding: 10px 12px;
+    min-height: 44px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+  }
+
+  .generate-close {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    flex: 0 0 32px !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .generate-panel-footer {
+    padding: 12px 16px;
+  }
+
+  .generate-btn {
+    padding: 12px 16px;
+    min-height: 44px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+  }
+
+  .choices-panel {
+    width: min(80%, 360px);
+    z-index: 50;
+    border-radius: 12px;
+  }
+}
+/* 超小屏幕 (小于480px) */
+@media (max-width: 480px) {
+  .game-topbar {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+
+  .topbar-row {
+    gap: 4px;
+  }
+
+  .menu-toggle-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    font-size: 0.82rem;
+  }
+
+  .hud-chip {
+    padding: 2px 4px;
+    font-size: 0.55rem;
+  }
+
+  .dialogue-box {
+    left: 1%;
+    right: 1%;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 1px);
+    padding: 7px 8px;
+  }
+
+  .dialogue-text {
+    font-size: 0.8rem;
+  }
+
+  .action-button {
+    padding: 6px 8px;
+    min-height: 32px;
+    font-size: 0.6rem;
+  }
+
+  .top-menu-panel {
+    top: 40px;
+    left: 8px;
+    min-width: 134px;
+    padding: 4px;
+  }
+
+  .top-menu-btn {
+    padding: 5px 8px;
+    font-size: 0.64rem;
+  }
+
+  .history-dialogue-overlay {
+    padding:
+      max(4px, env(safe-area-inset-top, 0px))
+      4px
+      max(4px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .history-dialogue-panel {
+    width: 99vw;
+    height: 90dvh;
+    max-height: 90dvh;
+    border-radius: 10px;
+  }
+
+  .history-dialogue-title {
+    font-size: 0.84rem;
+  }
+
+  .history-dialogue-voice-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 0.78rem;
+  }
+
+  /* 隐藏部分按钮，只保留核心功能 */
+  .action-button.action-cg {
+    display: none;
+  }
+
+  .generate-panel {
+    width: 92%;
+    max-width: 360px;
+    z-index: 50;
+    border-radius: 10px;
+    border-width: 2px;
+  }
+
+  .generate-panel-header {
+    padding: 12px 14px;
+  }
+
+  .generate-title {
+    font-size: 0.85rem;
+  }
+
+  .generate-close {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    max-width: 28px !important;
+    max-height: 28px !important;
+    flex: 0 0 28px !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    font-size: 0.85rem !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .generate-panel-body {
+    padding: 12px;
+    max-height: 45vh;
+  }
+
+  .generate-panel-footer {
+    padding: 10px 14px;
+  }
+
+  .generate-btn {
+    padding: 10px 14px;
+    min-height: 40px;
+    font-size: 0.85rem;
+  }
+
+  .choices-panel {
+    width: 92%;
+    max-width: 340px;
+    z-index: 50;
+    border-radius: 10px;
+  }
+}
+/* 选项面板样式 */
+.choices-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 28px);
+  background: color-mix(in srgb, var(--background) 45%, transparent);
+  backdrop-filter: blur(6px);
+}
+.choices-panel {
+  position: relative;
+  width: min(92vw, 520px);
+  max-height: min(80vh, 720px);
+  display: flex;
+  flex-direction: column;
+  border: 4px solid var(--accent-yellow);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 36px color-mix(in srgb, var(--accent-yellow) 45%, transparent),
+    12px 12px 0 var(--accent-cyan);
+  overflow: hidden;
+}
+.choices-panel-header {
+  padding: 14px 18px;
+  border-bottom: 3px dashed var(--accent-cyan);
+  background: color-mix(in srgb, var(--accent-yellow) 25%, transparent);
+}
+.choices-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--accent-cyan);
+  text-shadow: var(--text-shadow-single);
+}
+.choices-panel-body {
+  flex: 1 1 auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+.choices-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.choice-button {
+  appearance: none;
+  padding: 14px 20px;
+  border: 3px solid var(--accent-cyan);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 200ms ease;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-purple) 35%, transparent);
+  text-align: left;
+}
+.choice-button:hover:not(:disabled) {
+  transform: translateX(8px);
+  border-color: var(--accent-yellow);
+  background: color-mix(in srgb, var(--accent-cyan) 25%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-yellow) 40%, transparent);
+}
+.choice-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.choices-custom-input {
+  display: flex;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--accent-magenta);
+}
+.custom-input-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.custom-input-hint {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--foreground) 80%, var(--accent-cyan));
+}
+.custom-input-field {
+  appearance: none;
+  padding: 10px 14px;
+  border: 3px solid var(--accent-magenta);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--background) 60%, transparent);
+  font-size: 0.95rem;
+  color: var(--foreground);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.custom-input-field:focus {
+  outline: none;
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-magenta) 40%, transparent);
+}
+.custom-input-field::placeholder {
+  color: color-mix(in srgb, var(--foreground) 50%, transparent);
+}
+.custom-input-btn {
+  appearance: none;
+  padding: 10px 18px;
+  border: 3px solid var(--accent-yellow);
+  border-radius: 0;
+  background: linear-gradient(135deg, var(--accent-yellow), var(--accent-orange));
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--background);
+  cursor: pointer;
+  transition: all 200ms ease;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-yellow) 40%, transparent);
+  align-self: flex-end;
+}
+.custom-input-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-orange) 50%, transparent);
+}
+.custom-input-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--muted);
+  border-color: var(--muted);
+  box-shadow: none;
+}
+.choices-status {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent-cyan) 20%, transparent);
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  text-align: center;
+  animation: pulse 1.5s ease infinite;
+}
+@media (max-width: 680px) {
+  .choices-panel {
+    width: 95%;
+  }
+
+  .choices-custom-input {
+    flex-direction: column;
+  }
+
+  .custom-input-btn {
+    width: 100%;
+  }
+}
+/* 生成中遮罩层样式 */
+.generating-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  backdrop-filter: none;
+}
+.opening-generating-overlay {
+  z-index: 24;
+}
+.generating-modal {
+  padding: 32px 48px;
+  border: 4px solid var(--accent-cyan);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--background) 90%, transparent);
+  box-shadow:
+    0 0 40px color-mix(in srgb, var(--accent-cyan) 50%, transparent),
+    12px 12px 0 var(--accent-purple);
+  text-align: center;
+}
+.generating-icon {
+  font-size: 3rem;
+  animation: bounce 1s ease infinite;
+}
+.generating-title {
+  margin: 16px 0 8px;
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--accent-cyan);
+  text-shadow: var(--text-shadow-single);
+}
+.generating-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--foreground) 80%, var(--muted));
+}
+.generating-spinner {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.spinner-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  animation: spinner-bounce 1.4s ease-in-out infinite;
+}
+.spinner-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+.spinner-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+/* 顶部折叠菜单样式 */
+.top-menu-panel {
+  position: absolute;
+  top: 68px;
+  left: 20px;
+  z-index: 16;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 168px;
+  padding: 8px;
+  border: 2px solid var(--accent-cyan);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background) 95%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 0 20px color-mix(in srgb, var(--accent-cyan) 30%, transparent),
+    6px 6px 0 color-mix(in srgb, var(--accent-purple) 70%, transparent);
+}

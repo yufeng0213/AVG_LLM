@@ -1,0 +1,464 @@
+
+
+.pet-sprite.theme-sky {
+  --pet-body: #91c9ff;
+  --pet-body-shadow: #5d90d1;
+  --pet-eye: #1f3052;
+  --pet-accent: #ffdfa6;
+}
+
+.pet-sprite.theme-violet {
+  --pet-body: #b49cff;
+  --pet-body-shadow: #7f6bc7;
+  --pet-eye: #2d2253;
+  --pet-accent: #ffd6ff;
+}
+
+.pet-sprite.theme-lime {
+  --pet-body: #b8e284;
+  --pet-body-shadow: #84b557;
+  --pet-eye: #2f3a1e;
+  --pet-accent: #ffe9a1;
+}
+
+.pet-sprite.is-low-energy {
+  animation-duration: 2.2s;
+  opacity: 0.92;
+}
+
+.pet-sprite.is-happy {
+  filter: saturate(1.08);
+}
+
+.pet-pixel {
+  width: 100%;
+  height: 100%;
+}
+
+.pet-pixel.is-body {
+  background: var(--pet-body);
+  box-shadow: inset 0 -1px 0 0 var(--pet-body-shadow);
+}
+
+.pet-pixel.is-eye {
+  background: var(--pet-eye);
+}
+
+.pet-pixel.is-accent {
+  background: var(--pet-accent);
+}
+
+.pet-sprite.is-blink .pet-pixel.is-eye {
+  background: var(--pet-body-shadow);
+}
+
+.pet-dialogue {
+  margin: 0;
+  min-height: 34px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(131, 170, 224, 0.25);
+  background: rgba(16, 27, 43, 0.62);
+  padding: 6px 8px;
+  color: #e4efff;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.pet-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pet-stat-card {
+  border-radius: 8px;
+  border: 1px solid rgba(124, 163, 219, 0.23);
+  background: rgba(21, 32, 50, 0.64);
+  padding: 6px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pet-stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #b8cce9;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pet-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(95, 121, 163, 0.42);
+  overflow: hidden;
+}
+
+.pet-progress-inner {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #76d8ff, #8fffba);
+}
+
+.pet-food-row {
+  border-radius: 8px;
+  border: 1px solid rgba(129, 169, 224, 0.2);
+  background: rgba(18, 29, 46, 0.58);
+  padding: 6px 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: #95afcf;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.pet-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pet-action-btn {
+  min-width: 0;
+  min-height: 0;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(144, 206, 255, 0.4);
+  background: rgba(122, 177, 238, 0.16);
+  color: #deefff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pet-action-btn.is-feed {
+  border-color: rgba(255, 209, 133, 0.48);
+  background: rgba(255, 188, 92, 0.2);
+  color: #fff1d4;
+}
+
+.pet-action-btn:disabled {
+  opacity: 0.45;
+}
+
+.pet-error-text {
+  margin: 0;
+  color: #ffb7b7;
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+@keyframes pet-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.ctrl-btn {
+  min-width: 0;
+  min-height: 0;
+  height: 28px;
+  border: 1px solid rgba(129, 203, 255, 0.4);
+  border-radius: 8px;
+  background: rgba(129, 203, 255, 0.15);
+  color: #d6edff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.game-state {
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.state-over {
+  color: #ff9c9c;
+}
+
+.state-win {
+  color: #ffd982;
+}
+
+.state-hint {
+  color: #93aace;
+}
+
+.mini-modal-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: rgba(5, 10, 18, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+}
+
+.mini-modal {
+  width: min(92%, 250px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 170, 170, 0.56);
+  background: linear-gradient(180deg, rgba(37, 18, 28, 0.96), rgba(25, 13, 21, 0.97));
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+
+.mini-modal.is-win {
+  border-color: rgba(255, 226, 152, 0.64);
+  background: linear-gradient(180deg, rgba(49, 39, 14, 0.96), rgba(30, 24, 10, 0.97));
+}
+
+.mini-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffd0d0;
+}
+
+.mini-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #f2d8d8;
+}
+
+.mini-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.mini-btn {
+  min-width: 0;
+  min-height: 0;
+  height: 30px;
+  border: 1px solid rgba(255, 205, 205, 0.45);
+  border-radius: 8px;
+  background: rgba(255, 205, 205, 0.1);
+  color: #ffe3e3;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mini-btn-primary {
+  border-color: rgba(255, 130, 130, 0.6);
+  background: rgba(255, 130, 130, 0.2);
+  color: #fff0f0;
+}
+
+.handheld-slide-enter-active,
+.handheld-slide-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.handheld-slide-enter-from,
+.handheld-slide-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+}
+
+@media (max-width: 768px) {
+  .handheld-panel {
+    width: min(302px, calc(100vw - 22px));
+    padding: 9px;
+    gap: 8px;
+  }
+
+  .handheld-panel.is-mines-layout {
+    width: min(334px, calc(100vw - 10px));
+  }
+
+  .handheld-panel.is-mines-dense-layout {
+    width: min(350px, calc(100vw - 8px));
+  }
+
+  .handheld-panel.is-tetris-layout {
+    width: min(350px, calc(100vw - 10px));
+  }
+
+  .handheld-panel.is-brick-layout {
+    width: min(350px, calc(100vw - 8px));
+  }
+
+  .handheld-panel.is-klotski-layout {
+    width: min(344px, calc(100vw - 8px));
+  }
+
+  .handheld-panel.is-pet-layout {
+    width: min(340px, calc(100vw - 8px));
+  }
+
+  .handheld-panel.is-dungeon-layout {
+    width: min(362px, calc(100vw - 8px));
+  }
+
+  .title-main {
+    font-size: 13px;
+  }
+
+  .game-icon-btn {
+    height: 86px;
+  }
+
+  .tile {
+    font-size: 16px;
+  }
+}
+
+.handheld-plugin.is-android .handheld-panel {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.36);
+}
+
+.handheld-plugin.is-android .handheld-panel.is-mines-layout {
+  width: min(338px, calc(100vw - 10px));
+}
+
+.handheld-plugin.is-android .handheld-panel.is-mines-dense-layout {
+  width: min(356px, calc(100vw - 8px));
+}
+
+.handheld-plugin.is-android .handheld-panel.is-tetris-layout {
+  width: min(354px, calc(100vw - 8px));
+}
+
+.handheld-plugin.is-android .handheld-panel.is-brick-layout {
+  width: min(356px, calc(100vw - 8px));
+}
+
+.handheld-plugin.is-android .handheld-panel.is-klotski-layout {
+  width: min(346px, calc(100vw - 8px));
+}
+
+.handheld-plugin.is-android .handheld-panel.is-pet-layout {
+  width: min(344px, calc(100vw - 8px));
+}
+
+.handheld-plugin.is-android .handheld-panel.is-dungeon-layout {
+  width: min(364px, calc(100vw - 8px));
+}
+
+.handheld-plugin.is-android .handheld-header {
+  padding: 6px 8px;
+}
+
+.handheld-plugin.is-android .game-icon-btn {
+  height: 84px;
+}
+
+.handheld-plugin.is-android .ctrl-btn {
+  height: 30px;
+}
+
+.handheld-plugin.is-android .mines-mode-btn {
+  height: 30px;
+}
+
+.handheld-plugin.is-android .mines-diff-btn {
+  height: 28px;
+}
+
+.handheld-plugin.is-android .mines-board {
+  gap: 3px;
+}
+
+.handheld-plugin.is-android .mines-cell {
+  border-radius: 5px;
+  font-size: 10px;
+}
+
+.handheld-plugin.is-android .mines-board.is-dense .mines-cell {
+  font-size: 8px;
+}
+
+.handheld-plugin.is-android .tetris-cell {
+  border-radius: 2px;
+}
+
+.handheld-plugin.is-android .tetris-ctrl-btn {
+  height: 32px;
+}
+
+.handheld-plugin.is-android .brick-stats .chip-value {
+  font-size: 12px;
+}
+
+.handheld-plugin.is-android .brick-tip {
+  font-size: 10px;
+}
+
+.handheld-plugin.is-android .brick-btn {
+  height: 32px;
+  font-size: 12px;
+}
+
+.handheld-plugin.is-android .klotski-stats .chip-value {
+  font-size: 12px;
+}
+
+.handheld-plugin.is-android .klotski-piece {
+  font-size: 12px;
+}
+
+.handheld-plugin.is-android .klotski-ctrl-btn {
+  height: 32px;
+}
+
+.handheld-plugin.is-android .pet-main-btn,
+.handheld-plugin.is-android .pet-action-btn {
+  height: 30px;
+  font-size: 11px;
+}
+
+.handheld-plugin.is-android .pet-sprite-wrap {
+  width: 118px;
+  height: 118px;
+}
+
+.handheld-plugin.is-android .pet-dialogue {
+  font-size: 10px;
+}
+
+.handheld-plugin.is-android .dungeon-action-btn {
+  height: 32px;
+  font-size: 10px;
+}
+
+.handheld-plugin.is-android .dungeon-gacha-btn {
+  height: 30px;
+  font-size: 10px;
+}
+
+.handheld-plugin.is-android .dungeon-party-item {
+  min-height: 27px;
+}
+
+.handheld-plugin.is-android .dungeon-log-list {
+  max-height: 128px;
+}
+
+.handheld-plugin.is-android .tile {
+  font-size: 15px;
+}
+
+.handheld-plugin.is-android .tile.tile-1024,
+.handheld-plugin.is-android .tile.tile-2048 {
+  font-size: 12px;
+}

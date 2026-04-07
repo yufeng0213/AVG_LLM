@@ -1,0 +1,489 @@
+.handheld-plugin {
+  position: fixed;
+  z-index: 1002;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  user-select: none;
+}
+
+.handheld-plugin.dragging {
+  cursor: grabbing;
+}
+
+.handheld-trigger {
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  border-radius: 50%;
+  background: linear-gradient(160deg, rgba(31, 39, 60, 0.92), rgba(18, 24, 38, 0.95));
+  color: #f4f8ff;
+  box-shadow: 0 14px 24px rgba(4, 12, 24, 0.34);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.handheld-trigger:active {
+  transform: scale(0.96);
+}
+
+.trigger-icon {
+  font-size: 25px;
+  line-height: 1;
+}
+
+.handheld-panel {
+  position: relative;
+  width: 322px;
+  margin-top: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(123, 153, 210, 0.42);
+  background: linear-gradient(180deg, rgba(16, 24, 40, 0.94), rgba(11, 18, 30, 0.96));
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.4);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.handheld-panel.is-mines-layout {
+  width: min(350px, calc(100vw - 14px));
+}
+
+.handheld-panel.is-mines-dense-layout {
+  width: min(366px, calc(100vw - 10px));
+}
+
+.handheld-panel.is-tetris-layout {
+  width: min(366px, calc(100vw - 12px));
+}
+
+.handheld-panel.is-brick-layout {
+  width: min(366px, calc(100vw - 10px));
+}
+
+.handheld-panel.is-klotski-layout {
+  width: min(356px, calc(100vw - 10px));
+}
+
+.handheld-panel.is-pet-layout {
+  width: min(346px, calc(100vw - 10px));
+}
+
+.handheld-panel.is-dungeon-layout {
+  width: min(374px, calc(100vw - 8px));
+}
+
+.handheld-header {
+  border-radius: 11px;
+  border: 1px solid rgba(123, 153, 210, 0.28);
+  background: rgba(23, 33, 52, 0.86);
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: grab;
+  touch-action: none;
+}
+
+.title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.title-main {
+  margin: 0;
+  color: #eef3ff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.title-sub {
+  margin: 0;
+  color: #81cbff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.reset-btn {
+  min-width: 0;
+  min-height: 0;
+  width: auto;
+  height: 26px;
+  border: 1px solid rgba(129, 203, 255, 0.45);
+  border-radius: 999px;
+  background: rgba(129, 203, 255, 0.14);
+  color: #cbe9ff;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.back-btn {
+  color: #b6d7f8;
+  border-color: rgba(165, 206, 248, 0.46);
+  background: rgba(165, 206, 248, 0.12);
+}
+
+.game-library {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.game-icon-btn {
+  min-width: 0;
+  min-height: 0;
+  height: 92px;
+  border: 1px solid rgba(129, 203, 255, 0.3);
+  border-radius: 10px;
+  background: rgba(24, 35, 55, 0.7);
+  color: #d8ecff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.game-icon-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.game-icon-btn.is-disabled {
+  opacity: 0.5;
+}
+
+.game-icon-emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.game-icon-name {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.game-icon-sub {
+  font-size: 10px;
+  color: #8ea7cc;
+  line-height: 1.2;
+}
+
+.library-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  color: #93aace;
+}
+
+.score-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.score-chip {
+  border-radius: 10px;
+  border: 1px solid rgba(123, 153, 210, 0.26);
+  background: rgba(26, 36, 56, 0.72);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.chip-label {
+  color: #9eb4d3;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.chip-value {
+  color: #f2f6ff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.board {
+  border-radius: 12px;
+  border: 1px solid rgba(123, 153, 210, 0.22);
+  background: rgba(34, 45, 68, 0.88);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  touch-action: none;
+}
+
+.tile {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tile.is-empty {
+  background: rgba(124, 139, 171, 0.16);
+}
+
+.tile.tile-2 {
+  background: #e3edf9;
+  color: #2c3a53;
+}
+
+.tile.tile-4 {
+  background: #d6e7fb;
+  color: #273652;
+}
+
+.tile.tile-8 {
+  background: #b2d6ff;
+  color: #1d2f4d;
+}
+
+.tile.tile-16 {
+  background: #8ec9ff;
+  color: #173155;
+}
+
+.tile.tile-32 {
+  background: #69bbff;
+  color: #102a4e;
+}
+
+.tile.tile-64 {
+  background: #4dacff;
+  color: #0b2446;
+}
+
+.tile.tile-128 {
+  background: #7cb8ff;
+  color: #0f2440;
+  font-size: 16px;
+}
+
+.tile.tile-256 {
+  background: #67a8ff;
+  color: #0f2140;
+  font-size: 16px;
+}
+
+.tile.tile-512 {
+  background: #4d95ff;
+  color: #f5fbff;
+  font-size: 16px;
+}
+
+.tile.tile-1024 {
+  background: #3a7fff;
+  color: #f7fbff;
+  font-size: 14px;
+}
+
+.tile.tile-2048 {
+  background: #ffcf5b;
+  color: #3f2a00;
+  font-size: 14px;
+}
+
+.tile.tile-big {
+  background: linear-gradient(140deg, #ffd982, #ffb74a);
+  color: #3c2500;
+  font-size: 12px;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mines-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mines-stats .score-chip {
+  padding: 5px 6px;
+}
+
+.mines-stats .chip-value {
+  font-size: 13px;
+}
+
+.mines-difficulty {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mines-diff-btn {
+  min-width: 0;
+  min-height: 0;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid rgba(126, 175, 234, 0.34);
+  background: rgba(126, 175, 234, 0.1);
+  color: #bfdfff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.mines-diff-btn.active {
+  border-color: rgba(155, 213, 255, 0.66);
+  background: rgba(155, 213, 255, 0.22);
+  color: #f0f9ff;
+}
+
+.mines-diff-btn:disabled {
+  opacity: 0.6;
+}
+
+.mines-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mines-mode-btn {
+  min-width: 0;
+  min-height: 0;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(129, 203, 255, 0.38);
+  background: rgba(129, 203, 255, 0.12);
+  color: #cfe8ff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.mines-mode-btn.active {
+  border-color: rgba(142, 214, 255, 0.7);
+  background: rgba(142, 214, 255, 0.24);
+  color: #eff8ff;
+}
+
+.mines-board {
+  border-radius: 12px;
+  border: 1px solid rgba(123, 153, 210, 0.22);
+  background: rgba(34, 45, 68, 0.88);
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  touch-action: manipulation;
+}
+
+.mines-board.is-compact {
+  gap: 3px;
+}
+
+.mines-board.is-dense {
+  gap: 2px;
+}
+
+.mines-cell {
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  aspect-ratio: 1 / 1;
+  border-radius: 6px;
+  border: 1px solid rgba(125, 152, 192, 0.42);
+  background: rgba(84, 108, 142, 0.38);
+  color: #e8f4ff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.mines-board.is-compact .mines-cell {
+  font-size: 10px;
+  border-radius: 5px;
+}
+
+.mines-board.is-dense .mines-cell {
+  font-size: 8px;
+  border-radius: 4px;
+}
+
+.mines-cell.is-hidden {
+  background: linear-gradient(180deg, rgba(96, 124, 160, 0.55), rgba(71, 95, 129, 0.58));
+  border-color: rgba(140, 170, 206, 0.42);
+  color: transparent;
+}
+
+.mines-cell.is-flagged {
+  background: linear-gradient(180deg, rgba(84, 116, 158, 0.56), rgba(63, 91, 131, 0.62));
+  border-color: rgba(147, 201, 255, 0.58);
+  color: #ffe186;
+}
+
+.mines-cell.is-clear {
+  background: rgba(210, 225, 245, 0.8);
+  border-color: rgba(170, 192, 220, 0.7);
+  color: transparent;
+}
+
+.mines-cell.is-mine {
+  background: rgba(255, 143, 143, 0.82);
+  border-color: rgba(255, 194, 194, 0.72);
+  color: #5a1010;
+}
+
+.mines-cell.is-num-1 {
+  background: rgba(214, 232, 250, 0.86);
+  color: #2d61bb;
+}
+
+.mines-cell.is-num-2 {
+  background: rgba(214, 236, 222, 0.88);
+  color: #2e9149;
+}
+
+.mines-cell.is-num-3 {
+  background: rgba(248, 222, 222, 0.9);
+  color: #cf3939;
+}
+
+.mines-cell.is-num-4 {
+  background: rgba(221, 222, 250, 0.9);
+  color: #4f4fd1;
+}
+
+.mines-cell.is-num-5 {
+  background: rgba(243, 227, 211, 0.92);
+  color: #b45d2a;
+}

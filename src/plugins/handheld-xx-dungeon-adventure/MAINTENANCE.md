@@ -7,8 +7,8 @@
 ## 1. 改动入口规则（先看这里）
 
 1. 先读本文件的“功能-文件映射”，确认目标功能在哪些文件。
-2. 逻辑改动优先只看脚本和 `logic/*.js`，不要把 `styles/index.css` 一起交给 LLM。
-3. 纯视觉改动只动 `styles/index.css`，不改业务逻辑。
+2. 逻辑改动优先只看脚本和 `logic/*.js`，不要把 `styles/split/*.css` 一起交给 LLM。
+3. 纯视觉改动只动 `styles/split/*.css`，不改业务逻辑。
 4. 既要改逻辑又要改样式时，先做逻辑改动并验证，再单独做样式改动。
 5. 每次改完至少执行一次构建验证：`npm run build`。
 
@@ -17,8 +17,8 @@
 - `index.vue`
   - 插件主界面、交互状态、事件流、LLM 调用整合、存档读写。
   - 只保留页面结构与核心流程编排，不再承载大段样式。
-- `styles/index.css`
-  - 插件全部样式（含 Android 适配样式）。
+- `styles/split/index-01.css` ~ `styles/split/index-03.css`
+  - 插件全部样式（含 Android 适配样式），按分片顺序加载。
   - 逻辑迭代时默认不需要阅读这个文件。
 - `logic/roleEngine.js`
   - 角色职业文本规范化与回退策略：
@@ -49,7 +49,7 @@
 1. 按“功能-文件映射”定位文件。
 2. 先改 `logic/*.js`（如果是纯规则/算法改动），再改 `index.vue` 调用层。
 3. 保持 `index.vue` 只做编排，避免再把大段可复用逻辑塞回去。
-4. 样式问题最后处理，并只在 `styles/index.css` 修改。
+4. 样式问题最后处理，并只在 `styles/split/*.css` 修改。
 5. 构建验证 + 核心行为回归（见下节）。
 
 ## 5. 最小回归清单
@@ -65,5 +65,5 @@
 ## 6. 给 LLM 的上下文建议
 
 - 逻辑任务：只提供 `index.vue` 的 `<script setup>` 相关片段 + `logic/*.js`。
-- 样式任务：只提供 `styles/index.css` + 必要模板片段。
+- 样式任务：只提供 `styles/split/*.css` + 必要模板片段。
 - 避免把整个 `index.vue`（尤其样式）一次性喂给 LLM，减少无关上下文与生成耗时。

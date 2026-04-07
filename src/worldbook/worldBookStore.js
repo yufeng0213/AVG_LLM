@@ -27,6 +27,38 @@ export const WORLD_BOOK_PORTRAIT_STYLE_OPTIONS = [
 const WORLD_BOOK_PORTRAIT_STYLE_VALUES = WORLD_BOOK_PORTRAIT_STYLE_OPTIONS.map((item) => item.value)
 export const RELATIONSHIP_METRIC_MIN = -100
 export const RELATIONSHIP_METRIC_MAX = 100
+export const CHARACTER_PERSONALITY_SCORE_MIN = 0
+export const CHARACTER_PERSONALITY_SCORE_MAX = 100
+export const CHARACTER_MBTI_OPTIONS = [
+  'INTJ',
+  'INTP',
+  'ENTJ',
+  'ENTP',
+  'INFJ',
+  'INFP',
+  'ENFJ',
+  'ENFP',
+  'ISTJ',
+  'ISFJ',
+  'ESTJ',
+  'ESFJ',
+  'ISTP',
+  'ISFP',
+  'ESTP',
+  'ESFP',
+]
+const CHARACTER_MBTI_SET = new Set(CHARACTER_MBTI_OPTIONS)
+export const CHARACTER_PERSONALITY_DIMENSION_DEFS = [
+  { key: 'Se', label: 'Se（外倾感觉）', hint: '关注当下感官刺激与即时行动。' },
+  { key: 'Si', label: 'Si（内倾感觉）', hint: '依赖经验记忆与稳定秩序。' },
+  { key: 'Ne', label: 'Ne（外倾直觉）', hint: '联想可能性、跳跃式发散。' },
+  { key: 'Ni', label: 'Ni（内倾直觉）', hint: '提炼趋势、预判长期走向。' },
+  { key: 'Te', label: 'Te（外倾思维）', hint: '强调效率、结果与外部标准。' },
+  { key: 'Ti', label: 'Ti（内倾思维）', hint: '强调逻辑自洽与概念精度。' },
+  { key: 'Fe', label: 'Fe（外倾情感）', hint: '关注群体情绪与关系协调。' },
+  { key: 'Fi', label: 'Fi（内倾情感）', hint: '坚持个人价值与内在感受。' },
+]
+const CHARACTER_PERSONALITY_DIMENSION_KEYS = CHARACTER_PERSONALITY_DIMENSION_DEFS.map((item) => item.key)
 const OPENING_DIALOGUE_MODE_SET = new Set(['auto', 'custom'])
 const LEGACY_DEFAULT_OPENING_DIALOGUE = [
   { speaker: '旁白', text: '雨夜的图书馆只剩你与断续的电流声，窗外的霓虹正把地面切成碎片。', emotion: null },
@@ -106,6 +138,127 @@ export const createDefaultCharacterVoiceConfig = () => ({
   pronunciationTone: [],
   subtitleEnable: false,
 })
+
+const clampPersonalityScore = (value, fallback = 50) => {
+  const parsed = Number.parseFloat(String(value))
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return Math.min(CHARACTER_PERSONALITY_SCORE_MAX, Math.max(CHARACTER_PERSONALITY_SCORE_MIN, Math.round(parsed)))
+}
+
+const normalizeMbtiValue = (value) => {
+  const nextType = String(value || '').trim().toUpperCase()
+  if (CHARACTER_MBTI_SET.has(nextType)) {
+    return nextType
+  }
+  return ''
+}
+
+const normalizePersonalityTags = (rawTags) => {
+  if (!Array.isArray(rawTags) && typeof rawTags !== 'string') {
+    return []
+  }
+
+  const values = Array.isArray(rawTags)
+    ? rawTags
+    : String(rawTags || '').split(/\r?\n|[,，、;；]/g)
+
+  return values
+    .map((item) => String(item ?? '').trim())
+    .filter(Boolean)
+    .slice(0, 12)
+}
+
+const readPersonalityDimensionValue = (source, key) => {
+  if (!source || typeof source !== 'object') {
+    return undefined
+  }
+  if (source[key] !== undefined) {
+    return source[key]
+  }
+
+  const lowerCaseKey = key.toLowerCase()
+  if (source[lowerCaseKey] !== undefined) {
+    return source[lowerCaseKey]
+  }
+
+  const upperCaseKey = key.toUpperCase()
+  if (source[upperCaseKey] !== undefined) {
+    return source[upperCaseKey]
+  }
+
+  return undefined
+}
+
+const pickPersonalityDimensionSource = (rawProfile) => {
+  if (!rawProfile || typeof rawProfile !== 'object') {
+    return {}
+  }
+
+  const directCandidates = [
+    rawProfile.cognitiveDimensions,
+    rawProfile.cognitiveDimension,
+    rawProfile.eightDimensions,
+    rawProfile.eightDimension,
+    rawProfile.functionScores,
+    rawProfile.functions,
+    rawProfile.axes,
+  ]
+
+  const matchedDirect = directCandidates.find((candidate) => candidate && typeof candidate === 'object')
+  if (matchedDirect) {
+    return matchedDirect
+  }
+
+  const hasDirectDimensionValue = CHARACTER_PERSONALITY_DIMENSION_KEYS.some(
+    (key) => readPersonalityDimensionValue(rawProfile, key) !== undefined,
+  )
+  return hasDirectDimensionValue ? rawProfile : {}
+}
+
+export const createDefaultCharacterPersonalityDimensions = () => {
+  const next = {}
+  for (const key of CHARACTER_PERSONALITY_DIMENSION_KEYS) {
+    next[key] = 50
+  }
+  return next
+}
+
+const normalizePersonalityDimensions = (rawDimensions) => {
+  const fallback = createDefaultCharacterPersonalityDimensions()
+  const source = rawDimensions && typeof rawDimensions === 'object' ? rawDimensions : {}
+  const next = {}
+
+  for (const key of CHARACTER_PERSONALITY_DIMENSION_KEYS) {
+    const rawValue = readPersonalityDimensionValue(source, key)
+    next[key] = clampPersonalityScore(rawValue, fallback[key])
+  }
+
+  return next
+}
+
+export const createDefaultPersonalityProfile = () => ({
+  mbti: '',
+  behaviorTags: [],
+  cognitiveDimensions: createDefaultCharacterPersonalityDimensions(),
+})
+
+export const normalizePersonalityProfile = (rawProfile) => {
+  const fallback = createDefaultPersonalityProfile()
+  const source = rawProfile && typeof rawProfile === 'object' ? rawProfile : {}
+  return {
+    mbti: normalizeMbtiValue(source.mbti || source.mbtiType || source.type || fallback.mbti),
+    behaviorTags: normalizePersonalityTags(
+      source.behaviorTags ||
+      source.behaviorTraits ||
+      source.traits ||
+      source.tags ||
+      fallback.behaviorTags,
+    ),
+    cognitiveDimensions: normalizePersonalityDimensions(pickPersonalityDimensionSource(source)),
+  }
+}
 
 export const normalizeRelationshipBase = (rawBase) => {
   const fallback = createDefaultRelationshipBase()
@@ -358,6 +511,7 @@ export const createCharacterSkeleton = (index = 1) => ({
   identity: '',
   background: '',
   notes: '',
+  personalityProfile: createDefaultPersonalityProfile(),
   relationshipBase: createDefaultRelationshipBase(),
   voiceConfig: createDefaultCharacterVoiceConfig(),
   portraits: [],  // 新增：立绘列表
@@ -400,6 +554,12 @@ const normalizeUserProfile = (rawProfile) => {
 
 const normalizeCharacter = (rawCharacter, index = 0) => {
   const fallback = createCharacterSkeleton(index + 1)
+  const rawPersonalityProfile =
+    rawCharacter?.personalityProfile ||
+    rawCharacter?.personality_profile ||
+    rawCharacter?.personality ||
+    rawCharacter?.mbtiProfile ||
+    rawCharacter
   return {
     id: String(rawCharacter?.id || fallback.id),
     name: String(rawCharacter?.name || fallback.name),
@@ -408,6 +568,7 @@ const normalizeCharacter = (rawCharacter, index = 0) => {
     identity: String(rawCharacter?.identity || ''),
     background: String(rawCharacter?.background || ''),
     notes: String(rawCharacter?.notes || ''),
+    personalityProfile: normalizePersonalityProfile(rawPersonalityProfile),
     relationshipBase: normalizeRelationshipBase(rawCharacter?.relationshipBase),
     voiceConfig: normalizeCharacterVoiceConfig(rawCharacter?.voiceConfig),
     portraits: normalizePortraits(rawCharacter?.portraits),

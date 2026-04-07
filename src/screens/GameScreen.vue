@@ -11,6 +11,7 @@ import {
 import {
   generateCharacterSpeech,
   generateCgPrompt,
+  generateMiniTheater,
   generateStory,
   generateWorldBookOpeningDialogue,
   buildStoryPrompt,
@@ -210,6 +211,7 @@ const defaultOpeningDialogue = [
 const OPENING_DIALOGUE_MIN_LINES = 10
 const OPENING_DIALOGUE_MAX_LINES = 15
 const isInitializingOpeningDialogue = ref(false)
+const isAutoOpeningGenerating = ref(false)
 
 const normalizeOpeningDialogueLines = (rawLines, options = {}) => {
   const min = Number.isFinite(options.min) ? Math.max(0, Math.floor(options.min)) : 1
@@ -259,23 +261,28 @@ const initializeOpeningDialogue = async () => {
     }
 
     if (book) {
-      const generatedResult = await generateWorldBookOpeningDialogue({
-        worldBook: book,
-        minLines: OPENING_DIALOGUE_MIN_LINES,
-        maxLines: OPENING_DIALOGUE_MAX_LINES,
-      })
-      if (generatedResult.success && Array.isArray(generatedResult.openingDialogue)) {
-        const generatedOpening = normalizeOpeningDialogueLines(generatedResult.openingDialogue, {
-          min: OPENING_DIALOGUE_MIN_LINES,
-          max: OPENING_DIALOGUE_MAX_LINES,
+      isAutoOpeningGenerating.value = true
+      try {
+        const generatedResult = await generateWorldBookOpeningDialogue({
+          worldBook: book,
+          minLines: OPENING_DIALOGUE_MIN_LINES,
+          maxLines: OPENING_DIALOGUE_MAX_LINES,
         })
-        if (generatedOpening.length >= OPENING_DIALOGUE_MIN_LINES) {
-          dialogueScript.value = generatedOpening
-          currentLineIndex.value = 0
-          return
+        if (generatedResult.success && Array.isArray(generatedResult.openingDialogue)) {
+          const generatedOpening = normalizeOpeningDialogueLines(generatedResult.openingDialogue, {
+            min: OPENING_DIALOGUE_MIN_LINES,
+            max: OPENING_DIALOGUE_MAX_LINES,
+          })
+          if (generatedOpening.length >= OPENING_DIALOGUE_MIN_LINES) {
+            dialogueScript.value = generatedOpening
+            currentLineIndex.value = 0
+            return
+          }
+        } else if (generatedResult.error) {
+          console.warn('[opening-dialogue] LLM generation failed:', generatedResult.error)
         }
-      } else if (generatedResult.error) {
-        console.warn('[opening-dialogue] LLM generation failed:', generatedResult.error)
+      } finally {
+        isAutoOpeningGenerating.value = false
       }
     }
 
@@ -283,6 +290,7 @@ const initializeOpeningDialogue = async () => {
     dialogueScript.value = fallbackBookOpening.length > 0 ? fallbackBookOpening : [...defaultOpeningDialogue]
     currentLineIndex.value = 0
   } finally {
+    isAutoOpeningGenerating.value = false
     isInitializingOpeningDialogue.value = false
   }
 }
@@ -298,6 +306,46 @@ const customMessageRange = ref({ min: 5, max: 10 })
 const storyContextLineCount = ref(24)
 const storyMaxTokens = ref(2000)
 const llmSettingsStorageKey = computed(() => getScopedStorageKey(LLM_SETTINGS_STORAGE_PREFIX))
+const isGeneratingMiniTheater = ref(false)
+const showMiniTheaterPanel = ref(false)
+const miniTheaterError = ref('')
+const miniTheaterThemeInput = ref('')
+const miniTheaterTitle = ref('')
+const miniTheaterScript = ref([])
+const miniTheaterLineIndex = ref(0)
+const isMiniTheaterMode = ref(false)
+const MINI_THEATER_MIN_LINES = 3
+const MINI_THEATER_MAX_LINES = 8
+
+const normalizeMiniTheaterLine = (line) => {
+  if (!line || typeof line !== 'object') {
+    return null
+  }
+
+  const speaker = String(line.speaker || '旁白').trim() || '旁白'
+  const text = String(line.text || '').trim()
+  if (!text) {
+    return null
+  }
+
+  return {
+    speaker,
+    emotion: String(line.emotion || 'default').trim() || 'default',
+    text,
+    highlight: Boolean(line.highlight),
+    storyTime: String(line.storyTime || line.time || line.date || '').trim(),
+  }
+}
+
+const normalizeMiniTheaterScript = (lines) => {
+  if (!Array.isArray(lines)) {
+    return []
+  }
+  return lines
+    .map((line) => normalizeMiniTheaterLine(line))
+    .filter(Boolean)
+    .slice(0, MINI_THEATER_MAX_LINES)
+}
 
 // 选项相关状态
 const currentChoices = ref(null) // 当前对话的选项
@@ -641,10 +689,76 @@ const currentLineIndex = ref(0)
 const activeCharacterId = ref('lead')
 const currentSceneName = ref('旧图书馆')
 const hasMountedGameScreen = ref(false)
+const getCurrentStoryTimeLabel = () => ''
+const normalizeStoryTimeLabel = (value, fallback = getCurrentStoryTimeLabel()) => {
+  const normalized = String(value || '').trim()
+  return normalized || fallback
+}
+const resolveLineStoryTimeLabel = (line) => {
+  if (!line || typeof line !== 'object') return ''
+  return String(line.storyTime || line.time || line.date || '').trim()
+}
+const hasStoryTimeProgressed = (currentStoryTime, nextStoryTime) => {
+  const currentText = String(currentStoryTime || '').trim()
+  const nextText = String(nextStoryTime || '').trim()
+  if (!nextText) return false
+  if (!currentText) return true
+  return nextText !== currentText
+}
+const storyTimeLabel = ref(getCurrentStoryTimeLabel())
 
 const currentLine = computed(() => dialogueScript.value[currentLineIndex.value])
 const isLastLine = computed(() => currentLineIndex.value === dialogueScript.value.length - 1)
 const isAndroidPlatform = computed(() => isAndroid())
+const storyTimelineLabel = computed(() => {
+  const currentLineStoryTime = resolveLineStoryTimeLabel(currentLine.value)
+  if (currentLineStoryTime) {
+    return currentLineStoryTime
+  }
+  return storyTimeLabel.value
+})
+const EMPTY_DISPLAY_LINE = Object.freeze({
+  speaker: '旁白',
+  emotion: 'default',
+  text: '...',
+  highlight: false,
+})
+const displayDialogueScript = computed(() => {
+  if (isMiniTheaterMode.value) {
+    return miniTheaterScript.value
+  }
+  return dialogueScript.value
+})
+const displayLineIndex = computed(() => {
+  if (isMiniTheaterMode.value) {
+    return miniTheaterLineIndex.value
+  }
+  return currentLineIndex.value
+})
+const displayLine = computed(() => {
+  return displayDialogueScript.value[displayLineIndex.value] || EMPTY_DISPLAY_LINE
+})
+const displayDialogueLength = computed(() => displayDialogueScript.value.length)
+const isDisplayLastLine = computed(() => {
+  const total = displayDialogueLength.value
+  if (total <= 0) return true
+  return displayLineIndex.value >= total - 1
+})
+const nextLineButtonLabel = computed(() => {
+  if (isMiniTheaterMode.value) {
+    return isDisplayLastLine.value ? '结束小剧场' : '下一句'
+  }
+  return isLastLine.value ? '继续' : '下一句'
+})
+const isPrevLineDisabled = computed(() => {
+  if (isMiniTheaterMode.value) {
+    return miniTheaterLineIndex.value === 0
+  }
+  return currentLineIndex.value === 0
+})
+const miniTheaterActionLabel = computed(() => {
+  return isMiniTheaterMode.value ? '🎭 退出小剧场' : '🎭 小剧场'
+})
 
 // 只保留当前剧情尾部的待选项，历史选项在分支确定后自动清理
 const normalizeDialogueChoicesForHistory = (script) => {
@@ -789,6 +903,8 @@ const hasPortraitForCharacter = (characterId) => {
 }
 
 const shouldShowCurrentPortrait = computed(() => {
+  if (isMiniTheaterMode.value) return false
+
   const speaker = currentSpeakingCharacter.value
   if (!speaker) return false
 
@@ -1894,6 +2010,7 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       currentLine: currentLine.value,
       sceneCharacters: sceneCharacters.value,
       userInput: effectiveUserInput,
+      currentStoryTime: storyTimelineLabel.value,
       messageCount: actualMessageCount,
       selectedChoice: choiceToApply,
       contextLineCount: storyContextLineCount.value,
@@ -1926,8 +2043,26 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
 
     // 转换为游戏脚本格式并添加到对话列表
     const newDialogues = toGameScript(parsed.dialogues)
+
+    const missingStoryTimeCount = newDialogues.reduce((count, line) => {
+      return resolveLineStoryTimeLabel(line) ? count : count + 1
+    }, 0)
+    if (missingStoryTimeCount > 0) {
+      generateError.value = `生成结果缺少剧情日期字段：${missingStoryTimeCount} 条对话未包含 storyTime`
+      return
+    }
     
     if (newDialogues.length > 0) {
+      const currentTimelineStoryTime = String(storyTimelineLabel.value || '').trim()
+      const latestStoryTime = resolveLineStoryTimeLabel(newDialogues[newDialogues.length - 1])
+      if (!hasStoryTimeProgressed(currentTimelineStoryTime, latestStoryTime)) {
+        generateError.value = '剧情日期未推进：最后一条对话的 storyTime 需要相对当前剧情时间更新'
+        return
+      }
+      if (latestStoryTime) {
+        storyTimeLabel.value = latestStoryTime
+      }
+
       // 添加新对话到脚本末尾，并清理历史选项
       const mergedScript = [...dialogueScript.value, ...newDialogues]
       const normalizedScript = normalizeDialogueChoicesForHistory(mergedScript)
@@ -1952,6 +2087,9 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
         currentChoices.value = extractChoices(lastDialogue)
         showChoicesPanel.value = true
       }
+
+      // 每次剧情成功推进后，自动写入默认快速存档槽位
+      await quickSave({ silent: true })
     }
   } catch (err) {
     generateError.value = `生成失败: ${err.message}`
@@ -2010,7 +2148,12 @@ const checkCurrentDialogueChoices = () => {
 
 // 切换生成面板显示
 const toggleGeneratePanel = async () => {
+  if (isMiniTheaterMode.value) {
+    return
+  }
+
   if (!showGeneratePanel.value) {
+    showMiniTheaterPanel.value = false
     closeDialogueHistoryPanel()
     await loadApiConfigStatus()
   }
@@ -2038,6 +2181,129 @@ const loadApiConfigStatus = async () => {
     hasApiConfig.value = Array.isArray(configs) && configs.some((item) => item?.id === activeId)
   } catch {
     hasApiConfig.value = false
+  }
+}
+
+const clearMiniTheaterMode = () => {
+  isMiniTheaterMode.value = false
+  miniTheaterScript.value = []
+  miniTheaterLineIndex.value = 0
+  miniTheaterTitle.value = ''
+}
+
+const exitMiniTheater = () => {
+  clearMiniTheaterMode()
+  miniTheaterError.value = ''
+  showMiniTheaterPanel.value = false
+}
+
+const goNextMiniTheaterLine = () => {
+  const total = miniTheaterScript.value.length
+  if (total === 0) {
+    exitMiniTheater()
+    return
+  }
+
+  if (miniTheaterLineIndex.value >= total - 1) {
+    exitMiniTheater()
+    return
+  }
+
+  miniTheaterLineIndex.value += 1
+}
+
+const goPrevMiniTheaterLine = () => {
+  if (miniTheaterLineIndex.value <= 0) {
+    return
+  }
+  miniTheaterLineIndex.value -= 1
+}
+
+const toggleMiniTheaterPanel = async () => {
+  if (isMiniTheaterMode.value) {
+    exitMiniTheater()
+    return
+  }
+
+  if (!showMiniTheaterPanel.value) {
+    showGeneratePanel.value = false
+    showChoicesPanel.value = false
+    currentChoices.value = null
+    closeDialogueHistoryPanel()
+    await loadApiConfigStatus()
+  }
+
+  showMiniTheaterPanel.value = !showMiniTheaterPanel.value
+  if (!showMiniTheaterPanel.value) {
+    miniTheaterError.value = ''
+  }
+}
+
+const startMiniTheater = async (options = {}) => {
+  if (isGeneratingMiniTheater.value || isGenerating.value || isCgGenerating.value) {
+    return
+  }
+
+  await loadApiConfigStatus()
+  if (!hasApiConfig.value) {
+    miniTheaterError.value = '请先在设置中配置并应用 API'
+    return
+  }
+
+  const customTheme = String(options?.customTheme || '').trim()
+  if (options?.useCustomTheme && !customTheme) {
+    miniTheaterError.value = '请输入小剧场主题'
+    return
+  }
+
+  isGeneratingMiniTheater.value = true
+  miniTheaterError.value = ''
+
+  try {
+    const contextStart = Math.max(0, currentLineIndex.value - storyContextLineCount.value + 1)
+    const result = await generateMiniTheater({
+      worldBook: activeBook.value,
+      narratorProfile: effectiveNarrator.value,
+      dialogueHistory: dialogueScript.value.slice(contextStart, currentLineIndex.value + 1),
+      currentLine: currentLine.value,
+      currentStoryTime: storyTimelineLabel.value,
+      customTheme,
+      maxLines: MINI_THEATER_MAX_LINES,
+      maxTokens: Math.min(1600, storyMaxTokens.value),
+    })
+
+    if (!result.success) {
+      miniTheaterError.value = result.error || '小剧场生成失败'
+      return
+    }
+
+    const parsedMiniScript = normalizeMiniTheaterScript(result.dialogues)
+    if (parsedMiniScript.length < MINI_THEATER_MIN_LINES) {
+      miniTheaterError.value = `小剧场内容过短（至少 ${MINI_THEATER_MIN_LINES} 条）`
+      return
+    }
+
+    if (isTtsPlaying.value || ttsPlayingLineKey.value) {
+      stopCurrentTtsPlayback()
+    }
+    updateTtsStatus('')
+
+    miniTheaterScript.value = parsedMiniScript
+    miniTheaterLineIndex.value = 0
+    miniTheaterTitle.value = String(
+      result.title || customTheme || result.theme || '无题小剧场',
+    ).trim() || '无题小剧场'
+    isMiniTheaterMode.value = true
+    showMiniTheaterPanel.value = false
+    showGeneratePanel.value = false
+    showChoicesPanel.value = false
+    currentChoices.value = null
+    selectedChoice.value = null
+    customInputText.value = ''
+  } catch (error) {
+    miniTheaterError.value = `小剧场生成失败: ${error?.message || '未知错误'}`
+  } finally {
+    isGeneratingMiniTheater.value = false
   }
 }
 
@@ -2276,6 +2542,11 @@ const syncActiveCharacterBySpeaker = () => {
 }
 
 const goNextLine = () => {
+  if (isMiniTheaterMode.value) {
+    goNextMiniTheaterLine()
+    return
+  }
+
   if (hasChoices(currentLine.value) && !showChoicesPanel.value) {
     if (!currentChoices.value) {
       currentChoices.value = extractChoices(currentLine.value)
@@ -2296,6 +2567,11 @@ const goNextLine = () => {
 }
 
 const goPrevLine = () => {
+  if (isMiniTheaterMode.value) {
+    goPrevMiniTheaterLine()
+    return
+  }
+
   if (currentLineIndex.value === 0) {
     return
   }
@@ -2312,6 +2588,7 @@ const handleBackpackUseRequest = async (event) => {
 
   if (requestWorldId && requestWorldId !== currentWorldId) return
   if (requestSaveSlotId && requestSaveSlotId !== currentSaveSlotId) return
+  if (isMiniTheaterMode.value) return
   if (isGenerating.value) return
 
   await loadApiConfigStatus()
@@ -2342,6 +2619,7 @@ const handleMapTravelRequest = async (event) => {
 
   if (requestWorldId && requestWorldId !== currentWorldId) return
   if (requestSaveSlotId && requestSaveSlotId !== currentSaveSlotId) return
+  if (isMiniTheaterMode.value) return
   if (isGenerating.value) return
 
   await loadApiConfigStatus()
@@ -2382,6 +2660,7 @@ const createSerializableGameData = () => {
     metadata: {
       chapter: '第一章',
       scene: '旧图书馆',
+      storyTime: storyTimelineLabel.value,
       playTime: currentPlayTime.value,
       preview: currentLine.value?.text || '',
     },
@@ -2405,7 +2684,13 @@ const createSerializableGameData = () => {
 }
 
 const handleDialogueBoxClick = (event) => {
-  if (showChoicesPanel.value || isGenerating.value || showSavePanel.value) {
+  if (
+    showChoicesPanel.value ||
+    isGenerating.value ||
+    isGeneratingMiniTheater.value ||
+    showSavePanel.value ||
+    showMiniTheaterPanel.value
+  ) {
     return
   }
 
@@ -2441,6 +2726,7 @@ const showSavePanel = ref(false)
 const showTopMenu = ref(false)
 const saveSlotName = ref('')
 const playStartTime = ref(Date.now()) // 游戏开始时间
+const DEFAULT_QUICK_SAVE_SLOT_ID = 'save_quick_default'
 
 // 计算游戏时长（秒）
 const currentPlayTime = computed(() => {
@@ -2499,23 +2785,28 @@ const handleSaveGame = async () => {
 }
 
 // 快速存档（不显示面板）
-const quickSave = async () => {
+const quickSave = async (options = {}) => {
   if (isSaving.value) return
   
+  const silent = options?.silent === true
+  const slotId = String(options?.slotId || DEFAULT_QUICK_SAVE_SLOT_ID).trim() || DEFAULT_QUICK_SAVE_SLOT_ID
+
   isSaving.value = true
   
   try {
     const gameData = createSerializableGameData()
     
-    const result = await saveGame(gameData)
+    const result = await saveGame(gameData, slotId)
     
     if (result.success) {
       await syncPhoneSmsScopeAfterSave(result.id)
-      // 简短提示
-      saveSuccess.value = '快速存档成功！'
-      setTimeout(() => {
-        saveSuccess.value = null
-      }, 2000)
+      if (!silent) {
+        // 简短提示
+        saveSuccess.value = '快速存档成功！'
+        setTimeout(() => {
+          saveSuccess.value = null
+        }, 2000)
+      }
     }
   } catch {
     // 快速存档失败不显示错误
@@ -2547,7 +2838,12 @@ const handleToggleDialogueHistoryFromMenu = () => {
 
 // 加载存档数据
 const loadSaveData = async () => {
+  clearMiniTheaterMode()
+  showMiniTheaterPanel.value = false
+  miniTheaterError.value = ''
+
   if (!(props.saveData && props.saveData.game)) {
+    storyTimeLabel.value = getCurrentStoryTimeLabel()
     hydrateNarrativeRuntimeState(null)
     await hydrateLlmSettingsForScope(null)
     return
@@ -2568,6 +2864,7 @@ const loadSaveData = async () => {
   if (props.saveData.game.narratorId) {
     sessionNarratorId.value = props.saveData.game.narratorId
   }
+  storyTimeLabel.value = normalizeStoryTimeLabel(props.saveData.metadata?.storyTime, storyTimeLabel.value)
 
   hydrateNarrativeRuntimeState(props.saveData.game)
   await hydrateLlmSettingsForScope(props.saveData.game.llmSettings)
@@ -2688,590 +2985,11 @@ watch(activeBook, async (newBook, oldBook) => {
 })
 </script>
 
-<template>
-  <main class="game-screen" role="main">
-    <p class="game-bg-word" aria-hidden="true">PLAY</p>
 
-    <header class="game-topbar">
-      <div class="topbar-row">
-        <button
-          type="button"
-          class="menu-toggle-btn"
-          :class="{ 'is-active': showTopMenu }"
-          :aria-expanded="showTopMenu"
-          aria-label="打开顶部菜单"
-          @click="toggleTopMenu"
-        >
-          ☰
-        </button>
-        <div class="game-hud">
-          <p class="hud-chip chip-primary">{{ currentSceneName || '旧图书馆' }}</p>
-          <p class="hud-chip chip-secondary">序章 · 旧图书馆</p>
-          <p class="hud-chip chip-tertiary">对话 {{ currentLineIndex + 1 }} / {{ dialogueScript.length }}</p>
-        </div>
-      </div>
+<template src="./game/GameScreen.template.html"></template>
 
-      <div v-if="showTopMenu" class="top-menu-panel" role="menu" aria-label="游戏菜单">
-        <button type="button" class="top-menu-btn top-menu-back" role="menuitem" @click="handleBackFromMenu">
-          返回主菜单
-        </button>
-        <button
-          type="button"
-          class="top-menu-btn top-menu-quick"
-          role="menuitem"
-          :disabled="isSaving"
-          @click="handleQuickSaveFromMenu"
-        >
-          {{ isSaving ? '保存中...' : '快速存档' }}
-        </button>
-        <button
-          type="button"
-          class="top-menu-btn top-menu-save"
-          :class="{ 'is-active': showSavePanel }"
-          role="menuitem"
-          @click="handleToggleSavePanelFromMenu"
-        >
-          存档
-        </button>
-        <button
-          type="button"
-          class="top-menu-btn top-menu-history"
-          :class="{ 'is-active': showDialogueHistoryPanel }"
-          role="menuitem"
-          @click="handleToggleDialogueHistoryFromMenu"
-        >
-          历史对话
-        </button>
-      </div>
-      <!-- 存档成功提示 -->
-      <div v-if="saveSuccess" class="save-toast success">
-        <span class="toast-icon">✓</span>
-        <span class="toast-text">{{ saveSuccess }}</span>
-      </div>
-      <!-- 存档失败提示 -->
-      <div v-if="saveError" class="save-toast error">
-        <span class="toast-icon">⚠</span>
-        <span class="toast-text">{{ saveError }}</span>
-      </div>
-    </header>
-
-    <!-- 存档面板 -->
-    <section v-if="showSavePanel" class="save-panel" aria-label="存档管理">
-      <div class="save-panel-header">
-        <h3 class="save-title">💾 存档管理</h3>
-        <button type="button" class="save-close" @click="toggleSavePanel">✕</button>
-      </div>
-
-      <div class="save-panel-body">
-        <p class="save-info">
-          当前进度：对话 {{ currentLineIndex + 1 }} / {{ dialogueScript.length }}
-          | 游戏时长：{{ Math.floor(currentPlayTime / 60) }}分{{ currentPlayTime % 60 }}秒
-        </p>
-
-        <div class="save-preview">
-          <p class="preview-label">存档预览：</p>
-          <p class="preview-text">{{ currentLine.text.substring(0, 50) }}...</p>
-        </div>
-
-        <p v-if="saveError" class="save-error">{{ saveError }}</p>
-        <p v-if="saveSuccess" class="save-success">{{ saveSuccess }}</p>
-      </div>
-
-      <div class="save-panel-footer">
-        <button
-          type="button"
-          class="save-btn"
-          :disabled="isSaving"
-          @click="handleSaveGame"
-        >
-          {{ isSaving ? '保存中...' : '保存存档' }}
-        </button>
-      </div>
-    </section>
-
-    <section class="scene-stage" aria-label="AVG 场景">
-      <div
-        class="scene-background"
-        :class="{ 'has-custom-bg': hasCustomBackground }"
-        :style="backgroundStyle"
-        aria-hidden="true"
-      >
-        <!-- 自定义背景图片时隐藏默认装饰层 -->
-        <div v-if="!hasCustomBackground" class="scene-layer scene-gradient"></div>
-        <div v-if="!hasCustomBackground" class="scene-layer scene-window"></div>
-        <div v-if="!hasCustomBackground" class="scene-layer scene-floor"></div>
-        <!-- 背景过渡遮罩（可选，用于平滑切换） -->
-        <div v-if="hasCustomBackground" class="scene-layer scene-overlay"></div>
-      </div>
-
-      <div
-        class="character-layer"
-        :class="[portraitStyleClass, { 'android-speaker-layer': isAndroidPlatform }]"
-        aria-label="人物立绘"
-      >
-        <div
-          v-if="currentSpeakingCharacter && shouldShowCurrentPortrait"
-          class="character-stand"
-          :class="[
-            isAndroidPlatform ? 'is-center' : 'is-left',
-            { active: true, 'android-center-stand': isAndroidPlatform },
-          ]"
-        >
-          <!-- 立绘图片 -->
-          <img
-            :src="portraitUrls[currentSpeakingCharacter.id]"
-            :alt="currentSpeakingCharacter.name"
-            class="character-portrait"
-          />
-        </div>
-      </div>
-
-      <section class="dialogue-box" aria-live="polite" @click="handleDialogueBoxClick">
-        <div class="dialogue-head">
-          <p class="speaker-tag">{{ currentLine.speaker }}</p>
-          <p class="line-progress">{{ currentLineIndex + 1 }} / {{ dialogueScript.length }}</p>
-          <div
-            v-if="isCurrentCharacterLine"
-            class="dialogue-tts-actions"
-          >
-            <button
-              type="button"
-              class="dialogue-tts-btn"
-              :disabled="isTtsGenerating || isTtsSaving"
-              :title="currentLineSpeakButtonTitle"
-              :aria-label="currentLineSpeakButtonTitle"
-              @click.stop="handlePlayCurrentLineVoice"
-            >
-              {{ isTtsGenerating ? '⏳' : (isTtsPlaying && canSpeakCurrentLine ? '⏹️' : '🔊') }}
-            </button>
-            <button
-              v-if="!isAndroidPlatform"
-              type="button"
-              class="dialogue-tts-save-inline"
-              :disabled="isTtsGenerating || isTtsSaving || !canSpeakCurrentLine"
-              :title="currentLineSaveButtonTitle"
-              :aria-label="currentLineSaveButtonTitle"
-              @click.stop="handleSaveCurrentLineVoice"
-            >
-              {{ isTtsSaving ? '⏳' : '💾' }}
-            </button>
-          </div>
-        </div>
-        <p class="dialogue-text">{{ currentLine.text }}</p>
-        <p
-          v-if="ttsStatusMessage"
-          class="dialogue-tts-status"
-          :class="{ 'is-error': ttsStatusType === 'error' }"
-        >
-          {{ ttsStatusMessage }}
-        </p>
-        <button
-          v-if="isCurrentCharacterLine && isAndroidPlatform"
-          type="button"
-          class="dialogue-tts-save-corner-floating"
-          :disabled="isTtsGenerating || isTtsSaving || !canSpeakCurrentLine"
-          :title="currentLineSaveButtonTitle"
-          :aria-label="currentLineSaveButtonTitle"
-          @click.stop="handleSaveCurrentLineVoice"
-        >
-          {{ isTtsSaving ? '⏳' : '💾' }}
-        </button>
-
-        <div v-if="!isAndroidPlatform" class="dialogue-actions">
-          <button
-            type="button"
-            class="action-button action-outline"
-            :disabled="currentLineIndex === 0"
-            @click="goPrevLine"
-          >
-            上一句
-          </button>
-          <button type="button" class="action-button action-strong" @click="goNextLine">
-            {{ isLastLine ? '继续' : '下一句' }}
-          </button>
-          <button
-            type="button"
-            class="action-button action-ai"
-            :class="{ 'is-active': showGeneratePanel }"
-            @click="toggleGeneratePanel"
-            title="AI生成剧情"
-          >
-            🤖 AI生成
-          </button>
-          <button
-            type="button"
-            class="action-button action-cg"
-            :class="{ 'is-active': showCGModal }"
-            @click="handleOpenCGModal"
-            title="生成CG图片"
-          >
-            🎨 生成CG
-          </button>
-        </div>
-      </section>
-
-      <div v-if="isAndroidPlatform" class="dialogue-actions dialogue-actions-strip">
-        <button
-          type="button"
-          class="action-button action-outline"
-          :disabled="currentLineIndex === 0"
-          @click="goPrevLine"
-        >
-          上一句
-        </button>
-        <button type="button" class="action-button action-strong" @click="goNextLine">
-          {{ isLastLine ? '继续' : '下一句' }}
-        </button>
-        <button
-          type="button"
-          class="action-button action-ai"
-          :class="{ 'is-active': showGeneratePanel }"
-          @click="toggleGeneratePanel"
-          title="AI生成剧情"
-        >
-          🤖 AI生成
-        </button>
-        <button
-          type="button"
-          class="action-button action-cg"
-          :class="{ 'is-active': showCGModal }"
-          @click="handleOpenCGModal"
-          title="生成CG图片"
-        >
-          🎨 生成CG
-        </button>
-      </div>
-
-      <!-- AI 剧情生成面板 -->
-      <section v-if="showGeneratePanel" class="generate-panel" aria-label="AI剧情生成">
-        <div class="generate-panel-header">
-          <h3 class="generate-title">🤖 AI 剧情生成</h3>
-          <button type="button" class="generate-close" @click="toggleGeneratePanel">✕</button>
-        </div>
-
-        <div class="generate-panel-body">
-          <div v-if="!hasApiConfig" class="generate-warning">
-            ⚠️ 请先在设置中配置并应用 API
-          </div>
-
-          <div class="generate-config-row">
-            <div class="generate-input-group generate-count-group">
-              <span class="generate-label">生成条数范围</span>
-              <select
-                class="generate-select"
-                :disabled="isGenerating"
-                :value="selectedMessageRangeKey"
-                @change="updateMessageRange($event)"
-              >
-                <option
-                  v-for="opt in messageRangeOptions"
-                  :key="opt.key"
-                  :value="opt.key"
-                >
-                  {{ opt.isCustom ? opt.label : `${opt.label}（随机）` }}
-                </option>
-              </select>
-              <div v-if="selectedMessageRangeKey === 'custom'" class="generate-custom-range">
-                <div class="generate-custom-item">
-                  <span class="generate-custom-label">最小条数</span>
-                  <input
-                    class="generate-custom-number"
-                    type="number"
-                    inputmode="numeric"
-                    min="1"
-                    max="200"
-                    :disabled="isGenerating"
-                    :value="customMessageRange.min"
-                    @input="updateCustomMessageRangeField('min', $event)"
-                  />
-                </div>
-                <div class="generate-custom-item">
-                  <span class="generate-custom-label">最大条数</span>
-                  <input
-                    class="generate-custom-number"
-                    type="number"
-                    inputmode="numeric"
-                    min="1"
-                    max="200"
-                    :disabled="isGenerating"
-                    :value="customMessageRange.max"
-                    @input="updateCustomMessageRangeField('max', $event)"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div class="generate-custom-range">
-              <label class="generate-custom-item">
-                <span class="generate-custom-label">剧情上下文条数</span>
-                <input
-                  class="generate-custom-number"
-                  type="number"
-                  inputmode="numeric"
-                  min="0"
-                  max="400"
-                  :disabled="isGenerating"
-                  :value="storyContextLineCount"
-                  @input="updateStoryContextLineCount($event)"
-                />
-              </label>
-              <label class="generate-custom-item">
-                <span class="generate-custom-label">max_tokens</span>
-                <input
-                  class="generate-custom-number"
-                  type="number"
-                  inputmode="numeric"
-                  min="128"
-                  max="200000"
-                  :disabled="isGenerating"
-                  :value="storyMaxTokens"
-                  @input="updateStoryMaxTokens($event)"
-                />
-              </label>
-            </div>
-          </div>
-
-          <label class="generate-input-group">
-            <span class="generate-label">剧情方向（可选）</span>
-            <input
-              v-model="userPromptInput"
-              class="generate-input"
-              type="text"
-              placeholder="例如：伊芙发现了一个秘密文件..."
-              :disabled="isGenerating"
-            />
-          </label>
-
-          <p v-if="generateError" class="generate-error">{{ generateError }}</p>
-
-          <div class="generate-info">
-            <span class="generate-hint">
-              将在 {{ generateMessageRange.min }}-{{ generateMessageRange.max }} 条范围内随机生成对话（上下文 {{ storyContextLineCount }} 条）
-            </span>
-            <span v-if="isGenerating" class="generate-status">⏳ 正在生成...</span>
-          </div>
-        </div>
-
-        <div class="generate-panel-footer">
-          <button
-            type="button"
-            class="generate-btn"
-            :disabled="isGenerating || !hasApiConfig"
-            @click="handleGenerateStory"
-          >
-            {{ isGenerating ? '生成中...' : '开始生成' }}
-          </button>
-        </div>
-      </section>
-
-      <!-- 生成中遮罩层 -->
-      <section v-if="isGenerating" class="generating-overlay" aria-label="生成中提示">
-        <div class="generating-modal">
-          <div class="generating-icon">🤖</div>
-          <h3 class="generating-title">正在生成剧情...</h3>
-          <p class="generating-hint">AI 正在根据你的选择编写后续剧情</p>
-          <div class="generating-spinner">
-            <span class="spinner-dot"></span>
-            <span class="spinner-dot"></span>
-            <span class="spinner-dot"></span>
-          </div>
-        </div>
-      </section>
-    </section>
-
-    <!-- 历史对话面板 -->
-    <section
-      v-if="showDialogueHistoryPanel"
-      class="history-dialogue-overlay"
-      aria-label="历史对话"
-      @click.self="closeDialogueHistoryPanel"
-    >
-      <div class="history-dialogue-panel" role="dialog" aria-modal="false">
-        <div class="history-dialogue-header">
-          <h3 class="history-dialogue-title">历史对话</h3>
-          <button type="button" class="history-dialogue-close" @click="closeDialogueHistoryPanel">✕</button>
-        </div>
-
-        <div
-          ref="historyBodyRef"
-          class="history-dialogue-body"
-          data-no-advance
-          @scroll.passive="handleHistoryBodyScroll"
-        >
-          <p v-if="visibleDialogueHistory.length === 0" class="history-dialogue-empty">
-            暂无历史对话
-          </p>
-
-          <div v-else class="history-dialogue-list">
-            <p v-if="hasMoreHistoryDialogues" class="history-dialogue-more-tip">向上滑动加载更早对话</p>
-            <article
-              v-for="historyItem in visibleDialogueHistory"
-              :key="historyItem.lineKey"
-              class="history-dialogue-item"
-            >
-              <p class="history-dialogue-line">
-                <span class="history-dialogue-speaker">{{ historyItem.speaker }}</span>
-                <span class="history-dialogue-text">{{ historyItem.text }}</span>
-              </p>
-              <button
-                v-if="historyItem.canSpeak"
-                type="button"
-                class="history-dialogue-voice-btn"
-                :disabled="isTtsGenerating || isTtsSaving"
-                :title="isHistoryLinePlaying(historyItem.lineKey) ? '停止播放该句语音' : '播放该句语音'"
-                :aria-label="isHistoryLinePlaying(historyItem.lineKey) ? '停止播放该句语音' : '播放该句语音'"
-                @click="handlePlayHistoryLineVoice(historyItem)"
-              >
-                {{ isHistoryLinePlaying(historyItem.lineKey) ? '⏹️' : '🔊' }}
-              </button>
-            </article>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 选项面板 -->
-    <section v-if="showChoicesPanel && currentChoices" class="choices-overlay" aria-label="剧情选项">
-      <div class="choices-panel" role="dialog" aria-modal="true">
-        <div class="choices-panel-header">
-          <h3 class="choices-title">🎯 {{ currentChoices.prompt }}</h3>
-        </div>
-
-        <div class="choices-panel-body">
-          <div class="choices-options">
-            <button
-              v-for="option in currentChoices.options"
-              :key="option.id"
-              type="button"
-              class="choice-button"
-              :disabled="isGenerating"
-              @click="handleSelectChoice(option)"
-            >
-              {{ option.text }}
-            </button>
-          </div>
-
-          <!-- 自定义输入区域 -->
-          <div v-if="currentChoices.allowCustomInput" class="choices-custom-input">
-            <label class="custom-input-label">
-              <span class="custom-input-hint">自定义输入：</span>
-              <input
-                v-model="customInputText"
-                class="custom-input-field"
-                type="text"
-                placeholder="输入你的选择..."
-                :disabled="isGenerating"
-              />
-            </label>
-            <button
-              type="button"
-              class="custom-input-btn"
-              :disabled="isGenerating || !customInputText.trim()"
-              @click="handleCustomInput"
-            >
-              确认
-            </button>
-          </div>
-
-          <p v-if="isGenerating" class="choices-status">⏳ 正在生成后续剧情...</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- 音乐播放器（支持插件替换） -->
-    <PluginComponent
-      :default-component="MusicPlayer"
-      :plugin-type="PluginTypes.MUSIC_PLAYER"
-    />
-
-    <!-- 手机（支持插件替换） -->
-    <PluginComponent
-      :default-component="Phone"
-      :plugin-type="PluginTypes.PHONE"
-      :component-props="{
-        worldBook: activeBook,
-        saveSlotId: smsSaveScopeId,
-        dialogueHistory: dialogueScript,
-        currentLine,
-      }"
-    />
-
-    <!-- 掌机（支持插件替换） -->
-    <PluginComponent
-      :default-component="HandheldConsole"
-      :plugin-type="PluginTypes.HANDHELD"
-      :component-props="{
-        worldBook: activeBook,
-        saveSlotId: smsSaveScopeId,
-      }"
-    />
-
-    <!-- 背包（支持插件替换） -->
-    <PluginComponent
-      :default-component="Backpack"
-      :plugin-type="PluginTypes.BACKPACK"
-      :component-props="{
-        worldBook: activeBook,
-        saveSlotId: smsSaveScopeId,
-        dialogueHistory: dialogueScript,
-        currentLine,
-      }"
-    />
-
-    <!-- CG 生成弹窗 -->
-    <CGGeneratorModal
-      :visible="showCGModal"
-      :world-book="activeBook"
-      :dialogue-history="dialogueScript"
-      :current-line="currentLine"
-      :summary-loading="isCgSummarizing"
-      :summary-error="cgSummaryError"
-      :summary-result="cgSummaryResult"
-      @close="showCGModal = false"
-      @request-scene-summary="handleRequestCgSceneSummary"
-      @generate-request="handleCGGenerateRequest"
-    />
-
-    <!-- CG 生成中提示 -->
-    <section v-if="isCgGenerating" class="generating-overlay cg-generating-overlay" aria-label="CG生成中提示">
-      <div class="generating-modal">
-        <div class="generating-icon">🎨</div>
-        <h3 class="generating-title">正在生成 CG...</h3>
-        <p class="generating-hint">请稍候，生成完成后会自动展示结果</p>
-        <div class="generating-spinner">
-          <span class="spinner-dot"></span>
-          <span class="spinner-dot"></span>
-          <span class="spinner-dot"></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- CG 结果展示 -->
-    <section v-if="generatedCG && showCGResultPanel" class="cg-result-overlay" aria-label="CG结果">
-      <div class="cg-result-panel" role="dialog" aria-modal="true">
-        <div class="cg-result-frame">
-          <img :src="generatedCG.url" alt="Generated CG" class="cg-result-image" />
-        </div>
-        <p v-if="generatedCG.sceneSummary" class="cg-result-summary">{{ generatedCG.sceneSummary }}</p>
-        <div class="cg-result-actions">
-          <button type="button" class="cg-result-btn cg-result-btn-confirm" @click="handleCloseCGResult">确定</button>
-          <button type="button" class="cg-result-btn cg-result-btn-save" @click="handleSaveGeneratedCG">保存</button>
-        </div>
-      </div>
-    </section>
-
-    <div
-      v-if="cgStatusMessage"
-      class="cg-status-toast"
-      :class="{
-        'is-success': cgStatusType === 'success',
-        'is-error': cgStatusType === 'error',
-      }"
-    >
-      {{ cgStatusMessage }}
-    </div>
-  </main>
-</template>
-
-<style scoped src="./GameScreen.css"></style>
+<style scoped src="./game/styles/game-01.css"></style>
+<style scoped src="./game/styles/game-02.css"></style>
+<style scoped src="./game/styles/game-03.css"></style>
+<style scoped src="./game/styles/game-04.css"></style>
 

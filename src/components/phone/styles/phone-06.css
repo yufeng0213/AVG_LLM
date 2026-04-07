@@ -1,0 +1,800 @@
+
+
+.platform-android .alerts-header .app-title,
+.platform-android .clues-header .app-title {
+  font-size: 16px;
+}
+
+.platform-android .alert-item,
+.platform-android .clue-item {
+  border-radius: 9px;
+  box-shadow: none;
+}
+
+.platform-android .collect-clue-btn,
+.platform-android .clue-action-btn {
+  height: 20px;
+  font-size: 9px;
+  padding: 0 7px;
+}
+
+.platform-android .clue-meta {
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.platform-android .clue-actions {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.platform-android .phone-settings-page {
+  padding: 8px 8px 10px;
+  gap: 8px;
+}
+
+.platform-android .phone-settings-card {
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.platform-android .phone-settings-title {
+  font-size: 12px;
+}
+
+.platform-android .phone-settings-value,
+.platform-android .phone-settings-hint {
+  font-size: 10px;
+}
+
+.platform-android .phone-settings-grid {
+  gap: 6px;
+}
+
+.platform-android .phone-settings-field-label {
+  font-size: 10px;
+}
+
+.platform-android .phone-settings-number {
+  height: 30px;
+  font-size: 11px;
+  padding: 0 8px;
+}
+
+.platform-android .phone-toast {
+  left: 58px;
+  top: -4px;
+  width: 170px;
+  padding: 7px 8px;
+}
+
+.platform-android .phone-toast-title {
+  font-size: 11px;
+}
+
+.platform-android .phone-toast-content {
+  font-size: 10px;
+}
+
+@media (max-width: 768px) {
+  .phone-plugin {
+    z-index: 1200;
+  }
+
+  .phone-trigger {
+    width: 50px;
+    height: 50px;
+  }
+
+  .phone-container {
+    left: -6px;
+  }
+
+  .phone-frame {
+    width: min(312px, calc(100vw - 18px));
+    height: min(612px, calc(100vh - 118px));
+    border-radius: 32px;
+  }
+
+  .phone-screen {
+    border-radius: 27px;
+  }
+
+  .home-screen {
+    padding: 10px 12px 0;
+  }
+
+  .big-time {
+    font-size: 48px;
+  }
+
+  .app-grid {
+    gap: 16px 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .app-icon-bg {
+    width: 54px;
+    height: 54px;
+    font-size: 24px;
+  }
+
+  .app-badge {
+    top: -4px;
+    right: -7px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 9px;
+    line-height: 16px;
+    padding: 0 4px;
+  }
+
+  .app-name {
+    font-size: 11px;
+  }
+
+  .nav-btn {
+    height: 34px;
+  }
+
+  .messages-list-toolbar {
+    padding: 8px 14px 2px;
+  }
+
+  .messages-list-title {
+    font-size: 26px;
+  }
+
+  .messages-search-shell {
+    padding: 7px 10px 8px;
+  }
+
+  .messages-conversation-list {
+    padding: 0 10px;
+  }
+
+  .messages-conversation-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 14px;
+  }
+
+  .messages-conversation-name {
+    font-size: 14px;
+  }
+
+  .messages-conversation-preview {
+    font-size: 12px;
+  }
+
+  .messages-conversation-time {
+    font-size: 11px;
+  }
+
+  .messages-thread {
+    padding: 10px 8px;
+  }
+
+  .sms-bubble {
+    font-size: 12px;
+  }
+
+  .sms-input {
+    font-size: 12px;
+    padding: 7px 10px;
+  }
+
+  .sms-send-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+
+  .moments-composer {
+    margin: 8px 10px 0;
+    gap: 7px;
+  }
+
+  .moments-composer-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+    margin-top: 3px;
+  }
+
+  .moments-composer-panel {
+    padding: 7px 8px 6px;
+    border-radius: 10px;
+  }
+
+  .moments-input {
+    min-height: 50px;
+    max-height: 84px;
+    font-size: 11px;
+  }
+
+  .moments-feed {
+    padding: 8px 10px 10px;
+  }
+
+  .moments-post {
+    padding: 9px;
+    gap: 7px;
+  }
+
+  .moments-post-content {
+    font-size: 12px;
+  }
+
+  .moments-comment {
+    font-size: 11px;
+  }
+
+  .moments-new-btn {
+    font-size: 10px;
+    padding: 0 1px;
+  }
+
+  .moments-refresh-btn {
+    font-size: 9px;
+    padding: 0 1px;
+  }
+
+  .moments-reply-input {
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .moments-reply-submit-btn,
+  .moments-reply-cancel-btn {
+    height: 26px;
+    min-width: 40px;
+    font-size: 10px;
+    padding: 0 8px;
+  }
+
+  .forum-list,
+  .forum-thread-page {
+    padding: 8px 10px 10px;
+    gap: 8px;
+  }
+
+  .forum-post-item {
+    padding: 8px 9px;
+    gap: 5px;
+  }
+
+  .forum-post-title {
+    font-size: 12px;
+  }
+
+  .forum-post-preview,
+  .forum-thread-content,
+  .forum-thread-comment-text {
+    font-size: 11px;
+  }
+
+  .forum-refresh-btn {
+    font-size: 9px;
+    padding: 0 1px;
+  }
+
+  .alerts-toolbar,
+  .alerts-page,
+  .clues-toolbar,
+  .clues-page,
+  .clues-detail-page {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .alert-item,
+  .clue-item {
+    border-radius: 9px;
+  }
+
+  .collect-clue-btn,
+  .clue-action-btn {
+    height: 20px;
+    font-size: 9px;
+    padding: 0 7px;
+  }
+
+  .news-list,
+  .news-thread-page {
+    padding: 0 8px 10px;
+    gap: 8px;
+  }
+
+  .news-channel-strip {
+    padding: 0 6px 0 8px;
+  }
+
+  .news-channel-btn {
+    font-size: 13px;
+    padding: 10px 7px 9px;
+  }
+
+  .news-item {
+    padding: 10px 0;
+    gap: 8px;
+  }
+
+  .news-item-headline {
+    font-size: 13px;
+  }
+
+  .news-item-headline,
+  .news-item-summary,
+  .news-detail-summary {
+    font-size: 11px;
+  }
+
+  .news-thumb {
+    width: 84px;
+    height: 62px;
+    flex-basis: 84px;
+    padding: 6px;
+  }
+
+  .phone-toast {
+    left: 58px;
+    width: 170px;
+    padding: 7px 8px;
+  }
+
+  .phone-toast-title {
+    font-size: 11px;
+  }
+
+  .phone-toast-content {
+    font-size: 10px;
+  }
+
+  .news-refresh-btn {
+    font-size: 9px;
+    padding: 0 1px;
+  }
+
+  .news-version-tab {
+    min-width: 90px;
+    max-width: 112px;
+  }
+
+  .map-page {
+    padding: 8px 8px 10px;
+    gap: 7px;
+  }
+
+  .map-canvas {
+    min-height: 208px;
+    border-radius: 10px;
+  }
+
+  .map-node-name {
+    font-size: 9px;
+    padding: 1px 6px;
+  }
+
+  .map-detail-card {
+    border-radius: 10px;
+    padding: 8px;
+  }
+
+  .map-detail-name {
+    font-size: 12px;
+  }
+
+  .map-detail-desc {
+    font-size: 11px;
+  }
+
+  .map-travel-btn {
+    height: 24px;
+    font-size: 10px;
+    padding: 0 10px;
+  }
+
+  .map-refresh-btn {
+    font-size: 10px;
+    padding: 0 1px;
+  }
+
+  .shop-page,
+  .wallet-page {
+    padding: 8px 8px 10px;
+    gap: 7px;
+  }
+
+  .shop-search-card,
+  .shop-orders,
+  .wallet-balance-card,
+  .wallet-orders {
+    border-radius: 10px;
+    padding: 8px;
+  }
+
+  .shop-search-input {
+    height: 30px;
+    font-size: 11px;
+  }
+
+  .shop-search-btn {
+    height: 26px;
+    min-width: 42px;
+    font-size: 10px;
+    padding: 0 8px;
+  }
+
+  .shop-tag-btn {
+    height: 21px;
+    font-size: 9px;
+    padding: 0 8px;
+  }
+
+  .shop-item {
+    border-radius: 9px;
+    padding: 8px;
+    gap: 7px;
+  }
+
+  .shop-item-side {
+    min-width: 52px;
+    gap: 5px;
+  }
+
+  .shop-item-name {
+    font-size: 12px;
+  }
+
+  .shop-item-desc {
+    font-size: 10px;
+  }
+
+  .shop-item-price {
+    font-size: 12px;
+  }
+
+  .shop-buy-btn {
+    min-width: 44px;
+    height: 22px;
+    font-size: 9px;
+    padding: 0 7px;
+  }
+
+  .shop-orders-title,
+  .wallet-orders-title {
+    font-size: 11px;
+  }
+
+  .wallet-balance-value {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .phone-frame {
+    width: min(286px, calc(100vw - 16px));
+    height: min(520px, calc(100vh - 72px));
+  }
+
+  .big-time {
+    font-size: 40px;
+  }
+
+  .app-grid {
+    gap: 12px 8px;
+  }
+
+  .app-icon-bg {
+    width: 46px;
+    height: 46px;
+    font-size: 21px;
+  }
+}
+
+@media (max-width: 480px) {
+  .phone-trigger {
+    width: 46px;
+    height: 46px;
+  }
+
+  .trigger-icon {
+    width: 22px;
+    height: 30px;
+  }
+
+  .phone-frame {
+    width: min(300px, calc(100vw - 14px));
+    height: min(590px, calc(100vh - 92px));
+  }
+
+  .phone-island {
+    width: 100px;
+    height: 24px;
+  }
+
+  .status-bar {
+    padding: 12px 12px 8px;
+  }
+
+  .big-time {
+    font-size: 44px;
+  }
+
+  .date {
+    font-size: 13px;
+  }
+
+  .app-grid {
+    gap: 14px 6px;
+  }
+
+  .app-icon-bg {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    font-size: 22px;
+  }
+
+  .app-badge {
+    top: -3px;
+    right: -6px;
+    min-width: 15px;
+    height: 15px;
+    font-size: 8px;
+    line-height: 15px;
+  }
+
+  .app-title {
+    font-size: 16px;
+  }
+
+  .messages-list-title {
+    font-size: 24px;
+  }
+
+  .messages-conversation-item {
+    padding: 9px 2px;
+  }
+
+  .messages-conversation-avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+  }
+
+  .messages-conversation-time {
+    font-size: 10px;
+  }
+
+  .messages-thread-avatar-mini {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  .messages-compose {
+    padding: 6px 8px 7px;
+    gap: 6px;
+  }
+
+  .sms-send-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .moments-composer {
+    margin: 7px 8px 0;
+    gap: 6px;
+  }
+
+  .moments-composer-avatar {
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
+  }
+
+  .moments-composer-panel {
+    padding: 6px 7px 5px;
+    border-radius: 9px;
+  }
+
+  .moments-input {
+    min-height: 44px;
+    max-height: 76px;
+    font-size: 10px;
+  }
+
+  .moments-feed {
+    padding: 7px 8px 9px;
+    gap: 8px;
+  }
+
+  .moments-post-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .moments-post-name {
+    font-size: 12px;
+  }
+
+  .moments-post-time {
+    font-size: 10px;
+  }
+
+  .moments-limit {
+    font-size: 10px;
+  }
+
+  .moments-header-actions {
+    gap: 5px;
+  }
+
+  .moments-reply-row {
+    gap: 5px;
+  }
+
+  .forum-header-actions {
+    gap: 5px;
+  }
+
+  .forum-refresh-btn {
+    font-size: 9px;
+  }
+
+  .forum-post-author,
+  .forum-thread-comment-author {
+    font-size: 10px;
+  }
+
+  .forum-post-time,
+  .forum-thread-comment-time,
+  .forum-post-stats {
+    font-size: 9px;
+  }
+
+  .news-header-actions {
+    gap: 5px;
+  }
+
+  .news-brand-logo {
+    font-size: 17px;
+  }
+
+  .news-brand-sub {
+    font-size: 10px;
+  }
+
+  .news-channel-btn {
+    font-size: 12px;
+    padding: 9px 6px 8px;
+  }
+
+  .news-refresh-btn {
+    font-size: 9px;
+  }
+
+  .news-outlet {
+    font-size: 9px;
+    max-width: 42%;
+  }
+
+  .news-thumb {
+    width: 78px;
+    height: 58px;
+    flex-basis: 78px;
+    padding: 5px;
+  }
+
+  .news-thumb-label {
+    font-size: 9px;
+  }
+
+  .news-item-time,
+  .news-version-count,
+  .news-version-credibility {
+    font-size: 9px;
+  }
+
+  .alerts-filter-btn,
+  .alerts-read-all-btn,
+  .collect-clue-btn,
+  .clue-action-btn {
+    font-size: 9px;
+  }
+
+  .phone-toast {
+    left: 54px;
+    width: 154px;
+    padding: 6px 7px;
+  }
+
+  .phone-toast-title {
+    font-size: 10px;
+  }
+
+  .phone-toast-content {
+    font-size: 9px;
+  }
+
+  .news-detail-headline {
+    font-size: 13px;
+  }
+
+  .map-canvas {
+    min-height: 190px;
+  }
+
+  .map-node-name {
+    font-size: 8px;
+    padding: 1px 5px;
+  }
+
+  .map-risk-badge {
+    min-width: 44px;
+    height: 18px;
+    font-size: 9px;
+    padding: 0 7px;
+  }
+
+  .map-tag {
+    font-size: 8px;
+    height: 15px;
+    line-height: 15px;
+    padding: 0 6px;
+  }
+
+  .map-travel-btn {
+    height: 22px;
+    font-size: 9px;
+    padding: 0 9px;
+  }
+
+  .shop-wallet-link,
+  .wallet-shop-link {
+    font-size: 10px;
+    min-width: 0;
+  }
+
+  .shop-header-right {
+    gap: 2px;
+  }
+
+  .shop-header-balance {
+    font-size: 9px;
+  }
+
+  .shop-search-input {
+    height: 28px;
+    font-size: 10px;
+  }
+
+  .shop-search-btn {
+    height: 24px;
+    min-width: 40px;
+    font-size: 9px;
+    padding: 0 7px;
+  }
+
+  .shop-item-name {
+    font-size: 11px;
+  }
+
+  .shop-item-desc,
+  .shop-order-name,
+  .shop-order-time,
+  .shop-order-price,
+  .wallet-order-name,
+  .wallet-order-time,
+  .wallet-order-price {
+    font-size: 9px;
+  }
+
+  .wallet-balance-value {
+    font-size: 20px;
+  }
+}

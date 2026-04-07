@@ -1,0 +1,504 @@
+
+
+/* ============================================
+   LINEAR MODERN THEME
+   Premium developer tools aesthetic with cinematic depth
+   Inspired by Linear, Vercel, Raycast
+   ============================================ */
+
+:root[data-theme-style='linear-modern'] body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* Layer 1: Base radial gradient from top */
+
+:root[data-theme-style='linear-modern'] body::before {
+  opacity: 1;
+  mix-blend-mode: normal;
+  background: radial-gradient(ellipse at top, #0a0a0f 0%, #050506 50%, #020203 100%);
+  animation: linear-float 10s ease-in-out infinite;
+}
+
+/* Layer 2: Animated gradient blobs - ambient light pools */
+
+:root[data-theme-style='linear-modern'] body::after {
+  opacity: 1;
+  background:
+    radial-gradient(
+      ellipse at 50% 15%,
+      color-mix(in srgb, var(--blob-primary) 100%, transparent) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 20% 60%,
+      color-mix(in srgb, var(--blob-secondary) 100%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 80% 40%,
+      color-mix(in srgb, var(--blob-tertiary) 100%, transparent) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 60% 85%,
+      color-mix(in srgb, var(--blob-primary) 60%, transparent) 0%,
+      transparent 40%
+    );
+  animation: linear-float-delayed 12s ease-in-out infinite;
+}
+
+/* Typography - clean, technical */
+
+:root[data-theme-style='linear-modern'] .panel-title,
+:root[data-theme-style='linear-modern'] .settings-title,
+:root[data-theme-style='linear-modern'] .hero-title-main,
+:root[data-theme-style='linear-modern'] .menu-button-text,
+:root[data-theme-style='linear-modern'] .nav-main,
+:root[data-theme-style='linear-modern'] .preview-title {
+  font-family: var(--font-heading);
+  color: var(--foreground);
+  text-shadow: none;
+  letter-spacing: -0.02em;
+}
+
+:root[data-theme-style='linear-modern'] .panel-description,
+:root[data-theme-style='linear-modern'] .hero-subtitle,
+:root[data-theme-style='linear-modern'] .nav-note {
+  color: var(--muted);
+}
+
+/* Gradient text for headlines */
+
+:root[data-theme-style='linear-modern'] .hero-title-gradient,
+:root[data-theme-style='linear-modern'] .title-gradient {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.95) 40%,
+    rgba(255, 255, 255, 0.7) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Launch screen - glass effect with depth */
+
+:root[data-theme-style='linear-modern'] .launch-screen {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-card);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(var(--backdrop-blur));
+  transform: none;
+  box-shadow: var(--shadow-screen);
+}
+
+:root[data-theme-style='linear-modern'] .launch-screen::before {
+  opacity: 0.015;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+:root[data-theme-style='linear-modern'] .launch-screen::after {
+  opacity: 0.02;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+:root[data-theme-style='linear-modern'] .massive-word {
+  color: color-mix(in srgb, var(--accent-purple) 15%, transparent);
+  opacity: 0.25;
+}
+
+:root[data-theme-style='linear-modern'] .floating-shape {
+  text-shadow: none;
+  filter: drop-shadow(0 4px 12px rgba(94, 106, 210, 0.2));
+}
+
+:root[data-theme-style='linear-modern'] .hero-tag {
+  border: 1px solid var(--border-status);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--foreground);
+  text-shadow: none;
+  box-shadow: var(--shadow-field);
+}
+
+/* Menu panel - elevated surface */
+
+:root[data-theme-style='linear-modern'] .menu-panel {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-card);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  box-shadow: var(--shadow-panel);
+}
+
+:root[data-theme-style='linear-modern'] .menu-panel::before {
+  opacity: 0.015;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+:root[data-theme-style='linear-modern'] .menu-heading {
+  color: var(--foreground);
+  text-shadow: none;
+  transform: none;
+}
+
+/* Primary button - accent with glow */
+
+:root[data-theme-style='linear-modern'] .menu-button {
+  border: 0;
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
+  color: #ffffff;
+  background: var(--accent-purple);
+  transform: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme-style='linear-modern'] .menu-button:hover {
+  transform: translateY(-4px);
+  background: var(--accent-cyan);
+  box-shadow:
+    0 0 0 1px rgba(94, 106, 210, 0.6),
+    0 8px 24px rgba(94, 106, 210, 0.4),
+    0 0 60px rgba(94, 106, 210, 0.15),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+}
+
+:root[data-theme-style='linear-modern'] .menu-button:active {
+  transform: scale(0.98) translateY(0);
+  box-shadow:
+    0 0 0 1px rgba(94, 106, 210, 0.5),
+    0 2px 8px rgba(94, 106, 210, 0.3),
+    inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme-style='linear-modern'] .menu-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(94, 106, 210, 0.5),
+    0 0 0 4px rgba(94, 106, 210, 0.2),
+    0 4px 12px rgba(94, 106, 210, 0.3);
+}
+
+:root[data-theme-style='linear-modern'] .tone-magenta {
+  background: var(--accent-purple);
+}
+
+:root[data-theme-style='linear-modern'] .tone-cyan {
+  background: var(--accent-cyan);
+}
+
+:root[data-theme-style='linear-modern'] .tone-orange {
+  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-cyan) 100%);
+}
+
+:root[data-theme-style='linear-modern'] .menu-button-desc {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+:root[data-theme-style='linear-modern'] .meta-chip {
+  border: 1px solid var(--border-panel);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-field);
+}
+
+/* Settings screen */
+
+:root[data-theme-style='linear-modern'] .settings-screen {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-card);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  box-shadow: var(--shadow-screen);
+  backdrop-filter: blur(var(--backdrop-blur));
+}
+
+:root[data-theme-style='linear-modern'] .settings-screen::before {
+  opacity: 0.015;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+:root[data-theme-style='linear-modern'] .settings-screen::after {
+  opacity: 0.02;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+:root[data-theme-style='linear-modern'] .settings-bg-word {
+  color: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+  opacity: 0.2;
+}
+
+:root[data-theme-style='linear-modern'] .back-button {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-button);
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-field);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme-style='linear-modern'] .back-button:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-card);
+}
+
+:root[data-theme-style='linear-modern'] .settings-tag {
+  border: 1px solid var(--border-status);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--foreground);
+  text-shadow: none;
+}
+
+:root[data-theme-style='linear-modern'] .settings-nav {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-panel);
+}
+
+:root[data-theme-style='linear-modern'] .settings-nav-item {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-button);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  box-shadow: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme-style='linear-modern'] .settings-nav-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='linear-modern'] .settings-nav-item.active {
+  border-color: var(--border-action);
+  background: rgba(94, 106, 210, 0.15);
+  color: var(--foreground);
+  box-shadow: var(--shadow-status);
+}
+
+:root[data-theme-style='linear-modern'] .settings-content {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-card);
+}
+
+:root[data-theme-style='linear-modern'] .setting-field {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-field);
+}
+
+:root[data-theme-style='linear-modern'] .setting-label {
+  color: var(--foreground);
+  text-shadow: none;
+}
+
+:root[data-theme-style='linear-modern'] .setting-input,
+:root[data-theme-style='linear-modern'] .setting-select,
+:root[data-theme-style='linear-modern'] .setting-textarea {
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-button);
+  color: var(--foreground);
+  background: rgba(15, 15, 18, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme-style='linear-modern'] .setting-input::placeholder,
+:root[data-theme-style='linear-modern'] .setting-textarea::placeholder {
+  color: var(--muted);
+}
+
+:root[data-theme-style='linear-modern'] .setting-input:focus-visible,
+:root[data-theme-style='linear-modern'] .setting-select:focus-visible,
+:root[data-theme-style='linear-modern'] .setting-textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent-purple);
+  box-shadow:
+    0 0 0 3px rgba(94, 106, 210, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme-style='linear-modern'] .setting-checkbox-row {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-button);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--foreground);
+  box-shadow: var(--shadow-field);
+}
+
+:root[data-theme-style='linear-modern'] .setting-checkbox {
+  accent-color: var(--accent-purple);
+}
+
+:root[data-theme-style='linear-modern'] .setting-status-chip {
+  border: 1px solid var(--border-status);
+  color: var(--foreground);
+}
+
+/* Action buttons */
+
+:root[data-theme-style='linear-modern'] .action-button {
+  border: 0;
+  color: #ffffff;
+  border-radius: var(--radius-button);
+  background: var(--accent-purple);
+  box-shadow: var(--shadow-button);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme-style='linear-modern'] .action-button:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(94, 106, 210, 0.6),
+    0 8px 24px rgba(94, 106, 210, 0.35),
+    0 0 60px rgba(94, 106, 210, 0.12),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+}
+
+:root[data-theme-style='linear-modern'] .action-button:active {
+  transform: scale(0.98);
+  box-shadow:
+    0 0 0 1px rgba(94, 106, 210, 0.5),
+    0 2px 8px rgba(94, 106, 210, 0.3),
+    inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme-style='linear-modern'] .action-button.action-outline {
+  color: var(--foreground);
+  border: 1px solid var(--border-control);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-field);
+}
+
+:root[data-theme-style='linear-modern'] .action-button.action-outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-action);
+}
+
+:root[data-theme-style='linear-modern'] .action-button.action-ghost {
+  color: var(--muted);
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+:root[data-theme-style='linear-modern'] .action-button.action-ghost:hover {
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme-style='linear-modern'] .status-message {
+  border: 1px solid var(--border-panel);
+  color: var(--muted);
+}
+
+:root[data-theme-style='linear-modern'] .theme-preview-card {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-field);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme-style='linear-modern'] .theme-preview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+:root[data-theme-style='linear-modern'] .theme-preview-card.active {
+  border-color: var(--border-action);
+  box-shadow: var(--shadow-status);
+}
+
+:root[data-theme-style='linear-modern'] .preview-swatches span {
+  border: 1px solid var(--border-panel);
+}
+
+/* WorldBook screens */
+
+:root[data-theme-style='linear-modern'] .worldbook-screen,
+:root[data-theme-style='linear-modern'] .worldbook-editor-screen {
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-card);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  box-shadow: var(--shadow-screen);
+}
+
+:root[data-theme-style='linear-modern'] .worldbook-screen::before,
+:root[data-theme-style='linear-modern'] .worldbook-editor-screen::before {
+  opacity: 0.015;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+:root[data-theme-style='linear-modern'] .worldbook-screen::after,
+:root[data-theme-style='linear-modern'] .worldbook-editor-screen::after {
+  opacity: 0.02;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+:root[data-theme-style='linear-modern'] .worldbook-bg-word,
+:root[data-theme-style='linear-modern'] .worldbook-editor-bg-word {
+  color: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+  opacity: 0.2;
+}
+
+:root[data-theme-style='linear-modern'] .worldbook-tag,
+:root[data-theme-style='linear-modern'] .worldbook-editor-tag {
+  border: 1px solid var(--border-status);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--foreground);
+  text-shadow: none;
+}
+
+:root[data-theme-style='linear-modern'] .worldbook-title,
+:root[data-theme-style='linear-modern'] .worldbook-editor-title,
+:root[data-theme-style='linear-modern'] .worldbook-book-spine,
+:root[data-theme-style='linear-modern'] .worldbook-editor-tab,
+:root[data-theme-style='linear-modern'] .worldbook-entry-item {
+  text-shadow: none;
+}
+
+:root[data-theme-style='linear-modern'] .worldbook-title-gradient,
+:root[data-theme-style='linear-modern'] .worldbook-editor-title-gradient {
+  font-family: var(--font-heading);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.95) 40%,
+    rgba(255, 255, 255, 0.7) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

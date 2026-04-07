@@ -107,17 +107,21 @@ const normalizeDialogues = (data) => {
  * @returns {Object} 规范化的对话对象
  */
 const normalizeDialogueItem = (item, index) => {
+  const storyTime = normalizeStoryTime(item.storyTime || item.time || item.date)
+
   return {
     id: `dialogue_${Date.now()}_${index}`,
     speaker: normalizeSpeaker(item.speaker),
     emotion: normalizeEmotion(item.emotion),
     text: normalizeText(item.text),
     highlight: Boolean(item.highlight),
+    storyTime,
     choices: normalizeChoices(item.choices),
     scene: normalizeScene(item.scene),  // 新增：场景切换指令
     metadata: {
       rawSpeaker: item.speaker,
       rawEmotion: item.emotion,
+      rawStoryTime: item.storyTime || item.time || item.date,
       rawScene: item.scene,
     },
   }
@@ -236,6 +240,16 @@ const normalizeText = (text) => {
 }
 
 /**
+ * 规范化剧情时间文本
+ * @param {any} storyTime - 原始剧情时间
+ * @returns {string} 规范化后的时间文本
+ */
+const normalizeStoryTime = (storyTime) => {
+  if (!storyTime) return ''
+  return String(storyTime).trim()
+}
+
+/**
  * 验证对话数据是否有效
  * @param {Object} dialogue - 对话对象
  * @returns {boolean} 是否有效
@@ -258,6 +272,7 @@ export const toGameScript = (dialogues) => {
     emotion: d.emotion,
     text: d.text,
     highlight: d.highlight,
+    storyTime: d.storyTime,
     choices: d.choices, // 保留选项数据
     scene: d.scene, // 保留场景切换数据
   }))

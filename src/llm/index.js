@@ -5,6 +5,7 @@
 export {
   generateStory,
   generateCgPrompt,
+  generateMiniTheater,
   generateCharacterSpeech,
   generatePhoneSmsReply,
   generatePhoneMomentsReplies,

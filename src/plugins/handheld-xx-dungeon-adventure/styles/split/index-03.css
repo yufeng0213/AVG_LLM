@@ -1,0 +1,539 @@
+
+
+.xx-rarity.is-ssr {
+  background: #ffd77a;
+}
+
+.xx-member-name,
+.xx-member-role,
+.xx-member-power,
+.xx-equip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xx-member-name {
+  font-size: 13px;
+}
+
+.xx-member-role {
+  font-size: 12px;
+  color: rgba(223, 234, 255, 0.78);
+}
+
+.xx-member-power {
+  font-size: 12px;
+  justify-self: end;
+  color: #8ce0ff;
+}
+
+.xx-equip-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.xx-equip-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.xx-equip-slot {
+  font-size: 11px;
+  color: rgba(217, 230, 255, 0.8);
+}
+
+.xx-equip-name {
+  font-size: 12px;
+}
+
+.xx-equip-bonus {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: rgba(170, 231, 255, 0.95);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.xx-gacha-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.xx-gacha-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.xx-gacha-desc {
+  margin: 5px 0 0;
+  font-size: 11px;
+  color: rgba(219, 232, 255, 0.8);
+}
+
+.xx-gacha-actions {
+  margin-top: 9px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.xx-log-list {
+  height: 27vh;
+  min-height: 178px;
+  max-height: 35vh;
+  padding-right: 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.xx-log-line {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(235, 244, 255, 0.95);
+  white-space: normal;
+  word-break: break-word;
+}
+
+.xx-log-line + .xx-log-line {
+  margin-top: 6px;
+}
+
+.xx-error {
+  margin: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 112, 112, 0.16);
+  color: #ffcaca;
+  font-size: 12px;
+  line-height: 1.42;
+  word-break: break-word;
+}
+
+@keyframes xx-camper-idle {
+  0%,
+  100% {
+    transform: translate(-50%, -50%);
+  }
+  50% {
+    transform: translate(-50%, calc(-50% - 2px));
+  }
+}
+
+@keyframes xx-camper-warm-hands {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, calc(-50% - 2px)) scale(1.03);
+  }
+}
+
+@keyframes xx-camper-sharpen {
+  0%,
+  100% {
+    transform: translate(-50%, -50%);
+  }
+  50% {
+    transform: translate(calc(-50% + 2px), calc(-50% - 1px));
+  }
+}
+
+@keyframes xx-camper-lookout {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  40% {
+    transform: translate(-50%, calc(-50% - 1px)) rotate(-3deg);
+  }
+  70% {
+    transform: translate(-50%, calc(-50% - 1px)) rotate(3deg);
+  }
+}
+
+@keyframes xx-camper-stretch {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scaleY(1);
+  }
+  50% {
+    transform: translate(-50%, calc(-50% - 2px)) scaleY(1.06);
+  }
+}
+
+@keyframes xx-camper-cheer {
+  0%,
+  100% {
+    transform: translate(-50%, -50%);
+  }
+  50% {
+    transform: translate(-50%, calc(-50% - 4px));
+  }
+}
+
+@keyframes xx-flame-drift {
+  0% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-3px);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes xx-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.96;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes xx-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.xx-handheld.is-android {
+  top: calc(env(safe-area-inset-top, 0px) + 50px);
+  left: 6px;
+}
+
+.xx-handheld.is-android .xx-panel {
+  width: min(420px, calc((100vw - 12px) * 0.92));
+  max-width: calc((100vw - 12px) * 0.92);
+  left: 0;
+  top: 50px;
+  border-radius: 14px;
+}
+
+.xx-handheld.is-android .xx-header {
+  padding: 11px 54px 10px;
+}
+
+.xx-handheld.is-android .xx-close {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  font-size: 24px;
+  right: 9px;
+}
+
+.xx-handheld.is-android .xx-close-floating {
+  top: 8px;
+  right: 8px;
+}
+
+.xx-handheld.is-android .xx-home-main {
+  padding: 8px;
+}
+
+.xx-handheld.is-android .xx-main {
+  padding: 10px;
+  gap: 9px;
+  font-size: 14px;
+}
+
+.xx-handheld.is-android .xx-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.xx-handheld.is-android .xx-stats.xx-stats-dungeon {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.xx-handheld.is-android .xx-back-btn {
+  height: 38px;
+  font-size: 13px;
+}
+
+.xx-handheld.is-android .xx-campfire-field {
+  height: 100%;
+  min-height: 280px;
+}
+
+.xx-handheld.is-android .xx-camper {
+  width: 44px;
+  height: 78px;
+}
+
+.xx-handheld.is-android .xx-camper-sprite {
+  width: 40px;
+  height: 40px;
+}
+
+.xx-handheld.is-android .xx-camper-name {
+  max-width: 70px;
+  font-size: 10px;
+}
+
+.xx-handheld.is-android .xx-camper-bubble {
+  bottom: 72px;
+  max-width: 126px;
+  min-width: 56px;
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.xx-handheld.is-android .xx-orbit-btn {
+  width: 96px;
+  min-width: 96px;
+  height: 72px;
+  padding: 5px 3px;
+}
+
+.xx-handheld.is-android .xx-orbit-icon {
+  font-size: 21px;
+}
+
+.xx-handheld.is-android .xx-orbit-label {
+  font-size: 12px;
+}
+
+.xx-handheld.is-android .xx-orbit-btn.is-dungeon {
+  left: 4%;
+  top: 12%;
+}
+
+.xx-handheld.is-android .xx-orbit-btn.is-gacha {
+  right: 4%;
+  top: 10%;
+}
+
+.xx-handheld.is-android .xx-orbit-btn.is-rest {
+  left: 4%;
+  bottom: 9%;
+}
+
+.xx-handheld.is-android .xx-orbit-btn.is-tent {
+  right: 4%;
+  bottom: 10%;
+}
+
+.xx-handheld.is-android .xx-subview-head {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.xx-handheld.is-android .xx-action-grid,
+.xx-handheld.is-android .xx-rest-actions {
+  grid-template-columns: 1fr;
+}
+
+.xx-handheld.is-android .xx-btn {
+  height: 42px;
+  font-size: 14px;
+}
+
+.xx-handheld.is-android .xx-dungeon-map-head {
+  align-items: flex-start;
+}
+
+.xx-handheld.is-android .xx-dungeon-map-title {
+  font-size: 15px;
+}
+
+.xx-handheld.is-android .xx-dungeon-map-meta {
+  font-size: 12px;
+  white-space: normal;
+  text-align: right;
+}
+
+.xx-handheld.is-android .xx-dungeon-enemy-list {
+  gap: 7px;
+}
+
+.xx-handheld.is-android .xx-dungeon-enemy-card {
+  padding: 9px 10px;
+}
+
+.xx-handheld.is-android .xx-dungeon-enemy-name {
+  font-size: 13px;
+}
+
+.xx-handheld.is-android .xx-dungeon-enemy-hp,
+.xx-handheld.is-android .xx-dungeon-empty-tip {
+  font-size: 12px;
+}
+
+.xx-handheld.is-android .xx-dungeon-enemy-drop {
+  font-size: 12px;
+}
+
+.xx-handheld.is-android .xx-backpack-list {
+  max-height: 182px;
+  gap: 8px;
+}
+
+.xx-handheld.is-android .xx-backpack-item {
+  padding: 9px 10px;
+}
+
+.xx-handheld.is-android .xx-backpack-name {
+  font-size: 13px;
+}
+
+.xx-handheld.is-android .xx-backpack-effect,
+.xx-handheld.is-android .xx-backpack-empty,
+.xx-handheld.is-android .xx-backpack-tip {
+  font-size: 12px;
+}
+
+.xx-handheld.is-android .xx-gacha-grid,
+.xx-handheld.is-android .xx-equip-grid {
+  grid-template-columns: 1fr;
+}
+
+.xx-handheld.is-android .xx-roster-item {
+  grid-template-columns: 38px minmax(0, 1fr) 52px;
+  grid-template-rows: auto auto;
+  row-gap: 1px;
+  min-height: 42px;
+}
+
+.xx-handheld.is-android .xx-team-row {
+  gap: 7px;
+}
+
+.xx-handheld.is-android .xx-team-member-btn {
+  height: 38px;
+  font-size: 13px;
+}
+
+.xx-handheld.is-android .xx-team-detail {
+  min-height: 84px;
+  padding: 9px;
+}
+
+.xx-handheld.is-android .xx-team-detail-name {
+  font-size: 14px;
+}
+
+.xx-handheld.is-android .xx-team-detail-line,
+.xx-handheld.is-android .xx-team-detail.is-empty {
+  font-size: 12px;
+}
+
+.xx-handheld.is-android .xx-title {
+  font-size: 19px;
+}
+
+.xx-handheld.is-android .xx-subtitle {
+  font-size: 13px;
+}
+
+.xx-handheld.is-android .xx-chip-label {
+  font-size: 12px;
+}
+
+.xx-handheld.is-android .xx-chip-value {
+  font-size: 14px;
+}
+
+.xx-handheld.is-android .xx-subview-title {
+  font-size: 14px;
+}
+
+.xx-handheld.is-android .xx-scene-title {
+  font-size: 16px;
+}
+
+.xx-handheld.is-android .xx-hp-text,
+.xx-handheld.is-android .xx-banter,
+.xx-handheld.is-android .xx-log-line {
+  font-size: 13px;
+}
+
+.xx-handheld.is-android .xx-card-head p {
+  font-size: 14px;
+}
+
+.xx-handheld.is-android .xx-card-head span,
+.xx-handheld.is-android .xx-gacha-desc,
+.xx-handheld.is-android .xx-member-role,
+.xx-handheld.is-android .xx-member-power,
+.xx-handheld.is-android .xx-equip-slot,
+.xx-handheld.is-android .xx-equip-name,
+.xx-handheld.is-android .xx-equip-bonus {
+  font-size: 12px;
+}
+
+.xx-handheld.is-android .xx-member-name,
+.xx-handheld.is-android .xx-gacha-title {
+  font-size: 14px;
+}
+
+.xx-handheld.is-android .xx-rarity {
+  grid-column: 1 / 2;
+  grid-row: 1 / 3;
+}
+
+.xx-handheld.is-android .xx-member-name {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+}
+
+.xx-handheld.is-android .xx-member-role {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+  font-size: 11px;
+}
+
+.xx-handheld.is-android .xx-member-power {
+  grid-column: 3 / 4;
+  grid-row: 1 / 3;
+  align-self: center;
+}
+
+.xx-handheld.is-android .xx-log-list {
+  height: 30vh;
+  min-height: 200px;
+}
+
+@media (max-width: 720px) {
+  .xx-panel {
+    width: calc((100vw - 10px) * 0.92);
+    max-width: calc((100vw - 10px) * 0.92);
+  }
+
+  .xx-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .xx-stats.xx-stats-dungeon {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .xx-gacha-grid,
+  .xx-equip-grid,
+  .xx-action-grid,
+  .xx-rest-actions {
+    grid-template-columns: 1fr;
+  }
+}

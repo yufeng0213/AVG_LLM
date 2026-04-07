@@ -10,6 +10,7 @@ import {
   formatTimestamp,
   formatPlayTime,
 } from '../save/saveManager'
+import { isAndroid } from '../utils/platform.js'
 
 const emit = defineEmits(['back', 'load-save', 'load-backup'])
 
@@ -22,6 +23,7 @@ const selectedSlot = ref(null)
 const showDeleteConfirm = ref(false)
 const deleteTarget = ref(null) // { type: 'save' | 'backup', id: string }
 const loadError = ref(null)
+const isAndroidPlatform = isAndroid()
 
 // 加载存档列表
 const loadSaveList = async () => {
@@ -174,6 +176,8 @@ const hasItems = computed(() => {
   return activeTab.value === 'saves' ? saves.value.length > 0 : backups.value.length > 0
 })
 
+const DEFAULT_QUICK_SAVE_SLOT_ID = 'save_quick_default'
+
 // 获取存档/备份的显示名称
 const getSlotName = (slot) => {
   if (activeTab.value === 'saves') {
@@ -182,19 +186,34 @@ const getSlotName = (slot) => {
   return slot.name || '未命名备份'
 }
 
-// 获取存档/备份的描述
-const getSlotDescription = (slot) => {
+const getSlotTypeLabel = (slot) => {
   if (activeTab.value === 'saves') {
-    const preview = slot.metadata?.preview || '无预览'
-    const playTime = slot.metadata?.playTime || 0
-    return `${preview.substring(0, 30)}... | 游戏时长: ${formatPlayTime(playTime)}`
+    return slot?.id === DEFAULT_QUICK_SAVE_SLOT_ID ? '快速存档' : '手动存档'
   }
-  return `包含 ${slot.messageCount || 0} 条历史消息`
+  return '历史备份'
+}
+
+const getSlotPreview = (slot) => {
+  if (activeTab.value === 'saves') {
+    const preview = String(slot?.metadata?.preview || '').trim()
+    return preview || '该存档暂无剧情预览'
+  }
+  const messageCount = Number(slot?.messageCount || 0)
+  return `包含 ${messageCount} 条历史消息记录`
+}
+
+const getSlotMetaInfo = (slot) => {
+  if (activeTab.value === 'saves') {
+    const playTime = Number(slot?.metadata?.playTime || 0)
+    return `游戏时长：${formatPlayTime(playTime)}`
+  }
+  const messageCount = Number(slot?.messageCount || 0)
+  return `消息条数：${messageCount}`
 }
 </script>
 
 <template>
-  <main class="save-load-screen">
+  <main class="save-load-screen" :class="{ 'is-android': isAndroidPlatform }">
     <!-- 标题区域 -->
     <header class="screen-header">
       <h1 class="screen-title">
@@ -258,15 +277,23 @@ const getSlotDescription = (slot) => {
           v-for="slot in currentList"
           :key="slot.id"
           class="slot-card"
-          :class="{ selected: selectedSlot?.id === slot.id }"
+          :class="{
+            selected: selectedSlot?.id === slot.id,
+            'is-quick-save': activeTab === 'saves' && slot.id === DEFAULT_QUICK_SAVE_SLOT_ID,
+          }"
           @click="selectSlot(slot)"
         >
           <div class="slot-header">
-            <span class="slot-name">{{ getSlotName(slot) }}</span>
+            <span class="slot-badge">{{ getSlotTypeLabel(slot) }}</span>
             <span class="slot-time">{{ formatTimestamp(slot.timestamp) }}</span>
           </div>
           <div class="slot-body">
-            <p class="slot-description">{{ getSlotDescription(slot) }}</p>
+            <h3 class="slot-name">{{ getSlotName(slot) }}</h3>
+            <p class="slot-preview">{{ getSlotPreview(slot) }}</p>
+            <div class="slot-meta">
+              <span class="slot-meta-item">{{ getSlotMetaInfo(slot) }}</span>
+              <span class="slot-meta-item slot-id">{{ slot.id }}</span>
+            </div>
           </div>
           <div class="slot-actions">
             <button

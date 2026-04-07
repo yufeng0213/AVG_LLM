@@ -1,0 +1,481 @@
+
+
+@keyframes avg-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+@keyframes avg-float-reverse {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(20px) rotate(-5deg);
+  }
+}
+
+@keyframes avg-gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes avg-wiggle {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes avg-bounce-subtle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@media (max-width: 900px) {
+  .two-column {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================
+   移动端适配样式 (Android/iOS)
+   ============================================ */
+
+/* 安全区域变量 */
+
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* 移动端通用优化变量 */
+
+@media (max-width: 768px) {
+  :root {
+    /* 简化视觉效果，减少 GPU 负载 */
+    --radius-card: 12px;
+    --radius-panel: 10px;
+    --radius-button: 8px;
+    --backdrop-blur: 4px;
+    /* 简化阴影 */
+    --shadow-panel: 0 0 12px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
+    --shadow-card: 0 0 10px color-mix(in srgb, var(--accent-orange) 25%, transparent);
+    --shadow-button: 0 0 8px color-mix(in srgb, var(--accent-magenta) 20%, transparent);
+    --shadow-field: 0 0 6px color-mix(in srgb, var(--accent-cyan) 20%, transparent);
+  }
+}
+
+/* 小屏幕设备适配 (手机竖屏) */
+
+@media (max-width: 768px) and (orientation: portrait) {
+  /* 允许页面滚动 */
+  html, body, #app {
+    min-height: 100%;
+    height: auto;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body {
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+    padding-left: var(--safe-area-left);
+    padding-right: var(--safe-area-right);
+  }
+
+  /* 按钮触摸区域增大 */
+  .avg-button,
+  button,
+  .action-button {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 14px 24px;
+    font-size: 1rem;
+  }
+
+  /* 对话框适配 */
+  .dialogue-box,
+  .avg-panel {
+    padding: 16px;
+    margin: 8px;
+    font-size: 14px;
+  }
+
+  /* 卡片适配 */
+  .avg-card {
+    padding: 12px;
+    margin: 8px;
+  }
+
+  /* 输入框适配 */
+  input,
+  textarea,
+  select,
+  .avg-field,
+  .setting-input,
+  .setting-select,
+  .setting-textarea {
+    font-size: 16px; /* 防止 iOS 自动缩放 */
+    padding: 14px 18px;
+    min-height: 48px;
+  }
+
+  /* 标题缩小 */
+  h1, .panel-title {
+    font-size: 1.4rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+  }
+
+  /* 阴影简化（减少 GPU 负载） */
+  .avg-panel,
+  .avg-card {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
+  }
+
+  .avg-button {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent-magenta) 25%, transparent);
+  }
+
+  /* 禁用复杂动画 */
+  .avg-blob {
+    display: none;
+  }
+
+  /* 滚动容器 */
+  .scroll-container {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 隐藏桌面端专用元素 */
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+/* 中等屏幕设备适配 (平板) */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --radius-card: 20px;
+    --radius-panel: 14px;
+  }
+
+  .avg-button,
+  button {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  /* 两列布局优化 */
+  .two-column {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+
+/* 触摸设备优化 */
+
+@media (hover: none) and (pointer: coarse) {
+  /* 移除 hover 效果，改用 active */
+  .avg-button:hover,
+  button:hover {
+    transform: none;
+    box-shadow: inherit;
+  }
+
+  .avg-button:active,
+  button:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+
+  /* 链接触摸优化 */
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 滚动优化 */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 禁用双击缩放 */
+  html {
+    touch-action: manipulation;
+  }
+}
+
+/* 横屏模式 (手机横屏/Android横屏) */
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .dialogue-box {
+    max-height: 35vh;
+    padding: 12px 16px;
+  }
+
+  .portrait-container {
+    max-width: 25vw;
+    max-height: 60vh;
+  }
+
+  /* 横屏时顶部工具栏紧凑 */
+  .game-topbar {
+    padding: 4px 8px;
+    gap: 8px;
+  }
+
+  /* 横屏时按钮更紧凑 */
+  .action-button {
+    padding: 6px 12px;
+    min-height: 36px;
+    font-size: 0.75rem;
+  }
+}
+
+/* 竖屏模式 */
+
+@media (max-width: 768px) and (orientation: portrait) {
+  .portrait-container {
+    max-height: 45vh;
+  }
+
+  /* 竖屏时对话框更大 */
+  .dialogue-box {
+    min-height: 25vh;
+    padding: 16px 20px;
+  }
+
+  /* 竖屏时按钮全宽 */
+  .dialogue-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .dialogue-actions .action-button {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ========== 移动端组件级优化 ========== */
+
+/* 移动端菜单网格优化 */
+
+@media (max-width: 768px) {
+  .menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .menu-button {
+    min-height: 80px;
+    padding: 12px;
+  }
+
+  .menu-button-icon {
+    font-size: 1.5rem;
+  }
+
+  .menu-button-text {
+    font-size: 0.9rem;
+  }
+
+  .menu-button-desc {
+    font-size: 0.7rem;
+    display: none; /* 移动端隐藏描述 */
+  }
+
+  /* 移动端面板简化 */
+  .launch-screen {
+    padding: 16px;
+    border-width: 4px;
+    border-radius: 16px;
+    box-shadow: 0 0 20px color-mix(in srgb, var(--accent-magenta) 40%, transparent);
+  }
+
+  .menu-panel {
+    padding: 12px;
+    border-width: 3px;
+  }
+
+  /* 移动端标题优化 */
+  .hero-title-main {
+    font-size: 2rem;
+  }
+
+  .hero-title-gradient {
+    font-size: 1.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.9rem;
+  }
+
+  /* 移动端隐藏装饰元素 */
+  .massive-word,
+  .floating-layer {
+    display: none;
+  }
+}
+
+/* 超小屏幕 (小于480px) */
+
+@media (max-width: 480px) {
+  .menu-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .menu-button {
+    min-height: 60px;
+    padding: 10px 12px;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .menu-button-icon {
+    font-size: 1.2rem;
+  }
+
+  .menu-button-text {
+    font-size: 0.85rem;
+  }
+
+  .hero-block {
+    gap: 8px;
+  }
+
+  .hero-tag {
+    padding: 6px 12px;
+    font-size: 0.7rem;
+  }
+}
+
+/* 高对比度模式支持 */
+
+@media (prefers-contrast: high) {
+  :root {
+    --background: #000000;
+    --foreground: #ffffff;
+    --border-panel: #ffffff;
+    --border-field: #ffffff;
+  }
+}
+
+/* 深色模式强制（应用主题） */
+
+@media (prefers-color-scheme: light) {
+  /* 保持深色主题，不跟随系统 */
+  :root {
+    color-scheme: dark;
+  }
+}
+
+/* Capacitor 原生平台特定样式 */
+
+.platform-android .avg-panel,
+.platform-ios .avg-panel {
+  /* 原生平台下的面板样式 */
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+}
+
+/* Android 特定样式 */
+
+.platform-android {
+  /* Material Design 风格适配 */
+  --radius-button: 4px;
+}
+
+/* iOS 特定样式 */
+
+.platform-ios {
+  /* iOS 风格适配 */
+  --radius-button: 10px;
+}
+
+/* ========== Android 竖屏分辨率适配 ========== */
+
+/*
+ * 设计基准：1080x1920 (9:16 竖屏)
+ * 所有 Android 竖屏设备保持相同布局比例
+ */
+
+.platform-android.android-portrait {
+  /* 禁用双击缩放 */
+  touch-action: manipulation;
+}
+
+body.platform-android.android-portrait {
+  /* 允许页面滚动 */
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  height: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 !important;
+}
+
+/* Android 竖屏下的字体缩放基准 */
+
+.platform-android.android-portrait {
+  font-size: 16px;
+}
+
+/* Android 竖屏下的按钮尺寸适配 - 更大的触控区域 */
+
+.platform-android.android-portrait .action-button,
+.platform-android.android-portrait button:not(.spine-action-btn):not(.icon-btn):not(.small-btn):not(.menu-toggle-btn):not(.top-menu-btn):not(.player-toggle-btn):not(.control-btn):not(.play-btn):not(.skin-option):not(.mp-compact-btn):not(.phone-trigger):not(.app-icon):not(.back-btn):not(.contact-item):not(.messages-conversation-item):not(.sms-send-btn):not(.nav-btn):not(.moments-new-btn):not(.moments-refresh-btn):not(.moments-reply-btn):not(.moments-reply-submit-btn):not(.moments-reply-cancel-btn):not(.forum-refresh-btn):not(.forum-post-item):not(.alerts-read-all-btn):not(.alerts-filter-btn):not(.collect-clue-btn):not(.clue-action-btn):not(.news-refresh-btn):not(.news-version-tab):not(.news-channel-btn):not(.map-refresh-btn):not(.map-node-btn):not(.map-travel-btn):not(.shop-wallet-link):not(.wallet-shop-link):not(.shop-search-btn):not(.shop-buy-btn):not(.cg-btn):not(.dialogue-tts-btn):not(.dialogue-tts-save-inline):not(.dialogue-tts-save-corner-floating):not(.history-dialogue-close):not(.history-dialogue-voice-btn) {
+  min-height: 48px;
+  min-width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+}

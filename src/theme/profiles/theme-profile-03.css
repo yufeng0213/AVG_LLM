@@ -1,0 +1,555 @@
+
+
+/* Action buttons */
+:root[data-theme-style='terminal-cli'] .action-button {
+  border: 1px solid var(--border-control);
+  border-radius: 0;
+  color: var(--foreground);
+  background: transparent;
+  box-shadow: var(--shadow-button);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.1s linear;
+}
+:root[data-theme-style='terminal-cli'] .action-button:hover {
+  background: var(--foreground);
+  color: var(--background);
+  box-shadow: 0 0 10px rgba(51, 255, 0, 0.5);
+}
+:root[data-theme-style='terminal-cli'] .action-button:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .action-button.action-outline {
+  color: var(--muted);
+  border-color: var(--border-panel);
+  background: transparent;
+}
+:root[data-theme-style='terminal-cli'] .action-button.action-outline:hover {
+  color: var(--foreground);
+  border-color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .action-button.action-ghost {
+  color: var(--muted);
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .action-button.action-ghost:hover {
+  color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .status-message {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+}
+:root[data-theme-style='terminal-cli'] .theme-preview-card {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: all 0.1s linear;
+}
+:root[data-theme-style='terminal-cli'] .theme-preview-card:hover {
+  border-color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .theme-preview-card.active {
+  border-color: var(--foreground);
+  background: var(--surface-status);
+}
+:root[data-theme-style='terminal-cli'] .preview-swatches span {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+}
+/* WorldBook screens */
+:root[data-theme-style='terminal-cli'] .worldbook-screen,
+:root[data-theme-style='terminal-cli'] .worldbook-editor-screen {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: var(--background);
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-screen::before,
+:root[data-theme-style='terminal-cli'] .worldbook-editor-screen::before {
+  opacity: 0.03;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+}
+:root[data-theme-style='terminal-cli'] .worldbook-screen::after,
+:root[data-theme-style='terminal-cli'] .worldbook-editor-screen::after {
+  opacity: 0;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-bg-word,
+:root[data-theme-style='terminal-cli'] .worldbook-editor-bg-word {
+  color: color-mix(in srgb, var(--foreground) 5%, transparent);
+  opacity: 0.1;
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-tag,
+:root[data-theme-style='terminal-cli'] .worldbook-editor-tag {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  text-shadow: none;
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-title,
+:root[data-theme-style='terminal-cli'] .worldbook-editor-title,
+:root[data-theme-style='terminal-cli'] .worldbook-book-spine,
+:root[data-theme-style='terminal-cli'] .worldbook-editor-tab,
+:root[data-theme-style='terminal-cli'] .worldbook-entry-item {
+  text-shadow: var(--text-shadow-single);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-title-gradient,
+:root[data-theme-style='terminal-cli'] .worldbook-editor-title-gradient {
+  font-family: var(--font-heading);
+  background: var(--foreground);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-editor-tab {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  text-transform: uppercase;
+  transition: all 0.1s linear;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-editor-tab:hover {
+  color: var(--foreground);
+  border-color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .worldbook-editor-tab.active {
+  border-color: var(--foreground);
+  background: var(--surface-status);
+  color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .worldbook-shelf-zone {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-shelf::before {
+  opacity: 0.05;
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 0 38%,
+      var(--border-panel) 38% 42%,
+      transparent 42% 78%,
+      var(--border-panel) 78% 82%,
+      transparent 82% 100%
+    );
+}
+:root[data-theme-style='terminal-cli'] .worldbook-shelf-title {
+  color: var(--foreground);
+  text-shadow: var(--text-shadow-single);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-add-button {
+  border: 1px solid var(--border-control);
+  color: var(--foreground);
+  background: transparent;
+  box-shadow: var(--shadow-button);
+  text-transform: uppercase;
+  transition: all 0.1s linear;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-add-button:hover {
+  background: var(--foreground);
+  color: var(--background);
+}
+:root[data-theme-style='terminal-cli'] .worldbook-book-spine {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: none;
+  text-transform: uppercase;
+  transition: all 0.1s linear;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-book-spine:hover {
+  color: var(--foreground);
+  border-color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .worldbook-book-spine.active {
+  border-color: var(--foreground);
+  background: var(--surface-status);
+  color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .spine-title {
+  text-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .spine-badge {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-entry-nav {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-entry-item {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  text-transform: uppercase;
+  transition: all 0.1s linear;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-entry-item:hover {
+  color: var(--foreground);
+  border-color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .worldbook-entry-item.active {
+  border-color: var(--foreground);
+  background: var(--surface-status);
+  color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .worldbook-add-char-btn {
+  color: var(--muted);
+  border: 1px solid var(--border-panel);
+  background: transparent;
+  text-transform: uppercase;
+  transition: all 0.1s linear;
+}
+:root[data-theme-style='terminal-cli'] .worldbook-add-char-btn:hover {
+  color: var(--foreground);
+  border-color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .char-note {
+  color: var(--muted);
+}
+/* Game screen */
+:root[data-theme-style='terminal-cli'] .game-screen {
+  border: none;
+  border-radius: 0;
+  background: var(--background);
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .game-screen::before {
+  opacity: 0.03;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+}
+:root[data-theme-style='terminal-cli'] .game-screen::after {
+  opacity: 0;
+}
+:root[data-theme-style='terminal-cli'] .game-bg-word {
+  color: color-mix(in srgb, var(--foreground) 5%, transparent);
+  opacity: 0.1;
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .game-topbar .back-button {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  color: var(--foreground);
+  background: transparent;
+  box-shadow: none;
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .hud-chip {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: none;
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .scene-stage {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .scene-gradient {
+  background: var(--background);
+}
+:root[data-theme-style='terminal-cli'] .scene-window {
+  opacity: 0.03;
+}
+:root[data-theme-style='terminal-cli'] .scene-floor {
+  opacity: 0.1;
+}
+:root[data-theme-style='terminal-cli'] .character-stand {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .character-stand::before {
+  opacity: 0.05;
+}
+:root[data-theme-style='terminal-cli'] .character-stand.active {
+  border: none;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .character-name,
+:root[data-theme-style='terminal-cli'] .character-role,
+:root[data-theme-style='terminal-cli'] .speaker-tag {
+  text-shadow: var(--text-shadow-single);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .dialogue-box {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: var(--background);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .speaker-tag {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  color: var(--accent-cyan);
+  background: transparent;
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .line-progress,
+:root[data-theme-style='terminal-cli'] .dialogue-text {
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
+:root[data-theme-style='terminal-cli'] .worldbook-editor {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .entry-hint {
+  color: var(--muted);
+}
+/* Plugin Manager Screen - terminal-cli theme */
+:root[data-theme-style='terminal-cli'] .plugin-screen {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: var(--background);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+:root[data-theme-style='terminal-cli'] .plugin-screen::before {
+  opacity: 0.03;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+}
+:root[data-theme-style='terminal-cli'] .plugin-screen::after {
+  opacity: 0;
+}
+:root[data-theme-style='terminal-cli'] .plugin-bg-word {
+  color: color-mix(in srgb, var(--foreground) 5%, transparent);
+  opacity: 0.1;
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .plugin-tag {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  text-shadow: none;
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .plugin-title {
+  text-shadow: var(--text-shadow-single);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .plugin-title .title-gradient {
+  font-family: var(--font-heading);
+  background: var(--foreground);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .plugin-content {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .plugin-group {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .group-header {
+  border-bottom: 1px solid var(--border-panel);
+}
+:root[data-theme-style='terminal-cli'] .group-title {
+  text-shadow: var(--text-shadow-single);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .plugin-card {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  text-transform: uppercase;
+  transition: all 0.1s linear;
+}
+:root[data-theme-style='terminal-cli'] .plugin-card:hover {
+  color: var(--foreground);
+  border-color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .plugin-card--enabled {
+  border-color: var(--foreground);
+  background: var(--surface-status);
+  color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .plugin-icon-area {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+}
+:root[data-theme-style='terminal-cli'] .plugin-name {
+  text-shadow: none;
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .plugin-desc {
+  color: var(--muted);
+  text-transform: lowercase;
+}
+:root[data-theme-style='terminal-cli'] .plugin-meta {
+  color: var(--muted);
+}
+:root[data-theme-style='terminal-cli'] .toggle-btn {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  text-transform: uppercase;
+  transition: all 0.1s linear;
+}
+:root[data-theme-style='terminal-cli'] .toggle-btn:hover {
+  color: var(--foreground);
+  border-color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .toggle-btn--on {
+  border-color: var(--foreground);
+  background: var(--surface-status);
+  color: var(--foreground);
+}
+:root[data-theme-style='terminal-cli'] .uninstall-btn {
+  border: 1px solid var(--accent-orange);
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent-orange);
+}
+:root[data-theme-style='terminal-cli'] .dev-guide {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .dev-guide-summary {
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .dev-guide-content {
+  border-top: 1px solid var(--border-panel);
+}
+:root[data-theme-style='terminal-cli'] .guide-title {
+  text-shadow: var(--text-shadow-single);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .guide-code {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: var(--surface-field);
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
+:root[data-theme-style='terminal-cli'] .guide-hint {
+  color: var(--muted);
+}
+:root[data-theme-style='terminal-cli'] .guide-hint code {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  color: var(--accent-cyan);
+  background: transparent;
+}
+:root[data-theme-style='terminal-cli'] .plugin-loading-section {
+  border: 1px solid var(--border-panel);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme-style='terminal-cli'] .loading-text {
+  color: var(--foreground);
+  text-shadow: var(--text-shadow-single);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .empty-title {
+  text-shadow: var(--text-shadow-single);
+  text-transform: uppercase;
+}
+:root[data-theme-style='terminal-cli'] .empty-desc,
+:root[data-theme-style='terminal-cli'] .empty-hint {
+  color: var(--muted);
+}
+/* Terminal CLI Animations */
+@keyframes terminal-pulse {
+  0%,
+  100% {
+    opacity: 0.03;
+  }
+  50% {
+    opacity: 0.05;
+  }
+}
+@keyframes terminal-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+/* Cursor blink utility */
+:root[data-theme-style='terminal-cli'] .cursor-blink {
+  animation: terminal-blink 1s step-end infinite;
+}
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme-style='terminal-cli'] body::after {
+    animation: none !important;
+  }
+  
+  :root[data-theme-style='terminal-cli'] .menu-button,
+  :root[data-theme-style='terminal-cli'] .action-button,
+  :root[data-theme-style='terminal-cli'] .settings-nav-item,
+  :root[data-theme-style='terminal-cli'] .theme-preview-card,
+  :root[data-theme-style='terminal-cli'] .plugin-card,
+  :root[data-theme-style='terminal-cli'] .toggle-btn,
+  :root[data-theme-style='terminal-cli'] .worldbook-book-spine,
+  :root[data-theme-style='terminal-cli'] .worldbook-entry-item,
+  :root[data-theme-style='terminal-cli'] .worldbook-add-button,
+  :root[data-theme-style='terminal-cli'] .back-button {
+    transition: none !important;
+    transform: none !important;
+  }
+}
