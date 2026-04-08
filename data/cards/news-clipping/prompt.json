@@ -1,0 +1,64 @@
+{
+  "id": "news-clipping",
+  "name": "报纸剪报",
+  "category": "news",
+  "description": "一张从报纸上剪下来的新闻剪报，带有手写批注和咖啡渍",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "悬疑|调查|侦探|新闻|媒体",
+        "description": "悬疑或调查场景可能触发"
+      },
+      {
+        "type": "story",
+        "operator": "contains",
+        "value": "报纸|新闻|报道|消息",
+        "description": "剧情涉及新闻时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "newsName": {
+      "type": "string",
+      "description": "报纸名称"
+    },
+    "date": {
+      "type": "date",
+      "format": "YYYY年MM月DD日",
+      "description": "新闻日期"
+    },
+    "title": {
+      "type": "string",
+      "description": "新闻标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "新闻内容"
+    },
+    "section": {
+      "type": "string",
+      "description": "版面/栏目"
+    },
+    "pageNumber": {
+      "type": "string",
+      "description": "页码"
+    },
+    "note": {
+      "type": "string",
+      "description": "手写批注内容"
+    }
+  },
+  "promptTemplate": "请生成一份报纸剪报的内容。\n\n背景信息：\n- 场景：{{scene}}\n- 相关事件：{{event}}\n- 时间背景：{{timeContext}}\n\n要求：\n1. 新闻标题要吸引眼球\n2. 内容要符合故事背景设定\n3. 可以是重要新闻或有趣的小报道\n4. 手写批注要体现剪报保存者的关注点\n5. 字数控制在200-300字之间\n\n请直接输出剪报内容，不要有其他说明。",
+  "style": {
+    "theme": "investigative",
+    "colors": ["#f5f5f0", "#1a1a1a", "#e74c3c"],
+    "mood": "悬疑调查"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

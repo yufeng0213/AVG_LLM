@@ -1,0 +1,55 @@
+{
+  "id": "postcard-travel",
+  "name": "旅行明信片",
+  "category": "postcard",
+  "description": "一张旅行风格的明信片，带有风景照片和旅行元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "旅行|度假|风景|城市|海边|山川",
+        "description": "旅行场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "location": {
+      "type": "string",
+      "description": "地点"
+    },
+    "sender": {
+      "type": "string",
+      "description": "发送者"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "接收者"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "明信片内容"
+    },
+    "weather": {
+      "type": "string",
+      "default": "晴朗",
+      "options": ["晴朗", "多云", "雨天", "雪天"],
+      "description": "天气"
+    }
+  },
+  "promptTemplate": "请生成一张旅行明信片的内容。\n\n背景信息：\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n- 地点：{{location}}\n- 天气：{{weather}}\n\n要求：\n1. 使用轻松愉快的旅行语言\n2. 内容要带有对风景的描述和感受\n3. 语气要温馨亲切\n4. 字数控制在100-200字之间\n\n请直接输出明信片内容，不要有其他说明。",
+  "style": {
+    "theme": "postcard",
+    "colors": ["#f5f5f5", "#87ceeb", "#ffd700"],
+    "mood": "轻松愉快"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

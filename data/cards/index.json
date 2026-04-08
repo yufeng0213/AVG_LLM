@@ -1,0 +1,520 @@
+{
+  "version": "1.0.0",
+  "description": "剧情小卡片索引配置文件",
+  "categories": {
+    "letter": {
+      "name": "信件",
+      "description": "各种类型的信件卡片",
+      "icon": "✉️",
+      "cards": ["letter-love", "letter-apology", "letter-farewell"]
+    },
+    "greeting": {
+      "name": "贺卡",
+      "description": "节日和庆祝类贺卡",
+      "icon": "🎉",
+      "cards": ["greeting-birthday", "greeting-newyear", "greeting-valentine"]
+    },
+    "email": {
+      "name": "电子邮件",
+      "description": "各种类型的电子邮件",
+      "icon": "📧",
+      "cards": ["email-work", "email-mysterious"]
+    },
+    "photo": {
+      "name": "照片",
+      "description": "各种类型的照片卡片",
+      "icon": "📷",
+      "cards": ["photo-secret", "photo-vintage", "photo-group"]
+    },
+    "diary": {
+      "name": "日记",
+      "description": "各种类型的日记卡片",
+      "icon": "📔",
+      "cards": ["diary-secret", "diary-travel"]
+    },
+    "note": {
+      "name": "便签",
+      "description": "便签和留言类卡片",
+      "icon": "📝",
+      "cards": ["note-sticky", "minimalist-note", "poetry-note", "memo-work"]
+    },
+    "ticket": {
+      "name": "票据",
+      "description": "各种类型的票据卡片",
+      "icon": "🎫",
+      "cards": ["ticket-train", "ticket-plane", "coupon-ticket", "lottery-ticket"]
+    },
+    "news": {
+      "name": "新闻",
+      "description": "报纸和新闻类卡片",
+      "icon": "📰",
+      "cards": ["news-clipping", "weather-report"]
+    },
+    "cyberpunk": {
+      "name": "赛博朋克",
+      "description": "赛博朋克风格卡片",
+      "icon": "🌐",
+      "cards": ["cyberpunk-holocard"]
+    },
+    "ancient": {
+      "name": "古风",
+      "description": "古风/中国风卡片",
+      "icon": "📜",
+      "cards": ["ancient-scroll", "ancient-poetry", "wuxia-letter", "xianxia-jade"]
+    },
+    "kawaii": {
+      "name": "可爱",
+      "description": "可爱卡通风格卡片",
+      "icon": "💕",
+      "cards": ["kawaii-note"]
+    },
+    "horror": {
+      "name": "恐怖",
+      "description": "恐怖/暗黑风格卡片",
+      "icon": "👻",
+      "cards": ["horror-letter", "gothic-letter", "lovecraft-manuscript"]
+    },
+    "steampunk": {
+      "name": "蒸汽朋克",
+      "description": "蒸汽朋克风格卡片",
+      "icon": "⚙️",
+      "cards": ["steampunk-telegram"]
+    },
+    "surreal": {
+      "name": "超现实",
+      "description": "超现实/梦幻风格卡片",
+      "icon": "🌙",
+      "cards": ["surreal-dream"]
+    },
+    "weird-tale": {
+      "name": "新怪谈",
+      "description": "新怪谈/异常现象风格卡片",
+      "icon": "🔍",
+      "cards": ["weird-tale-report"]
+    },
+    "scifi": {
+      "name": "科幻",
+      "description": "科幻/未来风格卡片",
+      "icon": "🚀",
+      "cards": ["scifi-transmission"]
+    },
+    "noir": {
+      "name": "黑色电影",
+      "description": "黑色电影/侦探风格卡片",
+      "icon": "🕵️",
+      "cards": ["noir-detective"]
+    },
+    "fantasy": {
+      "name": "奇幻",
+      "description": "奇幻/魔法风格卡片",
+      "icon": "🔮",
+      "cards": ["fantasy-scroll", "prophecy-scroll", "tarot-card"]
+    },
+    "postcard": {
+      "name": "明信片",
+      "description": "明信片类卡片",
+      "icon": "🖼️",
+      "cards": ["postcard-travel"]
+    },
+    "retro": {
+      "name": "复古",
+      "description": "复古风格卡片",
+      "icon": "📻",
+      "cards": ["retro-radio", "vintage-poster"]
+    },
+    "medical": {
+      "name": "医疗",
+      "description": "医疗/健康类卡片",
+      "icon": "🏥",
+      "cards": ["medical-report"]
+    },
+    "recipe": {
+      "name": "食谱",
+      "description": "食谱/烹饪类卡片",
+      "icon": "🍳",
+      "cards": ["recipe-card"]
+    },
+    "music": {
+      "name": "音乐",
+      "description": "音乐/乐谱类卡片",
+      "icon": "🎵",
+      "cards": ["music-score"]
+    },
+    "business": {
+      "name": "商务",
+      "description": "商务/名片类卡片",
+      "icon": "💼",
+      "cards": ["business-card"]
+    },
+    "invitation": {
+      "name": "邀请函",
+      "description": "邀请函类卡片",
+      "icon": "💌",
+      "cards": ["invitation-card"]
+    },
+    "contract": {
+      "name": "契约",
+      "description": "契约/文书类卡片",
+      "icon": "📜",
+      "cards": ["contract-paper"]
+    },
+    "wanted": {
+      "name": "通缉令",
+      "description": "通缉令/悬赏类卡片",
+      "icon": "⚠️",
+      "cards": ["wanted-poster"]
+    },
+    "digital": {
+      "name": "数字",
+      "description": "数字/电子风格卡片",
+      "icon": "📱",
+      "cards": ["qr-message"]
+    }
+  },
+  "cards": {
+    "letter-love": {
+      "name": "情书",
+      "category": "letter",
+      "rarity": "rare",
+      "preview": "一封充满爱意的情书"
+    },
+    "letter-apology": {
+      "name": "道歉信",
+      "category": "letter",
+      "rarity": "uncommon",
+      "preview": "一封真诚的道歉信"
+    },
+    "letter-farewell": {
+      "name": "告别信",
+      "category": "letter",
+      "rarity": "epic",
+      "preview": "一封充满不舍的告别信"
+    },
+    "greeting-birthday": {
+      "name": "生日贺卡",
+      "category": "greeting",
+      "rarity": "special",
+      "preview": "一张充满欢乐的生日贺卡"
+    },
+    "greeting-newyear": {
+      "name": "新年贺卡",
+      "category": "greeting",
+      "rarity": "seasonal",
+      "preview": "一张喜庆的新年贺卡"
+    },
+    "greeting-valentine": {
+      "name": "情人节贺卡",
+      "category": "greeting",
+      "rarity": "seasonal",
+      "preview": "一张浪漫的情人节贺卡"
+    },
+    "email-work": {
+      "name": "工作邮件",
+      "category": "email",
+      "rarity": "common",
+      "preview": "一封正式的工作邮件"
+    },
+    "email-mysterious": {
+      "name": "神秘邮件",
+      "category": "email",
+      "rarity": "rare",
+      "preview": "一封来源神秘的加密邮件"
+    },
+    "photo-secret": {
+      "name": "偷拍的照片",
+      "category": "photo",
+      "rarity": "uncommon",
+      "preview": "一张偷偷拍摄的照片"
+    },
+    "photo-vintage": {
+      "name": "老照片",
+      "category": "photo",
+      "rarity": "rare",
+      "preview": "一张泛黄的老照片"
+    },
+    "photo-group": {
+      "name": "合影照片",
+      "category": "photo",
+      "rarity": "common",
+      "preview": "一张温馨的合影照片"
+    },
+    "diary-secret": {
+      "name": "秘密日记",
+      "category": "diary",
+      "rarity": "rare",
+      "preview": "一本带锁的秘密日记"
+    },
+    "diary-travel": {
+      "name": "旅行日记",
+      "category": "diary",
+      "rarity": "uncommon",
+      "preview": "一本充满冒险气息的旅行日记"
+    },
+    "note-sticky": {
+      "name": "便签",
+      "category": "note",
+      "rarity": "common",
+      "preview": "一张黄色便签纸"
+    },
+    "ticket-train": {
+      "name": "火车票",
+      "category": "ticket",
+      "rarity": "common",
+      "preview": "一张火车票"
+    },
+    "news-clipping": {
+      "name": "报纸剪报",
+      "category": "news",
+      "rarity": "uncommon",
+      "preview": "一张从报纸上剪下来的新闻剪报"
+    },
+    "cyberpunk-holocard": {
+      "name": "全息数据卡",
+      "category": "cyberpunk",
+      "rarity": "rare",
+      "preview": "一张赛博朋克风格的全息数据卡"
+    },
+    "ancient-scroll": {
+      "name": "古风信笺",
+      "category": "ancient",
+      "rarity": "rare",
+      "preview": "一封古风卷轴信笺"
+    },
+    "kawaii-note": {
+      "name": "可爱便签",
+      "category": "kawaii",
+      "rarity": "uncommon",
+      "preview": "一张超可爱的卡通风格便签"
+    },
+    "horror-letter": {
+      "name": "诅咒信件",
+      "category": "horror",
+      "rarity": "epic",
+      "preview": "一封带有诅咒气息的神秘信件"
+    },
+    "steampunk-telegram": {
+      "name": "蒸汽朋克电报",
+      "category": "steampunk",
+      "rarity": "rare",
+      "preview": "一张蒸汽朋克风格的电报"
+    },
+    "ancient-poetry": {
+      "name": "古诗词笺",
+      "category": "ancient",
+      "rarity": "rare",
+      "preview": "一页写有古诗词的精美信笺"
+    },
+    "surreal-dream": {
+      "name": "梦境碎片",
+      "category": "surreal",
+      "rarity": "epic",
+      "preview": "一片来自梦境的超现实碎片"
+    },
+    "weird-tale-report": {
+      "name": "异常现象报告",
+      "category": "weird-tale",
+      "rarity": "rare",
+      "preview": "一份记录异常现象的机密报告"
+    },
+    "gothic-letter": {
+      "name": "哥特式信函",
+      "category": "horror",
+      "rarity": "rare",
+      "preview": "一封哥特风格的神秘信函"
+    },
+    "scifi-transmission": {
+      "name": "星际传输讯息",
+      "category": "scifi",
+      "rarity": "rare",
+      "preview": "一条来自星际的传输讯息"
+    },
+    "wuxia-letter": {
+      "name": "武侠密函",
+      "category": "ancient",
+      "rarity": "rare",
+      "preview": "一封江湖武侠的密函"
+    },
+    "xianxia-jade": {
+      "name": "仙家玉简",
+      "category": "ancient",
+      "rarity": "epic",
+      "preview": "一块记载仙家秘法的玉简"
+    },
+    "lovecraft-manuscript": {
+      "name": "克苏鲁手稿",
+      "category": "horror",
+      "rarity": "epic",
+      "preview": "一份记载古老恐怖的手稿"
+    },
+    "noir-detective": {
+      "name": "侦探档案",
+      "category": "noir",
+      "rarity": "uncommon",
+      "preview": "一份黑色电影风格的侦探档案"
+    },
+    "fantasy-scroll": {
+      "name": "魔法卷轴",
+      "category": "fantasy",
+      "rarity": "rare",
+      "preview": "一个记载魔法的神秘卷轴"
+    },
+    "postcard-travel": {
+      "name": "旅行明信片",
+      "category": "postcard",
+      "rarity": "common",
+      "preview": "一张来自远方的旅行明信片"
+    },
+    "retro-radio": {
+      "name": "复古广播稿",
+      "category": "retro",
+      "rarity": "uncommon",
+      "preview": "一份复古风格的广播稿"
+    },
+    "minimalist-note": {
+      "name": "极简便签",
+      "category": "note",
+      "rarity": "common",
+      "preview": "一张极简风格的便签"
+    },
+    "vintage-poster": {
+      "name": "复古海报",
+      "category": "retro",
+      "rarity": "uncommon",
+      "preview": "一张复古风格的海报"
+    },
+    "medical-report": {
+      "name": "医疗报告",
+      "category": "medical",
+      "rarity": "uncommon",
+      "preview": "一份医疗诊断报告"
+    },
+    "recipe-card": {
+      "name": "食谱卡片",
+      "category": "recipe",
+      "rarity": "common",
+      "preview": "一张记录美食做法的食谱卡"
+    },
+    "music-score": {
+      "name": "乐谱手稿",
+      "category": "music",
+      "rarity": "rare",
+      "preview": "一份手写的乐谱手稿"
+    },
+    "poetry-note": {
+      "name": "诗歌便签",
+      "category": "note",
+      "rarity": "uncommon",
+      "preview": "一张写有诗歌的便签"
+    },
+    "business-card": {
+      "name": "商务名片",
+      "category": "business",
+      "rarity": "common",
+      "preview": "一张商务名片"
+    },
+    "invitation-card": {
+      "name": "邀请函",
+      "category": "invitation",
+      "rarity": "uncommon",
+      "preview": "一张精美的邀请函"
+    },
+    "ticket-plane": {
+      "name": "机票",
+      "category": "ticket",
+      "rarity": "common",
+      "preview": "一张飞机机票"
+    },
+    "contract-paper": {
+      "name": "契约文书",
+      "category": "contract",
+      "rarity": "rare",
+      "preview": "一份正式的契约文书"
+    },
+    "prophecy-scroll": {
+      "name": "预言卷轴",
+      "category": "fantasy",
+      "rarity": "epic",
+      "preview": "一个记载预言的神秘卷轴"
+    },
+    "memo-work": {
+      "name": "工作备忘录",
+      "category": "note",
+      "rarity": "common",
+      "preview": "一份工作备忘录"
+    },
+    "wanted-poster": {
+      "name": "通缉令",
+      "category": "wanted",
+      "rarity": "uncommon",
+      "preview": "一张通缉令海报"
+    },
+    "tarot-card": {
+      "name": "塔罗牌",
+      "category": "fantasy",
+      "rarity": "rare",
+      "preview": "一张神秘的塔罗牌"
+    },
+    "qr-message": {
+      "name": "二维码讯息",
+      "category": "digital",
+      "rarity": "common",
+      "preview": "一条二维码形式的数字讯息"
+    },
+    "coupon-ticket": {
+      "name": "优惠券",
+      "category": "ticket",
+      "rarity": "common",
+      "preview": "一张优惠券"
+    },
+    "lottery-ticket": {
+      "name": "彩票",
+      "category": "ticket",
+      "rarity": "uncommon",
+      "preview": "一张彩票"
+    },
+    "weather-report": {
+      "name": "天气预报",
+      "category": "news",
+      "rarity": "common",
+      "preview": "一份天气预报报告"
+    }
+  },
+  "rarityLevels": {
+    "common": {
+      "name": "普通",
+      "color": "#95a5a6",
+      "probability": 0.05
+    },
+    "uncommon": {
+      "name": "稀有",
+      "color": "#3498db",
+      "probability": 0.03
+    },
+    "rare": {
+      "name": "珍贵",
+      "color": "#9b59b6",
+      "probability": 0.02
+    },
+    "epic": {
+      "name": "史诗",
+      "color": "#e74c3c",
+      "probability": 0.01
+    },
+    "special": {
+      "name": "特殊",
+      "color": "#f39c12",
+      "probability": 0.0
+    },
+    "seasonal": {
+      "name": "季节限定",
+      "color": "#1abc9c",
+      "probability": 0.0
+    }
+  },
+  "settings": {
+    "defaultProbability": 0.03,
+    "maxCardsPerSession": 3,
+    "cooldownMinutes": 30,
+    "enableCollectibles": true
+  }
+}

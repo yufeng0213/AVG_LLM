@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商务名片</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      padding: 20px;
+    }
+    
+    .business-container {
+      position: relative;
+      width: 100%;
+      max-width: 350px;
+    }
+    
+    .business-card {
+      position: relative;
+      background: #fff;
+      padding: 25px 20px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+    }
+    
+    .card-stripe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #1a1a1a, #3498db);
+    }
+    
+    .card-left {
+      position: absolute;
+      left: 0;
+      top: 20px;
+      bottom: 20px;
+      width: 4px;
+      background: #3498db;
+    }
+    
+    .name-section {
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .person-name {
+      font-size: 18px;
+      color: #1a1a1a;
+      font-weight: 500;
+      letter-spacing: 1px;
+    }
+    
+    .person-title {
+      font-size: 12px;
+      color: #3498db;
+      margin-top: 5px;
+      letter-spacing: 1px;
+    }
+    
+    .company-section {
+      margin-bottom: 15px;
+    }
+    
+    .company-name {
+      font-size: 14px;
+      color: #333;
+      font-weight: 500;
+    }
+    
+    .company-tagline {
+      font-size: 10px;
+      color: #888;
+      margin-top: 3px;
+    }
+    
+    .contact-section {
+      display: grid;
+      gap: 8px;
+    }
+    
+    .contact-item {
+      font-size: 11px;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .contact-icon {
+      width: 15px;
+      color: #3498db;
+      font-size: 10px;
+    }
+    
+    .logo-placeholder {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 40px;
+      height: 40px;
+      background: rgba(52, 152, 219, 0.1);
+      border: 1px solid rgba(52, 152, 219, 0.3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #3498db;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border: 1px solid rgba(52, 152, 219, 0.2);
+    }
+    
+    .corner-decoration.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-decoration.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+  </style>
+</head>
+<body>
+  <div class="business-container">
+    <div class="business-card">
+      <div class="card-stripe"></div>
+      <div class="card-left"></div>
+      <div class="logo-placeholder">LOGO</div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      
+      <div class="name-section">
+        <div class="person-name">{{name}}</div>
+        <div class="person-title">{{title}}</div>
+      </div>
+      
+      <div class="company-section">
+        <div class="company-name">{{company}}</div>
+        <div class="company-tagline">{{tagline}}</div>
+      </div>
+      
+      <div class="contact-section">
+        <div class="contact-item">
+          <span class="contact-icon">📞</span>
+          <span>{{contact}}</span>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">📧</span>
+          <span>{{email}}</span>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">📍</span>
+          <span>{{address}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

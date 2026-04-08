@@ -14,12 +14,27 @@
         >
           ☰
         </button>
+        <button
+          type="button"
+          class="debug-toggle-btn"
+          :class="{ 'is-active': showDebugPanel }"
+          :aria-expanded="showDebugPanel"
+          aria-label="打开调试面板"
+          @click="toggleDebugPanel"
+        >
+          Debug
+        </button>
         <div class="game-hud">
           <p class="hud-chip chip-primary">{{ isMiniTheaterMode ? (miniTheaterTitle || '小剧场') : (currentSceneName || '旧图书馆') }}</p>
           <p class="hud-chip chip-secondary">{{ storyTimelineLabel || '剧情时间待设定' }}</p>
           <p class="hud-chip chip-tertiary">对话 {{ displayLineIndex + 1 }} / {{ displayDialogueLength }}</p>
+          <p v-if="showInputTokensHud" class="hud-chip chip-debug chip-debug-input">IN {{ inputTokensHudText }}</p>
+          <p v-if="showOutputTokensHud" class="hud-chip chip-debug chip-debug-output">OUT {{ outputTokensHudText }}</p>
         </div>
       </div>
+      <p v-if="isMiniTheaterMode" class="mini-theater-hud-title">
+        🎭 {{ miniTheaterTitle || '小剧场' }}
+      </p>
 
       <div v-if="showTopMenu" class="top-menu-panel" role="menu" aria-label="游戏菜单">
         <button type="button" class="top-menu-btn top-menu-back" role="menuitem" @click="handleBackFromMenu">
@@ -51,6 +66,15 @@
           @click="handleToggleDialogueHistoryFromMenu"
         >
           历史对话
+        </button>
+        <button
+          type="button"
+          class="top-menu-btn top-menu-relations"
+          :class="{ 'is-active': showRelationshipTablePanel }"
+          role="menuitem"
+          @click="handleToggleRelationshipTableFromMenu"
+        >
+          关系数据表
         </button>
       </div>
       <!-- 存档成功提示 -->
@@ -96,6 +120,39 @@
         >
           {{ isSaving ? '保存中...' : '保存存档' }}
         </button>
+      </div>
+    </section>
+
+    <section v-if="showDebugPanel" class="debug-panel" aria-label="调试设置">
+      <div class="debug-panel-header">
+        <h3 class="debug-title">🛠 Debug</h3>
+        <button type="button" class="debug-close" @click="toggleDebugPanel">✕</button>
+      </div>
+      <div class="debug-panel-body">
+        <label class="debug-toggle-item">
+          <input
+            type="checkbox"
+            class="debug-checkbox"
+            :checked="showInputTokensHud"
+            @change="updateShowInputTokensHud"
+          />
+          <span>HUD 显示 Input tokens</span>
+        </label>
+        <label class="debug-toggle-item">
+          <input
+            type="checkbox"
+            class="debug-checkbox"
+            :checked="showOutputTokensHud"
+            @change="updateShowOutputTokensHud"
+          />
+          <span>HUD 显示 Output tokens</span>
+        </label>
+        <p class="debug-hint">读取最近一次主线剧情生成的 token usage。</p>
+        <div class="debug-stats">
+          <p class="debug-stat">Input tokens: {{ inputTokensHudText }}</p>
+          <p class="debug-stat">Output tokens: {{ outputTokensHudText }}</p>
+          <p class="debug-stat">Total tokens: {{ totalTokensHudText }}</p>
+        </div>
       </div>
     </section>
 
@@ -229,6 +286,16 @@
           >
             🎨 生成CG
           </button>
+          <button
+            type="button"
+            class="action-button action-card"
+            :class="{ 'is-active': showCardPanel || currentCard }"
+            :disabled="isMiniTheaterMode || isGeneratingMiniTheater || isGeneratingCard"
+            @click="toggleCardPanel"
+            title="随机小卡片"
+          >
+            🃏 随机小卡片
+          </button>
         </div>
       </section>
 
@@ -273,6 +340,16 @@
           title="生成CG图片"
         >
           🎨 生成CG
+        </button>
+        <button
+          type="button"
+          class="action-button action-card"
+          :class="{ 'is-active': showCardPanel || currentCard }"
+          :disabled="isMiniTheaterMode || isGeneratingMiniTheater || isGeneratingCard"
+          @click="toggleCardPanel"
+          title="随机小卡片"
+        >
+          🃏 小卡片
         </button>
       </div>
 
@@ -444,6 +521,139 @@
         </div>
       </section>
 
+      <!-- 随机小卡片面板 -->
+      <section v-if="showCardPanel" class="card-panel" aria-label="随机小卡片">
+        <div class="card-panel-header">
+          <h3 class="card-title">🃏 随机小卡片</h3>
+          <div class="card-header-actions">
+            <button type="button" class="card-settings-btn" @click="toggleCardSettings" title="配置路径">
+              ⚙️
+            </button>
+            <button type="button" class="card-close" @click="closeCardPanel">✕</button>
+          </div>
+        </div>
+
+        <div class="card-panel-body">
+          <!-- 路径配置区域 -->
+          <div v-if="showCardSettings" class="card-settings-section">
+            <div class="card-settings-title-row">
+              <span class="card-settings-label">卡片配置路径</span>
+            </div>
+            <input
+              type="text"
+              v-model="cardConfigPathInput"
+              class="card-settings-input"
+              placeholder="例如: ./data/cards/index.json"
+            />
+            <input
+              type="file"
+              accept=".json"
+              @change="handleCardConfigFileSelect"
+              class="card-settings-file-input-hidden"
+              ref="cardConfigFileInput"
+            />
+            <div class="card-settings-btn-row">
+              <button
+                type="button"
+                class="card-settings-browse-btn"
+                @click="triggerCardConfigFileBrowse"
+              >
+                浏览
+              </button>
+              <button type="button" class="card-settings-reset-btn" @click="resetCardConfigPath" title="恢复默认">
+                默认
+              </button>
+            </div>
+            <p class="card-settings-hint">
+              当前: {{ currentCardConfigPath || './data/cards/index.json (默认)' }}
+            </p>
+            <p v-if="cardConfigPathError" class="card-settings-error">{{ cardConfigPathError }}</p>
+            <p v-if="cardConfigPathSaved" class="card-settings-success">✓ 路径已保存</p>
+          </div>
+
+          <p class="card-intro">
+            点击按钮，将随机抽取一张卡片模板，并根据当前剧情和人物生成独特的卡片内容。
+          </p>
+          <div v-if="!hasApiConfig" class="card-warning">
+            ⚠️ 请先在设置中配置并应用 API
+          </div>
+          <p v-if="cardError" class="card-error">{{ cardError }}</p>
+        </div>
+
+        <div class="card-panel-footer">
+          <button
+            type="button"
+            class="card-btn card-btn-random"
+            :disabled="isGeneratingCard || !hasApiConfig"
+            @click="generateRandomCard"
+          >
+            {{ isGeneratingCard ? '生成中...' : '🎲 抽取卡片' }}
+          </button>
+        </div>
+      </section>
+
+      <!-- 当前显示的卡片 -->
+      <section v-if="currentCard && currentCardContent" class="card-display-overlay" aria-label="小卡片展示" @click.self="closeCurrentCard">
+        <div class="card-display-container">
+          <div class="card-display-header">
+            <span class="card-display-category">{{ currentCard.categoryIcon }} {{ currentCard.categoryName }}</span>
+            <span class="card-display-rarity" :style="{ color: currentCard.rarityColor }">{{ currentCard.rarityName }}</span>
+            <button type="button" class="card-display-close" @click="closeCurrentCard">✕</button>
+          </div>
+          <div class="card-display-name">{{ currentCard.name }}</div>
+          <div class="card-display-content" v-html="renderedCardHtml"></div>
+          <div class="card-display-footer">
+            <button
+              type="button"
+              class="card-display-btn card-export-btn"
+              :disabled="isExportingCard || isSharingCard"
+              @click="exportCurrentCardAsPng"
+            >
+              <span v-if="isExportingCard">导出中...</span>
+              <span v-else>导出PNG 📷</span>
+            </button>
+            <button
+              type="button"
+              class="card-display-btn card-share-btn"
+              :disabled="isSharingCard || isExportingCard"
+              @click="shareCurrentCardAsPng"
+            >
+              <span v-if="isSharingCard">分享中...</span>
+              <span v-else>分享到... 📤</span>
+            </button>
+            <button
+              type="button"
+              class="card-display-btn card-collect-btn"
+              :class="{ 'is-collected': isCurrentCardCollected }"
+              :disabled="isSavingCard || isSharingCard"
+              @click="saveCurrentCard"
+            >
+              <span v-if="isSavingCard">保存中...</span>
+              <span v-else-if="isCurrentCardCollected">已收藏 ⭐</span>
+              <span v-else>收藏卡片</span>
+            </button>
+            <button type="button" class="card-display-btn" @click="closeCurrentCard">收起卡片</button>
+          </div>
+          <div v-if="cardSaveMessage" class="card-save-message" :class="cardSaveMessageType">
+            {{ cardSaveMessage }}
+          </div>
+        </div>
+      </section>
+
+      <!-- 卡片生成中遮罩 -->
+      <section v-if="isGeneratingCard" class="generating-overlay card-generating-overlay" aria-label="卡片生成中">
+        <div class="generating-modal">
+          <div class="generating-icon">🃏</div>
+          <h3 class="generating-title">正在生成小卡片...</h3>
+          <p class="generating-hint">AI 正在根据剧情和人物生成独特的卡片内容</p>
+          <div class="generating-spinner">
+            <span class="spinner-dot"></span>
+            <span class="spinner-dot"></span>
+            <span class="spinner-dot"></span>
+          </div>
+        </div>
+      </section>
+
       <!-- 生成中遮罩层 -->
       <section v-if="isGenerating" class="generating-overlay" aria-label="生成中提示">
         <div class="generating-modal">
@@ -535,6 +745,68 @@
                 {{ isHistoryLinePlaying(historyItem.lineKey) ? '⏹️' : '🔊' }}
               </button>
             </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section
+      v-if="showRelationshipTablePanel"
+      class="relationship-table-overlay"
+      aria-label="关系数据表"
+      @click.self="closeRelationshipTablePanel"
+    >
+      <div class="relationship-table-panel" role="dialog" aria-modal="false">
+        <div class="relationship-table-header">
+          <h3 class="relationship-table-title">关系数据表（{{ relationshipLedgerCountText }}）</h3>
+          <button type="button" class="relationship-table-close" @click="closeRelationshipTablePanel">✕</button>
+        </div>
+        <div class="relationship-table-body" data-no-advance>
+          <p v-if="relationshipLedgerRows.length === 0" class="relationship-table-empty">
+            暂无关系变化记录
+          </p>
+          <div v-else class="relationship-table-scroll">
+            <table class="relationship-table">
+              <thead>
+                <tr>
+                  <th scope="col">记录时间</th>
+                  <th scope="col">剧情时间</th>
+                  <th scope="col">角色</th>
+                  <th scope="col">好感</th>
+                  <th scope="col">信任</th>
+                  <th scope="col">立场</th>
+                  <th scope="col">事件</th>
+                  <th scope="col">触发输入</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in relationshipLedgerRows" :key="row.id">
+                  <td>{{ formatRelationshipLedgerTimestamp(row.createdAt) }}</td>
+                  <td>{{ row.storyTime || '—' }}</td>
+                  <td>{{ row.characterName }}</td>
+                  <td>
+                    <span class="relationship-metric">{{ row.before.favor }}→{{ row.after.favor }}</span>
+                    <span class="relationship-delta" :class="resolveRelationshipDeltaClass(row.delta.favor)">
+                      {{ formatRelationshipDelta(row.delta.favor) }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="relationship-metric">{{ row.before.trust }}→{{ row.after.trust }}</span>
+                    <span class="relationship-delta" :class="resolveRelationshipDeltaClass(row.delta.trust)">
+                      {{ formatRelationshipDelta(row.delta.trust) }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="relationship-metric">{{ row.before.stance }}→{{ row.after.stance }}</span>
+                    <span class="relationship-delta" :class="resolveRelationshipDeltaClass(row.delta.stance)">
+                      {{ formatRelationshipDelta(row.delta.stance) }}
+                    </span>
+                  </td>
+                  <td class="relationship-table-text">{{ formatRelationshipEventsText(row.triggeredEvents) }}</td>
+                  <td class="relationship-table-text">{{ formatRelationshipChoiceText(row.choiceText) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

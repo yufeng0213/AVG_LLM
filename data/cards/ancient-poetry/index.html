@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>古诗词笺</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      font-family: 'STKaiti', 'KaiTi', '楷体', serif;
+      padding: 20px;
+    }
+    
+    .poetry-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .poetry-card {
+      position: relative;
+      background: linear-gradient(180deg, #f8f4e8 0%, #f0e8d8 50%, #e8dcc8 100%);
+      padding: 40px 30px;
+      box-shadow: 
+        0 15px 50px rgba(0, 0, 0, 0.3),
+        inset 0 0 50px rgba(139, 90, 43, 0.1);
+    }
+    
+    .ink-wash {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(ellipse at 20% 20%, rgba(100, 100, 100, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(80, 80, 80, 0.08) 0%, transparent 40%);
+      pointer-events: none;
+    }
+    
+    .mountain-bg {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 100px;
+      background: 
+        linear-gradient(135deg, transparent 40%, rgba(60, 60, 60, 0.1) 45%, transparent 50%),
+        linear-gradient(225deg, transparent 40%, rgba(80, 80, 80, 0.08) 45%, transparent 50%);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    
+    .poem-header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(139, 90, 43, 0.3);
+    }
+    
+    .poem-title {
+      font-size: 22px;
+      color: #2c1810;
+      font-weight: bold;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+    
+    .poem-author {
+      font-size: 14px;
+      color: #5a4a3a;
+      letter-spacing: 2px;
+    }
+    
+    .poem-content {
+      text-align: center;
+      padding: 20px 0;
+      line-height: 2.2;
+      font-size: 18px;
+      color: #1a1a1a;
+      letter-spacing: 2px;
+    }
+    
+    .poem-line {
+      display: block;
+      margin: 8px 0;
+    }
+    
+    .poem-annotation {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(139, 90, 43, 0.08);
+      border-left: 3px solid #8b4513;
+      font-size: 13px;
+      color: #4a3a2a;
+      line-height: 1.8;
+    }
+    
+    .seal-stamp {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 45px;
+      height: 45px;
+      background: #c41e3a;
+      border-radius: 3px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.85);
+      box-shadow: 
+        0 2px 8px rgba(196, 30, 58, 0.4),
+        inset 0 0 8px rgba(0, 0, 0, 0.2);
+      transform: rotate(-5deg);
+      writing-mode: vertical-rl;
+    }
+    
+    .bamboo-decoration {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 30px;
+      height: 80px;
+      opacity: 0.15;
+    }
+    
+    .bamboo-decoration::before,
+    .bamboo-decoration::after {
+      content: '';
+      position: absolute;
+      width: 3px;
+      background: #2c1810;
+      border-radius: 2px;
+    }
+    
+    .bamboo-decoration::before {
+      height: 60px;
+      left: 5px;
+      top: 0;
+    }
+    
+    .bamboo-decoration::after {
+      height: 50px;
+      left: 15px;
+      top: 30px;
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border: 2px solid rgba(139, 90, 43, 0.3);
+    }
+    
+    .corner-decoration.top-left {
+      top: 10px;
+      left: 10px;
+      border-right: none;
+      border-bottom: none;
+    }
+    
+    .corner-decoration.top-right {
+      top: 10px;
+      right: 10px;
+      border-left: none;
+      border-bottom: none;
+    }
+    
+    .corner-decoration.bottom-left {
+      bottom: 10px;
+      left: 10px;
+      border-right: none;
+      border-top: none;
+    }
+    
+    .corner-decoration.bottom-right {
+      bottom: 10px;
+      right: 10px;
+      border-left: none;
+      border-top: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="poetry-container">
+    <div class="poetry-card">
+      <div class="ink-wash"></div>
+      <div class="mountain-bg"></div>
+      <div class="bamboo-decoration"></div>
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      
+      <div class="poem-header">
+        <div class="poem-title">{{poemTitle}}</div>
+        <div class="poem-author">{{poemAuthor}}</div>
+      </div>
+      
+      <div class="poem-content">
+        {{poemContent}}
+      </div>
+      
+      <div class="poem-annotation">
+        {{annotation}}
+      </div>
+      
+      <div class="seal-stamp">{{sealText}}</div>
+    </div>
+  </div>
+</body>
+</html>

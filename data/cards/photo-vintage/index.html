@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>老照片</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #d4a574 0%, #c49a6c 50%, #b8956a 100%);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      padding: 20px;
+    }
+    
+    .photo-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .photo-frame {
+      position: relative;
+      background: linear-gradient(145deg, #f5e6d3 0%, #e8d4bc 100%);
+      padding: 20px 20px 60px 20px;
+      box-shadow: 
+        0 15px 50px rgba(139, 90, 43, 0.3),
+        0 5px 20px rgba(0, 0, 0, 0.2);
+      transform: rotate(1deg);
+    }
+    
+    .photo-inner {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3/4;
+      background: #f5f5f0;
+      overflow: hidden;
+      border: 1px solid #c9b896;
+    }
+    
+    .photo-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #e8e0d0 0%, #d8d0c0 100%);
+      color: #8b7355;
+    }
+    
+    .photo-placeholder-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+      opacity: 0.6;
+    }
+    
+    .photo-placeholder-text {
+      font-size: 13px;
+      opacity: 0.8;
+      text-align: center;
+      padding: 10px;
+    }
+    
+    .photo-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: sepia(0.4) contrast(0.9) brightness(1.1);
+    }
+    
+    .sepia-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(139, 90, 43, 0.15);
+      pointer-events: none;
+    }
+    
+    .scratch-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    
+    .age-spots {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      background: radial-gradient(circle, rgba(139, 90, 43, 0.3) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    
+    .age-spots:nth-child(1) { top: 20px; left: 30px; }
+    .age-spots:nth-child(2) { top: 80px; right: 40px; width: 20px; height: 20px; }
+    .age-spots:nth-child(3) { bottom: 50px; left: 50px; width: 12px; height: 12px; }
+    
+    .photo-caption {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      text-align: center;
+      font-size: 14px;
+      color: #5d4e37;
+      font-style: italic;
+    }
+    
+    .photo-year {
+      position: absolute;
+      bottom: 8px;
+      right: 20px;
+      font-size: 12px;
+      color: #8b7355;
+      font-weight: bold;
+    }
+    
+    .vintage-frame-border {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      border: 2px solid rgba(139, 90, 43, 0.3);
+      pointer-events: none;
+    }
+    
+    .corner-wear {
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      background: linear-gradient(135deg, transparent 50%, rgba(139, 90, 43, 0.2) 50%);
+    }
+    
+    .corner-wear.top-left { top: 0; left: 0; }
+    .corner-wear.top-right { top: 0; right: 0; transform: rotate(90deg); }
+    .corner-wear.bottom-left { bottom: 0; left: 0; transform: rotate(-90deg); }
+    .corner-wear.bottom-right { bottom: 0; right: 0; transform: rotate(180deg); }
+    
+    .tape-corner {
+      position: absolute;
+      width: 40px;
+      height: 15px;
+      background: rgba(255, 255, 200, 0.6);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tape-corner.top-left { top: -5px; left: 10px; transform: rotate(-5deg); }
+    .tape-corner.top-right { top: -5px; right: 10px; transform: rotate(5deg); }
+    
+    .memory-tag {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 5px 10px;
+      font-size: 11px;
+      color: #5d4e37;
+      border: 1px solid #c9b896;
+      transform: rotate(-3deg);
+    }
+    
+    .handwritten-date {
+      position: absolute;
+      bottom: 45px;
+      left: 25px;
+      font-size: 11px;
+      color: #8b7355;
+      font-style: italic;
+      transform: rotate(-2deg);
+    }
+    
+    .photo-location {
+      position: absolute;
+      bottom: 35px;
+      right: 25px;
+      font-size: 10px;
+      color: #8b7355;
+      opacity: 0.7;
+    }
+    
+    .fold-crease {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(139, 90, 43, 0.1);
+      transform: translateY(-50%);
+    }
+    
+    @keyframes gentle-float {
+      0%, 100% { transform: rotate(1deg) translateY(0); }
+      50% { transform: rotate(0.5deg) translateY(-3px); }
+    }
+    
+    .photo-frame:hover {
+      animation: gentle-float 4s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="photo-container">
+    <div class="photo-frame">
+      <div class="tape-corner top-left"></div>
+      <div class="tape-corner top-right"></div>
+      
+      <div class="photo-inner">
+        <div class="photo-placeholder">
+          <div class="photo-placeholder-icon">🎞️</div>
+          <div class="photo-placeholder-text">{{photoDescription}}</div>
+        </div>
+        <div class="sepia-overlay"></div>
+        <div class="scratch-overlay"></div>
+        <div class="age-spots"></div>
+        <div class="age-spots"></div>
+        <div class="age-spots"></div>
+        <div class="vintage-frame-border"></div>
+        <div class="corner-wear top-left"></div>
+        <div class="corner-wear top-right"></div>
+        <div class="corner-wear bottom-left"></div>
+        <div class="corner-wear bottom-right"></div>
+        <div class="fold-crease"></div>
+      </div>
+      
+      <div class="memory-tag">{{memoryTag}}</div>
+      <div class="handwritten-date">{{date}}</div>
+      <div class="photo-location">{{location}}</div>
+      <div class="photo-caption">{{caption}}</div>
+      <div class="photo-year">{{year}}</div>
+    </div>
+  </div>
+</body>
+</html>

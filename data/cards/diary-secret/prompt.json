@@ -1,0 +1,61 @@
+{
+  "id": "diary-secret",
+  "name": "秘密日记",
+  "category": "diary",
+  "description": "一本带锁的秘密日记，记录着内心深处的秘密和情感",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": [
+      {
+        "type": "relationship",
+        "operator": ">=",
+        "value": 50,
+        "description": "好感度达到50以上时可能触发"
+      },
+      {
+        "type": "event",
+        "operator": "after",
+        "value": "intimate_moment",
+        "description": "亲密时刻后可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "date": {
+      "type": "date",
+      "format": "YYYY年MM月DD日",
+      "description": "日记日期"
+    },
+    "weather": {
+      "type": "string",
+      "description": "天气图标或描述"
+    },
+    "title": {
+      "type": "string",
+      "description": "日记标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 600,
+      "description": "日记正文内容"
+    },
+    "footer": {
+      "type": "string",
+      "description": "日记结尾签名或心情"
+    },
+    "pageNumber": {
+      "type": "string",
+      "default": "- 42 -",
+      "description": "页码"
+    }
+  },
+  "promptTemplate": "请生成一篇秘密日记的内容。\n\n背景信息：\n- 写日记的人：{{author}}\n- 日记主题：{{theme}}\n- 当前心情：{{mood}}\n- 相关事件：{{event}}\n\n要求：\n1. 内容要真实流露内心情感\n2. 可以包含一些秘密或心事\n3. 语气要符合写日记人的性格\n4. 字数控制在200-400字之间\n5. 结尾要有签名或心情总结\n\n请直接输出日记内容，不要有其他说明。",
+  "style": {
+    "theme": "intimate",
+    "colors": ["#8b4513", "#fffef5", "#5d4e37"],
+    "mood": "私密真挚"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

@@ -1,0 +1,56 @@
+{
+  "id": "photo-secret",
+  "name": "偷拍的照片",
+  "category": "photo",
+  "description": "一张偷偷拍摄的照片，带有SECRET印章和手写备注",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": [
+      {
+        "type": "relationship",
+        "operator": ">=",
+        "value": 60,
+        "description": "好感度达到60以上时可能触发"
+      },
+      {
+        "type": "scene",
+        "operator": "contains",
+        "value": "日常|休息|独处|安静",
+        "description": "日常场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "photoDescription": {
+      "type": "string",
+      "description": "照片内容描述（用于占位符显示）"
+    },
+    "caption": {
+      "type": "string",
+      "description": "照片标题/说明"
+    },
+    "date": {
+      "type": "date",
+      "format": "YYYY.MM.DD",
+      "description": "拍摄日期"
+    },
+    "cameraInfo": {
+      "type": "string",
+      "default": "ISO 400 | f/2.8 | 1/125s",
+      "description": "相机参数信息"
+    },
+    "note": {
+      "type": "string",
+      "description": "手写备注内容"
+    }
+  },
+  "promptTemplate": "请生成一张偷拍照片的相关信息。\n\n背景信息：\n- 拍摄对象：{{subject}}\n- 场景：{{scene}}\n- 拍摄者：{{photographer}}\n\n要求：\n1. 照片描述要温馨有趣，展现拍摄对象的某个瞬间\n2. 标题简短有感情\n3. 手写备注要体现拍摄者的心情\n4. 整体氛围要温馨但不失神秘感\n\n请按以下格式输出：\n照片描述：...\n标题：...\n备注：...",
+  "style": {
+    "theme": "nostalgic",
+    "colors": ["#2c3e50", "#fff", "#888"],
+    "mood": "温馨私密"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

@@ -1,0 +1,56 @@
+{
+  "id": "tarot-card",
+  "name": "塔罗牌",
+  "category": "tarot",
+  "description": "一张神秘的塔罗牌，带有占卜和命运元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "塔罗|占卜|命运|神秘|预言|魔法",
+        "description": "塔罗或占卜场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "cardName": {
+      "type": "string",
+      "description": "牌名"
+    },
+    "cardNumber": {
+      "type": "string",
+      "description": "牌号"
+    },
+    "uprightMeaning": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "正位含义"
+    },
+    "reversedMeaning": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "逆位含义"
+    },
+    "symbolism": {
+      "type": "string",
+      "description": "象征意义"
+    },
+    "arcana": {
+      "type": "string",
+      "default": "大阿卡纳",
+      "options": ["大阿卡纳", "小阿卡纳"],
+      "description": "阿卡纳类型"
+    }
+  },
+  "promptTemplate": "请生成一张塔罗牌的内容。\n\n背景信息：\n- 场景：{{scene}}\n- 问题：{{question}}\n\n要求：\n1. 使用塔罗牌解读风格的语言\n2. 内容要带有神秘和象征意义\n3. 包含正位和逆位解读\n4. 字数控制在150-250字之间\n\n请直接输出塔罗牌内容，不要有其他说明。",
+  "style": {
+    "theme": "tarot",
+    "colors": ["#1a1a2e", "#ffd700", "#e94560"],
+    "mood": "神秘占卜"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

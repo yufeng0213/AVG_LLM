@@ -1,0 +1,46 @@
+{
+  "id": "letter-love",
+  "name": "情书",
+  "category": "letter",
+  "description": "一封充满爱意的情书，用精美的信纸书写，带有浪漫的装饰元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.05,
+    "conditions": [
+      {
+        "type": "relationship",
+        "operator": ">=",
+        "value": 70,
+        "description": "好感度达到70以上时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "date": {
+      "type": "date",
+      "format": "YYYY年MM月DD日",
+      "description": "写信日期"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "收信人名称，通常是玩家角色名"
+    },
+    "sender": {
+      "type": "string",
+      "description": "写信人名称，通常是当前角色名"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 500,
+      "description": "情书正文内容，应该充满爱意和真挚的情感"
+    }
+  },
+  "promptTemplate": "请生成一封情书的内容。\n\n背景信息：\n- 写信人：{{sender}}\n- 收信人：{{recipient}}\n- 当前场景：{{scene}}\n- 两人关系：{{relationship}}\n\n要求：\n1. 内容真挚动人，表达深切的爱意\n2. 语气要符合写信人的性格特点\n3. 可以提及两人之间的美好回忆\n4. 字数控制在200-400字之间\n5. 结尾要有浪漫的署名\n\n请直接输出情书内容，不要有其他说明。",
+  "style": {
+    "theme": "romantic",
+    "colors": ["#ffecd2", "#fcb69f", "#c0392b"],
+    "mood": "温馨浪漫"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

@@ -1,0 +1,55 @@
+{
+  "id": "vintage-poster",
+  "name": "复古海报",
+  "category": "vintage",
+  "description": "一张复古风格的海报，带有怀旧设计和经典元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "复古|怀旧|民国|老上海|经典|年代",
+        "description": "复古场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "posterTitle": {
+      "type": "string",
+      "description": "海报标题"
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "副标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "海报内容"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "location": {
+      "type": "string",
+      "description": "地点"
+    },
+    "eventType": {
+      "type": "string",
+      "default": "演出",
+      "options": ["演出", "展览", "电影", "活动", "公告"],
+      "description": "活动类型"
+    }
+  },
+  "promptTemplate": "请生成一张复古海报的内容。\n\n背景信息：\n- 活动类型：{{eventType}}\n- 地点：{{location}}\n- 场景：{{scene}}\n\n要求：\n1. 使用复古海报风格的语言\n2. 内容要带有怀旧气息\n3. 可以包含经典广告用语\n4. 字数控制在100-200字之间\n\n请直接输出海报内容，不要有其他说明。",
+  "style": {
+    "theme": "vintage",
+    "colors": ["#8b4513", "#f5e6c8", "#c41e3a"],
+    "mood": "怀旧经典"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

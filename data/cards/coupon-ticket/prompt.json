@@ -1,0 +1,58 @@
+{
+  "id": "coupon-ticket",
+  "name": "优惠券",
+  "category": "coupon",
+  "description": "一张优惠券或代金券，带有促销和优惠元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "商店|购物|优惠|促销|消费|折扣",
+        "description": "购物或消费场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "couponTitle": {
+      "type": "string",
+      "description": "优惠券标题"
+    },
+    "discount": {
+      "type": "string",
+      "description": "优惠金额/折扣"
+    },
+    "store": {
+      "type": "string",
+      "description": "商家名称"
+    },
+    "validUntil": {
+      "type": "string",
+      "description": "有效期"
+    },
+    "conditions": {
+      "type": "string",
+      "description": "使用条件"
+    },
+    "code": {
+      "type": "string",
+      "description": "优惠码"
+    },
+    "couponType": {
+      "type": "string",
+      "default": "代金券",
+      "options": ["代金券", "折扣券", "兑换券", "礼品券"],
+      "description": "券类型"
+    }
+  },
+  "promptTemplate": "请生成一张优惠券的内容。\n\n背景信息：\n- 商家：{{store}}\n- 场景：{{scene}}\n\n要求：\n1. 使用促销优惠风格的语言\n2. 内容要吸引人\n3. 包含优惠信息和使用条件\n4. 字数控制在50-100字之间\n\n请直接输出优惠券内容，不要有其他说明。",
+  "style": {
+    "theme": "coupon",
+    "colors": ["#e74c3c", "#f39c12", "#fff"],
+    "mood": "促销优惠"
+  },
+  "rarity": "common",
+  "collectible": true
+}

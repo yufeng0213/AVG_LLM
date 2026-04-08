@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>报纸剪报</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #d4d4d4 0%, #e8e8e8 100%);
+      font-family: 'Times New Roman', 'SimSun', serif;
+      padding: 20px;
+    }
+    
+    .clipping-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .news-clipping {
+      position: relative;
+      background: #f5f5f0;
+      padding: 20px;
+      box-shadow: 
+        0 15px 40px rgba(0, 0, 0, 0.15),
+        0 5px 15px rgba(0, 0, 0, 0.1);
+      transform: rotate(2deg);
+    }
+    
+    .paper-texture {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    
+    .news-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #1a1a1a;
+    }
+    
+    .news-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #1a1a1a;
+      letter-spacing: 2px;
+    }
+    
+    .news-date {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .news-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin-bottom: 15px;
+      line-height: 1.3;
+      text-align: center;
+    }
+    
+    .news-content {
+      font-size: 13px;
+      line-height: 20px;
+      color: #333;
+      text-align: justify;
+    }
+    
+    .news-content p {
+      margin-bottom: 10px;
+      text-indent: 2em;
+    }
+    
+    .highlight-marker {
+      background: linear-gradient(180deg, transparent 50%, rgba(255, 200, 0, 0.3) 50%);
+      padding: 0 2px;
+    }
+    
+    .circled-text {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .circled-text::before {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      right: -3px;
+      bottom: -3px;
+      border: 2px solid #e74c3c;
+      border-radius: 50%;
+      opacity: 0.7;
+    }
+    
+    .news-footer {
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid #ccc;
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #888;
+    }
+    
+    .fold-crease {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(0, 0, 0, 0.05);
+      transform: translateY(-50%);
+    }
+    
+    .tape-corner {
+      position: absolute;
+      width: 35px;
+      height: 15px;
+      background: rgba(255, 255, 200, 0.6);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tape-corner.top-left { top: -5px; left: 10px; transform: rotate(-5deg); }
+    .tape-corner.top-right { top: -5px; right: 10px; transform: rotate(5deg); }
+    
+    .handwritten-note {
+      position: absolute;
+      bottom: 15px;
+      left: 20px;
+      font-size: 12px;
+      color: #e74c3c;
+      font-family: 'Comic Sans MS', cursive;
+      transform: rotate(-10deg);
+      opacity: 0.8;
+    }
+    
+    .coffee-ring {
+      position: absolute;
+      top: 30px;
+      right: 30px;
+      width: 35px;
+      height: 35px;
+      border: 3px solid rgba(139, 90, 43, 0.2);
+      border-radius: 50%;
+      opacity: 0.5;
+    }
+    
+    @keyframes paper-flutter {
+      0%, 100% { transform: rotate(2deg); }
+      50% { transform: rotate(1.5deg) translateY(-2px); }
+    }
+    
+    .news-clipping:hover {
+      animation: paper-flutter 3s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="clipping-container">
+    <div class="news-clipping">
+      <div class="paper-texture"></div>
+      <div class="fold-crease"></div>
+      <div class="tape-corner top-left"></div>
+      <div class="tape-corner top-right"></div>
+      <div class="coffee-ring"></div>
+      
+      <div class="news-header">
+        <div class="news-name">{{newsName}}</div>
+        <div class="news-date">{{date}}</div>
+      </div>
+      
+      <h2 class="news-title">{{title}}</h2>
+      
+      <div class="news-content">
+        {{content}}
+      </div>
+      
+      <div class="news-footer">
+        <div>{{section}}</div>
+        <div>第 {{pageNumber}} 页</div>
+      </div>
+      
+      <div class="handwritten-note">{{note}}</div>
+    </div>
+  </div>
+</body>
+</html>

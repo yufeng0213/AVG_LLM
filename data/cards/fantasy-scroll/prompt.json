@@ -1,0 +1,55 @@
+{
+  "id": "fantasy-scroll",
+  "name": "魔法卷轴",
+  "category": "fantasy",
+  "description": "一张奇幻风格的魔法卷轴，带有神秘符文和魔法元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "奇幻|魔法|精灵|龙|巫师|中世纪",
+        "description": "奇幻场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "scrollId": {
+      "type": "string",
+      "description": "卷轴编号"
+    },
+    "title": {
+      "type": "string",
+      "description": "卷轴标题"
+    },
+    "caster": {
+      "type": "string",
+      "description": "施法者"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "接收者"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "卷轴内容"
+    },
+    "magicType": {
+      "type": "string",
+      "default": "元素",
+      "options": ["元素", "治愈", "召唤", "防护", "预言"],
+      "description": "魔法类型"
+    }
+  },
+  "promptTemplate": "请生成一张魔法卷轴的内容。\n\n背景信息：\n- 施法者：{{caster}}\n- 接收者：{{recipient}}\n- 魔法类型：{{magicType}}\n- 场景：{{scene}}\n\n要求：\n1. 使用奇幻风格的语言，带有魔法气息\n2. 可以包含咒语、符文、魔法术语\n3. 语气要神秘而庄重\n4. 字数控制在150-300字之间\n\n请直接输出卷轴内容，不要有其他说明。",
+  "style": {
+    "theme": "fantasy",
+    "colors": ["#1a1a2e", "#e94560", "#ffd700"],
+    "mood": "神秘魔法"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

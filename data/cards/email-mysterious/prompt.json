@@ -1,0 +1,61 @@
+{
+  "id": "email-mysterious",
+  "name": "神秘邮件",
+  "category": "email",
+  "description": "一封来源神秘的加密邮件，带有黑客风格的视觉效果和隐藏信息",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "科幻|未来|赛博|黑客|神秘|悬疑",
+        "description": "科幻或悬疑场景可能触发"
+      },
+      {
+        "type": "story",
+        "operator": "contains",
+        "value": "秘密|线索|真相|调查",
+        "description": "剧情涉及秘密调查时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "subject": {
+      "type": "string",
+      "description": "邮件主题（通常带有神秘感）"
+    },
+    "sender": {
+      "type": "string",
+      "default": "未知发送者",
+      "description": "发件人名称（通常是匿名或代号）"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "收件人名称"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "邮件正文内容，通常包含神秘线索或警告"
+    },
+    "hiddenMessage": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "隐藏的额外信息或提示"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "加密时间戳"
+    }
+  },
+  "promptTemplate": "请生成一封神秘邮件的内容。\n\n背景信息：\n- 收件人：{{recipient}}\n- 场景：{{scene}}\n- 剧情背景：{{storyContext}}\n\n要求：\n1. 内容神秘但不要过于晦涩\n2. 包含一些线索或暗示\n3. 语气要神秘、紧迫或警告\n4. 可以有隐藏的额外信息\n5. 字数控制在150-300字之间\n6. 结尾可以有一个隐藏的提示\n\n请直接输出邮件内容，不要有其他说明。",
+  "style": {
+    "theme": "cyberpunk",
+    "colors": ["#00ff41", "#1a1a2e", "#ff0041"],
+    "mood": "神秘紧张"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

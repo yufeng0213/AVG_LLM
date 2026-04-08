@@ -1,0 +1,55 @@
+{
+  "id": "xianxia-jade",
+  "name": "仙家玉简",
+  "category": "xianxia",
+  "description": "一块仙侠风格的玉简，带有仙气和神秘符文",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "仙侠|修仙|仙界|道门|仙山|灵气",
+        "description": "仙侠场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "jadeId": {
+      "type": "string",
+      "description": "玉简编号"
+    },
+    "title": {
+      "type": "string",
+      "description": "玉简标题"
+    },
+    "sender": {
+      "type": "string",
+      "description": "发送者"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "接收者"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "玉简内容"
+    },
+    "realm": {
+      "type": "string",
+      "default": "凡界",
+      "options": ["凡界", "灵界", "仙界", "神界"],
+      "description": "境界"
+    }
+  },
+  "promptTemplate": "请生成一块仙家玉简的内容。\n\n背景信息：\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n- 境界：{{realm}}\n- 场景：{{scene}}\n\n要求：\n1. 使用仙侠风格的语言，带有仙气和神秘感\n2. 可以包含修仙术语、境界、法术等\n3. 语气要超凡脱俗\n4. 字数控制在150-300字之间\n\n请直接输出玉简内容，不要有其他说明。",
+  "style": {
+    "theme": "xianxia",
+    "colors": ["#e8f4f8", "#00d4aa", "#f0f8ff"],
+    "mood": "仙气飘渺"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

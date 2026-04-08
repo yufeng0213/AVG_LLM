@@ -1,0 +1,49 @@
+{
+  "id": "ancient-poetry",
+  "name": "古诗词笺",
+  "category": "ancient",
+  "description": "一张精美的古诗词笺，带有水墨画装饰和书法风格",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "古代|古风|仙侠|武侠|文人|诗词",
+        "description": "古代或文人场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "poemTitle": {
+      "type": "string",
+      "description": "诗词标题"
+    },
+    "poemAuthor": {
+      "type": "string",
+      "description": "诗词作者"
+    },
+    "poemContent": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "诗词内容"
+    },
+    "annotation": {
+      "type": "string",
+      "description": "诗词注释或感悟"
+    },
+    "sealText": {
+      "type": "string",
+      "description": "印章文字"
+    }
+  },
+  "promptTemplate": "请生成一首古诗词及其注释。\n\n背景信息：\n- 场景：{{scene}}\n- 主题：{{theme}}\n- 情感：{{emotion}}\n\n要求：\n1. 可以是原创诗词或引用经典\n2. 风格要典雅含蓄\n3. 注释要简洁有深意\n4. 整体字数控制在100-200字之间\n\n请直接输出诗词内容，不要有其他说明。",
+  "style": {
+    "theme": "ancient",
+    "colors": ["#2c1810", "#f5e6c8", "#8b4513"],
+    "mood": "典雅诗意"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

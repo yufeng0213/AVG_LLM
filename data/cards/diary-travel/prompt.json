@@ -1,0 +1,81 @@
+{
+  "id": "diary-travel",
+  "name": "旅行日记",
+  "category": "diary",
+  "description": "一本充满冒险气息的旅行日记，记录旅途中的见闻和感受",
+  "trigger": {
+    "type": "random",
+    "probability": 0.04,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "旅行|冒险|探险|旅途|异国",
+        "description": "旅行相关场景可能触发"
+      },
+      {
+        "type": "event",
+        "operator": "after",
+        "value": "travel",
+        "description": "旅行事件后可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "location": {
+      "type": "string",
+      "description": "当前位置/目的地"
+    },
+    "date": {
+      "type": "date",
+      "format": "YYYY年MM月DD日",
+      "description": "日记日期"
+    },
+    "dayCount": {
+      "type": "number",
+      "description": "旅行天数"
+    },
+    "weather": {
+      "type": "string",
+      "description": "天气图标"
+    },
+    "title": {
+      "type": "string",
+      "description": "日记标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 500,
+      "description": "日记正文内容"
+    },
+    "photoDescription": {
+      "type": "string",
+      "description": "照片描述"
+    },
+    "photoCaption": {
+      "type": "string",
+      "description": "照片说明"
+    },
+    "moodIcons": {
+      "type": "string",
+      "description": "心情图标组合"
+    },
+    "footer": {
+      "type": "string",
+      "description": "日记结尾"
+    },
+    "stampIcon": {
+      "type": "string",
+      "default": "✈️",
+      "description": "邮票装饰图标"
+    }
+  },
+  "promptTemplate": "请生成一篇旅行日记的内容。\n\n背景信息：\n- 写日记的人：{{author}}\n- 当前地点：{{location}}\n- 旅行天数：{{dayCount}}\n- 天气：{{weather}}\n- 旅途见闻：{{experience}}\n\n要求：\n1. 内容要充满对旅途的热爱和好奇\n2. 描述当地的风土人情或美景\n3. 语气要轻松愉快，有冒险精神\n4. 字数控制在200-400字之间\n5. 可以提及想拍的照片\n\n请直接输出日记内容，不要有其他说明。",
+  "style": {
+    "theme": "adventure",
+    "colors": ["#87ceeb", "#98d8c8", "#f7dc6f"],
+    "mood": "轻松愉快"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

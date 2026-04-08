@@ -1,0 +1,55 @@
+{
+  "id": "retro-radio",
+  "name": "复古广播稿",
+  "category": "retro",
+  "description": "一份复古风格的广播稿，带有怀旧元素和经典广播语言",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "复古|怀旧|广播|电台|民国|老上海",
+        "description": "复古或怀旧场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "stationName": {
+      "type": "string",
+      "description": "电台名称"
+    },
+    "programTitle": {
+      "type": "string",
+      "description": "节目标题"
+    },
+    "host": {
+      "type": "string",
+      "description": "主持人"
+    },
+    "broadcastTime": {
+      "type": "string",
+      "description": "播出时间"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "广播内容"
+    },
+    "programType": {
+      "type": "string",
+      "default": "音乐",
+      "options": ["音乐", "新闻", "故事", "访谈", "诗歌"],
+      "description": "节目类型"
+    }
+  },
+  "promptTemplate": "请生成一份复古广播稿。\n\n背景信息：\n- 电台：{{stationName}}\n- 主持人：{{host}}\n- 节目类型：{{programType}}\n- 场景：{{scene}}\n\n要求：\n1. 使用复古广播风格的语言\n2. 内容要带有怀旧气息\n3. 可以包含经典广播开场白和结束语\n4. 字数控制在150-300字之间\n\n请直接输出广播稿内容，不要有其他说明。",
+  "style": {
+    "theme": "retro",
+    "colors": ["#2c1810", "#f5e6c8", "#8b4513"],
+    "mood": "怀旧温馨"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

@@ -1,0 +1,59 @@
+{
+  "id": "lovecraft-manuscript",
+  "name": "克苏鲁手稿",
+  "category": "lovecraft",
+  "description": "一份克苏鲁神话风格的神秘手稿，带有不可名状的恐怖元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.01,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "克苏鲁|神话|古神|深渊|不可名状|恐怖",
+        "description": "克苏鲁神话场景可能触发"
+      },
+      {
+        "type": "story",
+        "operator": "contains",
+        "value": "深渊|古老|禁忌|疯狂|诅咒",
+        "description": "剧情涉及古老禁忌时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "manuscriptId": {
+      "type": "string",
+      "description": "手稿编号"
+    },
+    "title": {
+      "type": "string",
+      "description": "手稿标题"
+    },
+    "author": {
+      "type": "string",
+      "description": "作者"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "手稿内容"
+    },
+    "warning": {
+      "type": "string",
+      "description": "警告信息"
+    }
+  },
+  "promptTemplate": "请生成一份克苏鲁神话风格的手稿。\n\n背景信息：\n- 作者：{{author}}\n- 场景：{{scene}}\n- 主题：{{theme}}\n\n要求：\n1. 使用克苏鲁神话的语言风格，带有不可名状的恐怖\n2. 可以包含古老神祇、禁忌知识、深渊等元素\n3. 语气要神秘、疯狂、令人不安\n4. 字数控制在200-350字之间\n5. 结尾要有警告或禁忌提示\n\n请直接输出手稿内容，不要有其他说明。",
+  "style": {
+    "theme": "lovecraft",
+    "colors": ["#0a0a0a", "#1a1a1a", "#2a4a2a"],
+    "mood": "不可名状"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

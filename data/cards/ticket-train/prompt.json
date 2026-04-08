@@ -1,0 +1,93 @@
+{
+  "id": "ticket-train",
+  "name": "火车票",
+  "category": "ticket",
+  "description": "一张火车票，记录旅程的起点和终点",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "旅行|出差|回家|探亲",
+        "description": "旅行相关场景可能触发"
+      },
+      {
+        "type": "event",
+        "operator": "before",
+        "value": "departure",
+        "description": "出发前可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "ticketType": {
+      "type": "string",
+      "default": "成人票",
+      "options": ["成人票", "学生票", "儿童票"],
+      "description": "票类型"
+    },
+    "departureStation": {
+      "type": "string",
+      "description": "出发站"
+    },
+    "departureCode": {
+      "type": "string",
+      "description": "出发站代码"
+    },
+    "arrivalStation": {
+      "type": "string",
+      "description": "到达站"
+    },
+    "arrivalCode": {
+      "type": "string",
+      "description": "到达站代码"
+    },
+    "trainNumber": {
+      "type": "string",
+      "description": "车次号"
+    },
+    "departureTime": {
+      "type": "string",
+      "description": "出发时间"
+    },
+    "arrivalTime": {
+      "type": "string",
+      "description": "到达时间"
+    },
+    "date": {
+      "type": "date",
+      "format": "YYYY-MM-DD",
+      "description": "出行日期"
+    },
+    "passenger": {
+      "type": "string",
+      "description": "乘客姓名"
+    },
+    "carriage": {
+      "type": "string",
+      "description": "车厢号"
+    },
+    "seat": {
+      "type": "string",
+      "description": "座位号"
+    },
+    "price": {
+      "type": "number",
+      "description": "票价"
+    },
+    "ticketId": {
+      "type": "string",
+      "description": "票号"
+    }
+  },
+  "promptTemplate": "请生成一张火车票的信息。\n\n背景信息：\n- 乘客：{{passenger}}\n- 出发地：{{departure}}\n- 目的地：{{destination}}\n- 日期：{{date}}\n\n要求：\n1. 站名要符合故事背景设定\n2. 时间要合理（出发和到达时间差符合距离）\n3. 车次号格式正确（如G1234、K567等）\n4. 票价要符合实际距离\n\n请直接输出票信息，不要有其他说明。",
+  "style": {
+    "theme": "travel",
+    "colors": ["#fff", "#3498db", "#e74c3c"],
+    "mood": "旅途期待"
+  },
+  "rarity": "common",
+  "collectible": true
+}

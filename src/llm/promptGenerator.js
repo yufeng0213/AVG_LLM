@@ -58,6 +58,7 @@ const resolveLineStoryTime = (line) => {
  * @param {Object} params.currentLine - 当前对话行
  * @param {Array} params.sceneCharacters - 场景角色列表
  * @param {Array} params.relationshipSnapshot - 角色关系快照（可选）
+ * @param {Array} params.relationshipLedger - 关系变更数据表（可选）
  * @param {Array} params.directorDirectives - 导演器指令列表（可选）
  * @param {string} params.userInput - 用户输入（可选）
  * @param {string} params.currentStoryTime - 当前剧情时间（可选）
@@ -73,6 +74,7 @@ export const buildStoryPrompt = (params) => {
     currentLine,
     sceneCharacters,
     relationshipSnapshot,
+    relationshipLedger,
     directorDirectives,
     userInput,
     currentStoryTime,
@@ -103,17 +105,22 @@ export const buildStoryPrompt = (params) => {
     sections.push(buildRelationshipSection(relationshipSnapshot))
   }
 
-  // 5. 导演器约束
+  // 5. 关系推进数据表（历史趋势）
+  if (Array.isArray(relationshipLedger) && relationshipLedger.length > 0) {
+    sections.push(buildRelationshipLedgerSection(relationshipLedger))
+  }
+
+  // 6. 导演器约束
   if (Array.isArray(directorDirectives) && directorDirectives.length > 0) {
     sections.push(buildDirectorDirectiveSection(directorDirectives))
   }
 
-  // 6. 当前剧情上下文
+  // 7. 当前剧情上下文
   if (dialogueHistory && dialogueHistory.length > 0) {
     sections.push(buildDialogueHistorySection(dialogueHistory, currentLine, contextLineCount, currentStoryTime))
   }
 
-  // 7. 用户指令（包含消息条数和选择的选项）
+  // 8. 用户指令（包含消息条数和选择的选项）
   sections.push(buildInstructionSection(userInput, messageCount, selectedChoice, worldBook, currentStoryTime))
 
   return sections.filter(Boolean).join('\n\n---\n\n')
@@ -312,40 +319,33 @@ const buildInstructionSection = (
   }
   lines.push('')
   lines.push('### 输出要求')
-  lines.push('1. 严格按照 JSON 数组格式输出')
-  lines.push('2. 每条对话包含: speaker(说话者)、emotion(表情)、text(内容)、highlight(是否高亮)、storyTime(剧情时间)')
-  lines.push('3. 说话者必须是已定义的角色名称或"旁白"')
-  lines.push('4. 表情必须使用指定的表情标识')
-  lines.push('5. highlight 为 true 时表示该角色立绘需要高亮')
-  lines.push(`6. 必须生成 ${messageCount} 条对话`)
-  lines.push('7. 在剧情关键节点，为最后一条对话添加 choices 字段提供选项')
-  lines.push('8. 可选: 使用 scene 字段切换场景背景')
-  lines.push('9. 若角色存在“人格结构化设定”，角色行为与语气必须优先符合该设定')
-  lines.push('10. storyTime 纪年格式由你根据世界观决定（如星历、王朝年号、公历等），不要被固定格式限制')
-  lines.push('11. 所有生成对话都必须包含 storyTime，并在同一世界内保持纪年体系与书写风格一致')
-  lines.push('12. 本次剧情推进后，最后一条对话的 storyTime 必须相对当前剧情时间发生推进（不能原地不变、不能回退）')
+  lines.push('1. 只输出 JSON 数组，不要 markdown，不要解释')
+  lines.push('2. 每条对话使用紧凑键: s(说话者)、e(表情)、t(内容)、h(高亮0/1)、d(剧情时间)')
+  lines.push(`3. 必须生成 ${messageCount} 条对话`)
+  lines.push('4. 说话者必须是已定义角色名称或"旁白"')
+  lines.push('5. 表情必须使用指定的表情标识')
+  lines.push('6. 所有对话都必须包含 d，并在同一世界内保持纪年体系与写法一致')
+  lines.push('7. 本次推进后，最后一条 d 必须相对当前剧情时间前进（不能不变、不能回退）')
+  lines.push('8. 每次生成的最后一条都必须添加 c 选项: c={p,o,i}，其中 o=[{t,a}]，i=1')
+  lines.push('9. 可选场景切换使用 sc={id,name}')
+  lines.push('10. 若角色存在“人格结构化设定”，角色行为与语气必须优先符合该设定')
+  lines.push('11. 输出尽量紧凑，减少无意义空格与换行')
   
   // 添加场景指令说明
   lines.push('')
   lines.push('### 场景切换指令')
-  lines.push('当需要切换背景场景时，在对话中添加 scene 字段:')
-  lines.push('```json')
-  lines.push('{')
-  lines.push('  "speaker": "旁白",')
-  lines.push('  "text": "场景描述...",')
-  lines.push('  "scene": {')
-  lines.push('    "id": "场景ID",')
-  lines.push('    "name": "场景名称"')
-  lines.push('  }')
-  lines.push('}')
-  lines.push('```')
+  lines.push('如需切换背景场景，在对应对话添加 sc 字段，例如: {"s":"旁白","t":"...","sc":{"id":"street_night","name":"夜街"}}')
   
   // 如果世界书有场景配置，列出可用场景
   if (worldBook?.scenes && worldBook.scenes.length > 0) {
     lines.push('')
     lines.push('### 可用场景列表')
-    for (const scene of worldBook.scenes) {
+    const sceneList = worldBook.scenes.slice(0, 20)
+    for (const scene of sceneList) {
       lines.push(`- ${scene.id}: ${scene.name}${scene.description ? ` (${scene.description})` : ''}`)
+    }
+    if (worldBook.scenes.length > sceneList.length) {
+      lines.push(`- 其余 ${worldBook.scenes.length - sceneList.length} 个场景省略`)
     }
   }
   
@@ -450,7 +450,7 @@ export const buildQuickPrompt = (worldBook, recentLines) => {
   }
   
   lines.push('')
-  lines.push('请生成接下来的剧情（JSON格式，包含speaker、emotion、text、highlight字段）:')
+  lines.push('请生成接下来的剧情（JSON数组，优先使用紧凑键 s/e/t/h/d）:')
   
   return lines.join('\n')
 }
@@ -501,6 +501,160 @@ const buildRelationshipSection = (relationshipSnapshot) => {
   }
 
   lines.push('请保持角色行为、语气、信息披露程度与上述关系状态一致。')
+  return lines.join('\n')
+}
+
+const RELATIONSHIP_LEDGER_PROMPT_WINDOW = 40
+const RELATIONSHIP_LEDGER_TIMELINE_LIMIT = 12
+const RELATIONSHIP_LEDGER_CHARACTER_LIMIT = 8
+
+const parsePromptNumber = (value, fallback = 0) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const formatPromptDelta = (value) => {
+  const normalized = parsePromptNumber(value, 0)
+  if (normalized > 0) return `+${normalized}`
+  if (normalized < 0) return `${normalized}`
+  return '0'
+}
+
+const truncatePromptText = (value, maxLength = 20) => {
+  const text = String(value || '').replace(/\s+/g, ' ').trim()
+  if (!text) return ''
+  const safeMaxLength = Number.isFinite(maxLength) ? Math.max(4, Math.floor(maxLength)) : 20
+  if (text.length <= safeMaxLength) return text
+  return `${text.slice(0, safeMaxLength - 1)}…`
+}
+
+const normalizeRelationshipLedgerRowsForPrompt = (relationshipLedger) => {
+  if (!Array.isArray(relationshipLedger) || relationshipLedger.length === 0) {
+    return []
+  }
+
+  const normalizedRows = relationshipLedger
+    .map((row) => {
+      if (!row || typeof row !== 'object') return null
+
+      const delta = row.delta && typeof row.delta === 'object' ? row.delta : {}
+      const deltaFavor = parsePromptNumber(delta.favor ?? row.deltaFavor, 0)
+      const deltaTrust = parsePromptNumber(delta.trust ?? row.deltaTrust, 0)
+      const deltaStance = parsePromptNumber(delta.stance ?? row.deltaStance, 0)
+      if (deltaFavor === 0 && deltaTrust === 0 && deltaStance === 0) {
+        return null
+      }
+
+      const after = row.after && typeof row.after === 'object' ? row.after : {}
+      const createdAt = parsePromptNumber(row.createdAt, 0)
+      const characterName = String(
+        row.characterName ||
+        row.name ||
+        row.characterId ||
+        '未知角色',
+      ).trim()
+
+      if (!characterName) {
+        return null
+      }
+
+      const triggeredEvents = Array.isArray(row.triggeredEvents)
+        ? row.triggeredEvents.map((item) => truncatePromptText(item, 18)).filter(Boolean).slice(0, 2)
+        : []
+
+      return {
+        createdAt,
+        storyTime: String(row.storyTime || '').trim(),
+        characterName,
+        deltaFavor,
+        deltaTrust,
+        deltaStance,
+        afterFavor: parsePromptNumber(after.favor, null),
+        afterTrust: parsePromptNumber(after.trust, null),
+        afterStance: parsePromptNumber(after.stance, null),
+        triggeredEvents,
+        choiceText: truncatePromptText(row.choiceText, 24),
+      }
+    })
+    .filter(Boolean)
+
+  if (normalizedRows.length === 0) {
+    return []
+  }
+
+  normalizedRows.sort((a, b) => a.createdAt - b.createdAt)
+  return normalizedRows.slice(-RELATIONSHIP_LEDGER_PROMPT_WINDOW)
+}
+
+const buildRelationshipLedgerSection = (relationshipLedger) => {
+  const rows = normalizeRelationshipLedgerRowsForPrompt(relationshipLedger)
+  if (rows.length === 0) {
+    return ''
+  }
+
+  const lines = ['## 关系推进数据表摘要']
+  lines.push('以下为真实历史关系变更记录，请据此推进人物关系发展。')
+  lines.push('')
+  lines.push('### 角色关系趋势（近期累计）')
+
+  const summaryByCharacter = new Map()
+  for (const row of rows) {
+    if (!summaryByCharacter.has(row.characterName)) {
+      summaryByCharacter.set(row.characterName, {
+        deltaFavor: 0,
+        deltaTrust: 0,
+        deltaStance: 0,
+        lastAfterFavor: null,
+        lastAfterTrust: null,
+        lastAfterStance: null,
+      })
+    }
+    const summary = summaryByCharacter.get(row.characterName)
+    summary.deltaFavor += row.deltaFavor
+    summary.deltaTrust += row.deltaTrust
+    summary.deltaStance += row.deltaStance
+    summary.lastAfterFavor = row.afterFavor
+    summary.lastAfterTrust = row.afterTrust
+    summary.lastAfterStance = row.afterStance
+  }
+
+  const characterSummaries = [...summaryByCharacter.entries()]
+    .map(([characterName, summary]) => {
+      const activity = Math.abs(summary.deltaFavor) + Math.abs(summary.deltaTrust) + Math.abs(summary.deltaStance)
+      return {
+        characterName,
+        summary,
+        activity,
+      }
+    })
+    .sort((a, b) => b.activity - a.activity)
+    .slice(0, RELATIONSHIP_LEDGER_CHARACTER_LIMIT)
+
+  for (const item of characterSummaries) {
+    const { characterName, summary } = item
+    const hasEndState = Number.isFinite(summary.lastAfterFavor) && Number.isFinite(summary.lastAfterTrust) && Number.isFinite(summary.lastAfterStance)
+    const endStateText = hasEndState
+      ? `，当前≈favor=${summary.lastAfterFavor}, trust=${summary.lastAfterTrust}, stance=${summary.lastAfterStance}`
+      : ''
+    lines.push(
+      `- ${characterName}: Δfavor ${formatPromptDelta(summary.deltaFavor)}, Δtrust ${formatPromptDelta(summary.deltaTrust)}, Δstance ${formatPromptDelta(summary.deltaStance)}${endStateText}`,
+    )
+  }
+
+  lines.push('')
+  lines.push('### 最近关键变化（时间线）')
+  const timelineRows = rows.slice(-RELATIONSHIP_LEDGER_TIMELINE_LIMIT)
+  for (const row of timelineRows) {
+    const storyTimeText = row.storyTime || '时间未标注'
+    const eventText = row.triggeredEvents.length > 0 ? `，事件:${row.triggeredEvents.join('、')}` : ''
+    const choiceText = row.choiceText ? `，输入:${row.choiceText}` : ''
+    lines.push(
+      `- [${storyTimeText}] ${row.characterName} Δ(${formatPromptDelta(row.deltaFavor)}/${formatPromptDelta(row.deltaTrust)}/${formatPromptDelta(row.deltaStance)})${eventText}${choiceText}`,
+    )
+  }
+
+  lines.push('')
+  lines.push('推进要求：延续上述关系轨迹；若出现明显反转，必须在剧情中给出触发原因。')
   return lines.join('\n')
 }
 

@@ -1,0 +1,57 @@
+{
+  "id": "ancient-scroll",
+  "name": "古风信笺",
+  "category": "ancient",
+  "description": "一封古风卷轴信笺，带有印章和诗词装饰",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "古代|古风|仙侠|武侠|宫廷|民国",
+        "description": "古代或古风场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "date": {
+      "type": "string",
+      "description": "日期（古代纪年格式）"
+    },
+    "title": {
+      "type": "string",
+      "description": "信笺标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 500,
+      "description": "信笺正文内容"
+    },
+    "poemLine1": {
+      "type": "string",
+      "description": "诗句第一行"
+    },
+    "poemLine2": {
+      "type": "string",
+      "description": "诗句第二行"
+    },
+    "closing": {
+      "type": "string",
+      "description": "结语敬词"
+    },
+    "sender": {
+      "type": "string",
+      "description": "署名"
+    }
+  },
+  "promptTemplate": "请生成一封古风信笺的内容。\n\n背景信息：\n- 写信人：{{sender}}\n- 收信人：{{recipient}}\n- 场景：{{scene}}\n- 主题：{{theme}}\n\n要求：\n1. 使用文言文或半文言文风格\n2. 内容要典雅含蓄，符合古代礼仪\n3. 可以引用或创作诗句\n4. 字数控制在200-400字之间\n5. 结尾要有敬词和署名\n\n请直接输出信笺内容，不要有其他说明。",
+  "style": {
+    "theme": "ancient",
+    "colors": ["#f5e6c8", "#8b4513", "#c41e3a"],
+    "mood": "典雅古韵"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

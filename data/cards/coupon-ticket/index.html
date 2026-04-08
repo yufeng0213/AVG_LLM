@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>优惠券</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f5f5f5;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      padding: 20px;
+    }
+    
+    .coupon-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .coupon-card {
+      position: relative;
+      background: #fff;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      display: flex;
+    }
+    
+    .coupon-left {
+      width: 35%;
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      padding: 20px 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    
+    .coupon-left::after {
+      content: '';
+      position: absolute;
+      right: -10px;
+      top: 0;
+      bottom: 0;
+      width: 20px;
+      background: radial-gradient(circle at left, transparent 8px, #fff 8px);
+      background-size: 20px 20px;
+      background-position: right center;
+    }
+    
+    .discount-amount {
+      font-size: 28px;
+      color: #fff;
+      font-weight: bold;
+      text-align: center;
+    }
+    
+    .discount-unit {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 5px;
+    }
+    
+    .coupon-type {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 10px;
+      padding: 3px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .coupon-right {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    
+    .coupon-header {
+      margin-bottom: 10px;
+    }
+    
+    .coupon-title {
+      font-size: 14px;
+      color: #1a1a1a;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .store-name {
+      font-size: 11px;
+      color: #888;
+    }
+    
+    .coupon-conditions {
+      font-size: 10px;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+    
+    .coupon-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      border-top: 1px dashed #ddd;
+    }
+    
+    .valid-date {
+      font-size: 10px;
+      color: #999;
+    }
+    
+    .coupon-code {
+      font-size: 11px;
+      color: #e74c3c;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    
+    .dashed-line {
+      position: absolute;
+      left: 35%;
+      top: 10px;
+      bottom: 10px;
+      border-left: 1px dashed rgba(0, 0, 0, 0.1);
+    }
+    
+    .corner-cut {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      background: radial-gradient(circle at bottom right, transparent 70%, #fff 70%);
+    }
+    
+    .corner-cut.top-left { top: 0; left: 0; transform: rotate(180deg); }
+    .corner-cut.top-right { top: 0; right: 0; }
+    .corner-cut.bottom-left { bottom: 0; left: 0; transform: rotate(90deg); }
+    .corner-cut.bottom-right { bottom: 0; right: 0; transform: rotate(-90deg); }
+  </style>
+</head>
+<body>
+  <div class="coupon-container">
+    <div class="coupon-card">
+      <div class="corner-cut top-left"></div>
+      <div class="corner-cut top-right"></div>
+      <div class="corner-cut bottom-left"></div>
+      <div class="corner-cut bottom-right"></div>
+      
+      <div class="coupon-left">
+        <div class="discount-amount">{{discount}}</div>
+        <div class="discount-unit">优惠</div>
+        <div class="coupon-type">{{couponType}}</div>
+      </div>
+      
+      <div class="dashed-line"></div>
+      
+      <div class="coupon-right">
+        <div class="coupon-header">
+          <div class="coupon-title">{{couponTitle}}</div>
+          <div class="store-name">{{store}}</div>
+        </div>
+        
+        <div class="coupon-conditions">
+          {{conditions}}
+        </div>
+        
+        <div class="coupon-footer">
+          <div class="valid-date">有效期至: {{validUntil}}</div>
+          <div class="coupon-code">{{code}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{
+  "id": "gothic-letter",
+  "name": "哥特式信函",
+  "category": "gothic",
+  "description": "一封哥特风格的神秘信函，带有暗黑装饰和哥特字体",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "哥特|暗黑|吸血鬼|古堡|神秘|阴郁",
+        "description": "哥特或暗黑场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "title": {
+      "type": "string",
+      "description": "信函标题"
+    },
+    "sender": {
+      "type": "string",
+      "description": "发送者"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "接收者"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "信函内容"
+    },
+    "signature": {
+      "type": "string",
+      "description": "署名"
+    }
+  },
+  "promptTemplate": "请生成一封哥特风格的信函。\n\n背景信息：\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n- 场景：{{scene}}\n\n要求：\n1. 使用优雅而阴郁的哥特风格语言\n2. 内容要带有神秘和浪漫气息\n3. 可以包含关于永恒、黑暗、命运的意象\n4. 字数控制在200-350字之间\n\n请直接输出信函内容，不要有其他说明。",
+  "style": {
+    "theme": "gothic",
+    "colors": ["#1a1a1a", "#2c2c2c", "#8b0000"],
+    "mood": "阴郁优雅"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

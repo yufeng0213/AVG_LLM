@@ -1,0 +1,63 @@
+{
+  "id": "weather-report",
+  "name": "天气预报",
+  "category": "weather",
+  "description": "一份天气预报卡片，带有气象元素和天气图标",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "天气|气象|晴天|雨天|雪天|风暴",
+        "description": "天气相关场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "location": {
+      "type": "string",
+      "description": "地点"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "weather": {
+      "type": "string",
+      "default": "晴",
+      "options": ["晴", "多云", "阴", "雨", "雪", "风暴"],
+      "description": "天气状况"
+    },
+    "temperature": {
+      "type": "string",
+      "description": "温度"
+    },
+    "humidity": {
+      "type": "string",
+      "description": "湿度"
+    },
+    "wind": {
+      "type": "string",
+      "description": "风向风力"
+    },
+    "forecast": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "天气预报详情"
+    },
+    "suggestion": {
+      "type": "string",
+      "description": "出行建议"
+    }
+  },
+  "promptTemplate": "请生成一份天气预报。\n\n背景信息：\n- 地点：{{location}}\n- 天气：{{weather}}\n- 场景：{{scene}}\n\n要求：\n1. 使用天气预报风格的语言\n2. 内容要包含温度、湿度等信息\n3. 可以包含出行建议\n4. 字数控制在100-200字之间\n\n请直接输出天气预报内容，不要有其他说明。",
+  "style": {
+    "theme": "weather",
+    "colors": ["#3498db", "#87ceeb", "#f39c12"],
+    "mood": "清新自然"
+  },
+  "rarity": "common",
+  "collectible": true
+}

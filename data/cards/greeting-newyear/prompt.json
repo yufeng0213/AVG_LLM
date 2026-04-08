@@ -1,0 +1,48 @@
+{
+  "id": "greeting-newyear",
+  "name": "新年贺卡",
+  "category": "greeting",
+  "description": "一张喜庆的新年贺卡，带有灯笼、烟花和金色装饰元素",
+  "trigger": {
+    "type": "date",
+    "conditions": [
+      {
+        "type": "date_range",
+        "start": "01-01",
+        "end": "01-15",
+        "description": "元旦至元宵节期间触发"
+      },
+      {
+        "type": "lunar_newyear",
+        "description": "农历新年期间触发"
+      }
+    ]
+  },
+  "variables": {
+    "year": {
+      "type": "year",
+      "description": "年份"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "收卡人名称"
+    },
+    "sender": {
+      "type": "string",
+      "description": "送卡人名称"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "新年祝福内容"
+    }
+  },
+  "promptTemplate": "请生成一段新年祝福语。\n\n背景信息：\n- 送卡人：{{sender}}\n- 收卡人：{{recipient}}\n- 年份：{{year}}\n- 关系：{{relationship}}\n\n要求：\n1. 内容喜庆吉祥，充满新年氛围\n2. 语气要符合送卡人的性格特点\n3. 可以包含对新一年的美好祝愿\n4. 字数控制在100-200字之间\n5. 要有传统节日感\n\n请直接输出祝福内容，不要有其他说明。",
+  "style": {
+    "theme": "festive",
+    "colors": ["#ffd700", "#ff6b35", "#1a1a2e"],
+    "mood": "喜庆祥和"
+  },
+  "rarity": "seasonal",
+  "collectible": true
+}

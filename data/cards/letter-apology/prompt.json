@@ -1,0 +1,52 @@
+{
+  "id": "letter-apology",
+  "name": "道歉信",
+  "category": "letter",
+  "description": "一封真诚的道歉信，带有泪痕效果，表达深深的歉意",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": [
+      {
+        "type": "event",
+        "operator": "after",
+        "value": "conflict",
+        "description": "在发生冲突后可能触发"
+      },
+      {
+        "type": "relationship",
+        "operator": "<",
+        "value": 50,
+        "description": "好感度较低时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "date": {
+      "type": "date",
+      "format": "YYYY年MM月DD日",
+      "description": "写信日期"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "收信人名称"
+    },
+    "sender": {
+      "type": "string",
+      "description": "写信人名称"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 600,
+      "description": "道歉信正文内容，应该真诚地表达歉意和悔意"
+    }
+  },
+  "promptTemplate": "请生成一封道歉信的内容。\n\n背景信息：\n- 写信人：{{sender}}\n- 收信人：{{recipient}}\n- 冲突原因：{{conflictReason}}\n- 当前关系状态：{{relationshipStatus}}\n\n要求：\n1. 内容要真诚，表达深刻的歉意\n2. 承认错误，不推卸责任\n3. 表达想要弥补的决心\n4. 语气要符合写信人的性格\n5. 字数控制在200-400字之间\n\n请直接输出道歉信内容，不要有其他说明。",
+  "style": {
+    "theme": "somber",
+    "colors": ["#e0e5ec", "#7f8c8d", "#2c3e50"],
+    "mood": "诚恳歉意"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

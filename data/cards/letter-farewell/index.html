@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>告别信</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      padding: 20px;
+    }
+    
+    .letter-container {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+    }
+    
+    .letter {
+      position: relative;
+      background: linear-gradient(180deg, #f5f5f0 0%, #e8e8e0 100%);
+      padding: 50px 45px;
+      border-radius: 2px;
+      box-shadow: 
+        0 25px 80px rgba(0, 0, 0, 0.4),
+        0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    .letter::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    
+    .burn-edge {
+      position: absolute;
+      top: -5px;
+      left: -5px;
+      right: -5px;
+      bottom: -5px;
+      background: 
+        radial-gradient(ellipse at 10% 10%, transparent 60%, rgba(139, 69, 19, 0.3) 100%),
+        radial-gradient(ellipse at 90% 20%, transparent 50%, rgba(101, 67, 33, 0.2) 100%),
+        radial-gradient(ellipse at 5% 80%, transparent 55%, rgba(139, 90, 43, 0.25) 100%);
+      pointer-events: none;
+      border-radius: 4px;
+    }
+    
+    .wax-drip {
+      position: absolute;
+      width: 15px;
+      height: 25px;
+      background: linear-gradient(180deg, #8b4513 0%, #654321 100%);
+      border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+      opacity: 0.6;
+    }
+    
+    .wax-drip:nth-child(1) {
+      top: 20px;
+      right: 30px;
+      transform: rotate(15deg);
+    }
+    
+    .wax-drip:nth-child(2) {
+      top: 35px;
+      right: 25px;
+      width: 10px;
+      height: 18px;
+      transform: rotate(-10deg);
+    }
+    
+    .letter-header {
+      text-align: right;
+      margin-bottom: 30px;
+      color: #5d6d7e;
+      font-size: 13px;
+      font-style: italic;
+      opacity: 0.8;
+    }
+    
+    .letter-title {
+      font-size: 22px;
+      color: #1a1a1a;
+      margin-bottom: 30px;
+      text-align: center;
+      font-weight: normal;
+      letter-spacing: 12px;
+      position: relative;
+    }
+    
+    .letter-title::before,
+    .letter-title::after {
+      content: '✦';
+      font-size: 12px;
+      color: #7f8c8d;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    
+    .letter-title::before {
+      left: 20px;
+    }
+    
+    .letter-title::after {
+      right: 20px;
+    }
+    
+    .letter-content {
+      font-size: 15px;
+      line-height: 32px;
+      color: #2c3e50;
+      text-align: justify;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .letter-content p {
+      text-indent: 2em;
+      margin-bottom: 18px;
+    }
+    
+    .farewell-mark {
+      text-align: center;
+      margin: 30px 0;
+      font-size: 14px;
+      color: #7f8c8d;
+      letter-spacing: 3px;
+    }
+    
+    .farewell-mark::before,
+    .farewell-mark::after {
+      content: '———';
+      margin: 0 15px;
+    }
+    
+    .letter-signature {
+      text-align: right;
+      margin-top: 40px;
+      color: #5d6d7e;
+    }
+    
+    .letter-signature .farewell-text {
+      font-size: 13px;
+      margin-bottom: 8px;
+      font-style: italic;
+    }
+    
+    .letter-signature .name {
+      font-size: 18px;
+      color: #1a1a1a;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    
+    .feather-pen {
+      position: absolute;
+      bottom: 30px;
+      left: 25px;
+      font-size: 24px;
+      opacity: 0.2;
+      transform: rotate(-30deg);
+    }
+    
+    .tear-stain {
+      position: absolute;
+      width: 30px;
+      height: 20px;
+      background: radial-gradient(ellipse at center, rgba(150, 180, 200, 0.3) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    
+    .tear-stain:nth-child(1) {
+      top: 140px;
+      left: 80px;
+    }
+    
+    .tear-stain:nth-child(2) {
+      top: 200px;
+      right: 70px;
+      width: 25px;
+      height: 15px;
+    }
+    
+    @keyframes fade-tremble {
+      0%, 100% { 
+        opacity: 1;
+        transform: translateY(0);
+      }
+      50% { 
+        opacity: 0.95;
+        transform: translateY(-2px);
+      }
+    }
+    
+    .letter:hover {
+      animation: fade-tremble 4s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="letter-container">
+    <div class="letter">
+      <div class="burn-edge"></div>
+      <div class="wax-drip"></div>
+      <div class="wax-drip"></div>
+      <div class="tear-stain"></div>
+      <div class="tear-stain"></div>
+      
+      <div class="letter-header">
+        {{date}}，于 {{location}}
+      </div>
+      
+      <h2 class="letter-title">告别</h2>
+      
+      <div class="letter-content">
+        {{content}}
+      </div>
+      
+      <div class="farewell-mark">珍重</div>
+      
+      <div class="letter-signature">
+        <div class="farewell-text">此去经年，后会无期</div>
+        <div class="name">{{sender}}</div>
+      </div>
+      
+      <div class="feather-pen">🪶</div>
+    </div>
+  </div>
+</body>
+</html>

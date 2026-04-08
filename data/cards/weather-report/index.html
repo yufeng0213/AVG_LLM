@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>天气预报</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #87ceeb 0%, #3498db 100%);
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      padding: 20px;
+    }
+    
+    .weather-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .weather-card {
+      position: relative;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 25px 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+    }
+    
+    .header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .location-info {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .location-name {
+      font-size: 18px;
+      color: #1a1a1a;
+      font-weight: bold;
+    }
+    
+    .date-text {
+      font-size: 11px;
+      color: #888;
+      margin-top: 3px;
+    }
+    
+    .weather-icon {
+      font-size: 40px;
+    }
+    
+    .main-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .temperature-display {
+      display: flex;
+      align-items: flex-start;
+    }
+    
+    .temperature-value {
+      font-size: 48px;
+      color: #3498db;
+      font-weight: 300;
+      line-height: 1;
+    }
+    
+    .temperature-unit {
+      font-size: 18px;
+      color: #3498db;
+      margin-top: 5px;
+    }
+    
+    .weather-status {
+      text-align: right;
+    }
+    
+    .weather-name {
+      font-size: 16px;
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+    
+    .weather-desc {
+      font-size: 11px;
+      color: #888;
+      margin-top: 3px;
+    }
+    
+    .details-section {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .detail-item {
+      text-align: center;
+      padding: 10px;
+      background: rgba(52, 152, 219, 0.05);
+      border-radius: 5px;
+    }
+    
+    .detail-icon {
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+    
+    .detail-label {
+      font-size: 10px;
+      color: #888;
+      display: block;
+      margin-bottom: 3px;
+    }
+    
+    .detail-value {
+      font-size: 12px;
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+    
+    .forecast-section {
+      padding: 15px;
+      background: rgba(243, 156, 18, 0.05);
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+    
+    .forecast-title {
+      font-size: 11px;
+      color: #f39c12;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+    
+    .forecast-content {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.6;
+    }
+    
+    .suggestion-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(52, 152, 219, 0.1);
+      border-radius: 5px;
+    }
+    
+    .suggestion-icon {
+      font-size: 20px;
+    }
+    
+    .suggestion-text {
+      font-size: 11px;
+      color: #555;
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      border: 1px solid rgba(52, 152, 219, 0.2);
+    }
+    
+    .corner-decoration.top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+    .corner-decoration.top-right { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+    .corner-decoration.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-decoration.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+  </style>
+</head>
+<body>
+  <div class="weather-container">
+    <div class="weather-card">
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      
+      <div class="header-section">
+        <div class="location-info">
+          <div class="location-name">{{location}}</div>
+          <div class="date-text">{{date}}</div>
+        </div>
+        <div class="weather-icon">☀️</div>
+      </div>
+      
+      <div class="main-section">
+        <div class="temperature-display">
+          <span class="temperature-value">{{temperature}}</span>
+          <span class="temperature-unit">°C</span>
+        </div>
+        <div class="weather-status">
+          <div class="weather-name">{{weather}}</div>
+          <div class="weather-desc">今日天气</div>
+        </div>
+      </div>
+      
+      <div class="details-section">
+        <div class="detail-item">
+          <div class="detail-icon">💧</div>
+          <span class="detail-label">湿度</span>
+          <span class="detail-value">{{humidity}}</span>
+        </div>
+        <div class="detail-item">
+          <div class="detail-icon">🌬️</div>
+          <span class="detail-label">风力</span>
+          <span class="detail-value">{{wind}}</span>
+        </div>
+        <div class="detail-item">
+          <div class="detail-icon">🌡️</div>
+          <span class="detail-label">体感</span>
+          <span class="detail-value">{{temperature}}°</span>
+        </div>
+      </div>
+      
+      <div class="forecast-section">
+        <div class="forecast-title">天气预报</div>
+        <div class="forecast-content">{{forecast}}</div>
+      </div>
+      
+      <div class="suggestion-section">
+        <div class="suggestion-icon">💡</div>
+        <div class="suggestion-text">{{suggestion}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

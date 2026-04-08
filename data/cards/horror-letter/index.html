@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>诅咒信件</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 50%, #0a0a0a 100%);
+      font-family: 'Times New Roman', serif;
+      padding: 20px;
+    }
+    
+    .horror-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .horror-card {
+      position: relative;
+      background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+      border: 1px solid #3a0000;
+      padding: 35px 30px;
+      box-shadow: 
+        0 0 50px rgba(139, 0, 0, 0.3),
+        0 0 100px rgba(0, 0, 0, 0.8),
+        inset 0 0 30px rgba(139, 0, 0, 0.1);
+    }
+    
+    .blood-drip {
+      position: absolute;
+      width: 3px;
+      background: linear-gradient(180deg, #8b0000 0%, #4a0000 100%);
+      border-radius: 0 0 3px 3px;
+      animation: drip 4s ease-in-out infinite;
+    }
+    
+    .blood-drip:nth-child(1) { top: 0; left: 20px; height: 40px; animation-delay: 0s; }
+    .blood-drip:nth-child(2) { top: 0; left: 80px; height: 25px; animation-delay: 1s; }
+    .blood-drip:nth-child(3) { top: 0; right: 60px; height: 35px; animation-delay: 2s; }
+    .blood-drip:nth-child(4) { top: 0; right: 20px; height: 20px; animation-delay: 0.5s; }
+    
+    @keyframes drip {
+      0%, 100% { opacity: 0.8; height: 40px; }
+      50% { opacity: 1; height: 50px; }
+    }
+    
+    .burn-edge {
+      position: absolute;
+      top: -5px;
+      left: -5px;
+      right: -5px;
+      bottom: -5px;
+      background: 
+        radial-gradient(ellipse at 10% 10%, transparent 40%, rgba(50, 20, 0, 0.5) 100%),
+        radial-gradient(ellipse at 90% 20%, transparent 30%, rgba(30, 10, 0, 0.4) 100%),
+        radial-gradient(ellipse at 5% 80%, transparent 35%, rgba(40, 15, 0, 0.3) 100%),
+        radial-gradient(ellipse at 95% 90%, transparent 45%, rgba(35, 12, 0, 0.4) 100%);
+      pointer-events: none;
+    }
+    
+    .candle-wax {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      width: 25px;
+      height: 35px;
+      background: linear-gradient(180deg, #2a1a1a 0%, #1a0a0a 100%);
+      border-radius: 3px 3px 5px 5px;
+      box-shadow: 0 0 10px rgba(139, 0, 0, 0.3);
+    }
+    
+    .candle-wax::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 6px;
+      height: 15px;
+      background: radial-gradient(ellipse at bottom, #ff4500 0%, #ff0000 50%, transparent 100%);
+      border-radius: 50% 50% 20% 20%;
+      animation: flicker 0.5s ease-in-out infinite alternate;
+    }
+    
+    @keyframes flicker {
+      0% { transform: translateX(-50%) scale(1); opacity: 1; }
+      100% { transform: translateX(-50%) scale(0.9); opacity: 0.8; }
+    }
+    
+    .card-header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(139, 0, 0, 0.3);
+    }
+    
+    .card-title {
+      font-size: 24px;
+      color: #8b0000;
+      letter-spacing: 5px;
+      text-shadow: 0 0 10px rgba(139, 0, 0, 0.5);
+      animation: pulse-text 3s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-text {
+      0%, 100% { text-shadow: 0 0 10px rgba(139, 0, 0, 0.5); }
+      50% { text-shadow: 0 0 20px rgba(139, 0, 0, 0.8), 0 0 30px rgba(139, 0, 0, 0.4); }
+    }
+    
+    .card-subtitle {
+      font-size: 12px;
+      color: #4a0000;
+      margin-top: 10px;
+      font-style: italic;
+    }
+    
+    .message-content {
+      font-size: 14px;
+      line-height: 28px;
+      color: #8a7a7a;
+      text-align: justify;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .message-content p {
+      margin-bottom: 15px;
+      text-indent: 2em;
+    }
+    
+    .cursed-text {
+      color: #8b0000;
+      font-style: italic;
+      text-shadow: 0 0 5px rgba(139, 0, 0, 0.3);
+    }
+    
+    .warning-sign {
+      text-align: center;
+      margin: 20px 0;
+      font-size: 20px;
+      color: #8b0000;
+      animation: warning-pulse 1s ease-in-out infinite;
+    }
+    
+    @keyframes warning-pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    
+    .card-footer {
+      margin-top: 25px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(139, 0, 0, 0.3);
+      text-align: right;
+    }
+    
+    .signature {
+      font-size: 16px;
+      color: #8b0000;
+      font-style: italic;
+    }
+    
+    .date-text {
+      font-size: 11px;
+      color: #4a0000;
+      margin-top: 5px;
+    }
+    
+    .pentagram {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      font-size: 30px;
+      opacity: 0.15;
+      color: #8b0000;
+    }
+    
+    .scratch-mark {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      width: 30px;
+      height: 60px;
+      background: repeating-linear-gradient(
+        180deg,
+        transparent,
+        transparent 5px,
+        rgba(139, 0, 0, 0.3) 5px,
+        rgba(139, 0, 0, 0.3) 6px
+      );
+      transform: rotate(15deg);
+      opacity: 0.5;
+    }
+    
+    .fog-effect {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+      pointer-events: none;
+      animation: fog-drift 10s ease-in-out infinite;
+    }
+    
+    @keyframes fog-drift {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 0.7; }
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      75% { transform: translateX(2px); }
+    }
+    
+    .horror-card:hover {
+      animation: shake 0.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="horror-container">
+    <div class="horror-card">
+      <div class="blood-drip"></div>
+      <div class="blood-drip"></div>
+      <div class="blood-drip"></div>
+      <div class="blood-drip"></div>
+      <div class="burn-edge"></div>
+      <div class="candle-wax"></div>
+      <div class="fog-effect"></div>
+      <div class="scratch-mark"></div>
+      <div class="pentagram">⛧</div>
+      
+      <div class="card-header">
+        <h2 class="card-title">{{title}}</h2>
+        <div class="card-subtitle">{{subtitle}}</div>
+      </div>
+      
+      <div class="message-content">
+        {{content}}
+      </div>
+      
+      <div class="warning-sign">⚠️</div>
+      
+      <div class="card-footer">
+        <div class="signature">{{signature}}</div>
+        <div class="date-text">{{date}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

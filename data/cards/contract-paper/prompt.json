@@ -1,0 +1,59 @@
+{
+  "id": "contract-paper",
+  "name": "契约文书",
+  "category": "contract",
+  "description": "一份契约或合同文书，带有正式法律格式",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "契约|合同|协议|交易|约定|承诺",
+        "description": "契约或交易场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "contractTitle": {
+      "type": "string",
+      "description": "契约标题"
+    },
+    "partyA": {
+      "type": "string",
+      "description": "甲方"
+    },
+    "partyB": {
+      "type": "string",
+      "description": "乙方"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "契约内容"
+    },
+    "terms": {
+      "type": "string",
+      "description": "条款摘要"
+    },
+    "contractType": {
+      "type": "string",
+      "default": "协议",
+      "options": ["协议", "契约", "合同", "约定", "承诺"],
+      "description": "契约类型"
+    }
+  },
+  "promptTemplate": "请生成一份契约文书的内容。\n\n背景信息：\n- 甲方：{{partyA}}\n- 乙方：{{partyB}}\n- 契约类型：{{contractType}}\n- 场景：{{scene}}\n\n要求：\n1. 使用正式契约风格的语言\n2. 内容要严谨规范\n3. 可以包含条款和条件\n4. 字数控制在200-350字之间\n\n请直接输出契约内容，不要有其他说明。",
+  "style": {
+    "theme": "contract",
+    "colors": ["#f5e6c8", "#2c1810", "#8b4513"],
+    "mood": "正式严谨"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

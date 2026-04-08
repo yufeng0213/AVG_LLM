@@ -38,6 +38,12 @@ const createEmptySaveData = () => ({
     dialogueScript: [],
     sceneCharacters: [],
   },
+  // 新增：好感度系统数据
+  relationships: {
+    runtime: {}, // 运行时关系状态（覆盖世界书默认值）
+    history: [], // 关系变化历史
+    triggeredEvents: [], // 已触发的关系事件
+  },
 })
 
 /**

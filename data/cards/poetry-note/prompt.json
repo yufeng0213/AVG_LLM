@@ -1,0 +1,51 @@
+{
+  "id": "poetry-note",
+  "name": "诗歌便签",
+  "category": "poetry",
+  "description": "一张诗歌风格的便签，带有诗意和文学气息",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "mood",
+        "operator": "contains",
+        "value": "诗意|浪漫|文艺|抒情|感伤",
+        "description": "诗意或浪漫场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "poemTitle": {
+      "type": "string",
+      "description": "诗歌标题"
+    },
+    "poemContent": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "诗歌内容"
+    },
+    "author": {
+      "type": "string",
+      "description": "作者"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "mood": {
+      "type": "string",
+      "default": "抒情",
+      "options": ["抒情", "浪漫", "感伤", "哲理", "自然"],
+      "description": "诗歌情绪"
+    }
+  },
+  "promptTemplate": "请生成一首诗歌。\n\n背景信息：\n- 作者：{{author}}\n- 情绪：{{mood}}\n- 场景：{{scene}}\n\n要求：\n1. 使用诗歌风格的语言\n2. 内容要富有诗意和情感\n3. 可以是现代诗或古典诗风格\n4. 字数控制在100-200字之间\n\n请直接输出诗歌内容，不要有其他说明。",
+  "style": {
+    "theme": "poetry",
+    "colors": ["#f5f5f5", "#e8e8e8", "#c41e3a"],
+    "mood": "诗意浪漫"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

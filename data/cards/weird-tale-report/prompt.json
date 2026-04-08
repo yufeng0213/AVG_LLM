@@ -1,0 +1,67 @@
+{
+  "id": "weird-tale-report",
+  "name": "异常现象报告",
+  "category": "weird-tale",
+  "description": "一份新怪谈风格的异常现象报告，带有机密文件风格和神秘编码",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "新怪谈|异常|收容|SCP|基金会|神秘",
+        "description": "新怪谈或异常场景可能触发"
+      },
+      {
+        "type": "story",
+        "operator": "contains",
+        "value": "异常|收容|失控|危险等级|机密",
+        "description": "剧情涉及异常现象时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "reportId": {
+      "type": "string",
+      "description": "报告编号"
+    },
+    "classification": {
+      "type": "string",
+      "default": "机密",
+      "options": ["公开", "机密", "绝密", "最高机密"],
+      "description": "保密等级"
+    },
+    "threatLevel": {
+      "type": "string",
+      "default": "中等",
+      "options": ["安全", "低危", "中等", "高危", "极度危险"],
+      "description": "威胁等级"
+    },
+    "title": {
+      "type": "string",
+      "description": "报告标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "报告内容"
+    },
+    "observer": {
+      "type": "string",
+      "description": "观察员"
+    },
+    "date": {
+      "type": "string",
+      "description": "报告日期"
+    }
+  },
+  "promptTemplate": "请生成一份异常现象报告。\n\n背景信息：\n- 异常编号：{{reportId}}\n- 威胁等级：{{threatLevel}}\n- 场景：{{scene}}\n\n要求：\n1. 使用客观、冷静的报告语气\n2. 内容要带有神秘感和不可名状的恐怖\n3. 可以包含专业术语和编码\n4. 字数控制在200-350字之间\n5. 结尾要有处理建议或警告\n\n请直接输出报告内容，不要有其他说明。",
+  "style": {
+    "theme": "weird-tale",
+    "colors": ["#1a1a1a", "#2d2d2d", "#c41e3a"],
+    "mood": "神秘诡异"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

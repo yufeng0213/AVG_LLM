@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>诗歌便签</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+      font-family: 'Georgia', serif;
+      padding: 20px;
+    }
+    
+    .poetry-container {
+      position: relative;
+      width: 100%;
+      max-width: 350px;
+    }
+    
+    .poetry-card {
+      position: relative;
+      background: #fff;
+      padding: 35px 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+    }
+    
+    .paper-texture {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(ellipse at 10% 10%, rgba(0, 0, 0, 0.02) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 90%, rgba(0, 0, 0, 0.03) 0%, transparent 40%);
+      pointer-events: none;
+    }
+    
+    .mood-badge {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 5px 10px;
+      background: rgba(196, 30, 58, 0.1);
+      border: 1px solid #c41e3a;
+      color: #c41e3a;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+    
+    .poetry-header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
+    }
+    
+    .poem-title {
+      font-size: 16px;
+      color: #1a1a1a;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+    
+    .poem-author {
+      font-size: 11px;
+      color: #888;
+      letter-spacing: 1px;
+    }
+    
+    .poetry-content {
+      color: #333;
+      font-size: 14px;
+      line-height: 2.2;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .poem-line {
+      display: block;
+      margin: 8px 0;
+    }
+    
+    .poetry-footer {
+      text-align: right;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .date-text {
+      font-size: 10px;
+      color: #999;
+      letter-spacing: 1px;
+    }
+    
+    .flower-decoration {
+      position: absolute;
+      bottom: 15px;
+      left: 15px;
+      width: 25px;
+      height: 25px;
+      opacity: 0.2;
+    }
+    
+    .flower-decoration::before {
+      content: '🌸';
+      font-size: 18px;
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .corner-decoration.top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+    .corner-decoration.top-right { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+    .corner-decoration.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-decoration.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+  </style>
+</head>
+<body>
+  <div class="poetry-container">
+    <div class="poetry-card">
+      <div class="paper-texture"></div>
+      <div class="mood-badge">{{mood}}</div>
+      <div class="flower-decoration"></div>
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      
+      <div class="poetry-header">
+        <div class="poem-title">{{poemTitle}}</div>
+        <div class="poem-author">{{author}}</div>
+      </div>
+      
+      <div class="poetry-content">
+        {{poemContent}}
+      </div>
+      
+      <div class="poetry-footer">
+        <div class="date-text">{{date}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

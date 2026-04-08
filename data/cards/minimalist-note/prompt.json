@@ -1,0 +1,47 @@
+{
+  "id": "minimalist-note",
+  "name": "极简便签",
+  "category": "minimalist",
+  "description": "一张极简主义风格的便签，简洁优雅的设计",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": [
+      {
+        "type": "mood",
+        "operator": "contains",
+        "value": "平静|简约|现代|都市|工作",
+        "description": "平静或现代场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "title": {
+      "type": "string",
+      "description": "标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "便签内容"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "priority": {
+      "type": "string",
+      "default": "普通",
+      "options": ["普通", "重要", "紧急"],
+      "description": "优先级"
+    }
+  },
+  "promptTemplate": "请生成一张极简便签的内容。\n\n背景信息：\n- 场景：{{scene}}\n- 主题：{{theme}}\n\n要求：\n1. 内容要简洁明了\n2. 语言要直接有效\n3. 避免冗余表达\n4. 字数控制在50-150字之间\n\n请直接输出便签内容，不要有其他说明。",
+  "style": {
+    "theme": "minimalist",
+    "colors": ["#ffffff", "#333333", "#f5f5f5"],
+    "mood": "简洁现代"
+  },
+  "rarity": "common",
+  "collectible": true
+}

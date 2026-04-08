@@ -8,6 +8,7 @@ import WorldBookScreen from './screens/WorldBookScreen.vue'
 import SaveLoadScreen from './screens/SaveLoadScreen.vue'
 import PluginManagerScreen from './screens/PluginManagerScreen.vue'
 import NarratorManagerScreen from './screens/NarratorManagerScreen.vue'
+import CardCollectionScreen from './screens/CardCollectionScreen.vue'
 import { getPlatform, isMobileDevice, isNative, isAndroid } from './utils/platform'
 import { StatusBar, Style } from '@capacitor/status-bar'
 
@@ -156,6 +157,10 @@ const openPluginManager = () => {
 
 const openNarratorManager = () => {
   currentScreen.value = 'narrator-manager'
+}
+
+const openCardCollection = () => {
+  currentScreen.value = 'card-collection'
 }
 
 const backToWorldBookShelf = () => {
@@ -309,6 +314,7 @@ watch(currentScreen, (screen) => {
         @open-save-load="openSaveLoad"
         @open-plugin-manager="openPluginManager"
         @open-narrator-manager="openNarratorManager"
+        @open-card-collection="openCardCollection"
       />
       <GameScreen
         v-else-if="currentScreen === 'game'"
@@ -335,6 +341,10 @@ watch(currentScreen, (screen) => {
       />
       <NarratorManagerScreen
         v-else-if="currentScreen === 'narrator-manager'"
+        @back="backToStart"
+      />
+      <CardCollectionScreen
+        v-else-if="currentScreen === 'card-collection'"
         @back="backToStart"
       />
       <WorldBookEditorScreen

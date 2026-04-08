@@ -1,0 +1,52 @@
+{
+  "id": "letter-farewell",
+  "name": "告别信",
+  "category": "letter",
+  "description": "一封充满不舍的告别信，带有泪痕和烧焦边缘效果，适合离别场景",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "event",
+        "operator": "after",
+        "value": "departure",
+        "description": "在离别事件后可能触发"
+      },
+      {
+        "type": "story",
+        "operator": "contains",
+        "value": "告别|离开|再见|离别",
+        "description": "剧情涉及离别时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "date": {
+      "type": "date",
+      "format": "YYYY年MM月DD日",
+      "description": "写信日期"
+    },
+    "location": {
+      "type": "string",
+      "description": "写信地点"
+    },
+    "sender": {
+      "type": "string",
+      "description": "写信人名称"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 700,
+      "description": "告别信正文内容，应该充满不舍和祝福"
+    }
+  },
+  "promptTemplate": "请生成一封告别信的内容。\n\n背景信息：\n- 写信人：{{sender}}\n- 收信人：{{recipient}}\n- 离别原因：{{departureReason}}\n- 共同回忆：{{sharedMemories}}\n\n要求：\n1. 内容要深情但不失洒脱\n2. 回忆美好时光，表达不舍\n3. 给予对方祝福和期望\n4. 语气要符合写信人的性格\n5. 字数控制在300-500字之间\n6. 结尾要有珍重等告别语\n\n请直接输出告别信内容，不要有其他说明。",
+  "style": {
+    "theme": "melancholy",
+    "colors": ["#2c3e50", "#34495e", "#f5f5f0"],
+    "mood": "伤感离别"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

@@ -1,0 +1,55 @@
+{
+  "id": "horror-letter",
+  "name": "诅咒信件",
+  "category": "horror",
+  "description": "一封带有诅咒气息的神秘信件，带有血迹和烧焦效果",
+  "trigger": {
+    "type": "random",
+    "probability": 0.01,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "恐怖|惊悚|诅咒|灵异|黑暗|诡异",
+        "description": "恐怖或惊悚场景可能触发"
+      },
+      {
+        "type": "story",
+        "operator": "contains",
+        "value": "诅咒|死亡|警告|危险|不祥",
+        "description": "剧情涉及诅咒或危险时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "title": {
+      "type": "string",
+      "description": "信件标题"
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "副标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "信件内容"
+    },
+    "signature": {
+      "type": "string",
+      "description": "署名"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    }
+  },
+  "promptTemplate": "请生成一封诅咒信件的内容。\n\n背景信息：\n- 场景：{{scene}}\n- 诅咒来源：{{curseSource}}\n- 相关事件：{{event}}\n\n要求：\n1. 内容要带有神秘和恐怖气息\n2. 可以包含警告或预言\n3. 语气要阴森诡异\n4. 字数控制在150-300字之间\n5. 不要过于血腥，保持神秘感\n\n请直接输出信件内容，不要有其他说明。",
+  "style": {
+    "theme": "horror",
+    "colors": ["#0a0a0a", "#8b0000", "#1a1a1a"],
+    "mood": "阴森恐怖"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

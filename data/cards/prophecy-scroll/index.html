@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>预言卷轴</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      font-family: 'Georgia', serif;
+      padding: 20px;
+    }
+    
+    .prophecy-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .prophecy-card {
+      position: relative;
+      background: linear-gradient(180deg, #f8f4e8 0%, #e8dcc8 50%, #f0e8d8 100%);
+      padding: 40px 30px;
+      box-shadow: 
+        0 0 50px rgba(233, 69, 96, 0.2),
+        0 15px 50px rgba(0, 0, 0, 0.4);
+    }
+    
+    .mystic-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+      animation: glow-pulse 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.6; }
+    }
+    
+    .scroll-roller-top,
+    .scroll-roller-bottom {
+      position: absolute;
+      left: -10px;
+      right: -10px;
+      height: 25px;
+      background: linear-gradient(180deg, #8b4513 0%, #654321 50%, #8b4513 100%);
+      border-radius: 12px;
+      box-shadow: 
+        0 3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 2px 0 rgba(255, 255, 255, 0.2);
+    }
+    
+    .scroll-roller-top { top: -12px; }
+    .scroll-roller-bottom { bottom: -12px; }
+    
+    .type-badge {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 5px 10px;
+      background: rgba(233, 69, 96, 0.2);
+      border: 1px solid #e94560;
+      color: #e94560;
+      font-size: 10px;
+      letter-spacing: 2px;
+    }
+    
+    .prophecy-header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(139, 90, 43, 0.4);
+    }
+    
+    .prophecy-title {
+      font-size: 18px;
+      color: #8b4513;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+    
+    .prophecy-meta {
+      font-size: 11px;
+      color: #5a4a3a;
+      letter-spacing: 1px;
+    }
+    
+    .prophecy-content {
+      color: #2c1810;
+      font-size: 14px;
+      line-height: 2;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .prophecy-line {
+      display: block;
+      margin: 10px 0;
+    }
+    
+    .interpretation-section {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(255, 215, 0, 0.1);
+      border-left: 3px solid #ffd700;
+    }
+    
+    .interpretation-title {
+      font-size: 10px;
+      color: #8b4513;
+      margin-bottom: 5px;
+      letter-spacing: 2px;
+    }
+    
+    .interpretation-content {
+      font-size: 11px;
+      color: #5a4a3a;
+      line-height: 1.6;
+    }
+    
+    .mystic-symbol {
+      position: absolute;
+      bottom: 15px;
+      left: 15px;
+      width: 30px;
+      height: 30px;
+      opacity: 0.3;
+    }
+    
+    .mystic-symbol::before {
+      content: '✧';
+      font-size: 24px;
+      color: #ffd700;
+      animation: symbol-glow 2s ease-in-out infinite;
+    }
+    
+    @keyframes symbol-glow {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.1); }
+    }
+    
+    .star-decoration {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: #ffd700;
+      border-radius: 50%;
+      animation: twinkle 2s ease-in-out infinite;
+    }
+    
+    .star-decoration:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+    .star-decoration:nth-child(2) { top: 40%; right: 15%; animation-delay: 0.5s; }
+    .star-decoration:nth-child(3) { bottom: 30%; left: 20%; animation-delay: 1s; }
+    
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="prophecy-container">
+    <div class="prophecy-card">
+      <div class="mystic-glow"></div>
+      <div class="scroll-roller-top"></div>
+      <div class="scroll-roller-bottom"></div>
+      <div class="star-decoration"></div>
+      <div class="star-decoration"></div>
+      <div class="star-decoration"></div>
+      <div class="mystic-symbol"></div>
+      <div class="type-badge">{{prophecyType}}</div>
+      
+      <div class="prophecy-header">
+        <div class="prophecy-title">{{title}}</div>
+        <div class="prophecy-meta">预言者: {{prophet}} · {{date}}</div>
+      </div>
+      
+      <div class="prophecy-content">
+        {{content}}
+      </div>
+      
+      <div class="interpretation-section">
+        <div class="interpretation-title">解读提示</div>
+        <div class="interpretation-content">{{interpretation}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "id": "photo-vintage",
+  "name": "老照片",
+  "category": "photo",
+  "description": "一张泛黄的老照片，带有岁月痕迹和怀旧氛围",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "story",
+        "operator": "contains",
+        "value": "回忆|过去|童年|往事|曾经",
+        "description": "剧情涉及回忆往事时可能触发"
+      },
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "历史|民国|古代|复古",
+        "description": "历史或复古场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "photoDescription": {
+      "type": "string",
+      "description": "照片内容描述"
+    },
+    "memoryTag": {
+      "type": "string",
+      "description": "记忆标签（如珍贵回忆、童年时光等）"
+    },
+    "date": {
+      "type": "string",
+      "description": "手写日期"
+    },
+    "year": {
+      "type": "string",
+      "description": "年份"
+    },
+    "location": {
+      "type": "string",
+      "description": "拍摄地点"
+    },
+    "caption": {
+      "type": "string",
+      "description": "照片说明"
+    }
+  },
+  "promptTemplate": "请生成一张老照片的相关信息。\n\n背景信息：\n- 场景：{{scene}}\n- 时间背景：{{timeContext}}\n- 相关人物：{{characters}}\n\n要求：\n1. 照片描述要有年代感和故事感\n2. 记忆标签要体现照片的情感价值\n3. 地点和日期要符合故事背景\n4. 说明文字要简洁有感情\n\n请按以下格式输出：\n照片描述：...\n记忆标签：...\n日期：...\n地点：...\n说明：...",
+  "style": {
+    "theme": "vintage",
+    "colors": ["#d4a574", "#f5e6d3", "#8b7355"],
+    "mood": "怀旧温馨"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

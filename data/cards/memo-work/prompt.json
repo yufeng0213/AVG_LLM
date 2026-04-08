@@ -1,0 +1,59 @@
+{
+  "id": "memo-work",
+  "name": "工作备忘录",
+  "category": "memo",
+  "description": "一份工作风格的备忘录，带有专业办公元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "办公室|工作|职场|会议|项目|任务",
+        "description": "工作场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "memoTitle": {
+      "type": "string",
+      "description": "备忘录标题"
+    },
+    "from": {
+      "type": "string",
+      "description": "发送者"
+    },
+    "to": {
+      "type": "string",
+      "description": "接收者"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "备忘录内容"
+    },
+    "priority": {
+      "type": "string",
+      "default": "普通",
+      "options": ["普通", "重要", "紧急"],
+      "description": "优先级"
+    },
+    "deadline": {
+      "type": "string",
+      "description": "截止日期"
+    }
+  },
+  "promptTemplate": "请生成一份工作备忘录。\n\n背景信息：\n- 发送者：{{from}}\n- 接收者：{{to}}\n- 场景：{{scene}}\n\n要求：\n1. 使用专业工作风格的语言\n2. 内容要简洁明了\n3. 可以包含任务和截止日期\n4. 字数控制在100-200字之间\n\n请直接输出备忘录内容，不要有其他说明。",
+  "style": {
+    "theme": "memo",
+    "colors": ["#ffffff", "#3498db", "#f5f5f5"],
+    "mood": "专业高效"
+  },
+  "rarity": "common",
+  "collectible": true
+}

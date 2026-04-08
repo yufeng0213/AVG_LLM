@@ -1,0 +1,75 @@
+{
+  "id": "steampunk-telegram",
+  "name": "蒸汽朋克电报",
+  "category": "steampunk",
+  "description": "一张蒸汽朋克风格的电报，带有齿轮和蒸汽管道装饰",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "蒸汽朋克|维多利亚|工业革命|机械|齿轮|蒸汽",
+        "description": "蒸汽朋克场景可能触发"
+      },
+      {
+        "type": "time",
+        "operator": "range",
+        "value": "1800-1900",
+        "description": "19世纪背景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "telegramNumber": {
+      "type": "string",
+      "description": "电报编号"
+    },
+    "title": {
+      "type": "string",
+      "description": "电报标题"
+    },
+    "from": {
+      "type": "string",
+      "description": "发送者"
+    },
+    "to": {
+      "type": "string",
+      "description": "接收者"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "time": {
+      "type": "string",
+      "description": "时间"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "电报内容"
+    },
+    "morseCode": {
+      "type": "string",
+      "description": "摩尔斯电码装饰"
+    },
+    "operator": {
+      "type": "string",
+      "description": "发报员"
+    },
+    "station": {
+      "type": "string",
+      "description": "发报站"
+    }
+  },
+  "promptTemplate": "请生成一张蒸汽朋克电报的内容。\n\n背景信息：\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n- 场景：{{scene}}\n- 时间背景：19世纪\n\n要求：\n1. 内容要有维多利亚时代的风格\n2. 语言要正式、典雅\n3. 可以涉及机械、蒸汽、冒险等元素\n4. 字数控制在100-200字之间\n5. 电报风格要简洁有力\n\n请直接输出电报内容，不要有其他说明。",
+  "style": {
+    "theme": "steampunk",
+    "colors": ["#d4a574", "#8b4513", "#654321"],
+    "mood": "复古机械"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

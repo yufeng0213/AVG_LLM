@@ -1,0 +1,63 @@
+{
+  "id": "invitation-card",
+  "name": "邀请函",
+  "category": "invitation",
+  "description": "一张精美的邀请函，带有优雅设计和正式格式",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "邀请|宴会|婚礼|庆典|聚会|典礼",
+        "description": "邀请或庆典场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "eventTitle": {
+      "type": "string",
+      "description": "活动标题"
+    },
+    "eventType": {
+      "type": "string",
+      "default": "宴会",
+      "options": ["宴会", "婚礼", "庆典", "聚会", "典礼"],
+      "description": "活动类型"
+    },
+    "host": {
+      "type": "string",
+      "description": "主办方"
+    },
+    "guest": {
+      "type": "string",
+      "description": "受邀人"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "time": {
+      "type": "string",
+      "description": "时间"
+    },
+    "location": {
+      "type": "string",
+      "description": "地点"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "邀请内容"
+    }
+  },
+  "promptTemplate": "请生成一张邀请函的内容。\n\n背景信息：\n- 主办方：{{host}}\n- 活动类型：{{eventType}}\n- 场景：{{scene}}\n\n要求：\n1. 使用正式邀请函风格的语言\n2. 内容要优雅得体\n3. 包含完整的活动信息\n4. 字数控制在100-200字之间\n\n请直接输出邀请函内容，不要有其他说明。",
+  "style": {
+    "theme": "invitation",
+    "colors": ["#f5f5f5", "#c41e3a", "#8b4513"],
+    "mood": "优雅正式"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

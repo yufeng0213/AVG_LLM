@@ -14,12 +14,30 @@ import {
   generateMiniTheater,
   generateStory,
   generateWorldBookOpeningDialogue,
+  generateCardContent,
   buildStoryPrompt,
   parseStoryContent,
   toGameScript,
   hasChoices,
   extractChoices,
 } from '../llm'
+import {
+  drawRandomCard,
+  loadCardIndex,
+  getCardInfo,
+  getCardConfigPath,
+  setCardConfigPath,
+  setCustomCardConfig,
+  clearCustomCardConfig,
+} from '../cards/cardService'
+import {
+  saveCardToCollection,
+  isCardCollected,
+} from '../cards/cardCollectionService'
+import {
+  exportCardFromDataAndSave,
+  exportCardFromDataAndShare,
+} from '../cards/cardExportService'
 import { saveGame, createHistoryBackup, formatTimestamp } from '../save/saveManager'
 import { kvStorage } from '../storage/index.js'
 import { DEFAULT_NARRATOR_ID, loadNarratorProfiles, resolveNarratorProfile } from '../narrator/narratorStore'
@@ -33,6 +51,7 @@ import CGGeneratorModal from '../components/CGGeneratorModal.vue'
 import { generateCG, getImageBase64 } from '../comfyui/comfyuiService.js'
 import { isAndroid, isNative } from '../utils/platform.js'
 import { Filesystem, Directory } from '@capacitor/filesystem'
+import { importCardDirectoryNative } from '../native/cardImportPlugin'
 import {
   applyWorldBookBackgroundAssets,
   loadBackgroundFolder,
@@ -66,6 +85,7 @@ const activeBookId = ref(props.worldBookId || props.saveData?.game?.worldBookId 
 const narratorProfiles = ref([])
 const sessionNarratorId = ref(props.sessionNarratorId || '')
 const LLM_SETTINGS_STORAGE_PREFIX = 'game-llm-settings'
+const RELATIONSHIP_LEDGER_STORAGE_PREFIX = 'relationship-ledger'
 
 const SESSION_SCOPED_STORAGE_PREFIXES = [
   'phone-sms-threads',
@@ -74,6 +94,7 @@ const SESSION_SCOPED_STORAGE_PREFIXES = [
   'phone-news-events',
   'phone-map-data',
   LLM_SETTINGS_STORAGE_PREFIX,
+  RELATIONSHIP_LEDGER_STORAGE_PREFIX,
   'phone-clues',
   'phone-settings',
   'phone-wallet',
@@ -305,6 +326,14 @@ const selectedMessageRangeKey = ref('5-10')
 const customMessageRange = ref({ min: 5, max: 10 })
 const storyContextLineCount = ref(24)
 const storyMaxTokens = ref(2000)
+const showDebugPanel = ref(false)
+const showInputTokensHud = ref(false)
+const showOutputTokensHud = ref(false)
+const storyTokenUsage = ref({
+  inputTokens: null,
+  outputTokens: null,
+  totalTokens: null,
+})
 const llmSettingsStorageKey = computed(() => getScopedStorageKey(LLM_SETTINGS_STORAGE_PREFIX))
 const isGeneratingMiniTheater = ref(false)
 const showMiniTheaterPanel = ref(false)
@@ -316,6 +345,32 @@ const miniTheaterLineIndex = ref(0)
 const isMiniTheaterMode = ref(false)
 const MINI_THEATER_MIN_LINES = 3
 const MINI_THEATER_MAX_LINES = 8
+
+// ========== 随机小卡片功能 ==========
+const showCardPanel = ref(false)
+const isGeneratingCard = ref(false)
+const cardError = ref('')
+const currentCard = ref(null) // 当前显示的卡片信息
+const currentCardContent = ref(null) // 当前卡片生成的内容
+const cardIndexData = ref(null) // 卡片索引数据缓存
+
+// ========== 卡片收藏功能 ==========
+const isSavingCard = ref(false)
+const isCurrentCardCollected = ref(false)
+const cardSaveMessage = ref('')
+const cardSaveMessageType = ref('success')
+let cardSaveMessageTimer = null
+const isExportingCard = ref(false)
+const isSharingCard = ref(false)
+
+// ========== 卡片路径配置功能 ==========
+const showCardSettings = ref(false)
+const currentCardConfigPath = ref('')
+const cardConfigPathInput = ref('')
+const cardConfigPathSaving = ref(false)
+const cardConfigPathError = ref('')
+const cardConfigPathSaved = ref(false)
+const cardConfigFileInput = ref(null)
 
 const normalizeMiniTheaterLine = (line) => {
   if (!line || typeof line !== 'object') {
@@ -358,6 +413,15 @@ const HISTORY_DIALOGUE_PAGE_SIZE = 24
 const HISTORY_DIALOGUE_PRELOAD_THRESHOLD = 72
 const historyVisibleCount = ref(HISTORY_DIALOGUE_PAGE_SIZE)
 const isHistoryPrepending = ref(false)
+const showRelationshipTablePanel = ref(false)
+const RELATIONSHIP_LEDGER_VERSION = 1
+const RELATIONSHIP_LEDGER_MAX_ROWS = 600
+const createEmptyRelationshipLedger = () => ({
+  version: RELATIONSHIP_LEDGER_VERSION,
+  rows: [],
+})
+const relationshipLedger = ref(createEmptyRelationshipLedger())
+const relationshipLedgerStorageKey = computed(() => getScopedStorageKey(RELATIONSHIP_LEDGER_STORAGE_PREFIX))
 
 // 角色语音（TTS）状态
 const isTtsGenerating = ref(false)
@@ -440,6 +504,69 @@ const normalizeCustomMessageRange = (rawValue, fallback = { min: 5, max: 10 }) =
   }
 }
 
+const parseTokenCount = (value) => {
+  const parsed = Number.parseInt(String(value ?? ''), 10)
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null
+  }
+  return parsed
+}
+
+const normalizeTokenUsage = (rawUsage) => {
+  const usage = rawUsage && typeof rawUsage === 'object' ? rawUsage : {}
+  const inputTokens = parseTokenCount(
+    usage.prompt_tokens ??
+    usage.input_tokens ??
+    usage.promptTokens ??
+    usage.inputTokens,
+  )
+  const outputTokens = parseTokenCount(
+    usage.completion_tokens ??
+    usage.output_tokens ??
+    usage.completionTokens ??
+    usage.outputTokens,
+  )
+  const explicitTotal = parseTokenCount(
+    usage.total_tokens ??
+    usage.totalTokens,
+  )
+  const fallbackTotal =
+    Number.isFinite(inputTokens) && Number.isFinite(outputTokens)
+      ? inputTokens + outputTokens
+      : null
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens: explicitTotal ?? fallbackTotal,
+  }
+}
+
+const resetStoryTokenUsage = () => {
+  storyTokenUsage.value = normalizeTokenUsage(null)
+}
+
+const updateStoryTokenUsageFromResponse = (rawResponse) => {
+  const usage =
+    rawResponse?.usage ??
+    rawResponse?.token_usage ??
+    rawResponse?.tokenUsage ??
+    null
+  storyTokenUsage.value = normalizeTokenUsage(usage)
+}
+
+const formatTokenForHud = (value) => {
+  const normalized = parseTokenCount(value)
+  if (!Number.isFinite(normalized)) {
+    return '--'
+  }
+  return normalized.toLocaleString('zh-CN')
+}
+
+const inputTokensHudText = computed(() => formatTokenForHud(storyTokenUsage.value.inputTokens))
+const outputTokensHudText = computed(() => formatTokenForHud(storyTokenUsage.value.outputTokens))
+const totalTokensHudText = computed(() => formatTokenForHud(storyTokenUsage.value.totalTokens))
+
 const normalizeLlmSettingsPayload = (rawValue, fallbackValue = null) => {
   const source = rawValue && typeof rawValue === 'object' ? rawValue : {}
   const fallbackSource = fallbackValue && typeof fallbackValue === 'object' ? fallbackValue : {}
@@ -470,6 +597,13 @@ const normalizeLlmSettingsPayload = (rawValue, fallbackValue = null) => {
     normalizedGenerateRange = presetRange
   }
 
+  const sourceDebugHud = source.debugHud && typeof source.debugHud === 'object'
+    ? source.debugHud
+    : {}
+  const fallbackDebugHud = fallbackSource.debugHud && typeof fallbackSource.debugHud === 'object'
+    ? fallbackSource.debugHud
+    : {}
+
   return {
     selectedMessageRangeKey: selectedKey,
     generateMessageRange: {
@@ -491,6 +625,22 @@ const normalizeLlmSettingsPayload = (rawValue, fallbackValue = null) => {
       source.storyMaxTokens ?? source.maxTokens,
       fallbackSource.storyMaxTokens ?? storyMaxTokens.value,
     ),
+    debugHud: {
+      showInputTokens: Boolean(
+        sourceDebugHud.showInputTokens ??
+        source.showInputTokensHud ??
+        fallbackDebugHud.showInputTokens ??
+        fallbackSource.showInputTokensHud ??
+        showInputTokensHud.value,
+      ),
+      showOutputTokens: Boolean(
+        sourceDebugHud.showOutputTokens ??
+        source.showOutputTokensHud ??
+        fallbackDebugHud.showOutputTokens ??
+        fallbackSource.showOutputTokensHud ??
+        showOutputTokensHud.value,
+      ),
+    },
   }
 }
 
@@ -501,6 +651,8 @@ const applyLlmSettingsPayload = (payload, fallbackValue = null) => {
   customMessageRange.value = normalized.customMessageRange
   storyContextLineCount.value = normalized.storyContextLineCount
   storyMaxTokens.value = normalized.storyMaxTokens
+  showInputTokensHud.value = normalized.debugHud.showInputTokens
+  showOutputTokensHud.value = normalized.debugHud.showOutputTokens
 }
 
 const getCurrentLlmSettingsPayload = () => ({
@@ -515,6 +667,10 @@ const getCurrentLlmSettingsPayload = () => ({
   },
   storyContextLineCount: storyContextLineCount.value,
   storyMaxTokens: storyMaxTokens.value,
+  debugHud: {
+    showInputTokens: showInputTokensHud.value,
+    showOutputTokens: showOutputTokensHud.value,
+  },
 })
 
 const persistLlmSettings = async () => {
@@ -621,6 +777,16 @@ const updateStoryMaxTokens = (event) => {
   void persistLlmSettings()
 }
 
+const updateShowInputTokensHud = (event) => {
+  showInputTokensHud.value = Boolean(event?.target?.checked)
+  void persistLlmSettings()
+}
+
+const updateShowOutputTokensHud = (event) => {
+  showOutputTokensHud.value = Boolean(event?.target?.checked)
+  void persistLlmSettings()
+}
+
 const resolveSpeakerCharacterId = (speakerName) => {
   const speaker = String(speakerName || '').trim()
   if (!speaker || speaker === '旁白') return null
@@ -689,7 +855,8 @@ const currentLineIndex = ref(0)
 const activeCharacterId = ref('lead')
 const currentSceneName = ref('旧图书馆')
 const hasMountedGameScreen = ref(false)
-const getCurrentStoryTimeLabel = () => ''
+const DEFAULT_STORY_TIME_LABEL = '2024年2月3日'
+const getCurrentStoryTimeLabel = () => DEFAULT_STORY_TIME_LABEL
 const normalizeStoryTimeLabel = (value, fallback = getCurrentStoryTimeLabel()) => {
   const normalized = String(value || '').trim()
   return normalized || fallback
@@ -704,6 +871,63 @@ const hasStoryTimeProgressed = (currentStoryTime, nextStoryTime) => {
   if (!nextText) return false
   if (!currentText) return true
   return nextText !== currentText
+}
+
+const incrementDayForDateParts = (yearText, monthText, dayText) => {
+  const year = Number.parseInt(String(yearText), 10)
+  const month = Number.parseInt(String(monthText), 10)
+  const day = Number.parseInt(String(dayText), 10)
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null
+  }
+
+  const date = new Date(year, month - 1, day)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+  date.setHours(12, 0, 0, 0)
+  date.setDate(date.getDate() + 1)
+
+  return {
+    year: String(date.getFullYear()).padStart(4, '0'),
+    month: String(date.getMonth() + 1).padStart(2, '0'),
+    day: String(date.getDate()).padStart(2, '0'),
+  }
+}
+
+const createProgressedStoryTimeLabel = (baseStoryTime) => {
+  const text = String(baseStoryTime || '').trim()
+  if (!text) return ''
+
+  // 中文日期（允许前后缀），例如：星历2501年04月07日、2501年4月7日 夜
+  const chineseDateMatch = text.match(/^(.*?)(\d{4})年(\d{1,2})月(\d{1,2})日?(.*)$/)
+  if (chineseDateMatch) {
+    const [, prefix, yearText, monthText, dayText, suffix] = chineseDateMatch
+    const nextDate = incrementDayForDateParts(yearText, monthText, dayText)
+    if (nextDate) {
+      return `${prefix}${nextDate.year}年${nextDate.month}月${nextDate.day}日${suffix}`
+    }
+  }
+
+  // 公历风格（允许前后缀），例如：2026-04-07、2026/4/7
+  const westernDateMatch = text.match(/^(.*?)(\d{4})([-/.])(\d{1,2})\3(\d{1,2})(.*)$/)
+  if (westernDateMatch) {
+    const [, prefix, yearText, separator, monthText, dayText, suffix] = westernDateMatch
+    const nextDate = incrementDayForDateParts(yearText, monthText, dayText)
+    if (nextDate) {
+      return `${prefix}${nextDate.year}${separator}${nextDate.month}${separator}${nextDate.day}${suffix}`
+    }
+  }
+
+  // 回退：将最后一个数字 +1（如“第12天” -> “第13天”）
+  const lastNumberMatch = text.match(/(\d+)(?!.*\d)/)
+  if (lastNumberMatch) {
+    const oldValue = lastNumberMatch[1]
+    const nextValue = String(Number.parseInt(oldValue, 10) + 1).padStart(oldValue.length, '0')
+    return `${text.slice(0, lastNumberMatch.index)}${nextValue}${text.slice((lastNumberMatch.index || 0) + oldValue.length)}`
+  }
+
+  return `${text}·后续`
 }
 const storyTimeLabel = ref(getCurrentStoryTimeLabel())
 
@@ -759,6 +983,35 @@ const isPrevLineDisabled = computed(() => {
 const miniTheaterActionLabel = computed(() => {
   return isMiniTheaterMode.value ? '🎭 退出小剧场' : '🎭 小剧场'
 })
+
+const createFallbackChoices = () => ({
+  prompt: '你接下来要怎么做？',
+  options: [
+    { id: `choice_fallback_${Date.now()}_0`, text: '先观察局势', action: 'observe' },
+    { id: `choice_fallback_${Date.now()}_1`, text: '谨慎推进', action: 'advance_carefully' },
+    { id: `choice_fallback_${Date.now()}_2`, text: '直接行动', action: 'act_now' },
+  ],
+  allowCustomInput: true,
+})
+
+const ensureLastDialogueHasChoices = (dialogues) => {
+  if (!Array.isArray(dialogues) || dialogues.length === 0) {
+    return []
+  }
+
+  const lastIndex = dialogues.length - 1
+  const lastDialogue = dialogues[lastIndex]
+  if (hasChoices(lastDialogue)) {
+    return dialogues
+  }
+
+  const nextDialogues = dialogues.slice()
+  nextDialogues[lastIndex] = {
+    ...lastDialogue,
+    choices: createFallbackChoices(),
+  }
+  return nextDialogues
+}
 
 // 只保留当前剧情尾部的待选项，历史选项在分支确定后自动清理
 const normalizeDialogueChoicesForHistory = (script) => {
@@ -935,6 +1188,256 @@ const directorState = ref({
 
 const normalizeText = (value) => String(value || '').trim()
 const normalizeMatchToken = (value) => normalizeText(value).toLowerCase()
+const normalizeTextArray = (items) => {
+  if (!Array.isArray(items)) return []
+  return [...new Set(items.map((item) => normalizeText(item)).filter(Boolean))]
+}
+const toFiniteNumber = (value, fallback = 0) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+const normalizeRelationshipLedgerMetrics = (value, fallback = createDefaultRelationshipBase()) => {
+  const source = value && typeof value === 'object' && !Array.isArray(value)
+    ? value
+    : {}
+  return normalizeRelationshipBase({
+    favor: toFiniteNumber(source.favor, fallback.favor),
+    trust: toFiniteNumber(source.trust, fallback.trust),
+    stance: toFiniteNumber(source.stance, fallback.stance),
+  })
+}
+const truncateRelationshipLedgerText = (value, maxLength = 80) => {
+  const text = normalizeText(value).replace(/\s+/g, ' ')
+  if (!text) return ''
+  const safeMaxLength = Number.isFinite(maxLength) ? Math.max(4, Math.floor(maxLength)) : 80
+  if (text.length <= safeMaxLength) return text
+  return `${text.slice(0, safeMaxLength - 1)}…`
+}
+const resolveRelationshipCharacterName = (characterId, fallbackName = '') => {
+  const normalizedId = normalizeText(characterId)
+  if (!normalizedId) {
+    return normalizeText(fallbackName) || '未知角色'
+  }
+
+  const characters = Array.isArray(activeBook.value?.characters) ? activeBook.value.characters : []
+  const matched = characters.find((char) => normalizeText(char?.id) === normalizedId)
+  if (matched) {
+    return (
+      normalizeText(matched?.name) ||
+      normalizeText(matched?.nickname) ||
+      normalizedId
+    )
+  }
+
+  return normalizeText(fallbackName) || normalizedId
+}
+const normalizeRelationshipLedgerRow = (rawRow, rowIndex = 0) => {
+  const defaultMetrics = createDefaultRelationshipBase()
+  const before = normalizeRelationshipLedgerMetrics(rawRow?.before, defaultMetrics)
+  const after = normalizeRelationshipLedgerMetrics(rawRow?.after, before)
+  const fallbackDelta = {
+    favor: after.favor - before.favor,
+    trust: after.trust - before.trust,
+    stance: after.stance - before.stance,
+  }
+  const sourceDelta = rawRow?.delta && typeof rawRow.delta === 'object' && !Array.isArray(rawRow.delta)
+    ? rawRow.delta
+    : fallbackDelta
+
+  const delta = {
+    favor: toFiniteNumber(sourceDelta.favor, fallbackDelta.favor),
+    trust: toFiniteNumber(sourceDelta.trust, fallbackDelta.trust),
+    stance: toFiniteNumber(sourceDelta.stance, fallbackDelta.stance),
+  }
+
+  const createdAt = Number.parseInt(String(rawRow?.createdAt ?? ''), 10)
+  const lineIndex = Number.parseInt(String(rawRow?.lineIndex ?? ''), 10)
+  const characterId = normalizeText(rawRow?.characterId)
+  const storyTime = normalizeText(rawRow?.storyTime)
+  const choiceText = truncateRelationshipLedgerText(rawRow?.choiceText, 90)
+  const triggeredEvents = normalizeTextArray(rawRow?.triggeredEvents)
+  const rowId = normalizeText(rawRow?.id) || `rel_${createdAt || Date.now()}_${rowIndex}`
+
+  return {
+    id: rowId,
+    createdAt: Number.isFinite(createdAt) && createdAt > 0 ? createdAt : Date.now(),
+    storyTime,
+    lineIndex: Number.isFinite(lineIndex) && lineIndex > 0 ? lineIndex : 0,
+    characterId,
+    characterName: resolveRelationshipCharacterName(characterId, rawRow?.characterName),
+    before,
+    after,
+    delta,
+    triggeredEvents,
+    choiceText,
+  }
+}
+const normalizeRelationshipLedgerPayload = (rawValue, fallbackValue = null) => {
+  const source = rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue) ? rawValue : {}
+  const fallbackSource = fallbackValue && typeof fallbackValue === 'object' && !Array.isArray(fallbackValue)
+    ? fallbackValue
+    : {}
+
+  const sourceRows = Array.isArray(source.rows)
+    ? source.rows
+    : (Array.isArray(rawValue) ? rawValue : [])
+  const fallbackRows = Array.isArray(fallbackSource.rows)
+    ? fallbackSource.rows
+    : (Array.isArray(fallbackValue) ? fallbackValue : [])
+  const rowsToUse = sourceRows.length > 0 || !fallbackRows.length ? sourceRows : fallbackRows
+  const normalizedRows = rowsToUse
+    .map((row, index) => normalizeRelationshipLedgerRow(row, index))
+    .slice(-RELATIONSHIP_LEDGER_MAX_ROWS)
+
+  return {
+    version: RELATIONSHIP_LEDGER_VERSION,
+    rows: normalizedRows,
+  }
+}
+const relationshipLedgerRows = computed(() => {
+  const rows = Array.isArray(relationshipLedger.value?.rows) ? relationshipLedger.value.rows : []
+  return [...rows].reverse()
+})
+const relationshipLedgerCountText = computed(() => String(relationshipLedgerRows.value.length))
+const formatRelationshipLedgerTimestamp = (timestamp) => {
+  const value = Number.parseInt(String(timestamp ?? ''), 10)
+  if (!Number.isFinite(value) || value <= 0) return '--'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '--'
+
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+}
+const formatRelationshipDelta = (value) => {
+  const normalized = toFiniteNumber(value, 0)
+  if (normalized > 0) return `+${normalized}`
+  if (normalized < 0) return `${normalized}`
+  return '0'
+}
+const resolveRelationshipDeltaClass = (value) => {
+  const normalized = toFiniteNumber(value, 0)
+  if (normalized > 0) return 'is-up'
+  if (normalized < 0) return 'is-down'
+  return 'is-flat'
+}
+const formatRelationshipEventsText = (events) => {
+  const list = normalizeTextArray(events)
+  if (list.length === 0) return '—'
+  return list.join('、')
+}
+const formatRelationshipChoiceText = (value) => {
+  const text = normalizeText(value)
+  return text || '—'
+}
+const persistRelationshipLedger = async () => {
+  try {
+    const payload = normalizeRelationshipLedgerPayload(relationshipLedger.value, createEmptyRelationshipLedger())
+    relationshipLedger.value = payload
+    await kvStorage.set(relationshipLedgerStorageKey.value, payload)
+  } catch {
+    // no-op
+  }
+}
+const loadRelationshipLedgerFromStorage = async () => {
+  try {
+    const rawValue = await kvStorage.get(relationshipLedgerStorageKey.value)
+    if (rawValue === undefined || rawValue === null) {
+      return false
+    }
+    relationshipLedger.value = normalizeRelationshipLedgerPayload(rawValue, createEmptyRelationshipLedger())
+    return true
+  } catch {
+    return false
+  }
+}
+const hydrateRelationshipLedgerForScope = async (fallbackValue = null) => {
+  const fallbackPayload = normalizeRelationshipLedgerPayload(fallbackValue, createEmptyRelationshipLedger())
+  const loaded = await loadRelationshipLedgerFromStorage()
+  if (loaded) {
+    const loadedRows = Array.isArray(relationshipLedger.value?.rows) ? relationshipLedger.value.rows.length : 0
+    const fallbackRows = Array.isArray(fallbackPayload.rows) ? fallbackPayload.rows.length : 0
+    if (loadedRows === 0 && fallbackRows > 0) {
+      relationshipLedger.value = fallbackPayload
+      await persistRelationshipLedger()
+    }
+    return
+  }
+  relationshipLedger.value = fallbackPayload
+  await persistRelationshipLedger()
+}
+const buildRelationshipLedgerRowsFromDiff = ({
+  beforeState = null,
+  afterState = null,
+  storyTime = '',
+  lineIndex = 0,
+  choiceText = '',
+  triggeredEvents = [],
+} = {}) => {
+  const beforeRuntime = mergeRelationshipStateWithBook(activeBook.value, beforeState)
+  const afterRuntime = mergeRelationshipStateWithBook(activeBook.value, afterState)
+  const characterIds = [...new Set([...Object.keys(beforeRuntime), ...Object.keys(afterRuntime)])]
+    .map((item) => normalizeText(item))
+    .filter(Boolean)
+  if (characterIds.length === 0) return []
+
+  const now = Date.now()
+  const normalizedStoryTime = normalizeStoryTimeLabel(storyTime, storyTimelineLabel.value)
+  const normalizedLineIndex = Number.isFinite(lineIndex) && lineIndex > 0
+    ? Math.floor(lineIndex)
+    : Math.max(1, currentLineIndex.value + 1)
+  const normalizedChoiceText = truncateRelationshipLedgerText(choiceText, 90)
+  const normalizedEvents = normalizeTextArray(triggeredEvents)
+
+  return characterIds
+    .map((characterId, index) => {
+      const beforeMetrics = normalizeRelationshipLedgerMetrics(beforeRuntime[characterId], createDefaultRelationshipBase())
+      const afterMetrics = normalizeRelationshipLedgerMetrics(afterRuntime[characterId], beforeMetrics)
+      const delta = {
+        favor: afterMetrics.favor - beforeMetrics.favor,
+        trust: afterMetrics.trust - beforeMetrics.trust,
+        stance: afterMetrics.stance - beforeMetrics.stance,
+      }
+      const changed = delta.favor !== 0 || delta.trust !== 0 || delta.stance !== 0
+      if (!changed) return null
+
+      return normalizeRelationshipLedgerRow({
+        id: `rel_${now}_${characterId}_${index}`,
+        createdAt: now + index,
+        storyTime: normalizedStoryTime,
+        lineIndex: normalizedLineIndex,
+        characterId,
+        characterName: resolveRelationshipCharacterName(characterId),
+        before: beforeMetrics,
+        after: afterMetrics,
+        delta,
+        triggeredEvents: normalizedEvents,
+        choiceText: normalizedChoiceText,
+      }, index)
+    })
+    .filter(Boolean)
+}
+const appendRelationshipLedgerRows = async (rows) => {
+  if (!Array.isArray(rows) || rows.length === 0) return
+
+  const normalizedRows = rows
+    .map((row, index) => normalizeRelationshipLedgerRow(row, index))
+    .filter(Boolean)
+  if (normalizedRows.length === 0) return
+
+  const currentRows = Array.isArray(relationshipLedger.value?.rows) ? relationshipLedger.value.rows : []
+  relationshipLedger.value = {
+    version: RELATIONSHIP_LEDGER_VERSION,
+    rows: [...currentRows, ...normalizedRows].slice(-RELATIONSHIP_LEDGER_MAX_ROWS),
+  }
+  await persistRelationshipLedger()
+}
 
 const createEmptyDirectorRuntimeState = () => ({
   triggeredEventIds: [],
@@ -1572,6 +2075,15 @@ const closeDialogueHistoryPanel = () => {
   showDialogueHistoryPanel.value = false
 }
 
+const toggleRelationshipTablePanel = () => {
+  const nextVisible = !showRelationshipTablePanel.value
+  showRelationshipTablePanel.value = nextVisible
+}
+
+const closeRelationshipTablePanel = () => {
+  showRelationshipTablePanel.value = false
+}
+
 const handleHistoryBodyScroll = async () => {
   if (!showDialogueHistoryPanel.value || isHistoryPrepending.value) {
     return
@@ -1980,18 +2492,79 @@ const getDisplayEmotion = (characterId) => {
 
 // ========== LLM 剧情生成功能 ==========
 
+const extractFallbackDialoguesFromRawContent = (rawContent, fallbackStoryTime = '') => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return []
+
+  const cleaned = raw
+    .replace(/```[\s\S]*?```/g, (block) => block.replace(/```/g, ''))
+    .replace(/\r/g, '\n')
+
+  const lines = cleaned
+    .split('\n')
+    .map((line) => String(line || '').trim())
+    .map((line) => line.replace(/^\d+[\.\)\u3001]\s*/, ''))
+    .map((line) => line.replace(/^[-*]\s*/, ''))
+    .map((line) => line.replace(/^"+|"+$/g, '').trim())
+    .filter((line) => line && !/^[\[\]{},"']+$/.test(line))
+
+  const fallbackDialogues = []
+  for (const rawLine of lines) {
+    const match = rawLine.match(/^([^:：]{1,20})[:：]\s*(.+)$/)
+    const speaker = match ? String(match[1] || '').trim() : '旁白'
+    const text = String(match ? match[2] : rawLine).trim()
+    if (!text) continue
+
+    fallbackDialogues.push({
+      speaker: speaker || '旁白',
+      emotion: 'default',
+      text,
+      highlight: false,
+      storyTime: String(fallbackStoryTime || '').trim(),
+      choices: null,
+      scene: null,
+    })
+    if (fallbackDialogues.length >= 24) {
+      break
+    }
+  }
+
+  if (fallbackDialogues.length > 0) {
+    return fallbackDialogues
+  }
+
+  const compact = cleaned.replace(/\s+/g, ' ').trim()
+  if (!compact) return []
+
+  return [{
+    speaker: '旁白',
+    emotion: 'default',
+    text: compact.slice(0, 220),
+    highlight: false,
+    storyTime: String(fallbackStoryTime || '').trim(),
+    choices: null,
+    scene: null,
+  }]
+}
+
 // 生成剧情
 const handleGenerateStory = async (choiceToApply = null, options = {}) => {
   if (isGenerating.value) return
 
   isGenerating.value = true
   generateError.value = null
+  resetStoryTokenUsage()
 
   try {
     await persistLlmSettings()
 
     const overrideUserInput = String(options?.overrideUserInput || '').trim()
     const effectiveUserInput = overrideUserInput || userPromptInput.value
+    const relationshipBeforeGeneration = mergeRelationshipStateWithBook(activeBook.value, relationshipState.value)
+    const relationshipChoiceText = truncateRelationshipLedgerText(
+      choiceToApply?.text || effectiveUserInput,
+      90,
+    )
 
     const directorPreview = evaluateDirectorEventsPreview({
       choiceToApply,
@@ -2015,6 +2588,7 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       selectedChoice: choiceToApply,
       contextLineCount: storyContextLineCount.value,
       relationshipSnapshot,
+      relationshipLedger: relationshipLedger.value?.rows,
       directorDirectives: directorPreview.directives,
     })
 
@@ -2023,42 +2597,62 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       maxTokens: storyMaxTokens.value,
     })
 
-    if (!result.success) {
+    const rawModelContent = typeof result?.data === 'string'
+      ? result.data
+      : String(result?.data || '').trim()
+
+    if (!result.success && !rawModelContent) {
       generateError.value = result.error
       return
     }
 
+    updateStoryTokenUsageFromResponse(result.rawResponse)
+
     // 解析返回内容
-    const parsed = parseStoryContent(result.data)
+    const parsed = parseStoryContent(rawModelContent)
+    let normalizedDialogues = []
 
-    if (!parsed.success) {
-      generateError.value = parsed.error
-      return
-    }
-
-    if (directorPreview.changed) {
-      relationshipState.value = directorPreview.relationshipState
-      directorState.value = directorPreview.directorState
+    if (parsed.success && Array.isArray(parsed.dialogues)) {
+      normalizedDialogues = parsed.dialogues
+    } else {
+      normalizedDialogues = extractFallbackDialoguesFromRawContent(rawModelContent, storyTimelineLabel.value)
+      if (normalizedDialogues.length > 0) {
+        generateError.value = ''
+      } else {
+        generateError.value = parsed.error || result.error || '生成失败：未获取到可用剧情内容'
+        return
+      }
     }
 
     // 转换为游戏脚本格式并添加到对话列表
-    const newDialogues = toGameScript(parsed.dialogues)
-
-    const missingStoryTimeCount = newDialogues.reduce((count, line) => {
-      return resolveLineStoryTimeLabel(line) ? count : count + 1
-    }, 0)
-    if (missingStoryTimeCount > 0) {
-      generateError.value = `生成结果缺少剧情日期字段：${missingStoryTimeCount} 条对话未包含 storyTime`
-      return
-    }
+    let newDialogues = toGameScript(normalizedDialogues)
+    newDialogues = ensureLastDialogueHasChoices(newDialogues)
     
     if (newDialogues.length > 0) {
-      const currentTimelineStoryTime = String(storyTimelineLabel.value || '').trim()
-      const latestStoryTime = resolveLineStoryTimeLabel(newDialogues[newDialogues.length - 1])
-      if (!hasStoryTimeProgressed(currentTimelineStoryTime, latestStoryTime)) {
-        generateError.value = '剧情日期未推进：最后一条对话的 storyTime 需要相对当前剧情时间更新'
-        return
+      if (directorPreview.changed) {
+        relationshipState.value = directorPreview.relationshipState
+        directorState.value = directorPreview.directorState
       }
+
+      const currentTimelineStoryTime = String(storyTimelineLabel.value || '').trim()
+      let latestStoryTime = resolveLineStoryTimeLabel(newDialogues[newDialogues.length - 1])
+
+      // 兼容模型偶发未推进时间线的情况：本地自动修正最后一条剧情时间，避免中断剧情展示
+      if (!hasStoryTimeProgressed(currentTimelineStoryTime, latestStoryTime)) {
+        const fallbackBaseStoryTime = latestStoryTime || currentTimelineStoryTime
+        const progressedStoryTime = createProgressedStoryTimeLabel(fallbackBaseStoryTime)
+        if (progressedStoryTime) {
+          latestStoryTime = progressedStoryTime
+          const lastDialogueIndex = newDialogues.length - 1
+          newDialogues[lastDialogueIndex] = {
+            ...newDialogues[lastDialogueIndex],
+            storyTime: progressedStoryTime,
+            time: progressedStoryTime,
+            date: progressedStoryTime,
+          }
+        }
+      }
+
       if (latestStoryTime) {
         storyTimeLabel.value = latestStoryTime
       }
@@ -2067,6 +2661,18 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       const mergedScript = [...dialogueScript.value, ...newDialogues]
       const normalizedScript = normalizeDialogueChoicesForHistory(mergedScript)
       dialogueScript.value = normalizedScript
+
+      if (directorPreview.changed) {
+        const relationshipRows = buildRelationshipLedgerRowsFromDiff({
+          beforeState: relationshipBeforeGeneration,
+          afterState: directorPreview.relationshipState,
+          storyTime: latestStoryTime || currentTimelineStoryTime || storyTimelineLabel.value,
+          lineIndex: normalizedScript.length,
+          choiceText: relationshipChoiceText,
+          triggeredEvents: directorPreview.triggeredEventNames,
+        })
+        await appendRelationshipLedgerRows(relationshipRows)
+      }
       
       // 自动跳转到第一条新对话
       currentLineIndex.value = normalizedScript.length - newDialogues.length
@@ -2155,6 +2761,7 @@ const toggleGeneratePanel = async () => {
   if (!showGeneratePanel.value) {
     showMiniTheaterPanel.value = false
     closeDialogueHistoryPanel()
+    closeRelationshipTablePanel()
     await loadApiConfigStatus()
   }
 
@@ -2230,6 +2837,7 @@ const toggleMiniTheaterPanel = async () => {
     showChoicesPanel.value = false
     currentChoices.value = null
     closeDialogueHistoryPanel()
+    closeRelationshipTablePanel()
     await loadApiConfigStatus()
   }
 
@@ -2306,6 +2914,509 @@ const startMiniTheater = async (options = {}) => {
     isGeneratingMiniTheater.value = false
   }
 }
+
+// ========== 随机小卡片功能 ==========
+
+/**
+ * 切换小卡片面板显示
+ */
+const toggleCardPanel = async () => {
+  if (!showCardPanel.value) {
+    // 打开面板前关闭其他面板
+    showGeneratePanel.value = false
+    showMiniTheaterPanel.value = false
+    showChoicesPanel.value = false
+    currentChoices.value = null
+    closeDialogueHistoryPanel()
+    closeRelationshipTablePanel()
+    await loadApiConfigStatus()
+    
+    // 加载卡片索引数据
+    if (!cardIndexData.value) {
+      cardIndexData.value = await loadCardIndex()
+    }
+    
+    // 加载当前卡片配置路径
+    const path = await getCardConfigPath()
+    currentCardConfigPath.value = path
+    cardConfigPathInput.value = path
+  }
+  
+  showCardPanel.value = !showCardPanel.value
+  if (!showCardPanel.value) {
+    cardError.value = ''
+    showCardSettings.value = false
+  }
+}
+
+/**
+ * 关闭小卡片面板
+ */
+const closeCardPanel = () => {
+  showCardPanel.value = false
+  cardError.value = ''
+  showCardSettings.value = false
+}
+
+/**
+ * 切换卡片设置面板
+ */
+const toggleCardSettings = () => {
+  showCardSettings.value = !showCardSettings.value
+  if (showCardSettings.value) {
+    // 打开设置时，重置状态
+    cardConfigPathError.value = ''
+    cardConfigPathSaved.value = false
+  }
+}
+
+/**
+ * 保存卡片配置路径
+ */
+const saveCardConfigPath = async () => {
+  const newPath = cardConfigPathInput.value.trim()
+  
+  if (!newPath) {
+    cardConfigPathError.value = '路径不能为空'
+    return
+  }
+  
+  cardConfigPathSaving.value = true
+  cardConfigPathError.value = ''
+  cardConfigPathSaved.value = false
+  
+  try {
+    // 验证路径是否有效
+    const testResponse = await fetch(newPath)
+    if (!testResponse.ok) {
+      cardConfigPathError.value = `路径无效: HTTP ${testResponse.status}`
+      cardConfigPathSaving.value = false
+      return
+    }
+    
+    // 尝试解析JSON
+    try {
+      await testResponse.json()
+    } catch {
+      cardConfigPathError.value = '配置文件不是有效的JSON格式'
+      cardConfigPathSaving.value = false
+      return
+    }
+    
+    // 保存路径
+    await setCardConfigPath(newPath)
+    currentCardConfigPath.value = newPath
+    
+    // 重新加载卡片索引
+    cardIndexData.value = await loadCardIndex()
+    
+    cardConfigPathSaved.value = true
+    cardConfigPathError.value = ''
+    
+    // 3秒后隐藏成功提示
+    setTimeout(() => {
+      cardConfigPathSaved.value = false
+    }, 3000)
+  } catch (error) {
+    cardConfigPathError.value = `保存失败: ${error.message || '未知错误'}`
+  } finally {
+    cardConfigPathSaving.value = false
+  }
+}
+
+/**
+ * 重置卡片配置路径为默认值
+ */
+const resetCardConfigPath = async () => {
+  cardConfigPathInput.value = './data/cards/index.json (默认)'
+  
+  cardConfigPathSaving.value = true
+  cardConfigPathError.value = ''
+  cardConfigPathSaved.value = false
+  
+  try {
+    // 清除自定义配置，恢复默认
+    await clearCustomCardConfig()
+    currentCardConfigPath.value = ''
+    
+    // 重新加载卡片索引（从默认路径）
+    cardIndexData.value = await loadCardIndex()
+    
+    cardConfigPathSaved.value = true
+    cardConfigPathError.value = ''
+    
+    setTimeout(() => {
+      cardConfigPathSaved.value = false
+    }, 3000)
+  } catch (error) {
+    cardConfigPathError.value = `重置失败: ${error.message || '未知错误'}`
+  } finally {
+    cardConfigPathSaving.value = false
+  }
+}
+
+/**
+ * 触发文件浏览
+ */
+const triggerCardConfigFileBrowse = async () => {
+  if (isAndroid() && isNative()) {
+    cardConfigPathSaving.value = true
+    cardConfigPathError.value = ''
+    cardConfigPathSaved.value = false
+
+    try {
+      const result = await importCardDirectoryNative()
+      if (!result?.success) {
+        if (result?.canceled) {
+          return
+        }
+        cardConfigPathError.value = result?.message || '导入失败，请重试'
+        return
+      }
+
+      const baseDir = String(result.baseDir || 'native://card-imports/current/')
+      const importDisplayPath = String(result.indexPath || `${baseDir}index.json`)
+      const importSaved = await setCustomCardConfig(baseDir, importDisplayPath)
+      if (!importSaved) {
+        cardConfigPathError.value = '导入成功，但保存配置失败'
+        return
+      }
+
+      cardIndexData.value = await loadCardIndex()
+      if (!cardIndexData.value) {
+        cardConfigPathError.value = '导入成功，但加载卡片索引失败，请检查目录结构'
+        return
+      }
+
+      currentCardConfigPath.value = importDisplayPath
+      cardConfigPathInput.value = currentCardConfigPath.value
+      cardConfigPathSaved.value = true
+      cardConfigPathError.value = ''
+
+      setTimeout(() => {
+        cardConfigPathSaved.value = false
+      }, 3000)
+      return
+    } catch (error) {
+      cardConfigPathError.value = `导入失败: ${error?.message || '未知错误'}`
+      return
+    } finally {
+      cardConfigPathSaving.value = false
+    }
+  }
+
+  if (cardConfigFileInput.value) {
+    cardConfigFileInput.value.click()
+  }
+}
+
+/**
+ * 处理文件选择
+ */
+ const handleCardConfigFileSelect = async (event) => {
+   const file = event.target.files?.[0]
+   if (!file) return
+   
+   cardConfigPathError.value = ''
+   cardConfigPathSaved.value = false
+   
+   try {
+     // 读取文件内容验证是否为有效JSON
+     const text = await file.text()
+     const config = JSON.parse(text)
+     
+     // 验证基本结构
+     if (!config.cards || typeof config.cards !== 'object') {
+       cardConfigPathError.value = '配置文件格式无效：缺少 cards 字段'
+       return
+     }
+     
+     // Web 文件选择器无法得到可靠目录路径，因此只能验证文件内容
+     cardConfigPathError.value = '文件验证成功。Web 端无法自动推导目录，请手动输入卡片目录路径（如 ./data/cards/）'
+     
+     // 清空缓存，让用户可以重新加载
+     cardIndexData.value = config
+     
+   } catch (error) {
+     if (error instanceof SyntaxError) {
+       cardConfigPathError.value = '文件不是有效的JSON格式'
+     } else {
+       cardConfigPathError.value = `加载失败: ${error.message || '未知错误'}`
+     }
+   }
+   
+   // 清空input以便再次选择同一文件
+   event.target.value = ''
+ }
+
+/**
+ * 关闭当前显示的卡片
+ */
+const closeCurrentCard = () => {
+  currentCard.value = null
+  currentCardContent.value = null
+  isCurrentCardCollected.value = false
+  isExportingCard.value = false
+  isSharingCard.value = false
+  cardSaveMessage.value = ''
+}
+
+/**
+ * 显示卡片保存消息
+ * @param {string} message - 消息内容
+ * @param {string} type - 消息类型 (success/error)
+ * @param {number} duration - 显示时长
+ */
+const showCardSaveMessage = (message, type = 'success', duration = 3000) => {
+  cardSaveMessage.value = message
+  cardSaveMessageType.value = type
+  
+  if (cardSaveMessageTimer) {
+    clearTimeout(cardSaveMessageTimer)
+    cardSaveMessageTimer = null
+  }
+  
+  if (duration > 0) {
+    cardSaveMessageTimer = setTimeout(() => {
+      cardSaveMessage.value = ''
+      cardSaveMessageTimer = null
+    }, duration)
+  }
+}
+
+/**
+ * 保存当前卡片到收藏
+ */
+const saveCurrentCard = async () => {
+  if (!currentCard.value || !currentCardContent.value) {
+    showCardSaveMessage('没有可保存的卡片', 'error')
+    return
+  }
+  
+  if (isSavingCard.value) {
+    return
+  }
+  
+  isSavingCard.value = true
+  
+  try {
+    // 获取当前游戏时间
+    const currentGameTime = dialogueScript.value[currentLineIndex.value]?.storyTime || ''
+    
+    const result = await saveCardToCollection(
+      currentCard.value,
+      currentCardContent.value,
+      {
+        gameTime: currentGameTime,
+        sceneName: currentSceneName.value || '',
+      }
+    )
+    
+    if (result.success) {
+      isCurrentCardCollected.value = true
+      showCardSaveMessage('卡片已收藏！', 'success')
+    } else {
+      showCardSaveMessage(result.error || '保存失败', 'error')
+    }
+  } catch (error) {
+    showCardSaveMessage(`保存失败: ${error.message || '未知错误'}`, 'error')
+  } finally {
+    isSavingCard.value = false
+  }
+}
+
+/**
+ * 导出当前卡片为PNG
+ */
+const exportCurrentCardAsPng = async () => {
+  if (!currentCard.value || !currentCardContent.value) {
+    showCardSaveMessage('没有可导出的卡片', 'error')
+    return
+  }
+  
+  if (isExportingCard.value) {
+    return
+  }
+  
+  isExportingCard.value = true
+  
+  try {
+    const cardData = {
+      templateHtml: currentCard.value.templateHtml,
+      content: currentCardContent.value,
+      cardName: currentCard.value.name,
+    }
+    
+    const result = await exportCardFromDataAndSave(cardData, {
+      filename: `${currentCard.value.name || 'card'}_${Date.now()}.png`,
+    })
+    
+    if (result.success) {
+      const successMessage = result.savedPath
+        ? `卡片已导出：${result.savedPath}`
+        : '卡片已导出为PNG！'
+      showCardSaveMessage(successMessage, 'success')
+    } else {
+      showCardSaveMessage(result.error || '导出失败', 'error')
+    }
+  } catch (error) {
+    showCardSaveMessage(`导出失败: ${error.message || '未知错误'}`, 'error')
+  } finally {
+    isExportingCard.value = false
+  }
+}
+
+/**
+ * 分享当前卡片到社交媒体
+ */
+const shareCurrentCardAsPng = async () => {
+  if (!currentCard.value || !currentCardContent.value) {
+    showCardSaveMessage('没有可分享的卡片', 'error')
+    return
+  }
+  
+  if (isSharingCard.value || isExportingCard.value) {
+    return
+  }
+  
+  isSharingCard.value = true
+  
+  try {
+    const cardData = {
+      templateHtml: currentCard.value.templateHtml,
+      content: currentCardContent.value,
+      cardName: currentCard.value.name,
+    }
+    
+    const result = await exportCardFromDataAndShare(cardData, {
+      filename: `${currentCard.value.name || 'card'}_${Date.now()}.png`,
+      shareTitle: '分享卡片',
+      shareText: '来自 AVG_LLM 的剧情卡片',
+      shareDialogTitle: '分享到社交应用',
+    })
+    
+    if (result.success) {
+      showCardSaveMessage('已打开系统分享面板', 'success')
+    } else {
+      showCardSaveMessage(result.error || '分享失败', 'error')
+    }
+  } catch (error) {
+    showCardSaveMessage(`分享失败: ${error.message || '未知错误'}`, 'error')
+  } finally {
+    isSharingCard.value = false
+  }
+}
+
+/**
+ * 检查当前卡片是否已收藏
+ */
+const checkCurrentCardCollected = async () => {
+  if (!currentCard.value || !currentCardContent.value) {
+    isCurrentCardCollected.value = false
+    return
+  }
+  
+  try {
+    const collected = await isCardCollected(
+      currentCard.value.id,
+      currentCardContent.value
+    )
+    isCurrentCardCollected.value = collected
+  } catch (error) {
+    isCurrentCardCollected.value = false
+  }
+}
+
+/**
+ * 生成随机小卡片
+ */
+const generateRandomCard = async () => {
+  if (isGeneratingCard.value || isGenerating.value || isGeneratingMiniTheater.value || isCgGenerating.value) {
+    return
+  }
+  
+  await loadApiConfigStatus()
+  if (!hasApiConfig.value) {
+    cardError.value = '请先在设置中配置并应用 API'
+    return
+  }
+  
+  // 先关闭面板，显示生成中遮罩
+  showCardPanel.value = false
+  isGeneratingCard.value = true
+  cardError.value = ''
+  
+  try {
+    // 1. 随机抽取一张卡片模板
+    const cardData = await drawRandomCard()
+    if (!cardData || !cardData.promptConfig) {
+      cardError.value = '无法加载卡片模板，请检查卡片配置路径 ./data/cards/index.json'
+      isGeneratingCard.value = false
+      showCardPanel.value = true
+      return
+    }
+    
+    // 2. 获取当前剧情上下文
+    const contextStart = Math.max(0, currentLineIndex.value - storyContextLineCount.value + 1)
+    const recentDialogue = dialogueScript.value.slice(contextStart, currentLineIndex.value + 1)
+    
+    // 3. 调用 LLM 生成卡片内容
+    const result = await generateCardContent({
+      cardConfig: cardData.promptConfig,
+      worldBook: activeBook.value,
+      recentDialogue,
+      currentScene: currentSceneName.value,
+      options: {
+        temperature: 0.9,
+        maxTokens: 1500,
+      },
+    })
+    
+    if (!result.success) {
+      cardError.value = result.error || '卡片内容生成失败'
+      isGeneratingCard.value = false
+      showCardPanel.value = true
+      return
+    }
+    
+    // 4. 设置当前卡片信息
+    currentCard.value = cardData
+    currentCardContent.value = result.data
+    
+    // 检查是否已收藏
+    checkCurrentCardCollected()
+    
+    // 5. 关闭生成中状态，显示卡片
+    isGeneratingCard.value = false
+    
+  } catch (error) {
+    cardError.value = `卡片生成失败: ${error?.message || '未知错误'}`
+    isGeneratingCard.value = false
+    showCardPanel.value = true
+  }
+}
+
+/**
+ * 渲染卡片 HTML 内容
+ * 根据卡片模板和生成的内容渲染最终 HTML
+ */
+const renderedCardHtml = computed(() => {
+  if (!currentCard.value || !currentCardContent.value || !currentCard.value.templateHtml) {
+    return ''
+  }
+  
+  let html = currentCard.value.templateHtml
+  
+  // 替换模板中的变量占位符
+  const content = currentCardContent.value
+  for (const [key, value] of Object.entries(content)) {
+    // 支持多种占位符格式: {{key}}, {key}, %key%
+    html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value || ''))
+    html = html.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value || ''))
+    html = html.replace(new RegExp(`%${key}%`, 'g'), String(value || ''))
+  }
+  return html
+})
 
 // ========== CG 生成功能 ==========
 
@@ -2511,6 +3622,7 @@ const handleSaveGeneratedCG = async () => {
 const handleOpenCGModal = () => {
   if (isCgGenerating.value) return
   closeDialogueHistoryPanel()
+  closeRelationshipTablePanel()
   cgSummaryError.value = ''
   cgSummaryResult.value = null
   showCGModal.value = true
@@ -2671,6 +3783,7 @@ const createSerializableGameData = () => {
       dialogueScript: sanitizedDialogueScript,
       llmSettings: getCurrentLlmSettingsPayload(),
       relationshipState: mergeRelationshipStateWithBook(activeBook.value, relationshipState.value),
+      relationshipLedger: normalizeRelationshipLedgerPayload(relationshipLedger.value, createEmptyRelationshipLedger()),
       directorState: normalizeDirectorRuntimeState(directorState.value),
       sceneCharacters: sceneCharacters.value.map(c => ({
         id: c.id,
@@ -2689,7 +3802,10 @@ const handleDialogueBoxClick = (event) => {
     isGenerating.value ||
     isGeneratingMiniTheater.value ||
     showSavePanel.value ||
-    showMiniTheaterPanel.value
+    showDebugPanel.value ||
+    showMiniTheaterPanel.value ||
+    showDialogueHistoryPanel.value ||
+    showRelationshipTablePanel.value
   ) {
     return
   }
@@ -2737,20 +3853,38 @@ const closeTopMenu = () => {
   showTopMenu.value = false
 }
 
+const closeDebugPanel = () => {
+  showDebugPanel.value = false
+}
+
 const toggleTopMenu = () => {
-  showTopMenu.value = !showTopMenu.value
+  const nextState = !showTopMenu.value
+  showTopMenu.value = nextState
+  if (nextState) {
+    showDebugPanel.value = false
+  }
 }
 
 // 切换存档面板显示
 const toggleSavePanel = () => {
   closeTopMenu()
+  closeDebugPanel()
   closeDialogueHistoryPanel()
+  closeRelationshipTablePanel()
   showSavePanel.value = !showSavePanel.value
   if (!showSavePanel.value) {
     saveError.value = null
     saveSuccess.value = null
     saveSlotName.value = ''
   }
+}
+
+const toggleDebugPanel = () => {
+  closeTopMenu()
+  closeDialogueHistoryPanel()
+  closeRelationshipTablePanel()
+  showSavePanel.value = false
+  showDebugPanel.value = !showDebugPanel.value
 }
 
 // 保存游戏进度
@@ -2833,19 +3967,32 @@ const handleToggleSavePanelFromMenu = () => {
 const handleToggleDialogueHistoryFromMenu = () => {
   closeTopMenu()
   showSavePanel.value = false
+  showDebugPanel.value = false
+  closeRelationshipTablePanel()
   toggleDialogueHistoryPanel()
+}
+
+const handleToggleRelationshipTableFromMenu = () => {
+  closeTopMenu()
+  showSavePanel.value = false
+  showDebugPanel.value = false
+  closeDialogueHistoryPanel()
+  toggleRelationshipTablePanel()
 }
 
 // 加载存档数据
 const loadSaveData = async () => {
   clearMiniTheaterMode()
   showMiniTheaterPanel.value = false
+  showDebugPanel.value = false
+  showRelationshipTablePanel.value = false
   miniTheaterError.value = ''
 
   if (!(props.saveData && props.saveData.game)) {
     storyTimeLabel.value = getCurrentStoryTimeLabel()
     hydrateNarrativeRuntimeState(null)
     await hydrateLlmSettingsForScope(null)
+    await hydrateRelationshipLedgerForScope(null)
     return
   }
 
@@ -2868,6 +4015,7 @@ const loadSaveData = async () => {
 
   hydrateNarrativeRuntimeState(props.saveData.game)
   await hydrateLlmSettingsForScope(props.saveData.game.llmSettings)
+  await hydrateRelationshipLedgerForScope(props.saveData.game.relationshipLedger)
 
   // 重置游戏开始时间
   playStartTime.value = Date.now() - (props.saveData.metadata?.playTime || 0) * 1000
@@ -2942,6 +4090,7 @@ onMounted(async () => {
     await initializeOpeningDialogue()
     hydrateNarrativeRuntimeState(null)
     await hydrateLlmSettingsForScope(null)
+    await hydrateRelationshipLedgerForScope(null)
   }
 
   // 确保初始场景背景按世界书配置生效
@@ -2971,6 +4120,7 @@ watch(activeBook, async (newBook, oldBook) => {
   if (hasMountedGameScreen.value && newBook && !props.saveData && newBook.id !== oldBook?.id) {
     await initializeOpeningDialogue()
     hydrateNarrativeRuntimeState(null)
+    await hydrateRelationshipLedgerForScope(null)
   }
 
   if (!currentSceneName.value) {

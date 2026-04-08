@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>邀请函</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+      font-family: 'Georgia', 'STKaiti', serif;
+      padding: 20px;
+    }
+    
+    .invitation-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .invitation-card {
+      position: relative;
+      background: #fff;
+      padding: 40px 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+    }
+    
+    .border-decoration {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      bottom: 15px;
+      border: 2px solid rgba(196, 30, 58, 0.2);
+      pointer-events: none;
+    }
+    
+    .corner-ornament {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 1px solid rgba(196, 30, 58, 0.3);
+    }
+    
+    .corner-ornament.top-left { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+    .corner-ornament.top-right { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+    .corner-ornament.bottom-left { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+    .corner-ornament.bottom-right { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+    
+    .header-decoration {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 20px;
+      background: linear-gradient(180deg, #c41e3a 0%, transparent 100%);
+      border-radius: 0 0 30px 30px;
+    }
+    
+    .event-type-badge {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 5px 10px;
+      background: rgba(196, 30, 58, 0.1);
+      border: 1px solid #c41e3a;
+      color: #c41e3a;
+      font-size: 10px;
+      letter-spacing: 2px;
+    }
+    
+    .invitation-header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(196, 30, 58, 0.2);
+    }
+    
+    .event-title {
+      font-size: 20px;
+      color: #c41e3a;
+      letter-spacing: 4px;
+      margin-bottom: 10px;
+    }
+    
+    .host-name {
+      font-size: 12px;
+      color: #666;
+      letter-spacing: 1px;
+    }
+    
+    .invitation-content {
+      text-align: center;
+      color: #333;
+      font-size: 13px;
+      line-height: 2;
+      margin-bottom: 20px;
+    }
+    
+    .guest-name {
+      font-size: 16px;
+      color: #8b4513;
+      margin-bottom: 15px;
+      letter-spacing: 2px;
+    }
+    
+    .event-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(139, 90, 43, 0.05);
+      border: 1px dashed rgba(139, 90, 43, 0.2);
+    }
+    
+    .detail-item {
+      font-size: 11px;
+      text-align: center;
+    }
+    
+    .detail-label {
+      color: #888;
+      display: block;
+      margin-bottom: 3px;
+    }
+    
+    .detail-value {
+      color: #333;
+      font-weight: 500;
+    }
+    
+    .footer-decoration {
+      position: absolute;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #c41e3a, transparent);
+    }
+  </style>
+</head>
+<body>
+  <div class="invitation-container">
+    <div class="invitation-card">
+      <div class="border-decoration"></div>
+      <div class="header-decoration"></div>
+      <div class="event-type-badge">{{eventType}}</div>
+      <div class="corner-ornament top-left"></div>
+      <div class="corner-ornament top-right"></div>
+      <div class="corner-ornament bottom-left"></div>
+      <div class="corner-ornament bottom-right"></div>
+      
+      <div class="invitation-header">
+        <div class="event-title">{{eventTitle}}</div>
+        <div class="host-name">{{host}} 敬邀</div>
+      </div>
+      
+      <div class="invitation-content">
+        <div class="guest-name">致 {{guest}}</div>
+        {{content}}
+      </div>
+      
+      <div class="event-details">
+        <div class="detail-item">
+          <span class="detail-label">日期</span>
+          <span class="detail-value">{{date}}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">时间</span>
+          <span class="detail-value">{{time}}</span>
+        </div>
+        <div class="detail-item" style="grid-column: span 2;">
+          <span class="detail-label">地点</span>
+          <span class="detail-value">{{location}}</span>
+        </div>
+      </div>
+      
+      <div class="footer-decoration"></div>
+    </div>
+  </div>
+</body>
+</html>

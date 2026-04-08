@@ -1,0 +1,57 @@
+{
+  "id": "surreal-dream",
+  "name": "梦境碎片",
+  "category": "surreal",
+  "description": "一张超现实风格的梦境记录卡，带有扭曲的视觉效果和梦幻色彩",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "梦境|幻想|超现实|潜意识|迷幻",
+        "description": "梦境或超现实场景可能触发"
+      },
+      {
+        "type": "story",
+        "operator": "contains",
+        "value": "梦|幻觉|恍惚|沉睡|醒来",
+        "description": "剧情涉及梦境时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "dreamTitle": {
+      "type": "string",
+      "description": "梦境标题"
+    },
+    "dreamDate": {
+      "type": "string",
+      "description": "梦境日期"
+    },
+    "dreamContent": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "梦境内容"
+    },
+    "symbols": {
+      "type": "string",
+      "description": "梦境符号"
+    },
+    "mood": {
+      "type": "string",
+      "default": "迷离",
+      "options": ["迷离", "恐惧", "温暖", "忧伤", "神秘"],
+      "description": "梦境情绪"
+    }
+  },
+  "promptTemplate": "请生成一段梦境记录。\n\n背景信息：\n- 做梦者：{{dreamer}}\n- 场景：{{scene}}\n- 情绪基调：{{mood}}\n\n要求：\n1. 内容要超现实、梦幻、带有象征意义\n2. 可以包含不可能的场景转换\n3. 语气要朦胧迷离\n4. 字数控制在150-300字之间\n\n请直接输出梦境内容，不要有其他说明。",
+  "style": {
+    "theme": "surreal",
+    "colors": ["#1a1a2e", "#e94560", "#0f3460"],
+    "mood": "梦幻迷离"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

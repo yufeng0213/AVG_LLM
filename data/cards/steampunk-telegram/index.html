@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>蒸汽朋克电报</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #2c1810 0%, #3d2314 50%, #2c1810 100%);
+      font-family: 'Courier New', 'Typewriter', monospace;
+      padding: 20px;
+    }
+    
+    .steampunk-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .steampunk-card {
+      position: relative;
+      background: linear-gradient(180deg, #d4a574 0%, #c49a6c 50%, #b8956a 100%);
+      padding: 30px 25px;
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 8px 25px rgba(0, 0, 0, 0.3),
+        inset 0 2px 0 rgba(255, 255, 255, 0.2);
+      border: 3px solid #8b4513;
+    }
+    
+    .metal-frame {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      border: 2px solid #654321;
+      pointer-events: none;
+    }
+    
+    .metal-frame::before {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      right: -3px;
+      bottom: -3px;
+      border: 1px solid rgba(139, 69, 19, 0.5);
+    }
+    
+    .corner-rivet {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: radial-gradient(circle at 30% 30%, #b8860b 0%, #8b4513 50%, #654321 100%);
+      border-radius: 50%;
+      box-shadow: 
+        inset 0 2px 3px rgba(255, 255, 255, 0.3),
+        0 2px 3px rgba(0, 0, 0, 0.3);
+    }
+    
+    .corner-rivet.top-left { top: 15px; left: 15px; }
+    .corner-rivet.top-right { top: 15px; right: 15px; }
+    .corner-rivet.bottom-left { bottom: 15px; left: 15px; }
+    .corner-rivet.bottom-right { bottom: 15px; right: 15px; }
+    
+    .gear-decoration {
+      position: absolute;
+      font-size: 40px;
+      opacity: 0.15;
+      color: #654321;
+    }
+    
+    .gear-decoration:nth-child(5) { top: 20px; right: 20px; }
+    .gear-decoration:nth-child(6) { bottom: 25px; left: 15px; font-size: 30px; }
+    
+    .telegram-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #8b4513;
+    }
+    
+    .telegram-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .logo-icon {
+      font-size: 24px;
+    }
+    
+    .logo-text {
+      font-size: 12px;
+      color: #5d4e37;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    
+    .telegram-number {
+      font-size: 10px;
+      color: #8b4513;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .telegram-title {
+      font-size: 18px;
+      color: #3d2914;
+      margin-bottom: 15px;
+      text-align: center;
+      font-weight: bold;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    
+    .telegram-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(139, 69, 19, 0.3);
+    }
+    
+    .meta-item {
+      font-size: 11px;
+      color: #5d4e37;
+    }
+    
+    .meta-label {
+      color: #8b4513;
+      font-weight: bold;
+    }
+    
+    .telegram-content {
+      font-size: 13px;
+      line-height: 24px;
+      color: #3d2914;
+      text-align: justify;
+      background: rgba(255, 255, 255, 0.3);
+      padding: 15px;
+      border: 1px dashed #8b4513;
+      margin-bottom: 15px;
+    }
+    
+    .telegram-content p {
+      margin-bottom: 10px;
+    }
+    
+    .morse-code {
+      text-align: center;
+      margin: 15px 0;
+      font-size: 12px;
+      color: #8b4513;
+      letter-spacing: 5px;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .telegram-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 15px;
+      border-top: 2px solid #8b4513;
+    }
+    
+    .sender-info {
+      font-size: 12px;
+      color: #5d4e37;
+    }
+    
+    .stamp {
+      width: 50px;
+      height: 60px;
+      background: linear-gradient(135deg, #8b4513 0%, #654321 100%);
+      border: 2px dashed #d4a574;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      transform: rotate(5deg);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .steam-pipe {
+      position: absolute;
+      width: 8px;
+      height: 40px;
+      background: linear-gradient(90deg, #654321 0%, #8b4513 50%, #654321 100%);
+      border-radius: 4px;
+    }
+    
+    .steam-pipe.left { top: -20px; left: 30px; }
+    .steam-pipe.right { top: -20px; right: 30px; }
+    
+    .steam-effect {
+      position: absolute;
+      top: -30px;
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+      animation: steam-rise 2s ease-in-out infinite;
+    }
+    
+    .steam-effect.left { left: 24px; }
+    .steam-effect.right { right: 24px; animation-delay: 1s; }
+    
+    @keyframes steam-rise {
+      0% { transform: translateY(0) scale(1); opacity: 0.5; }
+      100% { transform: translateY(-20px) scale(1.5); opacity: 0; }
+    }
+    
+    .tape-strip {
+      position: absolute;
+      width: 50px;
+      height: 15px;
+      background: rgba(139, 69, 19, 0.3);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    
+    .tape-strip.top { top: -7px; left: 50%; transform: translateX(-50%) rotate(2deg); }
+    
+    @keyframes gear-rotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .steampunk-card:hover .gear-decoration {
+      animation: gear-rotate 10s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="steampunk-container">
+    <div class="steampunk-card">
+      <div class="metal-frame"></div>
+      <div class="corner-rivet top-left"></div>
+      <div class="corner-rivet top-right"></div>
+      <div class="corner-rivet bottom-left"></div>
+      <div class="corner-rivet bottom-right"></div>
+      <div class="gear-decoration">⚙️</div>
+      <div class="gear-decoration">⚙️</div>
+      <div class="steam-pipe left"></div>
+      <div class="steam-pipe right"></div>
+      <div class="steam-effect left"></div>
+      <div class="steam-effect right"></div>
+      <div class="tape-strip top"></div>
+      
+      <div class="telegram-header">
+        <div class="telegram-logo">
+          <span class="logo-icon">📡</span>
+          <span class="logo-text">TELEGRAM</span>
+        </div>
+        <div class="telegram-number">NO.{{telegramNumber}}</div>
+      </div>
+      
+      <h2 class="telegram-title">{{title}}</h2>
+      
+      <div class="telegram-meta">
+        <div class="meta-item"><span class="meta-label">FROM:</span> {{from}}</div>
+        <div class="meta-item"><span class="meta-label">TO:</span> {{to}}</div>
+        <div class="meta-item"><span class="meta-label">DATE:</span> {{date}}</div>
+        <div class="meta-item"><span class="meta-label">TIME:</span> {{time}}</div>
+      </div>
+      
+      <div class="telegram-content">
+        {{content}}
+      </div>
+      
+      <div class="morse-code">{{morseCode}}</div>
+      
+      <div class="telegram-footer">
+        <div class="sender-info">
+          <div>SENT BY: {{operator}}</div>
+          <div>STATION: {{station}}</div>
+        </div>
+        <div class="stamp">✉️</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

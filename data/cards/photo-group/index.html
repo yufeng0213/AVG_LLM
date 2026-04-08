@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>合影照片</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      padding: 20px;
+    }
+    
+    .photo-container {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+    }
+    
+    .photo-frame {
+      position: relative;
+      background: #fff;
+      padding: 15px 15px 55px 15px;
+      box-shadow: 
+        0 15px 50px rgba(0, 0, 0, 0.15),
+        0 5px 20px rgba(0, 0, 0, 0.1);
+      transform: rotate(-1deg);
+    }
+    
+    .photo-inner {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #f5f5f5;
+      overflow: hidden;
+      border: 1px solid #ddd;
+    }
+    
+    .photo-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+      color: #666;
+    }
+    
+    .photo-placeholder-icon {
+      font-size: 50px;
+      margin-bottom: 15px;
+    }
+    
+    .photo-placeholder-text {
+      font-size: 14px;
+      opacity: 0.7;
+      text-align: center;
+      padding: 10px;
+    }
+    
+    .photo-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .photo-border {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      right: 5px;
+      bottom: 5px;
+      border: 2px solid rgba(200, 200, 200, 0.5);
+      pointer-events: none;
+    }
+    
+    .photo-caption {
+      position: absolute;
+      bottom: 15px;
+      left: 15px;
+      right: 15px;
+      text-align: center;
+      font-size: 15px;
+      color: #444;
+      font-weight: 500;
+    }
+    
+    .photo-date {
+      position: absolute;
+      bottom: 5px;
+      right: 15px;
+      font-size: 11px;
+      color: #888;
+    }
+    
+    .people-tags {
+      position: absolute;
+      bottom: 40px;
+      left: 15px;
+      display: flex;
+      gap: 8px;
+    }
+    
+    .person-tag {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #ddd;
+      padding: 3px 8px;
+      font-size: 10px;
+      color: #666;
+      border-radius: 3px;
+    }
+    
+    .tape-strip {
+      position: absolute;
+      width: 50px;
+      height: 18px;
+      background: rgba(255, 255, 200, 0.7);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tape-strip.top-left { top: -8px; left: 15px; transform: rotate(-3deg); }
+    .tape-strip.top-right { top: -8px; right: 15px; transform: rotate(3deg); }
+    .tape-strip.bottom-left { bottom: -8px; left: 15px; transform: rotate(3deg); }
+    .tape-strip.bottom-right { bottom: -8px; right: 15px; transform: rotate(-3deg); }
+    
+    .smile-sticker {
+      position: absolute;
+      font-size: 18px;
+      opacity: 0.8;
+    }
+    
+    .smile-sticker:nth-child(1) { top: 10px; right: 10px; }
+    .smile-sticker:nth-child(2) { bottom: 70px; left: 10px; }
+    
+    .heart-decoration {
+      position: absolute;
+      bottom: 25px;
+      right: 15px;
+      font-size: 14px;
+      opacity: 0.6;
+    }
+    
+    .memory-note {
+      position: absolute;
+      bottom: -25px;
+      left: 20px;
+      font-size: 12px;
+      color: #888;
+      font-style: italic;
+      white-space: nowrap;
+    }
+    
+    .frame-corner {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      border: 2px solid #ddd;
+    }
+    
+    .frame-corner.top-left { top: 0; left: 0; border-right: none; border-bottom: none; }
+    .frame-corner.top-right { top: 0; right: 0; border-left: none; border-bottom: none; }
+    .frame-corner.bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; }
+    .frame-corner.bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; }
+    
+    .location-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #666;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .location-icon {
+      font-size: 12px;
+    }
+    
+    @keyframes gentle-rotate {
+      0%, 100% { transform: rotate(-1deg); }
+      50% { transform: rotate(0deg); }
+    }
+    
+    .photo-frame:hover {
+      animation: gentle-rotate 3s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="photo-container">
+    <div class="photo-frame">
+      <div class="tape-strip top-left"></div>
+      <div class="tape-strip top-right"></div>
+      <div class="tape-strip bottom-left"></div>
+      <div class="tape-strip bottom-right"></div>
+      
+      <div class="photo-inner">
+        <div class="photo-placeholder">
+          <div class="photo-placeholder-icon">👥</div>
+          <div class="photo-placeholder-text">{{photoDescription}}</div>
+        </div>
+        <div class="photo-border"></div>
+        <div class="frame-corner top-left"></div>
+        <div class="frame-corner top-right"></div>
+        <div class="frame-corner bottom-left"></div>
+        <div class="frame-corner bottom-right"></div>
+        <div class="smile-sticker">😊</div>
+        <div class="smile-sticker">😄</div>
+        <div class="location-badge">
+          <span class="location-icon">📍</span>
+          <span>{{location}}</span>
+        </div>
+      </div>
+      
+      <div class="people-tags">
+        <div class="person-tag">{{person1}}</div>
+        <div class="person-tag">{{person2}}</div>
+        <div class="person-tag">{{person3}}</div>
+      </div>
+      
+      <div class="heart-decoration">💕</div>
+      <div class="photo-caption">{{caption}}</div>
+      <div class="photo-date">{{date}}</div>
+      <div class="memory-note">{{memoryNote}}</div>
+    </div>
+  </div>
+</body>
+</html>

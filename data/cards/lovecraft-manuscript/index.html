@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>克苏鲁手稿</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+      font-family: 'Times New Roman', serif;
+      padding: 20px;
+    }
+    
+    .lovecraft-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .lovecraft-card {
+      position: relative;
+      background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+      border: 1px solid #2a4a2a;
+      padding: 35px 30px;
+      box-shadow: 
+        0 0 50px rgba(42, 74, 42, 0.3),
+        0 0 100px rgba(0, 0, 0, 0.8),
+        inset 0 0 30px rgba(0, 0, 0, 0.5);
+    }
+    
+    .ancient-texture {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(ellipse at 10% 10%, rgba(42, 74, 42, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 90%, rgba(42, 74, 42, 0.08) 0%, transparent 40%);
+      pointer-events: none;
+    }
+    
+    .tentacle-decoration {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 30px;
+      height: 30px;
+      opacity: 0.2;
+      animation: tentacle-move 5s ease-in-out infinite;
+    }
+    
+    @keyframes tentacle-move {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(10deg); }
+    }
+    
+    .tentacle-decoration::before {
+      content: '🐙';
+      font-size: 20px;
+      color: #2a4a2a;
+    }
+    
+    .warning-banner {
+      background: rgba(42, 74, 42, 0.2);
+      color: #4a6a4a;
+      text-align: center;
+      padding: 8px;
+      font-size: 10px;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(42, 74, 42, 0.3);
+    }
+    
+    .manuscript-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed #2a4a2a;
+    }
+    
+    .manuscript-id {
+      font-size: 10px;
+      color: #3a5a3a;
+      letter-spacing: 1px;
+    }
+    
+    .manuscript-date {
+      font-size: 10px;
+      color: #3a5a3a;
+    }
+    
+    .manuscript-title {
+      font-size: 16px;
+      color: #4a6a4a;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #2a4a2a;
+      letter-spacing: 2px;
+      text-shadow: 0 0 5px rgba(42, 74, 42, 0.3);
+    }
+    
+    .manuscript-content {
+      color: #5a7a5a;
+      font-size: 12px;
+      line-height: 1.9;
+      margin-bottom: 15px;
+    }
+    
+    .manuscript-content::first-letter {
+      font-size: 24px;
+      color: #4a6a4a;
+    }
+    
+    .forbidden-text {
+      color: #2a4a2a;
+      font-style: italic;
+      opacity: 0.7;
+    }
+    
+    .warning-box {
+      background: rgba(42, 74, 42, 0.15);
+      border-left: 2px solid #2a4a2a;
+      padding: 10px;
+      margin-top: 15px;
+      font-size: 11px;
+      color: #4a6a4a;
+    }
+    
+    .warning-box::before {
+      content: '⚠ 禁忌警告';
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+      letter-spacing: 2px;
+      color: #2a4a2a;
+    }
+    
+    .eye-symbol {
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
+      width: 25px;
+      height: 25px;
+      opacity: 0.3;
+    }
+    
+    .eye-symbol::before {
+      content: '👁';
+      font-size: 18px;
+      color: #2a4a2a;
+      animation: eye-watch 3s ease-in-out infinite;
+    }
+    
+    @keyframes eye-watch {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.5; }
+    }
+    
+    .corner-symbol {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      border: 1px solid rgba(42, 74, 42, 0.3);
+    }
+    
+    .corner-symbol.top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+    .corner-symbol.top-right { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+    .corner-symbol.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-symbol.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+    
+    .glitch-effect {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(42, 74, 42, 0.02);
+      animation: sanity-glitch 8s steps(10) infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes sanity-glitch {
+      0%, 95%, 100% { clip-path: inset(0 0 0 0); }
+      96% { clip-path: inset(10% 0 60% 0); transform: translateX(-1px); }
+      97% { clip-path: inset(40% 0 30% 0); transform: translateX(1px); }
+      98% { clip-path: inset(80% 0 5% 0); transform: translateX(-1px); }
+      99% { clip-path: inset(20% 0 70% 0); transform: translateX(1px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="lovecraft-container">
+    <div class="lovecraft-card">
+      <div class="ancient-texture"></div>
+      <div class="glitch-effect"></div>
+      <div class="tentacle-decoration"></div>
+      <div class="eye-symbol"></div>
+      <div class="corner-symbol top-left"></div>
+      <div class="corner-symbol top-right"></div>
+      <div class="corner-symbol bottom-left"></div>
+      <div class="corner-symbol bottom-right"></div>
+      
+      <div class="warning-banner">FORBIDDEN KNOWLEDGE</div>
+      
+      <div class="manuscript-header">
+        <div class="manuscript-id">{{manuscriptId}}</div>
+        <div class="manuscript-date">{{date}}</div>
+      </div>
+      
+      <div class="manuscript-title">{{title}}</div>
+      
+      <div class="manuscript-content">
+        {{content}}
+      </div>
+      
+      <div class="warning-box">
+        {{warning}}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{
+  "id": "wanted-poster",
+  "name": "通缉令",
+  "category": "wanted",
+  "description": "一张通缉令风格的海报，带有悬赏和追捕元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "通缉|追捕|悬赏|逃犯|西部|警长",
+        "description": "通缉或追捕场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "criminalName": {
+      "type": "string",
+      "description": "通缉犯姓名"
+    },
+    "bounty": {
+      "type": "string",
+      "description": "悬赏金额"
+    },
+    "crimes": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "罪行描述"
+    },
+    "description": {
+      "type": "string",
+      "description": "外貌特征"
+    },
+    "lastSeen": {
+      "type": "string",
+      "description": "最后出现地点"
+    },
+    "issuer": {
+      "type": "string",
+      "description": "发布机构"
+    },
+    "dangerLevel": {
+      "type": "string",
+      "default": "危险",
+      "options": ["一般", "危险", "极度危险"],
+      "description": "危险等级"
+    }
+  },
+  "promptTemplate": "请生成一张通缉令的内容。\n\n背景信息：\n- 发布机构：{{issuer}}\n- 场景：{{scene}}\n\n要求：\n1. 使用通缉令风格的语言\n2. 内容要简洁有力\n3. 可以包含罪行和悬赏信息\n4. 字数控制在100-200字之间\n\n请直接输出通缉令内容，不要有其他说明。",
+  "style": {
+    "theme": "wanted",
+    "colors": ["#f5e6c8", "#8b4513", "#c41e3a"],
+    "mood": "紧张严肃"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

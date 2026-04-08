@@ -1,0 +1,66 @@
+{
+  "id": "ticket-plane",
+  "name": "机票",
+  "category": "ticket",
+  "description": "一张飞机票，带有航空元素和旅行设计",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "旅行|飞行|机场|出国|度假|出差",
+        "description": "旅行或飞行场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "flightNumber": {
+      "type": "string",
+      "description": "航班号"
+    },
+    "passenger": {
+      "type": "string",
+      "description": "乘客姓名"
+    },
+    "departure": {
+      "type": "string",
+      "description": "出发地"
+    },
+    "destination": {
+      "type": "string",
+      "description": "目的地"
+    },
+    "date": {
+      "type": "string",
+      "description": "日期"
+    },
+    "time": {
+      "type": "string",
+      "description": "时间"
+    },
+    "seat": {
+      "type": "string",
+      "description": "座位号"
+    },
+    "gate": {
+      "type": "string",
+      "description": "登机口"
+    },
+    "classType": {
+      "type": "string",
+      "default": "经济舱",
+      "options": ["经济舱", "商务舱", "头等舱"],
+      "description": "舱位等级"
+    }
+  },
+  "promptTemplate": "请生成一张机票的内容。\n\n背景信息：\n- 乘客：{{passenger}}\n- 场景：{{scene}}\n\n要求：\n1. 使用航空票务格式\n2. 信息要完整准确\n3. 可以包含航班信息\n4. 字数控制在50-100字之间\n\n请直接输出机票内容，不要有其他说明。",
+  "style": {
+    "theme": "ticket",
+    "colors": ["#1a1a1a", "#3498db", "#f5f5f5"],
+    "mood": "旅行出发"
+  },
+  "rarity": "common",
+  "collectible": true
+}

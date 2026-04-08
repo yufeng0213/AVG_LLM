@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>彩票</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f5f5f5;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      padding: 20px;
+    }
+    
+    .lottery-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .lottery-card {
+      position: relative;
+      background: #fff;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    
+    .header-section {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .lottery-title {
+      font-size: 18px;
+      color: #fff;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    
+    .lottery-type {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.8);
+      padding: 3px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .numbers-section {
+      padding: 20px;
+      text-align: center;
+      background: rgba(243, 156, 18, 0.05);
+    }
+    
+    .numbers-label {
+      font-size: 10px;
+      color: #888;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+    
+    .numbers-display {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .number-ball {
+      width: 35px;
+      height: 35px;
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    
+    .number-ball.special {
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    }
+    
+    .prize-section {
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px dashed #ddd;
+    }
+    
+    .prize-label {
+      font-size: 11px;
+      color: #888;
+    }
+    
+    .prize-amount {
+      font-size: 16px;
+      color: #e74c3c;
+      font-weight: bold;
+    }
+    
+    .info-section {
+      padding: 15px 20px;
+      background: rgba(0, 0, 0, 0.02);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    
+    .info-item {
+      font-size: 10px;
+    }
+    
+    .info-label {
+      color: #888;
+      display: block;
+      margin-bottom: 2px;
+    }
+    
+    .info-value {
+      color: #333;
+    }
+    
+    .footer-section {
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #eee;
+    }
+    
+    .ticket-id {
+      font-size: 9px;
+      color: #999;
+      letter-spacing: 1px;
+    }
+    
+    .lucky-message {
+      font-size: 10px;
+      color: #f39c12;
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border: 1px solid rgba(231, 76, 60, 0.3);
+    }
+    
+    .corner-decoration.top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+    .corner-decoration.top-right { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+    .corner-decoration.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-decoration.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+  </style>
+</head>
+<body>
+  <div class="lottery-container">
+    <div class="lottery-card">
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      
+      <div class="header-section">
+        <div class="lottery-title">幸运彩票</div>
+        <div class="lottery-type">{{lotteryType}}</div>
+      </div>
+      
+      <div class="numbers-section">
+        <div class="numbers-label">您的幸运号码</div>
+        <div class="numbers-display">
+          <div class="number-ball">0</div>
+          <div class="number-ball">0</div>
+          <div class="number-ball">0</div>
+          <div class="number-ball">0</div>
+          <div class="number-ball">0</div>
+          <div class="number-ball special">0</div>
+        </div>
+      </div>
+      
+      <div class="prize-section">
+        <span class="prize-label">本期奖池</span>
+        <span class="prize-amount">{{prize}}</span>
+      </div>
+      
+      <div class="info-section">
+        <div class="info-item">
+          <span class="info-label">开奖日期</span>
+          <span class="info-value">{{drawDate}}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">购买日期</span>
+          <span class="info-value">{{purchaseDate}}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">购买地点</span>
+          <span class="info-value">{{location}}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">彩票编号</span>
+          <span class="info-value">{{ticketId}}</span>
+        </div>
+      </div>
+      
+      <div class="footer-section">
+        <div class="ticket-id">NO. {{ticketId}}</div>
+        <div class="lucky-message">🍀 祝您好运</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>道歉信</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #e0e5ec 0%, #d0d5dc 100%);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      padding: 20px;
+    }
+    
+    .letter-container {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+    }
+    
+    .letter {
+      position: relative;
+      background: linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%);
+      padding: 45px 40px;
+      border-radius: 3px;
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .letter::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #7f8c8d 0%, #95a5a6 50%, #7f8c8d 100%);
+    }
+    
+    .paper-texture {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: 
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    
+    .tear-drop {
+      position: absolute;
+      width: 8px;
+      height: 12px;
+      background: radial-gradient(ellipse at 30% 30%, rgba(100, 150, 200, 0.6) 0%, rgba(100, 150, 200, 0.3) 100%);
+      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      opacity: 0.7;
+    }
+    
+    .tear-drop:nth-child(1) {
+      top: 80px;
+      left: 60px;
+      transform: rotate(-15deg);
+    }
+    
+    .tear-drop:nth-child(2) {
+      top: 120px;
+      right: 80px;
+      transform: rotate(10deg);
+    }
+    
+    .tear-drop:nth-child(3) {
+      top: 180px;
+      left: 100px;
+      transform: rotate(5deg);
+    }
+    
+    .letter-header {
+      text-align: right;
+      margin-bottom: 25px;
+      color: #7f8c8d;
+      font-size: 13px;
+      font-style: italic;
+    }
+    
+    .letter-title {
+      font-size: 20px;
+      color: #2c3e50;
+      margin-bottom: 25px;
+      text-align: center;
+      font-weight: normal;
+      letter-spacing: 8px;
+      position: relative;
+    }
+    
+    .letter-title::after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 1px;
+      background: #bdc3c7;
+      margin: 12px auto 0;
+    }
+    
+    .letter-content {
+      font-size: 15px;
+      line-height: 30px;
+      color: #34495e;
+      text-align: justify;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .letter-content p {
+      text-indent: 2em;
+      margin-bottom: 15px;
+    }
+    
+    .apology-highlight {
+      background: linear-gradient(180deg, transparent 60%, rgba(231, 76, 60, 0.15) 60%);
+      padding: 0 2px;
+    }
+    
+    .letter-signature {
+      text-align: right;
+      margin-top: 35px;
+      color: #7f8c8d;
+    }
+    
+    .letter-signature .apology-text {
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+    
+    .letter-signature .name {
+      font-size: 17px;
+      font-style: italic;
+      color: #2c3e50;
+    }
+    
+    .fold-corner {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #e8e8e8 0%, #d8d8d8 100%);
+      box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .fold-corner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, transparent 50%, #c8c8c8 50%);
+    }
+    
+    .sad-face {
+      position: absolute;
+      bottom: 20px;
+      left: 25px;
+      font-size: 20px;
+      opacity: 0.15;
+    }
+    
+    @keyframes gentle-shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-0.5deg); }
+      75% { transform: rotate(0.5deg); }
+    }
+    
+    .letter:hover {
+      animation: gentle-shake 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="letter-container">
+    <div class="letter">
+      <div class="paper-texture"></div>
+      <div class="tear-drop"></div>
+      <div class="tear-drop"></div>
+      <div class="tear-drop"></div>
+      
+      <div class="letter-header">
+        {{date}}
+      </div>
+      
+      <h2 class="letter-title">致 {{recipient}}</h2>
+      
+      <div class="letter-content">
+        {{content}}
+      </div>
+      
+      <div class="letter-signature">
+        <div class="apology-text">诚挚道歉的，</div>
+        <div class="name">{{sender}}</div>
+      </div>
+      
+      <div class="fold-corner"></div>
+      <div class="sad-face">😢</div>
+    </div>
+  </div>
+</body>
+</html>

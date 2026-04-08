@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>神秘邮件</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+      font-family: 'Courier New', 'Consolas', monospace;
+      padding: 20px;
+    }
+    
+    .email-container {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+    }
+    
+    .email {
+      background: linear-gradient(145deg, #1a1a2e 0%, #0f0f1a 100%);
+      border: 1px solid rgba(0, 255, 65, 0.3);
+      border-radius: 4px;
+      box-shadow: 
+        0 0 30px rgba(0, 255, 65, 0.1),
+        0 0 60px rgba(0, 255, 65, 0.05),
+        inset 0 0 30px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .email::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 255, 65, 0.03) 2px,
+          rgba(0, 255, 65, 0.03) 4px
+        );
+      pointer-events: none;
+      animation: scanline 8s linear infinite;
+    }
+    
+    @keyframes scanline {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(100%); }
+    }
+    
+    .glitch-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 255, 65, 0.02);
+      animation: glitch 5s ease-in-out infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes glitch {
+      0%, 90%, 100% { opacity: 0; }
+      92%, 94%, 96% { opacity: 0.5; transform: translateX(-2px); }
+      93%, 95%, 97% { opacity: 0.3; transform: translateX(2px); }
+    }
+    
+    .email-header {
+      padding: 20px 25px;
+      border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+      position: relative;
+    }
+    
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .email-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #00ff41;
+    }
+    
+    .logo-icon {
+      width: 30px;
+      height: 30px;
+      border: 2px solid #00ff41;
+      border-radius: 4px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 16px;
+      animation: pulse-border 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-border {
+      0%, 100% { border-color: #00ff41; }
+      50% { border-color: rgba(0, 255, 65, 0.5); }
+    }
+    
+    .logo-text {
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    
+    .encryption-badge {
+      background: rgba(0, 255, 65, 0.2);
+      border: 1px solid #00ff41;
+      padding: 3px 10px;
+      border-radius: 3px;
+      font-size: 10px;
+      color: #00ff41;
+      letter-spacing: 1px;
+    }
+    
+    .email-subject {
+      color: #00ff41;
+      font-size: 16px;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+      animation: text-glow 3s ease-in-out infinite;
+    }
+    
+    @keyframes text-glow {
+      0%, 100% { text-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
+      50% { text-shadow: 0 0 15px rgba(0, 255, 65, 0.8), 0 0 25px rgba(0, 255, 65, 0.4); }
+    }
+    
+    .email-meta {
+      display: flex;
+      gap: 20px;
+      font-size: 11px;
+      color: rgba(0, 255, 65, 0.6);
+    }
+    
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .meta-item span {
+      opacity: 0.5;
+    }
+    
+    .meta-item strong {
+      color: #00ff41;
+    }
+    
+    .anonymous-tag {
+      color: #ff0041;
+      font-size: 10px;
+      margin-left: 5px;
+    }
+    
+    .email-body {
+      padding: 25px;
+      position: relative;
+    }
+    
+    .warning-banner {
+      background: rgba(255, 0, 65, 0.1);
+      border: 1px solid rgba(255, 0, 65, 0.3);
+      padding: 10px 15px;
+      margin-bottom: 20px;
+      font-size: 11px;
+      color: #ff0041;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .warning-icon {
+      font-size: 14px;
+    }
+    
+    .email-content {
+      color: #00ff41;
+      font-size: 14px;
+      line-height: 24px;
+      letter-spacing: 0.5px;
+    }
+    
+    .email-content p {
+      margin-bottom: 15px;
+    }
+    
+    .encrypted-text {
+      color: rgba(0, 255, 65, 0.4);
+      font-style: italic;
+    }
+    
+    .hidden-message {
+      background: rgba(0, 255, 65, 0.1);
+      padding: 15px;
+      margin: 20px 0;
+      border-left: 3px solid #00ff41;
+      font-size: 13px;
+    }
+    
+    .email-footer {
+      padding: 15px 25px;
+      border-top: 1px solid rgba(0, 255, 65, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .timestamp {
+      font-size: 10px;
+      color: rgba(0, 255, 65, 0.4);
+    }
+    
+    .trace-status {
+      font-size: 10px;
+      color: #ff0041;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .trace-dot {
+      width: 6px;
+      height: 6px;
+      background: #ff0041;
+      border-radius: 50%;
+      animation: blink 1s ease-in-out infinite;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 1px solid rgba(0, 255, 65, 0.3);
+    }
+    
+    .corner-decoration.top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+    .corner-decoration.top-right { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+    .corner-decoration.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-decoration.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+    
+    .matrix-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+      opacity: 0.05;
+      pointer-events: none;
+    }
+    
+    .matrix-char {
+      position: absolute;
+      color: #00ff41;
+      font-size: 12px;
+      animation: matrix-fall 10s linear infinite;
+    }
+    
+    @keyframes matrix-fall {
+      0% { transform: translateY(-100%); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(100vh); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="email">
+      <div class="glitch-overlay"></div>
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      
+      <div class="email-header">
+        <div class="header-top">
+          <div class="email-logo">
+            <div class="logo-icon">⚡</div>
+            <div class="logo-text">SECURE MAIL</div>
+          </div>
+          <div class="encryption-badge">ENCRYPTED</div>
+        </div>
+        
+        <div class="email-subject">{{subject}}</div>
+        
+        <div class="email-meta">
+          <div class="meta-item">
+            <span>FROM:</span>
+            <strong>{{sender}}</strong>
+            <span class="anonymous-tag">[ANONYMOUS]</span>
+          </div>
+          <div class="meta-item">
+            <span>TO:</span>
+            <strong>{{recipient}}</strong>
+          </div>
+        </div>
+      </div>
+      
+      <div class="email-body">
+        <div class="warning-banner">
+          <span class="warning-icon">⚠️</span>
+          <span>此邮件来源已加密，发送者身份无法追踪</span>
+        </div>
+        
+        <div class="email-content">
+          {{content}}
+        </div>
+        
+        <div class="hidden-message">
+          {{hiddenMessage}}
+        </div>
+      </div>
+      
+      <div class="email-footer">
+        <div class="timestamp">{{timestamp}}</div>
+        <div class="trace-status">
+          <div class="trace-dot"></div>
+          <span>无法追踪</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

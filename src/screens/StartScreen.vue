@@ -10,6 +10,7 @@ const emit = defineEmits([
   'open-save-load',
   'open-plugin-manager',
   'open-narrator-manager',
+  'open-card-collection',
   'menu-click',
 ])
 
@@ -69,6 +70,13 @@ const menuItems = [
     description: '管理不同主笔风格与叙事模板',
     icon: '🧠',
     variant: 'tone-orange border-dashed tilt-left',
+  },
+  {
+    id: 'card-collection',
+    label: '卡片收藏室',
+    description: '查看和管理收藏的小卡片',
+    icon: '🃏',
+    variant: 'tone-magenta border-dashed tilt-right',
   },
 ]
 
@@ -193,6 +201,11 @@ const handleMenuClick = (itemId) => {
 
   if (itemId === 'narrators') {
     emit('open-narrator-manager')
+    return
+  }
+
+  if (itemId === 'card-collection') {
+    emit('open-card-collection')
     return
   }
 

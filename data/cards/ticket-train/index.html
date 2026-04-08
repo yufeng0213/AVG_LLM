@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>火车票</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+      font-family: 'Arial', 'Helvetica', sans-serif;
+      padding: 20px;
+    }
+    
+    .ticket-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .train-ticket {
+      position: relative;
+      background: linear-gradient(180deg, #fff 0%, #f8f8f8 100%);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.15),
+        0 5px 10px rgba(0, 0, 0, 0.1);
+      transform: rotate(-1deg);
+    }
+    
+    .ticket-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 15px;
+      border-bottom: 2px dashed #ccc;
+      margin-bottom: 15px;
+    }
+    
+    .ticket-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .logo-icon {
+      font-size: 24px;
+    }
+    
+    .logo-text {
+      font-size: 14px;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .ticket-type {
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+      color: white;
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .route-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 0;
+    }
+    
+    .station {
+      text-align: center;
+    }
+    
+    .station-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .station-code {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .route-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .arrow-line {
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(90deg, #3498db 0%, #2ecc71 100%);
+    }
+    
+    .train-number {
+      font-size: 10px;
+      color: #3498db;
+      text-align: center;
+    }
+    
+    .info-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 10px 0;
+    }
+    
+    .info-item {
+      background: #f5f5f5;
+      padding: 8px 12px;
+      border-radius: 5px;
+    }
+    
+    .info-label {
+      font-size: 10px;
+      color: #888;
+      margin-bottom: 3px;
+    }
+    
+    .info-value {
+      font-size: 13px;
+      color: #333;
+      font-weight: 500;
+    }
+    
+    .ticket-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 15px;
+      border-top: 2px dashed #ccc;
+    }
+    
+    .seat-info {
+      display: flex;
+      gap: 15px;
+    }
+    
+    .seat-item {
+      text-align: center;
+    }
+    
+    .seat-label {
+      font-size: 10px;
+      color: #888;
+    }
+    
+    .seat-value {
+      font-size: 14px;
+      font-weight: bold;
+      color: #e74c3c;
+    }
+    
+    .price-section {
+      text-align: right;
+    }
+    
+    .price-label {
+      font-size: 10px;
+      color: #888;
+    }
+    
+    .price-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #e74c3c;
+    }
+    
+    .barcode-section {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 5px;
+      text-align: center;
+    }
+    
+    .barcode {
+      display: flex;
+      justify-content: center;
+      gap: 2px;
+      margin-bottom: 5px;
+    }
+    
+    .barcode-line {
+      width: 2px;
+      height: 30px;
+      background: #333;
+    }
+    
+    .barcode-line:nth-child(odd) {
+      width: 1px;
+    }
+    
+    .barcode-line:nth-child(3n) {
+      width: 3px;
+    }
+    
+    .barcode-text {
+      font-size: 10px;
+      color: #666;
+      letter-spacing: 2px;
+    }
+    
+    .ticket-notch {
+      position: absolute;
+      top: 50%;
+      left: -8px;
+      width: 16px;
+      height: 30px;
+      background: #f5f5f5;
+      border-radius: 50%;
+      transform: translateY(-50%);
+    }
+    
+    .ticket-notch.right {
+      left: auto;
+      right: -8px;
+    }
+    
+    .validity-stamp {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 10px;
+      color: #27ae60;
+      background: rgba(39, 174, 96, 0.1);
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+    
+    @keyframes ticket-shake {
+      0%, 100% { transform: rotate(-1deg); }
+      50% { transform: rotate(0deg); }
+    }
+    
+    .train-ticket:hover {
+      animation: ticket-shake 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="ticket-container">
+    <div class="train-ticket">
+      <div class="ticket-notch"></div>
+      <div class="ticket-notch right"></div>
+      <div class="validity-stamp">✓ 有效</div>
+      
+      <div class="ticket-header">
+        <div class="ticket-logo">
+          <span class="logo-icon">🚂</span>
+          <span class="logo-text">铁路出行</span>
+        </div>
+        <div class="ticket-type">{{ticketType}}</div>
+      </div>
+      
+      <div class="route-section">
+        <div class="station">
+          <div class="station-name">{{departureStation}}</div>
+          <div class="station-code">{{departureCode}}</div>
+        </div>
+        <div class="route-arrow">
+          <div class="arrow-line"></div>
+          <div class="train-number">{{trainNumber}}</div>
+        </div>
+        <div class="station">
+          <div class="station-name">{{arrivalStation}}</div>
+          <div class="station-code">{{arrivalCode}}</div>
+        </div>
+      </div>
+      
+      <div class="info-section">
+        <div class="info-item">
+          <div class="info-label">出发时间</div>
+          <div class="info-value">{{departureTime}}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">到达时间</div>
+          <div class="info-value">{{arrivalTime}}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">日期</div>
+          <div class="info-value">{{date}}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">乘客</div>
+          <div class="info-value">{{passenger}}</div>
+        </div>
+      </div>
+      
+      <div class="ticket-footer">
+        <div class="seat-info">
+          <div class="seat-item">
+            <div class="seat-label">车厢</div>
+            <div class="seat-value">{{carriage}}</div>
+          </div>
+          <div class="seat-item">
+            <div class="seat-label">座位</div>
+            <div class="seat-value">{{seat}}</div>
+          </div>
+        </div>
+        <div class="price-section">
+          <div class="price-label">票价</div>
+          <div class="price-value">¥{{price}}</div>
+        </div>
+      </div>
+      
+      <div class="barcode-section">
+        <div class="barcode">
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+        </div>
+        <div class="barcode-text">{{ticketId}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

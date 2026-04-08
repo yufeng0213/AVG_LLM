@@ -5,6 +5,8 @@
 
 import { EMOTION_PRESETS, isValidEmotion } from '../worldbook/emotionPresets'
 
+const MAX_JSON_CANDIDATES = 24
+
 /**
  * 解析 LLM 返回的剧情内容
  * @param {string} content - LLM 返回的原始内容
@@ -19,70 +21,285 @@ export const parseStoryContent = (content) => {
     }
   }
 
-  // 尝试提取 JSON 内容
-  const jsonMatch = extractJson(content)
-  
-  if (!jsonMatch) {
+  const payload = extractDialoguePayload(content)
+  if (!payload) {
     return {
       success: false,
-      error: '未能从返回内容中提取有效的 JSON 格式',
+      error: '未能从返回内容中提取有效的剧情 JSON',
       dialogues: [],
       rawContent: content,
     }
   }
 
-  try {
-    const parsed = JSON.parse(jsonMatch)
-    const dialogues = normalizeDialogues(parsed)
-
-    return {
-      success: true,
-      error: null,
-      dialogues,
-      rawContent: content,
-    }
-  } catch (err) {
+  const dialogues = normalizeDialogues(payload)
+  if (dialogues.length === 0) {
     return {
       success: false,
-      error: `JSON 解析失败: ${err.message}`,
+      error: '剧情 JSON 中未包含可用对话条目',
       dialogues: [],
       rawContent: content,
     }
+  }
+
+  return {
+    success: true,
+    error: null,
+    dialogues,
+    rawContent: content,
   }
 }
 
-/**
- * 从内容中提取 JSON 字符串
- * @param {string} content - 原始内容
- * @returns {string|null} JSON 字符串或 null
- */
-const extractJson = (content) => {
-  // 尝试匹配 ```json ... ``` 格式
-  const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/)
-  if (jsonBlockMatch) {
-    return jsonBlockMatch[1].trim()
-  }
+const extractDialoguePayload = (content) => {
+  const candidates = collectJsonCandidates(content)
 
-  // 尝试匹配 ``` ... ``` 格式
-  const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/)
-  if (codeBlockMatch) {
-    const inner = codeBlockMatch[1].trim()
-    if (inner.startsWith('[') || inner.startsWith('{')) {
-      return inner
+  for (const candidate of candidates) {
+    const parsed = parseJsonWithRepairs(candidate)
+    if (!parsed) continue
+
+    const dialoguePayload = resolveDialoguePayload(parsed)
+    if (dialoguePayload) {
+      return dialoguePayload
     }
   }
 
-  // 尝试直接匹配 JSON 数组
-  const arrayMatch = content.match(/\[\s*\{[\s\S]*\}\s*\]/)
-  if (arrayMatch) {
-    return arrayMatch[0]
+  return null
+}
+
+const collectJsonCandidates = (content) => {
+  const raw = String(content || '').trim()
+  if (!raw) return []
+
+  const candidates = []
+  const seen = new Set()
+
+  const pushCandidate = (value) => {
+    const text = String(value || '').trim()
+    if (!text) return
+    if (!(text.startsWith('{') || text.startsWith('['))) return
+    if (seen.has(text)) return
+    seen.add(text)
+    candidates.push(text)
   }
 
-  // 尝试匹配单个 JSON 对象
-  const objectMatch = content.match(/\{\s*"speaker"[\s\S]*\}/)
-  if (objectMatch) {
-    // 包装成数组
-    return `[${objectMatch[0]}]`
+  pushCandidate(raw)
+
+  const fencedRegex = /```(?:json)?\s*([\s\S]*?)```/gi
+  let fencedMatch = fencedRegex.exec(raw)
+  while (fencedMatch) {
+    pushCandidate(fencedMatch[1])
+    if (candidates.length >= MAX_JSON_CANDIDATES) break
+    fencedMatch = fencedRegex.exec(raw)
+  }
+
+  const firstArrayStart = raw.indexOf('[')
+  const lastArrayEnd = raw.lastIndexOf(']')
+  if (firstArrayStart >= 0 && lastArrayEnd > firstArrayStart) {
+    pushCandidate(raw.slice(firstArrayStart, lastArrayEnd + 1))
+  }
+
+  const firstObjectStart = raw.indexOf('{')
+  const lastObjectEnd = raw.lastIndexOf('}')
+  if (firstObjectStart >= 0 && lastObjectEnd > firstObjectStart) {
+    pushCandidate(raw.slice(firstObjectStart, lastObjectEnd + 1))
+  }
+
+  for (const segment of extractBalancedJsonSegments(raw)) {
+    pushCandidate(segment)
+    if (candidates.length >= MAX_JSON_CANDIDATES) break
+  }
+
+  if (firstArrayStart >= 0) {
+    pushCandidate(raw.slice(firstArrayStart))
+  }
+  if (firstObjectStart >= 0) {
+    pushCandidate(raw.slice(firstObjectStart))
+  }
+
+  return candidates.slice(0, MAX_JSON_CANDIDATES)
+}
+
+const extractBalancedJsonSegments = (text) => {
+  const segments = []
+  const stack = []
+  let inString = false
+  let escaped = false
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]
+
+    if (inString) {
+      if (escaped) {
+        escaped = false
+        continue
+      }
+      if (char === '\\') {
+        escaped = true
+        continue
+      }
+      if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      continue
+    }
+
+    if (char === '{' || char === '[') {
+      stack.push({ char, index })
+      continue
+    }
+
+    if (char !== '}' && char !== ']') continue
+
+    if (stack.length === 0) continue
+
+    const expected = char === '}' ? '{' : '['
+    const top = stack[stack.length - 1]
+    if (top.char !== expected) {
+      continue
+    }
+
+    const open = stack.pop()
+    const segment = text.slice(open.index, index + 1).trim()
+    if (segment.startsWith('{') || segment.startsWith('[')) {
+      segments.push(segment)
+    }
+  }
+
+  return segments.sort((a, b) => b.length - a.length)
+}
+
+const parseJsonWithRepairs = (rawCandidate) => {
+  const raw = String(rawCandidate || '').trim()
+  if (!raw) return null
+
+  const variants = []
+  const seen = new Set()
+  const pushVariant = (value) => {
+    const text = String(value || '').trim()
+    if (!text) return
+    if (seen.has(text)) return
+    seen.add(text)
+    variants.push(text)
+  }
+
+  pushVariant(raw)
+
+  const normalized = normalizeJsonPunctuation(raw)
+  pushVariant(normalized)
+
+  const noTrailingCommas = removeTrailingCommas(normalized)
+  pushVariant(noTrailingCommas)
+
+  const completed = completeJsonTail(noTrailingCommas)
+  pushVariant(completed)
+
+  for (const variant of variants) {
+    const parsed = tryParseJson(variant)
+    if (parsed !== null) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+const normalizeJsonPunctuation = (text) => {
+  return String(text || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\u00A0/g, ' ')
+}
+
+const removeTrailingCommas = (text) => String(text || '').replace(/,(\s*[}\]])/g, '$1')
+
+const completeJsonTail = (text) => {
+  const raw = String(text || '').trim()
+  if (!raw) return raw
+
+  const closers = []
+  let inString = false
+  let escaped = false
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index]
+
+    if (inString) {
+      if (escaped) {
+        escaped = false
+        continue
+      }
+      if (char === '\\') {
+        escaped = true
+        continue
+      }
+      if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      continue
+    }
+
+    if (char === '{') {
+      closers.push('}')
+      continue
+    }
+
+    if (char === '[') {
+      closers.push(']')
+      continue
+    }
+
+    if (char === '}' || char === ']') {
+      const expected = char
+      if (closers.length === 0 || closers[closers.length - 1] !== expected) {
+        return raw
+      }
+      closers.pop()
+    }
+  }
+
+  if (closers.length === 0) return raw
+
+  return `${raw}${closers.slice().reverse().join('')}`
+}
+
+const tryParseJson = (text) => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+const resolveDialoguePayload = (parsed) => {
+  if (Array.isArray(parsed)) {
+    return parsed
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return null
+  }
+
+  const object = parsed
+
+  if (Array.isArray(object.dialogues)) return object.dialogues
+  if (Array.isArray(object.lines)) return object.lines
+  if (Array.isArray(object.script)) return object.script
+  if (Array.isArray(object.story)) return object.story
+  if (Array.isArray(object.data)) return object.data
+  if (Array.isArray(object.items)) return object.items
+
+  if (object.speaker || object.s || object.text || object.t || object.content || object.line) {
+    return [object]
   }
 
   return null
@@ -94,37 +311,86 @@ const extractJson = (content) => {
  * @returns {Array} 规范化的对话数组
  */
 const normalizeDialogues = (data) => {
-  // 如果是单个对象，转换为数组
   const items = Array.isArray(data) ? data : [data]
 
-  return items.map((item, index) => normalizeDialogueItem(item, index))
+  return items
+    .map((item, index) => normalizeDialogueItem(item, index))
+    .filter(Boolean)
 }
 
 /**
  * 规范化单条对话数据
  * @param {Object} item - 原始对话数据
  * @param {number} index - 索引
- * @returns {Object} 规范化的对话对象
+ * @returns {Object|null} 规范化的对话对象
  */
 const normalizeDialogueItem = (item, index) => {
-  const storyTime = normalizeStoryTime(item.storyTime || item.time || item.date)
+  if (!item) return null
+
+  if (typeof item === 'string') {
+    const text = normalizeText(item)
+    if (!text) return null
+    return {
+      id: `dialogue_${Date.now()}_${index}`,
+      speaker: '旁白',
+      emotion: 'default',
+      text,
+      highlight: false,
+      storyTime: '',
+      choices: null,
+      scene: null,
+      metadata: {
+        rawSpeaker: '',
+        rawEmotion: '',
+        rawStoryTime: '',
+        rawScene: null,
+      },
+    }
+  }
+
+  if (typeof item !== 'object') return null
+
+  const storyTime = normalizeStoryTime(
+    item.storyTime ??
+    item.time ??
+    item.date ??
+    item.d ??
+    item.st,
+  )
+
+  const text = normalizeText(
+    item.text ??
+    item.t ??
+    item.content ??
+    item.line ??
+    item.dialogue,
+  )
+  if (!text) return null
 
   return {
     id: `dialogue_${Date.now()}_${index}`,
-    speaker: normalizeSpeaker(item.speaker),
-    emotion: normalizeEmotion(item.emotion),
-    text: normalizeText(item.text),
-    highlight: Boolean(item.highlight),
+    speaker: normalizeSpeaker(item.speaker ?? item.s ?? item.name ?? item.role),
+    emotion: normalizeEmotion(item.emotion ?? item.e ?? item.mood),
+    text,
+    highlight: normalizeHighlight(item.highlight ?? item.h ?? item.focus),
     storyTime,
-    choices: normalizeChoices(item.choices),
-    scene: normalizeScene(item.scene),  // 新增：场景切换指令
+    choices: normalizeChoices(item.choices ?? item.c),
+    scene: normalizeScene(item.scene ?? item.sc), // 场景切换指令
     metadata: {
-      rawSpeaker: item.speaker,
-      rawEmotion: item.emotion,
-      rawStoryTime: item.storyTime || item.time || item.date,
-      rawScene: item.scene,
+      rawSpeaker: item.speaker ?? item.s ?? item.name ?? item.role,
+      rawEmotion: item.emotion ?? item.e ?? item.mood,
+      rawStoryTime: item.storyTime ?? item.time ?? item.date ?? item.d ?? item.st,
+      rawScene: item.scene ?? item.sc,
     },
   }
+}
+
+const normalizeHighlight = (value) => {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  const text = String(value || '').trim().toLowerCase()
+  if (!text) return false
+  return text === '1' || text === 'true' || text === 'yes' || text === 'y'
 }
 
 /**
@@ -133,10 +399,8 @@ const normalizeDialogueItem = (item, index) => {
  * @returns {Object|null} 规范化的场景对象或 null
  */
 const normalizeScene = (scene) => {
-  // 没有场景数据
   if (!scene) return null
-  
-  // 如果是字符串，作为场景ID处理
+
   if (typeof scene === 'string') {
     const str = String(scene).trim()
     if (!str) return null
@@ -146,23 +410,21 @@ const normalizeScene = (scene) => {
       background: '',
     }
   }
-  
-  // 如果是对象，规范化各字段
+
   if (typeof scene === 'object') {
-    const id = String(scene.id || scene.sceneId || '').trim()
-    const name = String(scene.name || scene.sceneName || '').trim()
-    const background = String(scene.background || scene.bg || '').trim()
-    
-    // 至少需要有 id 或 name
+    const id = String(scene.id ?? scene.sceneId ?? scene.i ?? '').trim()
+    const name = String(scene.name ?? scene.sceneName ?? scene.n ?? '').trim()
+    const background = String(scene.background ?? scene.bg ?? scene.b ?? '').trim()
+
     if (!id && !name) return null
-    
+
     return {
       id: id || name,
       name: name || id,
       background,
     }
   }
-  
+
   return null
 }
 
@@ -172,23 +434,64 @@ const normalizeScene = (scene) => {
  * @returns {Object|null} 规范化的选项对象或 null
  */
 const normalizeChoices = (choices) => {
-  if (!choices || typeof choices !== 'object') {
+  if (!choices) {
     return null
   }
 
-  // 验证必要字段
-  if (!choices.prompt || !Array.isArray(choices.options) || choices.options.length === 0) {
+  let optionsSource = []
+  let promptSource = '你要怎么做？'
+  let allowCustomSource = true
+
+  if (Array.isArray(choices)) {
+    optionsSource = choices
+  } else if (typeof choices === 'object') {
+    optionsSource = Array.isArray(choices.options)
+      ? choices.options
+      : (Array.isArray(choices.o)
+        ? choices.o
+        : (Array.isArray(choices.items) ? choices.items : []))
+    promptSource = choices.prompt ?? choices.p ?? choices.question ?? promptSource
+    allowCustomSource = choices.allowCustomInput ?? choices.i ?? choices.allowInput ?? true
+  } else {
     return null
   }
+
+  const options = optionsSource
+    .map((opt, optIndex) => {
+      if (typeof opt === 'string') {
+        const text = String(opt).trim()
+        if (!text) return null
+        return {
+          id: `choice_${Date.now()}_${optIndex}`,
+          text,
+          action: `choice_${optIndex + 1}`,
+        }
+      }
+
+      if (!opt || typeof opt !== 'object') return null
+
+      const text = String(opt.text ?? opt.t ?? opt.label ?? '').trim()
+      if (!text) return null
+
+      const actionRaw = String(opt.action ?? opt.a ?? opt.id ?? '').trim()
+      return {
+        id: `choice_${Date.now()}_${optIndex}`,
+        text,
+        action: actionRaw || `choice_${optIndex + 1}`,
+      }
+    })
+    .filter(Boolean)
+
+  if (options.length === 0) {
+    return null
+  }
+
+  const prompt = String(promptSource).trim() || '你要怎么做？'
 
   return {
-    prompt: String(choices.prompt).trim(),
-    options: choices.options.map((opt, optIndex) => ({
-      id: `choice_${Date.now()}_${optIndex}`,
-      text: String(opt.text || '未知选项').trim(),
-      action: opt.action || `custom_${optIndex}`,
-    })),
-    allowCustomInput: Boolean(choices.allowCustomInput),
+    prompt,
+    options,
+    allowCustomInput: normalizeHighlight(allowCustomSource),
   }
 }
 
@@ -210,21 +513,18 @@ const normalizeSpeaker = (speaker) => {
  */
 const normalizeEmotion = (emotion) => {
   if (!emotion) return 'default'
-  
+
   const str = String(emotion).trim().toLowerCase()
-  
-  // 检查是否为有效表情
   if (isValidEmotion(str)) {
     return str
   }
 
-  // 尝试匹配表情标签
-  const preset = EMOTION_PRESETS.find(p => 
-    p.label === str || 
-    p.id === str ||
-    p.label.includes(str) ||
-    str.includes(p.label)
-  )
+  const preset = EMOTION_PRESETS.find((item) => (
+    item.label === str ||
+    item.id === str ||
+    item.label.includes(str) ||
+    str.includes(item.label)
+  ))
 
   return preset ? preset.id : 'default'
 }
@@ -235,8 +535,8 @@ const normalizeEmotion = (emotion) => {
  * @returns {string} 规范化的文本
  */
 const normalizeText = (text) => {
-  if (!text) return '...'
-  return String(text).trim() || '...'
+  if (!text) return ''
+  return String(text).trim()
 }
 
 /**
@@ -267,14 +567,14 @@ export const validateDialogue = (dialogue) => {
  * @returns {Array} 游戏脚本格式的对话数组
  */
 export const toGameScript = (dialogues) => {
-  return dialogues.map(d => ({
-    speaker: d.speaker,
-    emotion: d.emotion,
-    text: d.text,
-    highlight: d.highlight,
-    storyTime: d.storyTime,
-    choices: d.choices, // 保留选项数据
-    scene: d.scene, // 保留场景切换数据
+  return dialogues.map((dialogue) => ({
+    speaker: dialogue.speaker,
+    emotion: dialogue.emotion,
+    text: dialogue.text,
+    highlight: dialogue.highlight,
+    storyTime: dialogue.storyTime,
+    choices: dialogue.choices,
+    scene: dialogue.scene,
   }))
 }
 
@@ -285,9 +585,9 @@ export const toGameScript = (dialogues) => {
  */
 export const extractHighlightCharacters = (dialogues) => {
   return dialogues
-    .filter(d => d.highlight)
-    .map(d => d.speaker)
-    .filter((v, i, a) => a.indexOf(v) === i) // 去重
+    .filter((dialogue) => dialogue.highlight)
+    .map((dialogue) => dialogue.speaker)
+    .filter((value, index, array) => array.indexOf(value) === index)
 }
 
 /**
@@ -296,7 +596,7 @@ export const extractHighlightCharacters = (dialogues) => {
  * @returns {string} 显示标签
  */
 export const getEmotionDisplayLabel = (emotionId) => {
-  const preset = EMOTION_PRESETS.find(p => p.id === emotionId)
+  const preset = EMOTION_PRESETS.find((item) => item.id === emotionId)
   return preset ? preset.label : '默认'
 }
 
@@ -310,10 +610,10 @@ export const createDialogueSummary = (dialogues) => {
     return '无对话'
   }
 
-  return dialogues.map(d => {
-    const emotion = d.emotion !== 'default' ? `[${getEmotionDisplayLabel(d.emotion)}]` : ''
-    const highlight = d.highlight ? '★' : ''
-    return `${highlight}${d.speaker}${emotion}: ${d.text.slice(0, 30)}...`
+  return dialogues.map((dialogue) => {
+    const emotion = dialogue.emotion !== 'default' ? `[${getEmotionDisplayLabel(dialogue.emotion)}]` : ''
+    const highlight = dialogue.highlight ? '★' : ''
+    return `${highlight}${dialogue.speaker}${emotion}: ${dialogue.text.slice(0, 30)}...`
   }).join('\n')
 }
 

@@ -14,6 +14,14 @@
     font-size: 0.9rem;
   }
 
+  .debug-toggle-btn {
+    min-width: 58px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 6px;
+    font-size: 0.56rem;
+  }
+
   .top-menu-panel {
     top: 44px;
     left: 8px;
@@ -169,6 +177,33 @@
     z-index: 50;
     border-radius: 12px;
   }
+
+  .relationship-table-overlay {
+    padding:
+      max(6px, env(safe-area-inset-top, 0px))
+      6px
+      max(6px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .relationship-table-panel {
+    width: 98vw;
+    height: 88dvh;
+    max-height: 88dvh;
+    border-radius: 10px;
+  }
+
+  .relationship-table-title {
+    font-size: 0.88rem;
+  }
+
+  .relationship-table-body {
+    padding: 10px 12px 12px;
+  }
+
+  .relationship-table {
+    min-width: 820px;
+    font-size: 0.72rem;
+  }
 }
 /* 超小屏幕 (小于480px) */
 @media (max-width: 480px) {
@@ -187,6 +222,14 @@
     min-width: 30px;
     min-height: 30px;
     font-size: 0.82rem;
+  }
+
+  .debug-toggle-btn {
+    min-width: 50px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 5px;
+    font-size: 0.5rem;
   }
 
   .hud-chip {
@@ -245,6 +288,37 @@
     width: 30px;
     height: 30px;
     font-size: 0.78rem;
+  }
+
+  .relationship-table-overlay {
+    padding:
+      max(4px, env(safe-area-inset-top, 0px))
+      4px
+      max(4px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .relationship-table-panel {
+    width: 99vw;
+    height: 90dvh;
+    max-height: 90dvh;
+    border-radius: 10px;
+  }
+
+  .relationship-table-header {
+    padding: 10px 12px;
+  }
+
+  .relationship-table-title {
+    font-size: 0.82rem;
+  }
+
+  .relationship-table-body {
+    padding: 8px 10px 10px;
+  }
+
+  .relationship-table {
+    min-width: 760px;
+    font-size: 0.7rem;
   }
 
   /* 隐藏部分按钮，只保留核心功能 */
@@ -538,6 +612,42 @@
 }
 .spinner-dot:nth-child(2) {
   animation-delay: 0.2s;
+}
+.spinner-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes spinner-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 /* 顶部折叠菜单样式 */
 .top-menu-panel {

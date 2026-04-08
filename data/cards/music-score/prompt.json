@@ -1,0 +1,55 @@
+{
+  "id": "music-score",
+  "name": "乐谱手稿",
+  "category": "music",
+  "description": "一张音乐风格的乐谱手稿，带有音符和音乐元素装饰",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "音乐|演奏|乐器|作曲|旋律|歌声",
+        "description": "音乐场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "pieceTitle": {
+      "type": "string",
+      "description": "乐曲标题"
+    },
+    "composer": {
+      "type": "string",
+      "description": "作曲家"
+    },
+    "instrument": {
+      "type": "string",
+      "default": "钢琴",
+      "options": ["钢琴", "小提琴", "吉他", "古琴", "琵琶"],
+      "description": "乐器类型"
+    },
+    "tempo": {
+      "type": "string",
+      "description": "节拍速度"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "乐谱说明或创作灵感"
+    },
+    "date": {
+      "type": "string",
+      "description": "创作日期"
+    }
+  },
+  "promptTemplate": "请生成一份乐谱手稿的内容。\n\n背景信息：\n- 作曲家：{{composer}}\n- 乐器：{{instrument}}\n- 场景：{{scene}}\n\n要求：\n1. 使用音乐创作风格的语言\n2. 可以包含创作灵感或演奏说明\n3. 语气要优雅艺术\n4. 字数控制在150-250字之间\n\n请直接输出乐谱内容，不要有其他说明。",
+  "style": {
+    "theme": "music",
+    "colors": ["#f5f5f5", "#1a1a1a", "#c41e3a"],
+    "mood": "优雅艺术"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

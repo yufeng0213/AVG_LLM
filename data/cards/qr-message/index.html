@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>二维码讯息</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #1a1a1a;
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+    }
+    
+    .qr-container {
+      position: relative;
+      width: 100%;
+      max-width: 350px;
+    }
+    
+    .qr-card {
+      position: relative;
+      background: #fff;
+      padding: 25px 20px;
+      box-shadow: 0 10px 30px rgba(0, 255, 136, 0.1);
+      border-radius: 3px;
+    }
+    
+    .header-stripe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #00ff88, #333);
+    }
+    
+    .message-type {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 3px 8px;
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid #00ff88;
+      color: #00ff88;
+      font-size: 9px;
+      letter-spacing: 1px;
+    }
+    
+    .message-header {
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .message-title {
+      font-size: 14px;
+      color: #1a1a1a;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    
+    .message-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #888;
+    }
+    
+    .message-content {
+      color: #333;
+      font-size: 12px;
+      line-height: 1.8;
+      margin-bottom: 15px;
+    }
+    
+    .qr-section {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+    
+    .qr-code {
+      width: 80px;
+      height: 80px;
+      background: #1a1a1a;
+      padding: 5px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 2px;
+    }
+    
+    .qr-cell {
+      background: #fff;
+    }
+    
+    .qr-cell.black {
+      background: #1a1a1a;
+    }
+    
+    .scan-hint {
+      text-align: center;
+      font-size: 10px;
+      color: #888;
+      margin-bottom: 10px;
+    }
+    
+    .footer-section {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+    }
+    
+    .footer-item {
+      font-size: 9px;
+      color: #999;
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border: 1px solid rgba(0, 255, 136, 0.3);
+    }
+    
+    .corner-decoration.top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+    .corner-decoration.top-right { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+    .corner-decoration.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-decoration.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+  </style>
+</head>
+<body>
+  <div class="qr-container">
+    <div class="qr-card">
+      <div class="header-stripe"></div>
+      <div class="message-type">{{messageType}}</div>
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      
+      <div class="message-header">
+        <div class="message-title">{{title}}</div>
+        <div class="message-meta">
+          <span>FROM: {{sender}}</span>
+          <span>TO: {{recipient}}</span>
+        </div>
+      </div>
+      
+      <div class="message-content">
+        {{content}}
+      </div>
+      
+      <div class="qr-section">
+        <div class="qr-code">
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+          <div class="qr-cell black"></div>
+        </div>
+      </div>
+      
+      <div class="scan-hint">扫描二维码查看完整内容</div>
+      
+      <div class="footer-section">
+        <div class="footer-item">ID: {{messageId}}</div>
+        <div class="footer-item">{{timestamp}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>复古广播稿</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #2c1810 0%, #3d2314 100%);
+      font-family: 'STKaiti', 'KaiTi', '楷体', serif;
+      padding: 20px;
+    }
+    
+    .radio-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .radio-card {
+      position: relative;
+      background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 50%, #f0ddb5 100%);
+      padding: 35px 30px;
+      box-shadow: 
+        0 15px 50px rgba(0, 0, 0, 0.4),
+        inset 0 0 30px rgba(139, 90, 43, 0.1);
+    }
+    
+    .paper-aged {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(ellipse at 10% 10%, rgba(139, 90, 43, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 90%, rgba(139, 90, 43, 0.05) 0%, transparent 40%);
+      pointer-events: none;
+    }
+    
+    .radio-decoration {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 40px;
+      height: 40px;
+      opacity: 0.3;
+    }
+    
+    .radio-decoration::before {
+      content: '📻';
+      font-size: 28px;
+    }
+    
+    .station-header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(139, 90, 43, 0.4);
+    }
+    
+    .station-name {
+      font-size: 16px;
+      color: #8b4513;
+      letter-spacing: 3px;
+      margin-bottom: 5px;
+    }
+    
+    .program-title {
+      font-size: 14px;
+      color: #5a4a3a;
+      letter-spacing: 2px;
+    }
+    
+    .broadcast-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      padding: 10px;
+      background: rgba(139, 90, 43, 0.1);
+      border: 1px dashed rgba(139, 90, 43, 0.3);
+    }
+    
+    .info-item {
+      font-size: 11px;
+      color: #5a4a3a;
+    }
+    
+    .radio-content {
+      color: #2c1810;
+      font-size: 13px;
+      line-height: 2;
+      margin-bottom: 15px;
+    }
+    
+    .radio-content::first-letter {
+      font-size: 24px;
+      color: #8b4513;
+    }
+    
+    .broadcast-signature {
+      text-align: right;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(139, 90, 43, 0.3);
+      font-size: 12px;
+      color: #5a4a3a;
+    }
+    
+    .frequency-badge {
+      position: absolute;
+      bottom: 15px;
+      left: 15px;
+      padding: 5px 10px;
+      background: rgba(139, 90, 43, 0.2);
+      border: 1px solid rgba(139, 90, 43, 0.4);
+      color: #8b4513;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      border: 1px solid rgba(139, 90, 43, 0.3);
+    }
+    
+    .corner-decoration.top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+    .corner-decoration.top-right { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+    .corner-decoration.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-decoration.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+  </style>
+</head>
+<body>
+  <div class="radio-container">
+    <div class="radio-card">
+      <div class="paper-aged"></div>
+      <div class="radio-decoration"></div>
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      
+      <div class="station-header">
+        <div class="station-name">{{stationName}}</div>
+        <div class="program-title">{{programTitle}}</div>
+      </div>
+      
+      <div class="broadcast-info">
+        <div class="info-item">主持人: {{host}}</div>
+        <div class="info-item">播出时间: {{broadcastTime}}</div>
+      </div>
+      
+      <div class="radio-content">
+        {{content}}
+      </div>
+      
+      <div class="broadcast-signature">
+        {{programType}}节目 · 敬请收听
+      </div>
+      
+      <div class="frequency-badge">FM 88.8</div>
+    </div>
+  </div>
+</body>
+</html>

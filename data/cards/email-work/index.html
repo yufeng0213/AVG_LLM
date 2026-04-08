@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工作邮件</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      padding: 20px;
+    }
+    
+    .email-container {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+    }
+    
+    .email {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.1),
+        0 2px 10px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+    
+    .email-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px 25px;
+      color: white;
+    }
+    
+    .email-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .email-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .email-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 18px;
+    }
+    
+    .email-logo-text {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    
+    .email-time {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    
+    .email-subject {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    
+    .email-meta {
+      display: flex;
+      gap: 20px;
+      font-size: 13px;
+      opacity: 0.9;
+    }
+    
+    .email-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .email-body {
+      padding: 30px 25px;
+      background: #fafafa;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .email-greeting {
+      font-size: 15px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    
+    .email-content {
+      font-size: 14px;
+      line-height: 24px;
+      color: #555;
+    }
+    
+    .email-content p {
+      margin-bottom: 15px;
+    }
+    
+    .email-highlight {
+      background: linear-gradient(180deg, transparent 60%, rgba(102, 126, 234, 0.15) 60%);
+      padding: 0 2px;
+    }
+    
+    .email-list {
+      margin: 15px 0;
+      padding-left: 20px;
+    }
+    
+    .email-list li {
+      margin-bottom: 8px;
+      color: #666;
+    }
+    
+    .email-signature {
+      padding: 25px;
+      background: #fff;
+    }
+    
+    .signature-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .signature-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    
+    .signature-info {
+      flex: 1;
+    }
+    
+    .signature-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .signature-title {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .signature-divider {
+      height: 1px;
+      background: linear-gradient(90deg, #667eea, transparent);
+      margin: 15px 0;
+    }
+    
+    .signature-contact {
+      font-size: 12px;
+      color: #888;
+      line-height: 18px;
+    }
+    
+    .email-footer {
+      padding: 15px 25px;
+      background: #f0f0f0;
+      font-size: 11px;
+      color: #999;
+      text-align: center;
+    }
+    
+    .attachment-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    
+    .priority-badge {
+      position: absolute;
+      top: -5px;
+      right: 20px;
+      background: #ff6b6b;
+      color: white;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+    
+    .unread-indicator {
+      position: absolute;
+      top: 25px;
+      left: -8px;
+      width: 16px;
+      height: 16px;
+      background: #ff6b6b;
+      border-radius: 50%;
+      border: 2px solid white;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="email">
+      <div class="unread-indicator"></div>
+      <div class="priority-badge">{{priority}}</div>
+      
+      <div class="email-header">
+        <div class="email-header-top">
+          <div class="email-logo">
+            <div class="email-logo-icon">📧</div>
+            <div class="email-logo-text">WORK MAIL</div>
+          </div>
+          <div class="email-time">{{date}}</div>
+        </div>
+        
+        <div class="email-subject">{{subject}}</div>
+        
+        <div class="email-meta">
+          <div class="email-meta-item">
+            <span>发件人:</span>
+            <strong>{{sender}}</strong>
+          </div>
+          <div class="email-meta-item">
+            <span>收件人:</span>
+            <strong>{{recipient}}</strong>
+          </div>
+        </div>
+        
+        <div class="attachment-badge">
+          <span>📎</span>
+          <span>{{attachments}}</span>
+        </div>
+      </div>
+      
+      <div class="email-body">
+        <div class="email-greeting">{{greeting}}</div>
+        <div class="email-content">
+          {{content}}
+        </div>
+      </div>
+      
+      <div class="email-signature">
+        <div class="signature-line">
+          <div class="signature-avatar">{{senderInitial}}</div>
+          <div class="signature-info">
+            <div class="signature-name">{{sender}}</div>
+            <div class="signature-title">{{senderTitle}}</div>
+          </div>
+        </div>
+        <div class="signature-divider"></div>
+        <div class="signature-contact">
+          {{contactInfo}}
+        </div>
+      </div>
+      
+      <div class="email-footer">
+        此邮件为工作通讯，请勿随意转发
+      </div>
+    </div>
+  </div>
+</body>
+</html>

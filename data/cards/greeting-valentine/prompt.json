@@ -1,0 +1,45 @@
+{
+  "id": "greeting-valentine",
+  "name": "情人节贺卡",
+  "category": "greeting",
+  "description": "一张浪漫的情人节贺卡，带有飘动的心形和玫瑰装饰",
+  "trigger": {
+    "type": "date",
+    "conditions": [
+      {
+        "type": "date_match",
+        "value": "02-14",
+        "description": "情人节当天触发"
+      },
+      {
+        "type": "relationship",
+        "operator": ">=",
+        "value": 80,
+        "description": "好感度达到80以上时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "recipient": {
+      "type": "string",
+      "description": "收卡人名称"
+    },
+    "sender": {
+      "type": "string",
+      "description": "送卡人名称"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "情人节祝福内容"
+    }
+  },
+  "promptTemplate": "请生成一段情人节祝福语。\n\n背景信息：\n- 送卡人：{{sender}}\n- 收卡人：{{recipient}}\n- 关系：{{relationship}}\n- 相识时间：{{meetingTime}}\n\n要求：\n1. 内容浪漫深情，表达爱意\n2. 语气要符合送卡人的性格特点\n3. 可以提及两人之间的甜蜜回忆\n4. 字数控制在100-200字之间\n5. 要有浪漫氛围感\n\n请直接输出祝福内容，不要有其他说明。",
+  "style": {
+    "theme": "romantic",
+    "colors": ["#ff6b6b", "#ff9a9e", "#fecfef"],
+    "mood": "浪漫甜蜜"
+  },
+  "rarity": "seasonal",
+  "collectible": true
+}

@@ -1,0 +1,58 @@
+{
+  "id": "kawaii-note",
+  "name": "可爱便签",
+  "category": "kawaii",
+  "description": "一张超可爱的卡通风格便签，带有星星和爱心装饰",
+  "trigger": {
+    "type": "random",
+    "probability": 0.04,
+    "conditions": [
+      {
+        "type": "mood",
+        "operator": "contains",
+        "value": "开心|快乐|甜蜜|可爱|萌",
+        "description": "开心或甜蜜场景可能触发"
+      },
+      {
+        "type": "relationship",
+        "operator": ">=",
+        "value": 80,
+        "description": "好感度达到80以上时可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "ribbonText": {
+      "type": "string",
+      "default": "FOR YOU",
+      "description": "丝带文字"
+    },
+    "face": {
+      "type": "string",
+      "default": "😊",
+      "options": ["😊", "🥰", "😄", "🤗", "😍", "🥳"],
+      "description": "表情符号"
+    },
+    "title": {
+      "type": "string",
+      "description": "标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "便签内容"
+    },
+    "sender": {
+      "type": "string",
+      "description": "发送者名称"
+    }
+  },
+  "promptTemplate": "请生成一张可爱便签的内容。\n\n背景信息：\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n- 场景：{{scene}}\n\n要求：\n1. 内容要可爱、温馨、充满正能量\n2. 语气要活泼俏皮\n3. 可以使用可爱的表达方式\n4. 字数控制在50-150字之间\n\n请直接输出便签内容，不要有其他说明。",
+  "style": {
+    "theme": "kawaii",
+    "colors": ["#ffb6c1", "#ff6b8a", "#ffd700"],
+    "mood": "可爱温馨"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

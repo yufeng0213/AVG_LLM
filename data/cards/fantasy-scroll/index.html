@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>魔法卷轴</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      font-family: 'Georgia', serif;
+      padding: 20px;
+    }
+    
+    .scroll-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .scroll-card {
+      position: relative;
+      background: linear-gradient(180deg, #f8f4e8 0%, #e8dcc8 50%, #f0e8d8 100%);
+      padding: 40px 30px;
+      box-shadow: 
+        0 15px 50px rgba(0, 0, 0, 0.4),
+        inset 0 0 30px rgba(139, 90, 43, 0.1);
+    }
+    
+    .magic-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at center, rgba(233, 69, 96, 0.1) 0%, transparent 70%);
+      animation: magic-pulse 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes magic-pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.6; }
+    }
+    
+    .scroll-roller-top,
+    .scroll-roller-bottom {
+      position: absolute;
+      left: -10px;
+      right: -10px;
+      height: 25px;
+      background: linear-gradient(180deg, #8b4513 0%, #654321 50%, #8b4513 100%);
+      border-radius: 12px;
+      box-shadow: 
+        0 3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 2px 0 rgba(255, 255, 255, 0.2);
+    }
+    
+    .scroll-roller-top { top: -12px; }
+    .scroll-roller-bottom { bottom: -12px; }
+    
+    .magic-type-badge {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 5px 10px;
+      background: rgba(233, 69, 96, 0.2);
+      border: 1px solid #e94560;
+      color: #e94560;
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+    
+    .rune-decoration {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 30px;
+      height: 30px;
+      opacity: 0.3;
+    }
+    
+    .rune-decoration::before {
+      content: '✧';
+      font-size: 20px;
+      color: #ffd700;
+      animation: rune-glow 2s ease-in-out infinite;
+    }
+    
+    @keyframes rune-glow {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.1); }
+    }
+    
+    .scroll-header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(139, 90, 43, 0.4);
+    }
+    
+    .scroll-title {
+      font-size: 18px;
+      color: #8b4513;
+      letter-spacing: 3px;
+      margin-bottom: 10px;
+    }
+    
+    .scroll-meta {
+      font-size: 12px;
+      color: #5a4a3a;
+      letter-spacing: 1px;
+    }
+    
+    .scroll-content {
+      color: #2c1810;
+      font-size: 14px;
+      line-height: 2;
+      text-align: justify;
+      margin-bottom: 20px;
+    }
+    
+    .scroll-content::first-letter {
+      font-size: 28px;
+      color: #e94560;
+      margin-right: 8px;
+      float: left;
+      line-height: 1;
+    }
+    
+    .scroll-signature {
+      text-align: right;
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(139, 90, 43, 0.3);
+    }
+    
+    .signature-text {
+      font-size: 14px;
+      color: #8b4513;
+      letter-spacing: 2px;
+    }
+    
+    .magic-seal {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 45px;
+      height: 45px;
+      background: radial-gradient(circle, #ffd700 0%, #8b4513 100%);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.8);
+      box-shadow: 
+        0 2px 8px rgba(255, 215, 0, 0.4),
+        inset 0 0 8px rgba(0, 0, 0, 0.2);
+      animation: seal-spin 10s linear infinite;
+    }
+    
+    @keyframes seal-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .magic-seal::before {
+      content: '✦';
+    }
+    
+    .sparkle-particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    
+    .sparkle {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: #ffd700;
+      border-radius: 50%;
+      animation: sparkle-float 4s ease-in-out infinite;
+    }
+    
+    .sparkle:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+    .sparkle:nth-child(2) { top: 40%; right: 15%; animation-delay: 1s; }
+    .sparkle:nth-child(3) { bottom: 30%; left: 20%; animation-delay: 2s; }
+    
+    @keyframes sparkle-float {
+      0%, 100% { transform: translateY(0) scale(1); opacity: 0.5; }
+      50% { transform: translateY(-10px) scale(1.5); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="scroll-container">
+    <div class="scroll-card">
+      <div class="magic-glow"></div>
+      <div class="scroll-roller-top"></div>
+      <div class="scroll-roller-bottom"></div>
+      <div class="sparkle-particles">
+        <div class="sparkle"></div>
+        <div class="sparkle"></div>
+        <div class="sparkle"></div>
+      </div>
+      <div class="rune-decoration"></div>
+      <div class="magic-type-badge">{{magicType}}</div>
+      
+      <div class="scroll-header">
+        <div class="scroll-title">{{title}}</div>
+        <div class="scroll-meta">致 {{recipient}}</div>
+      </div>
+      
+      <div class="scroll-content">
+        {{content}}
+      </div>
+      
+      <div class="scroll-signature">
+        <div class="signature-text">{{caster}}</div>
+      </div>
+      
+      <div class="magic-seal"></div>
+    </div>
+  </div>
+</body>
+</html>

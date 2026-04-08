@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>医疗报告</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f5f5f5;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      padding: 20px;
+    }
+    
+    .medical-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .medical-card {
+      position: relative;
+      background: #fff;
+      padding: 30px 25px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+    }
+    
+    .header-stripe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #2ecc71, #3498db);
+    }
+    
+    .severity-indicator {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 5px 10px;
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      border-radius: 2px;
+    }
+    
+    .severity-minor { background: #2ecc71; color: #fff; }
+    .severity-moderate { background: #f39c12; color: #fff; }
+    .severity-serious { background: #e74c3c; color: #fff; }
+    .severity-critical { background: #8b0000; color: #fff; animation: critical-pulse 1s ease-in-out infinite; }
+    
+    @keyframes critical-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .medical-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .report-id {
+      font-size: 10px;
+      color: #999;
+      letter-spacing: 1px;
+    }
+    
+    .hospital-name {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .patient-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding: 10px;
+      background: rgba(46, 204, 113, 0.05);
+      border: 1px solid rgba(46, 204, 113, 0.2);
+    }
+    
+    .info-item {
+      font-size: 11px;
+    }
+    
+    .info-label {
+      color: #999;
+      display: block;
+      margin-bottom: 2px;
+    }
+    
+    .info-value {
+      color: #333;
+    }
+    
+    .diagnosis-section {
+      margin-bottom: 15px;
+    }
+    
+    .section-title {
+      font-size: 12px;
+      color: #2ecc71;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid rgba(46, 204, 113, 0.3);
+    }
+    
+    .diagnosis-content {
+      color: #333;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+    
+    .treatment-section {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(52, 152, 219, 0.05);
+      border-left: 3px solid #3498db;
+    }
+    
+    .treatment-content {
+      font-size: 11px;
+      color: #555;
+      line-height: 1.6;
+    }
+    
+    .medical-footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+    }
+    
+    .footer-item {
+      font-size: 10px;
+      color: #999;
+    }
+    
+    .cross-symbol {
+      position: absolute;
+      bottom: 15px;
+      left: 15px;
+      width: 20px;
+      height: 20px;
+      opacity: 0.2;
+    }
+    
+    .cross-symbol::before {
+      content: '+';
+      font-size: 18px;
+      color: #2ecc71;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="medical-container">
+    <div class="medical-card">
+      <div class="header-stripe"></div>
+      <div class="severity-indicator severity-moderate">{{severity}}</div>
+      <div class="cross-symbol"></div>
+      
+      <div class="medical-header">
+        <div class="report-id">{{reportId}}</div>
+        <div class="hospital-name">医疗中心</div>
+      </div>
+      
+      <div class="patient-info">
+        <div class="info-item">
+          <span class="info-label">患者姓名</span>
+          <span class="info-value">{{patientName}}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">主治医生</span>
+          <span class="info-value">{{doctor}}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">诊断日期</span>
+          <span class="info-value">{{date}}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">报告类型</span>
+          <span class="info-value">诊断报告</span>
+        </div>
+      </div>
+      
+      <div class="diagnosis-section">
+        <div class="section-title">诊断结果</div>
+        <div class="diagnosis-content">
+          {{diagnosis}}
+        </div>
+      </div>
+      
+      <div class="treatment-section">
+        <div class="section-title">治疗方案</div>
+        <div class="treatment-content">
+          {{treatment}}
+        </div>
+      </div>
+      
+      <div class="medical-footer">
+        <div class="footer-item">医疗报告</div>
+        <div class="footer-item">仅供参考</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

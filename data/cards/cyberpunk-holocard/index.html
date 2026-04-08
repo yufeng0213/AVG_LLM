@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>全息数据卡</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #0a0a0f;
+      font-family: 'Orbitron', 'Courier New', monospace;
+      padding: 20px;
+      overflow: hidden;
+    }
+    
+    .holo-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+      perspective: 1000px;
+    }
+    
+    .holo-card {
+      position: relative;
+      background: linear-gradient(135deg, 
+        rgba(0, 255, 255, 0.1) 0%, 
+        rgba(255, 0, 255, 0.1) 50%, 
+        rgba(0, 255, 255, 0.1) 100%);
+      border: 2px solid;
+      border-image: linear-gradient(135deg, #0ff, #f0f, #0ff) 1;
+      padding: 25px;
+      transform-style: preserve-3d;
+      animation: holo-float 4s ease-in-out infinite;
+    }
+    
+    @keyframes holo-float {
+      0%, 100% { transform: rotateY(0deg) rotateX(0deg); }
+      25% { transform: rotateY(2deg) rotateX(1deg); }
+      50% { transform: rotateY(0deg) rotateX(2deg); }
+      75% { transform: rotateY(-2deg) rotateX(1deg); }
+    }
+    
+    .holo-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0.03) 50%, transparent 100%),
+        linear-gradient(0deg, transparent 0%, rgba(255, 0, 255, 0.03) 50%, transparent 100%);
+      animation: scan-line 3s linear infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes scan-line {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+    
+    .glitch-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 255, 255, 0.02);
+      animation: glitch 5s steps(10) infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes glitch {
+      0%, 90%, 100% { clip-path: inset(0 0 0 0); }
+      92% { clip-path: inset(10% 0 60% 0); transform: translateX(-2px); }
+      94% { clip-path: inset(40% 0 30% 0); transform: translateX(2px); }
+      96% { clip-path: inset(80% 0 5% 0); transform: translateX(-1px); }
+      98% { clip-path: inset(20% 0 70% 0); transform: translateX(1px); }
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+    }
+    
+    .card-id {
+      font-size: 10px;
+      color: #0ff;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px #0ff;
+    }
+    
+    .card-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: #0f0;
+    }
+    
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background: #0f0;
+      border-radius: 50%;
+      animation: pulse-glow 1s ease-in-out infinite;
+      box-shadow: 0 0 10px #0f0;
+    }
+    
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .card-title {
+      font-size: 22px;
+      color: #fff;
+      text-align: center;
+      margin-bottom: 20px;
+      text-shadow: 
+        0 0 10px #0ff,
+        0 0 20px #0ff,
+        0 0 30px #f0f;
+      letter-spacing: 3px;
+      animation: title-glow 2s ease-in-out infinite alternate;
+    }
+    
+    @keyframes title-glow {
+      0% { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff; }
+      100% { text-shadow: 0 0 15px #f0f, 0 0 30px #f0f, 0 0 45px #0ff; }
+    }
+    
+    .data-section {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    
+    .data-label {
+      color: rgba(0, 255, 255, 0.6);
+    }
+    
+    .data-value {
+      color: #0ff;
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    }
+    
+    .message-content {
+      background: rgba(0, 0, 0, 0.3);
+      border-left: 3px solid #f0f;
+      padding: 15px;
+      margin: 15px 0;
+      font-size: 13px;
+      line-height: 22px;
+      color: #e0e0e0;
+    }
+    
+    .encrypted-text {
+      color: rgba(255, 0, 255, 0.5);
+      font-style: italic;
+    }
+    
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 0, 255, 0.3);
+    }
+    
+    .sender-info {
+      font-size: 11px;
+      color: #f0f;
+      text-shadow: 0 0 5px rgba(255, 0, 255, 0.5);
+    }
+    
+    .timestamp {
+      font-size: 10px;
+      color: rgba(0, 255, 255, 0.5);
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #0ff;
+    }
+    
+    .corner-decoration.top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+    .corner-decoration.top-right { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+    .corner-decoration.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-decoration.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+    
+    .hologram-effect {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(0, 255, 255, 0.1) 50%,
+        transparent 70%
+      );
+      animation: holo-shine 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes holo-shine {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    .circuit-pattern {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      opacity: 0.1;
+      background-image: 
+        linear-gradient(90deg, #0ff 1px, transparent 1px),
+        linear-gradient(0deg, #0ff 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="holo-container">
+    <div class="holo-card">
+      <div class="glitch-overlay"></div>
+      <div class="hologram-effect"></div>
+      <div class="circuit-pattern"></div>
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      
+      <div class="card-header">
+        <div class="card-id">ID: {{cardId}}</div>
+        <div class="card-status">
+          <div class="status-dot"></div>
+          <span>ACTIVE</span>
+        </div>
+      </div>
+      
+      <h2 class="card-title">{{title}}</h2>
+      
+      <div class="data-section">
+        <div class="data-row">
+          <span class="data-label">SENDER</span>
+          <span class="data-value">{{sender}}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">RECIPIENT</span>
+          <span class="data-value">{{recipient}}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">PRIORITY</span>
+          <span class="data-value">{{priority}}</span>
+        </div>
+      </div>
+      
+      <div class="message-content">
+        {{content}}
+      </div>
+      
+      <div class="card-footer">
+        <div class="sender-info">// FROM: {{senderCode}}</div>
+        <div class="timestamp">{{timestamp}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

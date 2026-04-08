@@ -1,0 +1,55 @@
+{
+  "id": "scifi-transmission",
+  "name": "星际传输讯息",
+  "category": "scifi",
+  "description": "一条来自星际的传输讯息，带有科幻风格的信号编码",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "科幻|星际|太空|宇宙|外星|飞船",
+        "description": "科幻或星际场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "signalId": {
+      "type": "string",
+      "description": "信号编号"
+    },
+    "source": {
+      "type": "string",
+      "description": "信号来源"
+    },
+    "destination": {
+      "type": "string",
+      "description": "信号目的地"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "时间戳"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "讯息内容"
+    },
+    "signalType": {
+      "type": "string",
+      "default": "紧急",
+      "options": ["常规", "紧急", "警告", "求救"],
+      "description": "信号类型"
+    }
+  },
+  "promptTemplate": "请生成一条星际传输讯息。\n\n背景信息：\n- 来源：{{source}}\n- 目的地：{{destination}}\n- 场景：{{scene}}\n- 信号类型：{{signalType}}\n\n要求：\n1. 使用科幻风格的通讯语言\n2. 可以包含坐标、时间、技术术语\n3. 内容要简洁有力，符合紧急通讯格式\n4. 字数控制在100-250字之间\n\n请直接输出讯息内容，不要有其他说明。",
+  "style": {
+    "theme": "scifi",
+    "colors": ["#0a0a1a", "#00ff88", "#0088ff"],
+    "mood": "科技未来"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

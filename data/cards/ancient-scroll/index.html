@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>古风信笺</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #2c1810 0%, #3d2314 100%);
+      font-family: 'STKaiti', 'KaiTi', '楷体', serif;
+      padding: 20px;
+    }
+    
+    .scroll-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .scroll-paper {
+      position: relative;
+      background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 50%, #f0ddb5 100%);
+      padding: 40px 35px;
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        inset 0 0 30px rgba(139, 90, 43, 0.1);
+    }
+    
+    .paper-texture {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    
+    .scroll-roller-top,
+    .scroll-roller-bottom {
+      position: absolute;
+      left: -10px;
+      right: -10px;
+      height: 25px;
+      background: linear-gradient(180deg, #8b4513 0%, #654321 50%, #8b4513 100%);
+      border-radius: 12px;
+      box-shadow: 
+        0 3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 2px 0 rgba(255, 255, 255, 0.2);
+    }
+    
+    .scroll-roller-top { top: -12px; }
+    .scroll-roller-bottom { bottom: -12px; }
+    
+    .scroll-roller-top::before,
+    .scroll-roller-bottom::before {
+      content: '';
+      position: absolute;
+      top: 5px;
+      left: 10px;
+      right: 10px;
+      height: 15px;
+      background: linear-gradient(180deg, 
+        rgba(255, 215, 0, 0.3) 0%, 
+        rgba(255, 215, 0, 0.1) 50%, 
+        rgba(255, 215, 0, 0.3) 100%);
+      border-radius: 8px;
+    }
+    
+    .seal-stamp {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 50px;
+      height: 50px;
+      background: #c41e3a;
+      border-radius: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      color: rgba(255, 255, 255, 0.8);
+      box-shadow: 
+        0 3px 10px rgba(196, 30, 58, 0.4),
+        inset 0 0 10px rgba(0, 0, 0, 0.2);
+      transform: rotate(5deg);
+    }
+    
+    .seal-stamp::before {
+      content: '印';
+      font-weight: bold;
+    }
+    
+    .letter-header {
+      text-align: right;
+      margin-bottom: 25px;
+      font-size: 13px;
+      color: #8b6914;
+    }
+    
+    .letter-title {
+      font-size: 22px;
+      color: #8b4513;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: normal;
+      letter-spacing: 5px;
+    }
+    
+    .letter-content {
+      font-size: 16px;
+      line-height: 32px;
+      color: #3d2914;
+      text-align: justify;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .letter-content p {
+      text-indent: 2em;
+      margin-bottom: 15px;
+    }
+    
+    .poem-section {
+      text-align: center;
+      margin: 25px 0;
+      padding: 15px;
+      border: 1px solid rgba(139, 69, 19, 0.3);
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .poem-line {
+      font-size: 15px;
+      color: #5d4e37;
+      margin: 8px 0;
+      letter-spacing: 3px;
+    }
+    
+    .letter-signature {
+      text-align: right;
+      margin-top: 30px;
+      color: #8b6914;
+    }
+    
+    .signature-name {
+      font-size: 18px;
+      margin-top: 5px;
+      color: #8b4513;
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      opacity: 0.4;
+    }
+    
+    .corner-decoration.top-left {
+      top: 30px;
+      left: 20px;
+      border-top: 2px solid #8b4513;
+      border-left: 2px solid #8b4513;
+    }
+    
+    .corner-decoration.bottom-right {
+      bottom: 30px;
+      right: 20px;
+      border-bottom: 2px solid #8b4513;
+      border-right: 2px solid #8b4513;
+    }
+    
+    .ink-splash {
+      position: absolute;
+      bottom: 40px;
+      left: 25px;
+      width: 30px;
+      height: 30px;
+      background: radial-gradient(circle, rgba(61, 41, 20, 0.2) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    
+    .bamboo-decoration {
+      position: absolute;
+      bottom: 20px;
+      right: 15px;
+      font-size: 30px;
+      opacity: 0.15;
+      transform: rotate(-15deg);
+    }
+    
+    @keyframes gentle-unfurl {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(1.01); }
+    }
+    
+    .scroll-paper:hover {
+      animation: gentle-unfurl 3s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="scroll-container">
+    <div class="scroll-paper">
+      <div class="paper-texture"></div>
+      <div class="scroll-roller-top"></div>
+      <div class="scroll-roller-bottom"></div>
+      <div class="seal-stamp"></div>
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      <div class="ink-splash"></div>
+      <div class="bamboo-decoration">🎋</div>
+      
+      <div class="letter-header">
+        {{date}}
+      </div>
+      
+      <h2 class="letter-title">{{title}}</h2>
+      
+      <div class="letter-content">
+        {{content}}
+      </div>
+      
+      <div class="poem-section">
+        <div class="poem-line">{{poemLine1}}</div>
+        <div class="poem-line">{{poemLine2}}</div>
+      </div>
+      
+      <div class="letter-signature">
+        <div>{{closing}}</div>
+        <div class="signature-name">{{sender}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

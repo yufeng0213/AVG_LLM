@@ -19,6 +19,7 @@ public class MainActivity extends BridgeActivity {
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(CardImportPlugin.class);
         super.onCreate(savedInstanceState);
         
         // 启动时应用系统栏样式并锁定竖屏

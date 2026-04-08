@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>武侠密函</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+      font-family: 'STKaiti', 'KaiTi', '楷体', serif;
+      padding: 20px;
+    }
+    
+    .wuxia-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .wuxia-card {
+      position: relative;
+      background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 50%, #f0ddb5 100%);
+      padding: 35px 30px;
+      box-shadow: 
+        0 15px 50px rgba(0, 0, 0, 0.4),
+        inset 0 0 30px rgba(139, 90, 43, 0.1);
+    }
+    
+    .paper-texture {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    
+    .urgent-stamp {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 5px 10px;
+      background: #c41e3a;
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      transform: rotate(5deg);
+      box-shadow: 0 2px 8px rgba(196, 30, 58, 0.4);
+    }
+    
+    .sword-decoration {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 30px;
+      height: 30px;
+      opacity: 0.2;
+    }
+    
+    .sword-decoration::before {
+      content: '⚔';
+      font-size: 20px;
+      color: #8b4513;
+    }
+    
+    .wuxia-header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(139, 90, 43, 0.4);
+    }
+    
+    .wuxia-title {
+      font-size: 20px;
+      color: #c41e3a;
+      letter-spacing: 3px;
+      margin-bottom: 10px;
+    }
+    
+    .wuxia-meta {
+      font-size: 12px;
+      color: #5a4a3a;
+      letter-spacing: 1px;
+    }
+    
+    .wuxia-content {
+      color: #2c1810;
+      font-size: 14px;
+      line-height: 2;
+      text-align: justify;
+      margin-bottom: 20px;
+    }
+    
+    .wuxia-signature {
+      text-align: right;
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(139, 90, 43, 0.3);
+    }
+    
+    .signature-text {
+      font-size: 14px;
+      color: #8b4513;
+      letter-spacing: 2px;
+    }
+    
+    .seal-stamp {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 45px;
+      height: 45px;
+      background: #c41e3a;
+      border-radius: 3px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      box-shadow: 
+        0 2px 8px rgba(196, 30, 58, 0.4),
+        inset 0 0 8px rgba(0, 0, 0, 0.2);
+      transform: rotate(-5deg);
+      writing-mode: vertical-rl;
+    }
+    
+    .corner-decoration {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 1px solid rgba(139, 90, 43, 0.3);
+    }
+    
+    .corner-decoration.top-left { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+    .corner-decoration.top-right { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+    .corner-decoration.bottom-left { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+    .corner-decoration.bottom-right { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+    
+    .ink-splash {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      width: 15px;
+      height: 15px;
+      background: radial-gradient(circle, rgba(44, 24, 16, 0.3) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <div class="wuxia-container">
+    <div class="wuxia-card">
+      <div class="paper-texture"></div>
+      <div class="sword-decoration"></div>
+      <div class="urgent-stamp">{{urgentLevel}}</div>
+      <div class="corner-decoration top-left"></div>
+      <div class="corner-decoration top-right"></div>
+      <div class="corner-decoration bottom-left"></div>
+      <div class="corner-decoration bottom-right"></div>
+      <div class="ink-splash"></div>
+      
+      <div class="wuxia-header">
+        <div class="wuxia-title">{{title}}</div>
+        <div class="wuxia-meta">致 {{recipient}}</div>
+      </div>
+      
+      <div class="wuxia-content">
+        {{content}}
+      </div>
+      
+      <div class="wuxia-signature">
+        <div class="signature-text">{{signature}}</div>
+      </div>
+      
+      <div class="seal-stamp">{{sender}}</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,77 @@
+{
+  "id": "email-work",
+  "name": "工作邮件",
+  "category": "email",
+  "description": "一封正式的工作邮件，带有专业的格式和签名",
+  "trigger": {
+    "type": "random",
+    "probability": 0.04,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "职场|公司|办公室|工作",
+        "description": "职场相关场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "date": {
+      "type": "date",
+      "format": "YYYY-MM-DD HH:mm",
+      "description": "邮件日期时间"
+    },
+    "subject": {
+      "type": "string",
+      "description": "邮件主题"
+    },
+    "sender": {
+      "type": "string",
+      "description": "发件人名称"
+    },
+    "senderInitial": {
+      "type": "string",
+      "description": "发件人首字母"
+    },
+    "senderTitle": {
+      "type": "string",
+      "description": "发件人职位"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "收件人名称"
+    },
+    "greeting": {
+      "type": "string",
+      "description": "邮件问候语"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 500,
+      "description": "邮件正文内容"
+    },
+    "contactInfo": {
+      "type": "string",
+      "description": "联系方式"
+    },
+    "priority": {
+      "type": "string",
+      "default": "普通",
+      "options": ["紧急", "重要", "普通"],
+      "description": "邮件优先级"
+    },
+    "attachments": {
+      "type": "string",
+      "default": "无附件",
+      "description": "附件信息"
+    }
+  },
+  "promptTemplate": "请生成一封工作邮件的内容。\n\n背景信息：\n- 发件人：{{sender}}（{{senderTitle}}）\n- 收件人：{{recipient}}\n- 邮件主题：{{subject}}\n- 场景：{{scene}}\n\n要求：\n1. 内容专业正式，符合职场礼仪\n2. 语气要符合发件人的职位和性格\n3. 结构清晰，有问候、正文、结尾\n4. 字数控制在200-400字之间\n5. 可以包含工作相关的事项\n\n请直接输出邮件内容，不要有其他说明。",
+  "style": {
+    "theme": "professional",
+    "colors": ["#667eea", "#764ba2", "#fafafa"],
+    "mood": "正式专业"
+  },
+  "rarity": "common",
+  "collectible": true
+}

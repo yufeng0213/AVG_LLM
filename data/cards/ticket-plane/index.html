@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>机票</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+    }
+    
+    .ticket-container {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+    }
+    
+    .ticket-card {
+      position: relative;
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      border-radius: 3px;
+    }
+    
+    .ticket-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px dashed rgba(0, 0, 0, 0.2);
+    }
+    
+    .airline-logo {
+      font-size: 14px;
+      color: #3498db;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    
+    .flight-number {
+      font-size: 12px;
+      color: #333;
+      letter-spacing: 1px;
+    }
+    
+    .route-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding: 15px;
+      background: rgba(52, 152, 219, 0.1);
+    }
+    
+    .route-city {
+      text-align: center;
+    }
+    
+    .city-name {
+      font-size: 18px;
+      color: #1a1a1a;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    
+    .city-code {
+      font-size: 10px;
+      color: #888;
+      margin-top: 3px;
+    }
+    
+    .route-arrow {
+      font-size: 20px;
+      color: #3498db;
+    }
+    
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .info-item {
+      text-align: center;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.05);
+    }
+    
+    .info-label {
+      font-size: 10px;
+      color: #888;
+      display: block;
+      margin-bottom: 3px;
+    }
+    
+    .info-value {
+      font-size: 12px;
+      color: #333;
+      font-weight: bold;
+    }
+    
+    .passenger-section {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      background: rgba(52, 152, 219, 0.05);
+      border: 1px solid rgba(52, 152, 219, 0.2);
+    }
+    
+    .passenger-name {
+      font-size: 14px;
+      color: #1a1a1a;
+      font-weight: bold;
+    }
+    
+    .class-badge {
+      padding: 3px 8px;
+      background: #3498db;
+      color: #fff;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+    
+    .barcode-section {
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(0, 0, 0, 0.2);
+      display: flex;
+      justify-content: center;
+    }
+    
+    .barcode {
+      display: flex;
+      gap: 2px;
+    }
+    
+    .barcode-line {
+      width: 2px;
+      background: #1a1a1a;
+    }
+    
+    .barcode-line:nth-child(odd) { height: 20px; }
+    .barcode-line:nth-child(even) { height: 15px; }
+    .barcode-line:nth-child(3n) { height: 25px; }
+    
+    .plane-decoration {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 16px;
+      color: rgba(52, 152, 219, 0.3);
+    }
+    
+    .corner-cut {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      background: radial-gradient(circle at top right, transparent 70%, #fff 70%);
+    }
+    
+    .corner-cut.top-left { top: 0; left: 0; transform: rotate(180deg); }
+    .corner-cut.top-right { top: 0; right: 0; }
+    .corner-cut.bottom-left { bottom: 0; left: 0; transform: rotate(90deg); }
+    .corner-cut.bottom-right { bottom: 0; right: 0; transform: rotate(-90deg); }
+  </style>
+</head>
+<body>
+  <div class="ticket-container">
+    <div class="ticket-card">
+      <div class="plane-decoration">✈</div>
+      <div class="corner-cut top-left"></div>
+      <div class="corner-cut top-right"></div>
+      <div class="corner-cut bottom-left"></div>
+      <div class="corner-cut bottom-right"></div>
+      
+      <div class="ticket-header">
+        <div class="airline-logo">AIRLINE</div>
+        <div class="flight-number">{{flightNumber}}</div>
+      </div>
+      
+      <div class="route-section">
+        <div class="route-city">
+          <div class="city-name">{{departure}}</div>
+          <div class="city-code">出发</div>
+        </div>
+        <div class="route-arrow">→</div>
+        <div class="route-city">
+          <div class="city-name">{{destination}}</div>
+          <div class="city-code">到达</div>
+        </div>
+      </div>
+      
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">日期</span>
+          <span class="info-value">{{date}}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">时间</span>
+          <span class="info-value">{{time}}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">登机口</span>
+          <span class="info-value">{{gate}}</span>
+        </div>
+      </div>
+      
+      <div class="passenger-section">
+        <div class="passenger-name">{{passenger}}</div>
+        <div class="class-badge">{{classType}}</div>
+      </div>
+      
+      <div class="barcode-section">
+        <div class="barcode">
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+          <div class="barcode-line"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

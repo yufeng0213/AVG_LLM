@@ -9,6 +9,7 @@ export {
   generateCgPrompt,
   generateMiniTheater,
   generateCharacterSpeech,
+  generateCardContent,
 } from './llmService.core'
 
 export {
@@ -39,6 +40,7 @@ import {
   generateCgPrompt,
   generateMiniTheater,
   generateCharacterSpeech,
+  generateCardContent,
 } from './llmService.core'
 import {
   generatePhoneSmsReply,
@@ -66,6 +68,7 @@ export default {
   generateCgPrompt,
   generateMiniTheater,
   generateCharacterSpeech,
+  generateCardContent,
   generatePhoneSmsReply,
   generatePhoneMomentsReplies,
   generatePhoneMomentsBatchReplies,

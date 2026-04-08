@@ -1,0 +1,56 @@
+{
+  "id": "recipe-card",
+  "name": "食谱卡片",
+  "category": "recipe",
+  "description": "一张精美的食谱卡片，带有烹饪元素和美食设计",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "厨房|烹饪|美食|餐厅|料理|食物",
+        "description": "烹饪或美食场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "recipeName": {
+      "type": "string",
+      "description": "食谱名称"
+    },
+    "cuisineType": {
+      "type": "string",
+      "default": "家常",
+      "options": ["家常", "中式", "西式", "日式", "甜点"],
+      "description": "料理类型"
+    },
+    "ingredients": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "食材清单"
+    },
+    "steps": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "烹饪步骤"
+    },
+    "tips": {
+      "type": "string",
+      "description": "烹饪小贴士"
+    },
+    "author": {
+      "type": "string",
+      "description": "作者"
+    }
+  },
+  "promptTemplate": "请生成一张食谱卡片的内容。\n\n背景信息：\n- 料理类型：{{cuisineType}}\n- 场景：{{scene}}\n\n要求：\n1. 使用清晰的烹饪语言\n2. 食材和步骤要详细\n3. 可以包含烹饪技巧\n4. 字数控制在200-350字之间\n\n请直接输出食谱内容，不要有其他说明。",
+  "style": {
+    "theme": "recipe",
+    "colors": ["#fff5e6", "#e67e22", "#f39c12"],
+    "mood": "温馨美食"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

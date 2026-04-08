@@ -1,0 +1,68 @@
+{
+  "id": "photo-group",
+  "name": "合影照片",
+  "category": "photo",
+  "description": "一张温馨的合影照片，记录多人在一起的美好时刻",
+  "trigger": {
+    "type": "random",
+    "probability": 0.04,
+    "conditions": [
+      {
+        "type": "event",
+        "operator": "after",
+        "value": "group_activity",
+        "description": "集体活动后可能触发"
+      },
+      {
+        "type": "scene",
+        "operator": "contains",
+        "value": "聚会|旅行|庆祝|合影",
+        "description": "聚会或庆祝场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "photoDescription": {
+      "type": "string",
+      "description": "照片内容描述"
+    },
+    "location": {
+      "type": "string",
+      "description": "拍摄地点"
+    },
+    "person1": {
+      "type": "string",
+      "description": "照片中人物1名称"
+    },
+    "person2": {
+      "type": "string",
+      "description": "照片中人物2名称"
+    },
+    "person3": {
+      "type": "string",
+      "optional": true,
+      "description": "照片中人物3名称（可选）"
+    },
+    "caption": {
+      "type": "string",
+      "description": "照片标题"
+    },
+    "date": {
+      "type": "date",
+      "format": "YYYY.MM.DD",
+      "description": "拍摄日期"
+    },
+    "memoryNote": {
+      "type": "string",
+      "description": "回忆备注"
+    }
+  },
+  "promptTemplate": "请生成一张合影照片的相关信息。\n\n背景信息：\n- 场景：{{scene}}\n- 参与人物：{{characters}}\n- 活动内容：{{activity}}\n\n要求：\n1. 照片描述要体现温馨的集体氛围\n2. 地点要符合活动场景\n3. 标题要简洁有感情\n4. 回忆备注要体现当时的快乐心情\n\n请按以下格式输出：\n照片描述：...\n地点：...\n标题：...\n回忆备注：...",
+  "style": {
+    "theme": "warm",
+    "colors": ["#f8f9fa", "#fff", "#666"],
+    "mood": "温馨快乐"
+  },
+  "rarity": "common",
+  "collectible": true
+}

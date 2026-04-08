@@ -1,0 +1,59 @@
+{
+  "id": "prophecy-scroll",
+  "name": "预言卷轴",
+  "category": "prophecy",
+  "description": "一张神秘的预言卷轴，带有占卜和命运元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "预言|命运|占卜|神秘|未来|宿命",
+        "description": "预言或神秘场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "prophecyId": {
+      "type": "string",
+      "description": "预言编号"
+    },
+    "title": {
+      "type": "string",
+      "description": "预言标题"
+    },
+    "prophet": {
+      "type": "string",
+      "description": "预言者"
+    },
+    "date": {
+      "type": "string",
+      "description": "预言日期"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "预言内容"
+    },
+    "interpretation": {
+      "type": "string",
+      "description": "解读提示"
+    },
+    "prophecyType": {
+      "type": "string",
+      "default": "命运",
+      "options": ["命运", "警示", "启示", "预言"],
+      "description": "预言类型"
+    }
+  },
+  "promptTemplate": "请生成一张预言卷轴的内容。\n\n背景信息：\n- 预言者：{{prophet}}\n- 预言类型：{{prophecyType}}\n- 场景：{{scene}}\n\n要求：\n1. 使用神秘预言风格的语言\n2. 内容要带有隐喻和象征\n3. 可以包含模糊但意味深长的预言\n4. 字数控制在150-300字之间\n\n请直接输出预言内容，不要有其他说明。",
+  "style": {
+    "theme": "prophecy",
+    "colors": ["#1a1a2e", "#e94560", "#ffd700"],
+    "mood": "神秘预言"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

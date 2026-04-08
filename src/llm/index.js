@@ -7,6 +7,7 @@ export {
   generateCgPrompt,
   generateMiniTheater,
   generateCharacterSpeech,
+  generateCardContent,
   generatePhoneSmsReply,
   generatePhoneMomentsReplies,
   generatePhoneMomentsBatchReplies,

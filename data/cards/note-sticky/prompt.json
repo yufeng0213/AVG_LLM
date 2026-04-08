@@ -1,0 +1,41 @@
+{
+  "id": "note-sticky",
+  "name": "便签",
+  "category": "note",
+  "description": "一张黄色便签纸，带有图钉装饰，适合简短的提醒或留言",
+  "trigger": {
+    "type": "random",
+    "probability": 0.05,
+    "conditions": [
+      {
+        "type": "scene",
+        "operator": "contains",
+        "value": "日常|办公室|家里|学校",
+        "description": "日常场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "title": {
+      "type": "string",
+      "description": "便签标题"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "便签内容"
+    },
+    "footer": {
+      "type": "string",
+      "description": "便签署名或时间"
+    }
+  },
+  "promptTemplate": "请生成一张便签的内容。\n\n背景信息：\n- 写便签的人：{{author}}\n- 场景：{{scene}}\n- 目的：{{purpose}}\n\n要求：\n1. 内容简短明了，一目了然\n2. 语气要轻松随意\n3. 可以是提醒、留言或小贴士\n4. 字数控制在50-100字之间\n\n请直接输出便签内容，不要有其他说明。",
+  "style": {
+    "theme": "casual",
+    "colors": ["#fff740", "#ffe135", "#333"],
+    "mood": "轻松随意"
+  },
+  "rarity": "common",
+  "collectible": true
+}

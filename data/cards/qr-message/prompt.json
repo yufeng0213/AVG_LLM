@@ -1,0 +1,59 @@
+{
+  "id": "qr-message",
+  "name": "二维码讯息",
+  "category": "digital",
+  "description": "一张带有二维码的数字讯息卡片，带有现代科技元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "现代|科技|数字|手机|网络|信息",
+        "description": "现代数字场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "messageId": {
+      "type": "string",
+      "description": "讯息ID"
+    },
+    "title": {
+      "type": "string",
+      "description": "讯息标题"
+    },
+    "sender": {
+      "type": "string",
+      "description": "发送者"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "接收者"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "讯息内容"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "时间戳"
+    },
+    "messageType": {
+      "type": "string",
+      "default": "普通",
+      "options": ["普通", "加密", "匿名", "系统"],
+      "description": "讯息类型"
+    }
+  },
+  "promptTemplate": "请生成一条数字讯息。\n\n背景信息：\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n- 场景：{{scene}}\n\n要求：\n1. 使用现代数字通讯风格的语言\n2. 内容要简洁直接\n3. 可以包含网络用语\n4. 字数控制在100-200字之间\n\n请直接输出讯息内容，不要有其他说明。",
+  "style": {
+    "theme": "digital",
+    "colors": ["#1a1a1a", "#00ff88", "#333333"],
+    "mood": "现代科技"
+  },
+  "rarity": "common",
+  "collectible": true
+}

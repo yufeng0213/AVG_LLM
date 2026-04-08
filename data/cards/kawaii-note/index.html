@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>可爱便签</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', sans-serif;
+      padding: 20px;
+    }
+    
+    .kawaii-container {
+      position: relative;
+      width: 100%;
+      max-width: 350px;
+    }
+    
+    .kawaii-card {
+      position: relative;
+      background: linear-gradient(180deg, #fff 0%, #fff5f8 100%);
+      border-radius: 25px;
+      padding: 30px 25px;
+      box-shadow: 
+        0 15px 40px rgba(255, 107, 129, 0.2),
+        0 5px 15px rgba(255, 154, 158, 0.15);
+      border: 3px solid #ffb6c1;
+      transform: rotate(-2deg);
+    }
+    
+    .cloud-decoration {
+      position: absolute;
+      font-size: 30px;
+      opacity: 0.3;
+    }
+    
+    .cloud-decoration:nth-child(1) { top: -15px; left: 20px; }
+    .cloud-decoration:nth-child(2) { top: -10px; right: 30px; font-size: 25px; }
+    
+    .star-burst {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+      clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+      animation: twinkle 2s ease-in-out infinite;
+    }
+    
+    .star-burst:nth-child(3) { top: -20px; right: 40px; width: 40px; height: 40px; animation-delay: 0s; }
+    .star-burst:nth-child(4) { bottom: -15px; left: 30px; width: 35px; height: 35px; animation-delay: 0.5s; }
+    
+    @keyframes twinkle {
+      0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+      50% { transform: scale(1.1) rotate(10deg); opacity: 0.8; }
+    }
+    
+    .kawaii-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .kawaii-face {
+      font-size: 50px;
+      margin-bottom: 10px;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    .kawaii-title {
+      font-size: 20px;
+      color: #ff6b8a;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    
+    .message-bubble {
+      background: linear-gradient(135deg, #ffe4e9 0%, #fff0f3 100%);
+      border-radius: 20px;
+      padding: 20px;
+      margin: 15px 0;
+      position: relative;
+      border: 2px dashed #ffb6c1;
+    }
+    
+    .message-bubble::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: 30px;
+      width: 20px;
+      height: 20px;
+      background: #ffe4e9;
+      border-left: 2px dashed #ffb6c1;
+      border-top: 2px dashed #ffb6c1;
+      transform: rotate(45deg);
+    }
+    
+    .message-content {
+      font-size: 14px;
+      line-height: 24px;
+      color: #5a4a4a;
+      text-align: center;
+    }
+    
+    .message-content p {
+      margin-bottom: 10px;
+    }
+    
+    .highlight-text {
+      background: linear-gradient(180deg, transparent 60%, rgba(255, 182, 193, 0.5) 60%);
+      padding: 0 3px;
+    }
+    
+    .kawaii-footer {
+      text-align: center;
+      margin-top: 20px;
+    }
+    
+    .sender-name {
+      font-size: 16px;
+      color: #ff6b8a;
+      font-weight: bold;
+    }
+    
+    .heart-decoration {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    
+    .heart-decoration span {
+      animation: heart-beat 1s ease-in-out infinite;
+    }
+    
+    .heart-decoration span:nth-child(2) { animation-delay: 0.2s; }
+    .heart-decoration span:nth-child(3) { animation-delay: 0.4s; }
+    
+    @keyframes heart-beat {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+    
+    .ribbon {
+      position: absolute;
+      top: 15px;
+      right: -10px;
+      background: linear-gradient(135deg, #ff6b8a 0%, #ff8fa3 100%);
+      color: white;
+      padding: 5px 20px;
+      font-size: 11px;
+      font-weight: bold;
+      transform: rotate(15deg);
+      box-shadow: 0 2px 5px rgba(255, 107, 138, 0.3);
+    }
+    
+    .sparkle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #ffd700;
+      border-radius: 50%;
+      animation: sparkle 1.5s ease-in-out infinite;
+    }
+    
+    .sparkle:nth-child(5) { top: 50px; left: 10px; }
+    .sparkle:nth-child(6) { top: 100px; right: 15px; animation-delay: 0.3s; }
+    .sparkle:nth-child(7) { bottom: 80px; left: 20px; animation-delay: 0.6s; }
+    
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0); }
+      50% { opacity: 1; transform: scale(1); }
+    }
+    
+    .dotted-border {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      border: 2px dotted rgba(255, 182, 193, 0.5);
+      border-radius: 20px;
+      pointer-events: none;
+    }
+    
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-2deg); }
+      50% { transform: rotate(0deg); }
+    }
+    
+    .kawaii-card:hover {
+      animation: wiggle 1s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="kawaii-container">
+    <div class="kawaii-card">
+      <div class="cloud-decoration">☁️</div>
+      <div class="cloud-decoration">☁️</div>
+      <div class="star-burst"></div>
+      <div class="star-burst"></div>
+      <div class="sparkle"></div>
+      <div class="sparkle"></div>
+      <div class="sparkle"></div>
+      <div class="dotted-border"></div>
+      <div class="ribbon">{{ribbonText}}</div>
+      
+      <div class="kawaii-header">
+        <div class="kawaii-face">{{face}}</div>
+        <div class="kawaii-title">{{title}}</div>
+      </div>
+      
+      <div class="message-bubble">
+        <div class="message-content">
+          {{content}}
+        </div>
+      </div>
+      
+      <div class="kawaii-footer">
+        <div class="sender-name">{{sender}}</div>
+        <div class="heart-decoration">
+          <span>💕</span>
+          <span>💖</span>
+          <span>💕</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

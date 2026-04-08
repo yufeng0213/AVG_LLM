@@ -68,6 +68,16 @@
 .platform-android.android-portrait .game-bg-word {
   display: none !important;
 }
+
+.platform-android .mini-theater-glow-overlay {
+  border-width: 3px !important;
+  box-shadow:
+    inset 0 0 18px color-mix(in srgb, var(--accent-yellow) 56%, transparent),
+    inset 0 0 62px color-mix(in srgb, var(--accent-cyan) 48%, transparent),
+    inset 0 0 108px color-mix(in srgb, var(--accent-magenta) 36%, transparent),
+    0 0 28px color-mix(in srgb, var(--accent-cyan) 32%, transparent) !important;
+}
+
 /* 顶部工具栏紧凑 */
 .platform-android.android-portrait .game-topbar {
   padding: 0 10px 4px !important;
@@ -120,6 +130,20 @@
   padding: 4px 8px !important;
   font-size: 0.65rem !important;
   border-width: 2px !important;
+}
+
+.platform-android.android-portrait .game-screen.is-mini-theater .game-hud {
+  justify-content: flex-start !important;
+}
+
+.platform-android.android-portrait .mini-theater-hud-title {
+  align-self: stretch !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 4px 10px !important;
+  border-width: 2px !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.03em !important;
 }
 .platform-android.android-portrait .top-menu-panel {
   top: 48px !important;

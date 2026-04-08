@@ -1,0 +1,56 @@
+{
+  "id": "business-card",
+  "name": "商务名片",
+  "category": "business",
+  "description": "一张商务风格的名片，带有专业设计和简洁布局",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "商务|职场|公司|会议|合作|企业",
+        "description": "商务场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "name": {
+      "type": "string",
+      "description": "姓名"
+    },
+    "title": {
+      "type": "string",
+      "description": "职位"
+    },
+    "company": {
+      "type": "string",
+      "description": "公司名称"
+    },
+    "contact": {
+      "type": "string",
+      "description": "联系方式"
+    },
+    "email": {
+      "type": "string",
+      "description": "邮箱"
+    },
+    "address": {
+      "type": "string",
+      "description": "地址"
+    },
+    "tagline": {
+      "type": "string",
+      "description": "标语"
+    }
+  },
+  "promptTemplate": "请生成一张商务名片的内容。\n\n背景信息：\n- 场景：{{scene}}\n- 行业：{{industry}}\n\n要求：\n1. 使用专业商务风格的语言\n2. 信息要简洁明了\n3. 可以包含公司标语\n4. 字数控制在50-100字之间\n\n请直接输出名片内容，不要有其他说明。",
+  "style": {
+    "theme": "business",
+    "colors": ["#1a1a1a", "#f5f5f5", "#3498db"],
+    "mood": "专业简洁"
+  },
+  "rarity": "common",
+  "collectible": true
+}

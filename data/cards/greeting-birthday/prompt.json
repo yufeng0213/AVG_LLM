@@ -1,0 +1,47 @@
+{
+  "id": "greeting-birthday",
+  "name": "生日贺卡",
+  "category": "greeting",
+  "description": "一张充满欢乐的生日贺卡，带有气球、蛋糕和蜡烛动画效果",
+  "trigger": {
+    "type": "date",
+    "conditions": [
+      {
+        "type": "character_birthday",
+        "description": "角色生日当天触发"
+      },
+      {
+        "type": "player_birthday",
+        "description": "玩家生日当天触发"
+      }
+    ]
+  },
+  "variables": {
+    "recipient": {
+      "type": "string",
+      "description": "收卡人名称"
+    },
+    "sender": {
+      "type": "string",
+      "description": "送卡人名称"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "生日祝福内容"
+    },
+    "age": {
+      "type": "number",
+      "optional": true,
+      "description": "年龄（可选）"
+    }
+  },
+  "promptTemplate": "请生成一段生日祝福语。\n\n背景信息：\n- 送卡人：{{sender}}\n- 收卡人：{{recipient}}\n- 关系：{{relationship}}\n- 年龄：{{age}}\n\n要求：\n1. 内容温馨有爱，充满祝福\n2. 语气要符合送卡人的性格特点\n3. 可以提及两人的美好回忆\n4. 字数控制在100-200字之间\n5. 要有生日氛围感\n\n请直接输出祝福内容，不要有其他说明。",
+  "style": {
+    "theme": "celebration",
+    "colors": ["#667eea", "#764ba2", "#ffd700"],
+    "mood": "欢乐庆祝"
+  },
+  "rarity": "special",
+  "collectible": true
+}

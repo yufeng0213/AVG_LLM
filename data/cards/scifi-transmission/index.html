@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星际传输讯息</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #0a0a1a;
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+    }
+    
+    .transmission-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .transmission-card {
+      position: relative;
+      background: linear-gradient(180deg, rgba(0, 136, 255, 0.1) 0%, rgba(0, 255, 136, 0.05) 100%);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      padding: 25px 20px;
+      box-shadow: 
+        0 0 30px rgba(0, 255, 136, 0.2),
+        0 0 60px rgba(0, 136, 255, 0.1),
+        inset 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+    
+    .signal-wave {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        #00ff88 20%, 
+        #0088ff 50%, 
+        #00ff88 80%, 
+        transparent 100%);
+      animation: wave-move 2s linear infinite;
+    }
+    
+    @keyframes wave-move {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    .signal-wave-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        #0088ff 20%, 
+        #00ff88 50%, 
+        #0088ff 80%, 
+        transparent 100%);
+      animation: wave-move-reverse 2s linear infinite;
+    }
+    
+    @keyframes wave-move-reverse {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    
+    .header-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+    }
+    
+    .header-item {
+      font-size: 10px;
+    }
+    
+    .header-label {
+      color: #0088ff;
+      display: block;
+      margin-bottom: 2px;
+      letter-spacing: 1px;
+    }
+    
+    .header-value {
+      color: #00ff88;
+      letter-spacing: 1px;
+    }
+    
+    .signal-type-badge {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 5px 10px;
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      background: rgba(0, 255, 136, 0.2);
+      border: 1px solid #00ff88;
+      color: #00ff88;
+    }
+    
+    .signal-type-badge.emergency {
+      background: rgba(255, 68, 68, 0.2);
+      border-color: #ff4444;
+      color: #ff4444;
+      animation: emergency-pulse 1s ease-in-out infinite;
+    }
+    
+    @keyframes emergency-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .transmission-content {
+      color: #00ff88;
+      font-size: 12px;
+      line-height: 1.8;
+      margin-bottom: 15px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-left: 2px solid #00ff88;
+    }
+    
+    .transmission-content::before {
+      content: '>>> TRANSMISSION START';
+      display: block;
+      font-size: 10px;
+      color: #0088ff;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+    
+    .transmission-content::after {
+      content: '>>> TRANSMISSION END';
+      display: block;
+      font-size: 10px;
+      color: #0088ff;
+      margin-top: 10px;
+      letter-spacing: 2px;
+    }
+    
+    .binary-decoration {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-size: 8px;
+      color: rgba(0, 255, 136, 0.3);
+      letter-spacing: 1px;
+      animation: binary-scroll 10s linear infinite;
+    }
+    
+    @keyframes binary-scroll {
+      0% { content: '01001010'; }
+      25% { content: '10110101'; }
+      50% { content: '11001100'; }
+      75% { content: '00110011'; }
+      100% { content: '01001010'; }
+    }
+    
+    .coordinate-display {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0, 136, 255, 0.1);
+      border: 1px dashed rgba(0, 136, 255, 0.3);
+    }
+    
+    .coord-item {
+      font-size: 10px;
+      color: #0088ff;
+    }
+    
+    .coord-value {
+      color: #00ff88;
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+    
+    .scan-effect {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(180deg, 
+        transparent 0%, 
+        rgba(0, 255, 136, 0.03) 50%, 
+        transparent 100%);
+      animation: scan-down 3s linear infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes scan-down {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+    
+    .star-field {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #fff;
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: twinkle 2s ease-in-out infinite;
+    }
+    
+    .star:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; }
+    .star:nth-child(2) { top: 30%; right: 10%; animation-delay: 0.5s; }
+    .star:nth-child(3) { bottom: 20%; left: 15%; animation-delay: 1s; }
+    .star:nth-child(4) { top: 50%; right: 5%; animation-delay: 1.5s; }
+    
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.8; }
+    }
+  </style>
+</head>
+<body>
+  <div class="transmission-container">
+    <div class="transmission-card">
+      <div class="signal-wave"></div>
+      <div class="signal-wave-bottom"></div>
+      <div class="scan-effect"></div>
+      <div class="star-field">
+        <div class="star"></div>
+        <div class="star"></div>
+        <div class="star"></div>
+        <div class="star"></div>
+      </div>
+      
+      <div class="signal-type-badge">{{signalType}}</div>
+      
+      <div class="header-grid">
+        <div class="header-item">
+          <span class="header-label">SIGNAL ID</span>
+          <span class="header-value">{{signalId}}</span>
+        </div>
+        <div class="header-item">
+          <span class="header-label">TIMESTAMP</span>
+          <span class="header-value">{{timestamp}}</span>
+        </div>
+        <div class="header-item">
+          <span class="header-label">SOURCE</span>
+          <span class="header-value">{{source}}</span>
+        </div>
+        <div class="header-item">
+          <span class="header-label">DESTINATION</span>
+          <span class="header-value">{{destination}}</span>
+        </div>
+      </div>
+      
+      <div class="transmission-content">
+        {{content}}
+      </div>
+      
+      <div class="coordinate-display">
+        <div class="coord-item">
+          <span>X:</span>
+          <span class="coord-value">███</span>
+        </div>
+        <div class="coord-item">
+          <span>Y:</span>
+          <span class="coord-value">███</span>
+        </div>
+        <div class="coord-item">
+          <span>Z:</span>
+          <span class="coord-value">███</span>
+        </div>
+      </div>
+      
+      <div class="binary-decoration">01001010 10110101</div>
+    </div>
+  </div>
+</body>
+</html>

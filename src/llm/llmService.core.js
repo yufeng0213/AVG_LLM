@@ -491,12 +491,13 @@ const parseJsonObjectFromText = (rawContent) => {
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         return parsed
       }
-    } catch {
-      // no-op
+    } catch (e) {
+      console.log('[CardDebug] JSON解析失败:', e.message, '文本片段:', text.substring(0, 100))
     }
     return null
   }
 
+  // 1. 尝试提取 markdown 代码块中的 JSON
   const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
   const fencedCandidate = fencedMatch?.[1]?.trim()
   if (fencedCandidate) {
@@ -504,15 +505,55 @@ const parseJsonObjectFromText = (rawContent) => {
     if (parsedFenced) return parsedFenced
   }
 
+  // 2. 直接解析
   const directParsed = parseJson(raw)
   if (directParsed) return directParsed
 
+  // 3. 提取第一个 { 到最后一个 } 之间的内容
   const start = raw.indexOf('{')
   const end = raw.lastIndexOf('}')
   if (start >= 0 && end > start) {
-    return parseJson(raw.slice(start, end + 1))
+    const extracted = raw.slice(start, end + 1)
+    const parsedExtracted = parseJson(extracted)
+    if (parsedExtracted) return parsedExtracted
+    
+    // 4. 尝试修复常见的 JSON 格式问题
+    // 移除可能的尾部逗号
+    const fixedComma = extracted.replace(/,(\s*[}\]])/g, '$1')
+    const parsedFixed = parseJson(fixedComma)
+    if (parsedFixed) return parsedFixed
+    
+    // 5. 尝试逐步截取有效的 JSON（处理被截断的情况）
+    // 从最后一个 } 开始向前尝试
+    let lastBrace = extracted.lastIndexOf('}')
+    while (lastBrace > start) {
+      const partial = extracted.substring(0, lastBrace + 1)
+      // 尝试补全不完整的 JSON
+      const openBraces = (partial.match(/{/g) || []).length
+      const closeBraces = (partial.match(/}/g) || []).length
+      const openBrackets = (partial.match(/\[/g) || []).length
+      const closeBrackets = (partial.match(/]/g) || []).length
+      
+      let completed = partial
+      // 补全缺失的括号
+      for (let i = closeBraces; i < openBraces; i++) {
+        completed += '}'
+      }
+      for (let i = closeBrackets; i < openBrackets; i++) {
+        completed += ']'
+      }
+      
+      const parsedCompleted = parseJson(completed)
+      if (parsedCompleted) {
+        console.log('[CardDebug] 通过补全括号成功解析')
+        return parsedCompleted
+      }
+      
+      lastBrace = extracted.lastIndexOf('}', lastBrace - 1)
+    }
   }
 
+  console.log('[CardDebug] 所有JSON解析尝试都失败了')
   return null
 }
 
@@ -1009,89 +1050,323 @@ export const generateMiniTheater = async (params = {}) => {
  * @returns {string} 系统提示词
  */
 const getSystemPrompt = () => {
-  return `你是一个专业的视觉小说/AVG游戏剧情生成助手。你的任务是根据提供的世界设定、角色信息和当前剧情，生成接下来的剧情内容。
+  return `你是专业的 AVG 剧情生成助手。你只输出可直接被程序解析的剧情 JSON。
 
-## 输出格式要求
+输出协议（必须遵守）：
+1) 只输出 JSON 数组，不要 markdown，不要解释，不要前后缀文本。
+2) 每条对话使用紧凑键：
+   - s: 说话者（必须是已定义角色或"旁白"）
+   - e: 表情（default/happy/angry/sad/surprised/fear/disgust/neutral/shy/thinking/sleepy/excited/worried/confident）
+   - t: 对话文本
+   - h: 高亮（0/1 或 false/true）
+   - d: 剧情时间（必填）
+3) 每次生成的最后一条都必须添加 c 选项对象：
+   c={"p":"提示语","o":[{"t":"选项文案","a":"action_id"}],"i":1}
+4) 可选场景切换：sc={"id":"场景ID","name":"场景名"}
 
-你必须严格按照以下 JSON 格式输出，每条对话为一个 JSON 对象，多段对话放在 JSON 数组中：
+强制规则：
+- 每条对话都必须有 t 和 d。
+- d 在同一世界内保持一致纪年风格。
+- 本次生成最后一条 d 必须相对当前剧情时间前进（不能不变、不能回退）。
+- c 必须出现在最后一条，o 至少 2 项，i 必须为 1。
+- 输出尽量紧凑，减少无意义空格和换行。`
+}
 
-\`\`\`json
-[
-  {
-    "speaker": "说话者名称",
-    "emotion": "表情标识",
-    "text": "对话内容",
-    "highlight": true,
-    "storyTime": "星历2501年04月07日"
-  }
-]
-\`\`\`
+/**
+ * 小卡片生成系统提示词
+ */
+const CARD_SYSTEM_PROMPT = `你是"AVG 剧情小卡片生成器"。
+你将根据卡片模板、世界书人物和背景、以及当前剧情，生成一张符合风格的小卡片内容。
 
-### 字段说明：
-- **speaker**: 说话者名称，必须是已定义的角色名称或"旁白"
-- **emotion**: 表情标识，可选值如下：
-  - default: 默认/平静
-  - happy: 开心/高兴
-  - angry: 生气/愤怒
-  - sad: 悲伤/难过
-  - surprised: 惊讶/吃惊
-  - fear: 恐惧/害怕
-  - disgust: 厌恶/反感
-  - neutral: 平静/淡然
-  - shy: 害羞/腼腆
-  - thinking: 思考/沉思
-  - sleepy: 困倦/疲惫
-  - excited: 兴奋/激动
-  - worried: 担心/忧虑
-  - confident: 自信/坚定
-- **text**: 对话内容，描述性文字或角色台词
-- **highlight**: 布尔值，true 表示该角色立绘需要高亮显示
-- **storyTime**: 剧情时间，由你按世界观决定纪年格式（例如星历、王朝年号、公历日期等）
+硬性要求：
+1) 只输出 JSON 对象，不要 markdown，不要解释。
+2) JSON 格式必须符合卡片模板定义的变量结构。
+3) 内容要紧密结合当前剧情和人物关系。
+4) 保持卡片风格的一致性（如赛博朋克、古风、现代等）。
+5) 内容要有情感深度，能引发玩家共鸣。
+6) 不要输出违法或露骨内容。
 
-## 选项生成要求（重要！）
+重要格式说明：
+- 所有字段值必须是字符串类型，不能是嵌套对象或数组。
+- 例如：如果模板有 title、content、footer 字段，输出格式应为：
+  {"title": "标题文本", "content": "正文内容", "footer": "页脚文本"}
+- 不要输出嵌套结构，如 {"content": {"text": "xxx"}} 是错误的格式。`
 
-**每次生成都必须在最后一条对话中添加 \`choices\` 字段，为玩家提供选择分支！** 这是强制要求，用于测试交互式剧情功能。
-
-\`\`\`json
-[
-  {
-    "speaker": "旁白",
-    "emotion": "default",
-    "text": "你面前有一扇紧闭的门，门缝中透出微弱的光芒。",
-    "highlight": false,
-    "storyTime": "星历2501年04月08日",
-    "choices": {
-      "prompt": "你要怎么做？",
-      "options": [
-        { "text": "打开门", "action": "open_door" },
-        { "text": "不打开", "action": "ignore_door" },
-        { "text": "交给伊芙处理", "action": "ask_eve" }
-      ],
-      "allowCustomInput": true
+/**
+ * 生成小卡片内容
+ * @param {Object} params
+ * @param {Object} params.cardConfig - 卡片配置（来自 prompt.json）
+ * @param {Object} params.worldBook - 世界书数据
+ * @param {Array} params.recentDialogue - 近期对话历史
+ * @param {string} params.currentScene - 当前场景名称
+ * @param {Object} params.options - 可选配置
+ * @returns {Promise<Object>} 生成结果
+ */
+export const generateCardContent = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      data: null,
     }
   }
-]
-\`\`\`
 
-### choices 字段说明：
-- **prompt**: 选择提示语，向玩家说明当前情境
-- **options**: 选项数组，每个选项包含：
-  - text: 选项显示文本
-  - action: 选项动作标识（用于后续处理）
-- **allowCustomInput**: 布尔值，必须设置为 true，允许玩家自定义输入内容
+  const { cardConfig, worldBook, recentDialogue = [], currentScene = '', options = {} } = params
+  
+  if (!cardConfig) {
+    return {
+      success: false,
+      error: '卡片配置缺失',
+      data: null,
+    }
+  }
 
-## 创作要求
+  // 构建世界书摘要
+  const worldBookSummary = buildWorldBookSummary(worldBook)
+  
+  // 构建近期剧情摘要
+  const dialogueSummary = buildDialogueSummary(recentDialogue)
+  
+  // 构建用户提示词
+  const userPrompt = buildCardUserPrompt(cardConfig, worldBookSummary, dialogueSummary, currentScene)
 
-1. 保持角色性格一致性
-2. 剧情发展要符合世界观设定
-3. 合理使用表情标识来增强表现力
-4. 每次生成 1-3 条对话为宜
-5. 确保输出是合法的 JSON 格式
-6. 不要输出任何 JSON 之外的内容
-7. **【强制】每次生成的最后一条对话必须包含 choices 字段**
-8. 选项应该符合剧情逻辑，提供有意义的分支
-9. 每次提供 2-4 个选项，allowCustomInput 必须为 true
-10. 每条对话都必须包含 storyTime 字段，同一世界内纪年体系与写法保持一致
-11. 本次生成应体现剧情推进，最后一条对话的 storyTime 必须相对当前剧情时间前进（不能不变、不能回退）`
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: CARD_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: options.temperature || 0.9, // 卡片生成需要更多创意
+    maxTokens: options.maxTokens || 1500,
+    extraParams: options.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '生成失败',
+      data: null,
+    }
+  }
+
+  // 解析生成的 JSON 内容
+  const cardData = parseCardData(result.data, cardConfig)
+  
+  return {
+    success: true,
+    error: null,
+    data: cardData,
+    rawResponse: result.rawResponse,
+  }
+}
+
+/**
+ * 构建世界书摘要
+ * @param {Object} worldBook - 世界书数据
+ * @returns {string} 摘要文本
+ */
+const buildWorldBookSummary = (worldBook) => {
+  if (!worldBook) return '无世界书信息'
+  
+  const parts = []
+  
+  // 世界观背景
+  if (worldBook.background) {
+    parts.push(`【世界观】`)
+    parts.push(`- 名称：${worldBook.background.name || '未知'}`)
+    if (worldBook.background.description) {
+      parts.push(`- 描述：${worldBook.background.description}`)
+    }
+    if (worldBook.background.setting) {
+      parts.push(`- 设定：${worldBook.background.setting}`)
+    }
+  }
+  
+  // 人物信息
+  if (worldBook.characters && worldBook.characters.length > 0) {
+    parts.push(`【主要人物】`)
+    for (const char of worldBook.characters.slice(0, 5)) {
+      const charInfo = `- ${char.name || '未知'}`
+      const role = char.role ? `（${char.role}）` : ''
+      const desc = char.description ? `：${char.description.substring(0, 100)}` : ''
+      parts.push(`${charInfo}${role}${desc}`)
+    }
+  }
+  
+  // 用户角色
+  if (worldBook.userProfile) {
+    parts.push(`【玩家角色】`)
+    parts.push(`- 名称：${worldBook.userProfile.name || '你'}`)
+    if (worldBook.userProfile.role) {
+      parts.push(`- 身份：${worldBook.userProfile.role}`)
+    }
+  }
+  
+  // 关系设定
+  if (worldBook.relationships && worldBook.relationships.length > 0) {
+    parts.push(`【人物关系】`)
+    for (const rel of worldBook.relationships.slice(0, 3)) {
+      parts.push(`- ${rel.from || '某人'} 与 ${rel.to || '某人'}：${rel.type || '未知关系'}`)
+    }
+  }
+  
+  return parts.join('\n')
+}
+
+/**
+ * 构建对话摘要
+ * @param {Array} dialogue - 对话历史
+ * @returns {string} 摘要文本
+ */
+const buildDialogueSummary = (dialogue) => {
+  if (!dialogue || dialogue.length === 0) return '无近期剧情'
+  
+  const recentLines = dialogue.slice(-10)
+  const parts = ['【近期剧情】']
+  
+  for (const line of recentLines) {
+    const speaker = line.speaker || '旁白'
+    const text = (line.text || '').substring(0, 80)
+    parts.push(`${speaker}：${text}${text.length >= 80 ? '...' : ''}`)
+  }
+  
+  return parts.join('\n')
+}
+
+/**
+ * 构建卡片生成用户提示词
+ * @param {Object} cardConfig - 卡片配置
+ * @param {string} worldBookSummary - 世界书摘要
+ * @param {string} dialogueSummary - 对话摘要
+ * @param {string} currentScene - 当前场景
+ * @returns {string} 用户提示词
+ */
+const buildCardUserPrompt = (cardConfig, worldBookSummary, dialogueSummary, currentScene) => {
+  const cardName = cardConfig.name || '未知卡片'
+  const cardDesc = cardConfig.description || ''
+  const cardStyle = cardConfig.style || {}
+  
+  // 获取模板并替换占位符
+  let promptTemplate = cardConfig.promptTemplate || ''
+  
+  // 替换基本占位符
+  promptTemplate = promptTemplate.replace(/\{\{scene\}\}/g, currentScene || '当前场景')
+  
+  const parts = [
+    `请生成一张"${cardName}"卡片的内容。`,
+    '',
+    `卡片类型：${cardName}`,
+    `卡片描述：${cardDesc}`,
+    `风格主题：${cardStyle.theme || '默认'}`,
+    `情感基调：${cardStyle.mood || '中性'}`,
+    '',
+    worldBookSummary,
+    '',
+    dialogueSummary,
+    '',
+    `当前场景：${currentScene || '未知'}`,
+    '',
+  ]
+  
+  // 添加变量说明
+  if (cardConfig.variables) {
+    parts.push('【需要生成的变量】')
+    for (const [key, varConfig] of Object.entries(cardConfig.variables)) {
+      const varDesc = varConfig.description || ''
+      const varType = varConfig.type || 'string'
+      const varMaxLen = varConfig.maxLength ? `（最多${varConfig.maxLength}字）` : ''
+      const varDefault = varConfig.default ? `，默认值：${varConfig.default}` : ''
+      const varOptions = varConfig.options ? `，可选值：${varConfig.options.join('/')}` : ''
+      parts.push(`- ${key}（${varType}）：${varDesc}${varMaxLen}${varDefault}${varOptions}`)
+    }
+    parts.push('')
+    parts.push('请按以上变量结构输出 JSON 对象。')
+  }
+  
+  // 如果有原始模板，添加模板内容
+  if (promptTemplate) {
+    parts.push('')
+    parts.push('【生成模板参考】')
+    parts.push(promptTemplate)
+  }
+  
+  return parts.join('\n')
+}
+
+/**
+ * 解析卡片数据
+ * @param {string} rawContent - LLM 返回的原始内容
+ * @param {Object} cardConfig - 卡片配置
+ * @returns {Object} 解析后的卡片数据
+ */
+const parseCardData = (rawContent, cardConfig) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return {}
+  
+  console.log('[CardDebug] 原始LLM返回内容:', raw.substring(0, 500))
+  
+  // 尝试解析 JSON
+  const parsed = parseJsonObjectFromText(raw)
+  console.log('[CardDebug] 解析后的JSON对象:', parsed)
+  
+  if (parsed) {
+    // 验证并补充缺失的变量
+    const variables = cardConfig.variables || {}
+    const result = {}
+    
+    for (const [key, varConfig] of Object.entries(variables)) {
+      // 使用解析的值或默认值
+      let value = parsed[key]
+      
+      // 如果值是对象或数组，尝试进一步解析或转换为字符串
+      if (value !== undefined) {
+        if (typeof value === 'object' && value !== null) {
+          // 如果是嵌套的 JSON 对象，尝试提取主要内容
+          // 对于 content 类型的字段，尝试提取 text 或 content 子字段
+          if (varConfig.type === 'text' && value.text) {
+            value = value.text
+          } else if (varConfig.type === 'text' && value.content) {
+            value = value.content
+          } else {
+            // 否则转换为 JSON 字符串
+            value = JSON.stringify(value)
+          }
+        }
+        result[key] = String(value)
+      } else if (varConfig.default !== undefined) {
+        result[key] = String(varConfig.default)
+      } else {
+        result[key] = ''
+      }
+      
+      // 处理 maxLength 限制
+      if (varConfig.maxLength && typeof result[key] === 'string') {
+        result[key] = result[key].substring(0, varConfig.maxLength)
+      }
+    }
+    
+    // 保留其他可能有用的字段（转换为字符串）
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!result[key]) {
+        if (typeof value === 'object' && value !== null) {
+          result[key] = JSON.stringify(value)
+        } else {
+          result[key] = String(value || '')
+        }
+      }
+    }
+    
+    console.log('[CardDebug] 最终解析结果:', result)
+    return result
+  }
+  
+  // 如果无法解析 JSON，尝试将文本作为主要内容
+  const mainContentKey = Object.keys(cardConfig.variables || {}).find(
+    k => cardConfig.variables[k].type === 'text'
+  ) || 'content'
+  
+  return {
+    [mainContentKey]: raw,
+    _raw: raw,
+  }
 }
 

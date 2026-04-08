@@ -1,0 +1,55 @@
+{
+  "id": "wuxia-letter",
+  "name": "武侠密函",
+  "category": "wuxia",
+  "description": "一封武侠风格的密函，带有江湖气息和武侠元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "武侠|江湖|侠客|门派|武林|剑客",
+        "description": "武侠场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "title": {
+      "type": "string",
+      "description": "密函标题"
+    },
+    "sender": {
+      "type": "string",
+      "description": "发送者"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "接收者"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 400,
+      "description": "密函内容"
+    },
+    "signature": {
+      "type": "string",
+      "description": "署名"
+    },
+    "urgentLevel": {
+      "type": "string",
+      "default": "紧急",
+      "options": ["普通", "紧急", "十万火急"],
+      "description": "紧急程度"
+    }
+  },
+  "promptTemplate": "请生成一封武侠密函。\n\n背景信息：\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n- 场景：{{scene}}\n- 紧急程度：{{urgentLevel}}\n\n要求：\n1. 使用武侠风格的语言，带有江湖气息\n2. 可以包含门派、武功、江湖术语\n3. 语气要豪迈或神秘\n4. 字数控制在150-300字之间\n\n请直接输出密函内容，不要有其他说明。",
+  "style": {
+    "theme": "wuxia",
+    "colors": ["#1a1a1a", "#c41e3a", "#f5e6c8"],
+    "mood": "江湖豪迈"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

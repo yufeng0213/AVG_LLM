@@ -1,0 +1,58 @@
+{
+  "id": "lottery-ticket",
+  "name": "彩票",
+  "category": "lottery",
+  "description": "一张彩票，带有幸运和命运元素",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": [
+      {
+        "type": "setting",
+        "operator": "contains",
+        "value": "彩票|幸运|抽奖|命运|财富|中奖",
+        "description": "幸运或抽奖场景可能触发"
+      }
+    ]
+  },
+  "variables": {
+    "ticketId": {
+      "type": "string",
+      "description": "彩票编号"
+    },
+    "numbers": {
+      "type": "string",
+      "description": "彩票号码"
+    },
+    "drawDate": {
+      "type": "string",
+      "description": "开奖日期"
+    },
+    "prize": {
+      "type": "string",
+      "description": "奖池金额"
+    },
+    "purchaseDate": {
+      "type": "string",
+      "description": "购买日期"
+    },
+    "location": {
+      "type": "string",
+      "description": "购买地点"
+    },
+    "lotteryType": {
+      "type": "string",
+      "default": "双色球",
+      "options": ["双色球", "大乐透", "刮刮乐", "幸运星"],
+      "description": "彩票类型"
+    }
+  },
+  "promptTemplate": "请生成一张彩票的内容。\n\n背景信息：\n- 彩票类型：{{lotteryType}}\n- 场景：{{scene}}\n\n要求：\n1. 使用彩票格式\n2. 包含号码和日期信息\n3. 可以带有幸运祝福\n4. 字数控制在50-100字之间\n\n请直接输出彩票内容，不要有其他说明。",
+  "style": {
+    "theme": "lottery",
+    "colors": ["#e74c3c", "#f39c12", "#fff"],
+    "mood": "幸运期待"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}
