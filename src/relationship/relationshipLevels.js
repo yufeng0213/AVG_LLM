@@ -250,6 +250,76 @@ export const getRelationshipTypeInfo = (typeKey) => {
 }
 
 /**
+ * 根据等级名称获取等级信息
+ * @param {string} levelName - 等级名称（中文或英文）
+ * @returns {Object|null} 等级信息对象，未找到返回null
+ */
+export const getLevelByName = (levelName) => {
+  if (!levelName) return null
+  const normalizedInput = String(levelName).trim().toLowerCase()
+  
+  for (const level of RELATIONSHIP_LEVELS) {
+    if (level.name.toLowerCase() === normalizedInput) {
+      return level
+    }
+    if (level.nameEn.toLowerCase() === normalizedInput) {
+      return level
+    }
+    if (level.shortDesc.toLowerCase() === normalizedInput) {
+      return level
+    }
+  }
+  
+  return null
+}
+
+/**
+ * 检查好感度值是否满足等级条件
+ * @param {number} favorValue - 好感度数值
+ * @param {string|Array} levelCondition - 等级条件（单个等级名称或等级名称数组）
+ * @returns {boolean} 是否满足条件
+ */
+export const doesFavorMeetLevelCondition = (favorValue, levelCondition) => {
+  if (!levelCondition) return true
+  
+  const clampedValue = clampRelationshipValue(favorValue)
+  const currentLevel = getRelationshipLevel(clampedValue)
+  
+  // 单个等级名称
+  if (typeof levelCondition === 'string') {
+    const targetLevel = getLevelByName(levelCondition)
+    if (!targetLevel) return true // 无效等级名，忽略条件
+    return currentLevel.name === targetLevel.name
+  }
+  
+  // 等级名称数组
+  if (Array.isArray(levelCondition)) {
+    if (levelCondition.length === 0) return true
+    return levelCondition.some(levelName => {
+      const targetLevel = getLevelByName(levelName)
+      if (!targetLevel) return false
+      return currentLevel.name === targetLevel.name
+    })
+  }
+  
+  return true
+}
+
+/**
+ * 根据等级名称获取数值范围
+ * @param {string} levelName - 等级名称
+ * @returns {Object|null} 包含min和max的对象，未找到返回null
+ */
+export const getLevelRange = (levelName) => {
+  const level = getLevelByName(levelName)
+  if (!level) return null
+  return {
+    min: level.range[0],
+    max: level.range[1],
+  }
+}
+
+/**
  * 获取好感度等级的CSS类名
  * @param {number} favorValue - 好感度数值
  * @returns {string} CSS类名
@@ -394,6 +464,9 @@ export default {
   isPositiveChange,
   determineRelationshipType,
   getRelationshipTypeInfo,
+  getLevelByName,
+  doesFavorMeetLevelCondition,
+  getLevelRange,
   getRelationshipLevelClass,
   getRelationshipDescription,
   getRelationshipInfluenceHint,

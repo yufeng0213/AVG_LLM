@@ -8,6 +8,16 @@ import {
   CHARACTER_PERSONALITY_DIMENSION_DEFS,
   normalizePersonalityProfile,
 } from '../worldbook/worldBookStore'
+import {
+  getRelationshipLevel,
+  getRelationshipDescription,
+  getRelationshipInfluenceHint,
+  RELATIONSHIP_LEVELS,
+} from '../relationship/relationshipLevels.js'
+import {
+  getCharacterRelationship,
+  getAllRelationships,
+} from '../relationship/relationshipStore.js'
 
 const personalityDimensionDefs = CHARACTER_PERSONALITY_DIMENSION_DEFS
 
@@ -489,6 +499,15 @@ const buildNarratorSection = (narratorProfile) => {
 const buildRelationshipSection = (relationshipSnapshot) => {
   const lines = ['## 角色关系状态']
   lines.push('以下数值范围为 -100 ~ 100，越高表示越正向。')
+  lines.push('')
+  lines.push('### 好感度等级说明')
+  
+  // 添加等级说明表
+  const levelDescriptions = RELATIONSHIP_LEVELS.map(level =>
+    `${level.icon} ${level.name}(${level.range[0]}~${level.range[1]}): ${level.description}`
+  ).join('、')
+  lines.push(levelDescriptions)
+  lines.push('')
 
   for (const item of relationshipSnapshot) {
     const name = String(item?.name || item?.characterName || item?.id || '未命名角色').trim()
@@ -497,9 +516,31 @@ const buildRelationshipSection = (relationshipSnapshot) => {
     const trust = Number.isFinite(item?.trust) ? item.trust : 0
     const stance = Number.isFinite(item?.stance) ? item.stance : 0
     const aliasText = nickname ? `（${nickname}）` : ''
-    lines.push(`- ${name}${aliasText}: favor=${favor}, trust=${trust}, stance=${stance}`)
+    
+    // 使用新的等级系统
+    const level = getRelationshipLevel(favor)
+    const levelIcon = level.icon || ''
+    const levelName = level.name || '中立'
+    
+    // 构建更详细的关系描述
+    const relationshipDesc = getRelationshipDescription({ favor, trust, stance }, { name })
+    
+    lines.push(`- ${name}${aliasText}: ${levelIcon}${levelName}(favor=${favor}), trust=${trust}, stance=${stance}`)
+    lines.push(`  - 状态描述: ${relationshipDesc}`)
   }
 
+  lines.push('')
+  lines.push('### 关系影响提示')
+  
+  // 添加关系影响提示
+  const characters = relationshipSnapshot.map(item => ({
+    id: item?.id || item?.characterId,
+    name: item?.name || item?.characterName,
+  }))
+  const influenceHint = getRelationshipInfluenceHint(characters, relationshipSnapshot)
+  lines.push(influenceHint)
+  
+  lines.push('')
   lines.push('请保持角色行为、语气、信息披露程度与上述关系状态一致。')
   return lines.join('\n')
 }

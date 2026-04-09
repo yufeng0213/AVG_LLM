@@ -24,14 +24,14 @@ const RELATIONSHIP_HISTORY_KEY = 'relationship_history'
 const TRIGGERED_EVENTS_KEY = 'triggered_relationship_events'
 
 // 默认关系数据结构
-const createDefaultRelationshipBase = () => ({
+export const createDefaultRelationshipBase = () => ({
   favor: RELATIONSHIP_NEUTRAL,
   trust: RELATIONSHIP_NEUTRAL,
   stance: 0,
 })
 
 // 默认关系数据
-const createDefaultRelationshipData = () => ({
+export const createDefaultRelationshipData = () => ({
   runtime: {}, // 运行时关系状态（覆盖世界书默认值）
   history: [], // 关系变化历史
   triggeredEvents: [], // 已触发的关系事件

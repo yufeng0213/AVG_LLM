@@ -46,6 +46,20 @@ import Phone from '../components/Phone.vue'
 import HandheldConsole from '../components/HandheldConsole.vue'
 import Backpack from '../components/Backpack.vue'
 import PluginComponent from '../plugins/PluginComponent.vue'
+import RelationshipPanel from '../components/RelationshipPanel.vue'
+import RelationshipChangeToast from '../components/RelationshipChangeToast.vue'
+import {
+  initRelationshipSystem,
+  getCharacterRelationship,
+  updateRelationship,
+  getAllRelationships,
+  getRelationshipSnapshot,
+  getRelationshipPromptContext,
+} from '../relationship/index.js'
+import {
+  doesFavorMeetLevelCondition,
+  getLevelRange,
+} from '../relationship/relationshipLevels.js'
 import { PluginTypes } from '../plugins/pluginManager.js'
 import CGGeneratorModal from '../components/CGGeneratorModal.vue'
 import { generateCG, getImageBase64 } from '../comfyui/comfyuiService.js'
@@ -414,6 +428,9 @@ const HISTORY_DIALOGUE_PRELOAD_THRESHOLD = 72
 const historyVisibleCount = ref(HISTORY_DIALOGUE_PAGE_SIZE)
 const isHistoryPrepending = ref(false)
 const showRelationshipTablePanel = ref(false)
+// 新增：好感度面板状态
+const showAffectionPanel = ref(false)
+const activeRelationshipChange = ref(null) // 当前显示的变化提示
 const RELATIONSHIP_LEDGER_VERSION = 1
 const RELATIONSHIP_LEDGER_MAX_ROWS = 600
 const createEmptyRelationshipLedger = () => ({
@@ -1597,11 +1614,30 @@ const doesRelationshipRuleMatch = (rule, runtimeState) => {
   const stateSource = mergeRelationshipStateWithBook(activeBook.value, runtimeState)
 
   const verifyMetrics = (metrics) => {
-    return (
-      doesMetricMeetBounds(metrics.favor, rule?.favorMin, rule?.favorMax) &&
-      doesMetricMeetBounds(metrics.trust, rule?.trustMin, rule?.trustMax) &&
-      doesMetricMeetBounds(metrics.stance, rule?.stanceMin, rule?.stanceMax)
+    const normalizedMetrics = normalizeRelationshipBase(metrics)
+    
+    // 检查数值范围条件
+    const meetsBounds = (
+      doesMetricMeetBounds(normalizedMetrics.favor, rule?.favorMin, rule?.favorMax) &&
+      doesMetricMeetBounds(normalizedMetrics.trust, rule?.trustMin, rule?.trustMax) &&
+      doesMetricMeetBounds(normalizedMetrics.stance, rule?.stanceMin, rule?.stanceMax)
     )
+    
+    if (!meetsBounds) return false
+    
+    // 检查好感度等级名称条件（新增）
+    if (rule?.favorLevel) {
+      const meetsLevel = doesFavorMeetLevelCondition(normalizedMetrics.favor, rule.favorLevel)
+      if (!meetsLevel) return false
+    }
+    
+    // 检查信任度等级名称条件（新增）
+    if (rule?.trustLevel) {
+      const meetsTrustLevel = doesFavorMeetLevelCondition(normalizedMetrics.trust, rule.trustLevel)
+      if (!meetsTrustLevel) return false
+    }
+    
+    return true
   }
 
   if (targetKey === '*') {
@@ -2082,6 +2118,48 @@ const toggleRelationshipTablePanel = () => {
 
 const closeRelationshipTablePanel = () => {
   showRelationshipTablePanel.value = false
+}
+
+// 新增：好感度面板控制函数
+const toggleAffectionPanel = () => {
+  showAffectionPanel.value = !showAffectionPanel.value
+}
+
+const closeAffectionPanel = () => {
+  showAffectionPanel.value = false
+}
+
+// 新增：显示好感度变化提示
+const showRelationshipChangeNotification = (changeData) => {
+  activeRelationshipChange.value = changeData
+}
+
+// 新增：关闭好感度变化提示
+const dismissRelationshipChangeNotification = () => {
+  activeRelationshipChange.value = null
+}
+
+// 新增：处理导演器关系变更
+const handleDirectorRelationshipDeltas = (deltas, reason = '导演器事件') => {
+  if (!deltas || deltas.length === 0) return
+  
+  const results = applyDirectorRelationshipDeltas(deltas, reason)
+  
+  // 显示变化提示
+  for (const result of results) {
+    const character = activeBook.value?.characters?.find(c => c.id === result.characterId)
+    if (character && result.changes.favor.delta !== 0) {
+      showRelationshipChangeNotification({
+        characterId: result.characterId,
+        characterName: character.name,
+        characterPortrait: character.portraits?.[0]?.filePath || '',
+        metric: 'favor',
+        delta: result.deltas.favor,
+        newValue: result.newValues.favor,
+        reason: reason,
+      })
+    }
+  }
 }
 
 const handleHistoryBodyScroll = async () => {

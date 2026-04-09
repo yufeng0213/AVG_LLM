@@ -76,6 +76,15 @@
         >
           关系数据表
         </button>
+        <button
+          type="button"
+          class="top-menu-btn top-menu-affection"
+          :class="{ 'is-active': showAffectionPanel }"
+          role="menuitem"
+          @click="toggleAffectionPanel"
+        >
+          💕 好感度
+        </button>
       </div>
       <!-- 存档成功提示 -->
       <div v-if="saveSuccess" class="save-toast success">
@@ -952,4 +961,18 @@
     >
       {{ cgStatusMessage }}
     </div>
+
+    <!-- 新增：好感度面板 -->
+    <RelationshipPanel
+      :visible="showAffectionPanel"
+      :characters="activeBook?.characters || []"
+      @close="closeAffectionPanel"
+    />
+
+    <!-- 新增：好感度变化提示 -->
+    <RelationshipChangeToast
+      v-if="activeRelationshipChange"
+      :change="activeRelationshipChange"
+      @dismiss="dismissRelationshipChangeNotification"
+    />
   </main>
