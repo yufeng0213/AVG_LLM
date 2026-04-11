@@ -295,10 +295,12 @@
 
 .xx-handheld.is-android .xx-camper-bubble {
   bottom: 72px;
-  max-width: 126px;
-  min-width: 56px;
-  padding: 4px 6px;
-  font-size: 10px;
+  max-width: 180px;
+  min-width: 100px;
+  min-height: 28px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
 }
 
 .xx-handheld.is-android .xx-orbit-btn {
@@ -336,6 +338,11 @@
   bottom: 10%;
 }
 
+.xx-handheld.is-android .xx-orbit-btn.is-bedroom {
+  left: 4%;
+  bottom: 24%;
+}
+
 .xx-handheld.is-android .xx-subview-head {
   flex-direction: column;
   align-items: stretch;
@@ -363,6 +370,29 @@
   font-size: 12px;
   white-space: normal;
   text-align: right;
+}
+
+.xx-handheld.is-android .xx-dungeon-grid-wrap {
+  padding: 7px;
+}
+
+.xx-handheld.is-android .xx-dungeon-grid {
+  gap: 2px;
+  --xx-dungeon-cell-size: 15px;
+}
+
+.xx-handheld.is-android .xx-dungeon-cell {
+  border-radius: 5px;
+}
+
+.xx-handheld.is-android .xx-dungeon-cell-badge {
+  min-width: 15px;
+  height: 15px;
+  font-size: 10px;
+}
+
+.xx-handheld.is-android .xx-dungeon-key-hint {
+  font-size: 12px;
 }
 
 .xx-handheld.is-android .xx-dungeon-enemy-list {
@@ -514,6 +544,25 @@
 .xx-handheld.is-android .xx-log-list {
   height: 30vh;
   min-height: 200px;
+}
+
+.xx-handheld.is-android .xx-bedroom-card {
+  padding: 12px;
+}
+
+.xx-handheld.is-android .xx-bedroom-tip,
+.xx-handheld.is-android .xx-bedroom-selected-title {
+  font-size: 12px;
+}
+
+.xx-handheld.is-android .xx-bedroom-item-name {
+  font-size: 10px;
+  bottom: -15px;
+}
+
+.xx-handheld.is-android .xx-bedroom-actions,
+.xx-handheld.is-android .xx-bedroom-z-actions {
+  grid-template-columns: 1fr;
 }
 
 @media (max-width: 720px) {

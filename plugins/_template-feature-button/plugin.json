@@ -1,0 +1,25 @@
+{
+  "id": "feature-template",
+  "name": "功能模板",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "feature-template",
+    "title": "模板功能",
+    "icon": "🧩",
+    "order": 100
+  },
+  "entry": {
+    "type": "vue-component",
+    "module": "./src/entry.js"
+  },
+  "storage": {
+    "namespace": "feature-template"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": false
+}
+

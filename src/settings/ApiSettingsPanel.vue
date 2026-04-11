@@ -7,6 +7,18 @@ const ACTIVE_CONFIG_KEY = 'active_api_id'
 const DEFAULT_TTS_API = 'https://api.minimaxi.com/v1/t2a_v2'
 const DEFAULT_TTS_MODEL = 'speech-2.8-hd'
 
+// 折叠状态
+const llmSectionExpanded = ref(true)
+const ttsSectionExpanded = ref(false)
+
+const toggleLlmSection = () => {
+  llmSectionExpanded.value = !llmSectionExpanded.value
+}
+
+const toggleTtsSection = () => {
+  ttsSectionExpanded.value = !ttsSectionExpanded.value
+}
+
 const clampNumber = (value, min, max, fallback) => {
   const parsed = Number.parseFloat(String(value))
   if (!Number.isFinite(parsed)) return fallback
@@ -87,6 +99,10 @@ const configs = ref([])
 const selectedConfigId = ref('')
 const activeConfigId = ref('')
 const statusMessage = ref('请填写参数并保存配置。')
+
+// 模型列表
+const availableModels = ref([])
+const isFetchingModels = ref(false)
 
 const form = reactive({
   id: '',
@@ -240,6 +256,80 @@ const loadSavedConfig = () => {
   statusMessage.value = `已加载配置：${target.name}`
 }
 
+const fetchModels = async () => {
+  const baseUrl = form.customApi.trim()
+  if (!baseUrl) {
+    statusMessage.value = '请先填写 LLM API 地址。'
+    return
+  }
+
+  // 构建 models 端点 URL
+  let modelsUrl
+  try {
+    const url = new URL(baseUrl)
+    // 如果 URL包含 /chat/completions，替换为 /models
+    if (url.pathname.endsWith('/chat/completions')) {
+      url.pathname = url.pathname.replace('/chat/completions', '/models')
+    } else if (!url.pathname.endsWith('/models')) {
+      // 如果路径不以 /models 结尾，追加 /models
+      if (url.pathname.endsWith('/')) {
+        url.pathname += 'models'
+      } else {
+        url.pathname += '/models'
+      }
+    }
+    modelsUrl = url.toString()
+  } catch {
+    // 如果 URL 解析失败，尝试字符串拼接
+    const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+    modelsUrl = base + '/models'
+  }
+
+  statusMessage.value = '正在拉取模型列表...'
+
+  try {
+    const response = await fetch(modelsUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${form.apiKey.trim()}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const models = data.data || data.models || []
+
+    if (models.length === 0) {
+      statusMessage.value = '未找到可用模型。'
+      return
+    }
+
+    // 提取模型 ID 列表
+    const modelIds = models.map((m) => typeof m === 'string' ? m : m.id).filter(Boolean)
+
+    if (modelIds.length > 0) {
+      availableModels.value = modelIds
+      // 如果当前模型不在列表中，设置为第一个
+      if (!modelIds.includes(form.model)) {
+        form.model = modelIds[0]
+      }
+      statusMessage.value = `拉取成功！共找到 ${modelIds.length} 个可用模型。`
+    } else {
+      availableModels.value = []
+      statusMessage.value = '模型列表为空。'
+    }
+  } catch (error) {
+    statusMessage.value = `拉取模型失败：${error.message}`
+    availableModels.value = []
+  } finally {
+    isFetchingModels.value = false
+  }
+}
+
 onMounted(loadStorage)
 </script>
 
@@ -248,149 +338,173 @@ onMounted(loadStorage)
     <h2 class="panel-title">API设置</h2>
     <p class="panel-description">维护多个模型服务端点，并在本地保存可复用的 API 配置模板。</p>
 
-    <div class="settings-grid two-column">
+    <!-- 基础配置 -->
+    <div class="settings-grid single-column">
       <label class="setting-field">
         <span class="setting-label">配置名称</span>
         <input v-model="form.name" class="setting-input" type="text" placeholder="例如：主力线路" />
       </label>
-
-      <label class="setting-field">
-        <span class="setting-label">模型名称</span>
-        <input v-model="form.model" class="setting-input" type="text" placeholder="例如：gpt-5.2" />
-      </label>
     </div>
 
-    <div class="settings-grid single-column">
-      <label class="setting-field">
-        <span class="setting-label">LLM的自定义API</span>
-        <input
-          v-model="form.customApi"
-          class="setting-input"
-          type="url"
-          placeholder="https://your-api-endpoint/v1/chat/completions"
-        />
-      </label>
+    <!-- LLM API 设置 - 可折叠 -->
+    <div class="api-section">
+      <button type="button" class="api-section-header" @click="toggleLlmSection">
+        <span class="api-section-title">LLM API 设置</span>
+        <span class="api-section-arrow" :class="{ expanded: llmSectionExpanded }">›</span>
+      </button>
+      <div v-show="llmSectionExpanded" class="api-section-content">
+        <div class="settings-grid single-column">
+          <label class="setting-field">
+            <span class="setting-label">LLM的自定义API</span>
+            <input
+              v-model="form.customApi"
+              class="setting-input"
+              type="url"
+              placeholder="https://your-api-endpoint/v1/chat/completions"
+            />
+          </label>
 
-      <label class="setting-field">
-        <span class="setting-label">API Key</span>
-        <input v-model="form.apiKey" class="setting-input" type="password" placeholder="输入你的 API Key" />
-      </label>
+          <label class="setting-field">
+            <span class="setting-label">API Key</span>
+            <input v-model="form.apiKey" class="setting-input" type="password" placeholder="输入你的 API Key" />
+          </label>
+
+          <div class="setting-field setting-field-row">
+            <label class="setting-label-inline">模型名称</label>
+            <select v-model="form.model" class="setting-select setting-select-flex" :disabled="availableModels.length === 0">
+              <option value="" disabled v-if="availableModels.length === 0">请先拉取模型列表</option>
+              <option v-for="modelId in availableModels" :key="modelId" :value="modelId">
+                {{ modelId }}
+              </option>
+            </select>
+            <button type="button" class="action-button action-button-fetch" @click="fetchModels" :disabled="!form.customApi.trim() || isFetchingModels">
+              {{ isFetchingModels ? '...' : '拉取' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <section class="settings-subpanel" aria-label="语音模型设置">
-      <h3 class="subpanel-title">语音模型设置（MiniMax TTS）</h3>
-      <div class="settings-grid two-column">
-        <label class="setting-field">
-          <span class="setting-label">TTS API 地址</span>
-          <input
-            v-model="form.ttsApi"
-            class="setting-input"
-            type="url"
-            placeholder="https://api.minimaxi.com/v1/t2a_v2"
-          />
-        </label>
-        <label class="setting-field">
-          <span class="setting-label">TTS 模型名</span>
-          <input
-            v-model="form.ttsModel"
-            class="setting-input"
-            type="text"
-            placeholder="speech-2.8-hd"
-          />
-        </label>
-      </div>
+    <!-- TTS API 设置 - 可折叠 -->
+    <div class="api-section">
+      <button type="button" class="api-section-header" @click="toggleTtsSection">
+        <span class="api-section-title">TTS API 设置（MiniMax）</span>
+        <span class="api-section-arrow" :class="{ expanded: ttsSectionExpanded }">›</span>
+      </button>
+      <div v-show="ttsSectionExpanded" class="api-section-content">
+        <div class="settings-grid two-column">
+          <label class="setting-field">
+            <span class="setting-label">TTS API 地址</span>
+            <input
+              v-model="form.ttsApi"
+              class="setting-input"
+              type="url"
+              placeholder="https://api.minimaxi.com/v1/t2a_v2"
+            />
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">TTS 模型名</span>
+            <input
+              v-model="form.ttsModel"
+              class="setting-input"
+              type="text"
+              placeholder="speech-2.8-hd"
+            />
+          </label>
+        </div>
 
-      <div class="settings-grid single-column">
-        <label class="setting-field">
-          <span class="setting-label">TTS API Key（可选，留空则复用上方 API Key）</span>
-          <input
-            v-model="form.ttsApiKey"
-            class="setting-input"
-            type="password"
-            placeholder="可留空"
-          />
-        </label>
-      </div>
+        <div class="settings-grid single-column">
+          <label class="setting-field">
+            <span class="setting-label">TTS API Key（可选，留空则复用上方 API Key）</span>
+            <input
+              v-model="form.ttsApiKey"
+              class="setting-input"
+              type="password"
+              placeholder="可留空"
+            />
+          </label>
+        </div>
 
-      <div class="settings-grid three-column">
-        <label class="setting-field">
-          <span class="setting-label">默认 speed</span>
-          <input
-            v-model.number="form.ttsDefaultVoice.speed"
-            class="setting-input"
-            type="number"
-            inputmode="decimal"
-            min="0.5"
-            max="2"
-            step="0.05"
-          />
-        </label>
-        <label class="setting-field">
-          <span class="setting-label">默认 vol</span>
-          <input
-            v-model.number="form.ttsDefaultVoice.vol"
-            class="setting-input"
-            type="number"
-            inputmode="decimal"
-            step="0.01"
-          />
-        </label>
-        <label class="setting-field">
-          <span class="setting-label">默认 pitch</span>
-          <input
-            v-model.number="form.ttsDefaultVoice.pitch"
-            class="setting-input"
-            type="number"
-            inputmode="decimal"
-            min="-12"
-            max="12"
-            step="0.5"
-          />
-        </label>
-      </div>
+        <div class="settings-grid three-column">
+          <label class="setting-field">
+            <span class="setting-label">默认 speed</span>
+            <input
+              v-model.number="form.ttsDefaultVoice.speed"
+              class="setting-input"
+              type="number"
+              inputmode="decimal"
+              min="0.5"
+              max="2"
+              step="0.05"
+            />
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">默认 vol</span>
+            <input
+              v-model.number="form.ttsDefaultVoice.vol"
+              class="setting-input"
+              type="number"
+              inputmode="decimal"
+              step="0.01"
+            />
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">默认 pitch</span>
+            <input
+              v-model.number="form.ttsDefaultVoice.pitch"
+              class="setting-input"
+              type="number"
+              inputmode="decimal"
+              min="-12"
+              max="12"
+              step="0.5"
+            />
+          </label>
+        </div>
 
-      <div class="settings-grid four-column">
-        <label class="setting-field">
-          <span class="setting-label">默认 sample_rate</span>
-          <input
-            v-model.number="form.ttsDefaultAudio.sampleRate"
-            class="setting-input"
-            type="number"
-            inputmode="numeric"
-            min="8000"
-            max="48000"
-            step="1000"
-          />
-        </label>
-        <label class="setting-field">
-          <span class="setting-label">默认 bitrate</span>
-          <input
-            v-model.number="form.ttsDefaultAudio.bitrate"
-            class="setting-input"
-            type="number"
-            inputmode="numeric"
-            min="32000"
-            max="320000"
-            step="1000"
-          />
-        </label>
-        <label class="setting-field">
-          <span class="setting-label">默认 format</span>
-          <select v-model="form.ttsDefaultAudio.format" class="setting-select">
-            <option value="mp3">mp3</option>
-            <option value="wav">wav</option>
-            <option value="flac">flac</option>
-          </select>
-        </label>
-        <label class="setting-field">
-          <span class="setting-label">默认 channel</span>
-          <select v-model.number="form.ttsDefaultAudio.channel" class="setting-select">
-            <option :value="1">1</option>
-            <option :value="2">2</option>
-          </select>
-        </label>
+        <div class="settings-grid four-column">
+          <label class="setting-field">
+            <span class="setting-label">默认 sample_rate</span>
+            <input
+              v-model.number="form.ttsDefaultAudio.sampleRate"
+              class="setting-input"
+              type="number"
+              inputmode="numeric"
+              min="8000"
+              max="48000"
+              step="1000"
+            />
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">默认 bitrate</span>
+            <input
+              v-model.number="form.ttsDefaultAudio.bitrate"
+              class="setting-input"
+              type="number"
+              inputmode="numeric"
+              min="32000"
+              max="320000"
+              step="1000"
+            />
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">默认 format</span>
+            <select v-model="form.ttsDefaultAudio.format" class="setting-select">
+              <option value="mp3">mp3</option>
+              <option value="wav">wav</option>
+              <option value="flac">flac</option>
+            </select>
+          </label>
+          <label class="setting-field">
+            <span class="setting-label">默认 channel</span>
+            <select v-model.number="form.ttsDefaultAudio.channel" class="setting-select">
+              <option :value="1">1</option>
+              <option :value="2">2</option>
+            </select>
+          </label>
+        </div>
       </div>
-    </section>
+    </div>
 
     <div class="settings-grid two-column">
       <label class="setting-field">
@@ -421,5 +535,5 @@ onMounted(loadStorage)
   </section>
 </template>
 
-<style scoped src="./ApiSettingsPanel.css"></style>
+<style scoped src="./SettingsPanel.css"></style>
 

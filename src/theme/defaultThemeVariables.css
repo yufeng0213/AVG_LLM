@@ -1,0 +1,37 @@
+/* ============================================
+   默认主题变量定义
+   这些变量被 StartScreen.css 等组件CSS使用
+   主题文件可以通过覆盖这些变量来改变样式
+   ============================================ */
+
+:root {
+  /* 启动屏幕 */
+  --launch-screen-border: none;
+  --launch-screen-radius: 0;
+  --launch-screen-bg: var(--background, #0a0a0a);
+  --launch-screen-backdrop: none;
+  --launch-screen-transform: none;
+  --launch-screen-shadow: none;
+
+  /* 英雄标签 */
+  --hero-tag-border: none;
+  --hero-tag-radius: 0;
+  --hero-tag-bg: transparent;
+  --hero-tag-shadow: none;
+
+  /* 菜单面板 */
+  --menu-panel-border: none;
+  --menu-panel-bg: transparent;
+  --menu-panel-shadow: none;
+
+  /* 菜单按钮 */
+  --menu-button-border: 1px solid var(--border-control, rgba(255,255,255,0.1));
+  --menu-button-transform: none;
+  --menu-button-shadow: none;
+
+  /* 元信息芯片 */
+  --meta-chip-border: 1px solid var(--border-control, rgba(255,255,255,0.1));
+  --meta-chip-radius: 9999px;
+  --meta-chip-bg: transparent;
+  --meta-chip-shadow: none;
+}

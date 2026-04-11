@@ -1,0 +1,836 @@
+﻿/* ========== 世界书书架界面 - 现代化扁平化设计 ========== */
+.worldbook-screen {
+  position: relative !important;
+  width: 100% !important;
+  height: calc(100vh - clamp(40px, 8vw, 110px)) !important;
+  max-height: calc(100vh - clamp(40px, 8vw, 110px)) !important;
+  border: none !important;
+  border-radius: var(--radius-panel, 16px) !important;
+  background: var(--surface-panel, rgba(255, 255, 255, 0.05)) !important;
+  backdrop-filter: blur(var(--backdrop-blur, 20px)) !important;
+  box-shadow: var(--shadow-panel, 0 0 0 1px rgba(255, 255, 255, 0.06), 0 2px 20px rgba(0, 0, 0, 0.4)) !important;
+  padding: clamp(20px, 3vw, 36px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: clamp(16px, 2.5vw, 24px) !important;
+  overflow: hidden !important;
+}
+
+.worldbook-screen::before,
+.worldbook-screen::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  border-radius: inherit !important;
+}
+
+.worldbook-screen::before {
+  opacity: 0.015 !important;
+  background: linear-gradient(135deg, var(--accent-cyan, #6872D9) 0%, transparent 50%, var(--accent-purple, #5E6AD2) 100%) !important;
+}
+
+.worldbook-screen::after {
+  opacity: 0 !important;
+}
+
+.worldbook-bg-word {
+  position: absolute !important;
+  margin: 0 !important;
+  right: -2% !important;
+  top: -5% !important;
+  font-family: var(--font-heading) !important;
+  font-size: clamp(6rem, 20vw, 14rem) !important;
+  line-height: 0.8 !important;
+  letter-spacing: -0.07em !important;
+  color: var(--accent-cyan, #6872D9) !important;
+  opacity: 0.04 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+.worldbook-header {
+  position: relative !important;
+  z-index: 2 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  flex-wrap: wrap !important;
+}
+
+.worldbook-title-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.worldbook-tag {
+  margin: 0 !important;
+  width: fit-content !important;
+  padding: 5px 10px !important;
+  border: 1px solid var(--border-status, rgba(94, 106, 210, 0.30)) !important;
+  border-radius: var(--radius-button, 8px) !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  text-shadow: none !important;
+  background: var(--surface-status, rgba(255, 255, 255, 0.06)) !important;
+  color: var(--muted, #8A8F98) !important;
+}
+
+.worldbook-title {
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  font-family: var(--font-heading, 'Inter', system-ui, sans-serif) !important;
+  font-size: clamp(1.5rem, 4vw, 2.5rem) !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.02em !important;
+  text-shadow: none !important;
+  color: var(--foreground, #EDEDEF) !important;
+}
+
+.worldbook-title-gradient {
+  width: fit-content !important;
+  font-family: var(--font-display, 'Inter', system-ui, sans-serif) !important;
+  font-size: clamp(1rem, 2.5vw, 1.5rem) !important;
+  letter-spacing: 0.04em !important;
+  background: linear-gradient(
+    90deg,
+    var(--accent-magenta, #5E6AD2),
+    var(--accent-cyan, #6872D9),
+    var(--accent-yellow, #8B9DF5),
+    var(--accent-magenta, #5E6AD2)
+  ) !important;
+  background-size: 250% 250% !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: avg-gradient-shift 4s linear infinite !important;
+}
+
+.worldbook-shelf-zone {
+  position: relative !important;
+  z-index: 2 !important;
+  border: 1px solid var(--border-panel, rgba(255, 255, 255, 0.06)) !important;
+  border-radius: 0 !important;
+  background: var(--surface-field, rgba(255, 255, 255, 0.03)) !important;
+  box-shadow: none !important;
+  padding: 20px !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+}
+
+.worldbook-shelf-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-bottom: 20px !important;
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid var(--border-panel, rgba(255, 255, 255, 0.06)) !important;
+}
+
+.worldbook-shelf-title {
+  margin: 0 !important;
+  font-family: var(--font-heading, 'Inter', system-ui, sans-serif) !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+  text-shadow: none !important;
+  color: var(--foreground, #EDEDEF) !important;
+}
+
+.worldbook-actions {
+  display: flex !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.worldbook-import-button,
+.worldbook-add-button {
+  appearance: none !important;
+  border: 1px solid var(--border-action, rgba(94, 106, 210, 0.50)) !important;
+  border-radius: var(--radius-button, 8px) !important;
+  padding: 9px 14px !important;
+  font: 600 0.85rem/1 var(--font-body, 'Inter', system-ui, sans-serif) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: var(--foreground, #EDEDEF) !important;
+  background: var(--gradient-primary, linear-gradient(180deg, rgba(94, 106, 210, 0.15) 0%, transparent 50%, rgba(94, 106, 210, 0.05) 100%)) !important;
+  box-shadow: var(--shadow-button, 0 0 0 1px rgba(94, 106, 210, 0.5), 0 4px 12px rgba(94, 106, 210, 0.3)) !important;
+  cursor: pointer !important;
+  transition: all 150ms ease !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  text-align: center !important;
+}
+
+.worldbook-import-button:hover,
+.worldbook-add-button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-button-hover, 0 0 0 1px rgba(94, 106, 210, 0.5), 0 6px 16px rgba(94, 106, 210, 0.4)) !important;
+}
+
+.worldbook-import-button:focus-visible,
+.worldbook-add-button:focus-visible {
+  outline: 2px solid var(--accent-cyan, #6872D9) !important;
+  outline-offset: 2px !important;
+}
+
+.worldbook-shelf {
+  position: relative !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  gap: 14px !important;
+  min-height: 160px !important;
+  overflow-x: auto !important;
+  padding: 12px 0 !important;
+}
+
+.worldbook-shelf::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  background: none;
+  opacity: 0;
+}
+
+.worldbook-book-spine {
+  position: relative !important;
+  appearance: none !important;
+  flex: 0 0 auto !important;
+  width: 72px !important;
+  min-height: 150px !important;
+  border: 1px solid var(--border-panel, rgba(255, 255, 255, 0.06)) !important;
+  border-radius: var(--radius-button, 8px) !important;
+  color: var(--foreground, #EDEDEF) !important;
+  padding: 28px 8px 12px !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 150ms ease !important;
+  background: var(--surface-card, rgba(255, 255, 255, 0.05)) !important;
+}
+
+.worldbook-book-spine:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-card, 0 0 0 1px rgba(255, 255, 255, 0.06), 0 2px 20px rgba(0, 0, 0, 0.4)) !important;
+  border-color: var(--border-control, rgba(255, 255, 255, 0.10)) !important;
+}
+
+.worldbook-book-spine.active {
+  border-color: var(--accent-cyan, #6872D9) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-status, 0 0 0 1px rgba(94, 106, 210, 0.3), 0 2px 12px rgba(94, 106, 210, 0.2)) !important;
+}
+
+.spine-title {
+  font-family: var(--font-heading, 'Inter', system-ui, sans-serif) !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  writing-mode: vertical-rl !important;
+  text-orientation: mixed !important;
+  text-shadow: none !important;
+  color: var(--foreground, #EDEDEF) !important;
+}
+
+.spine-badge {
+  position: absolute !important;
+  top: 8px !important;
+  left: 8px !important;
+  padding: 3px 8px !important;
+  border: 1px solid var(--border-control, rgba(255, 255, 255, 0.10)) !important;
+  border-radius: 6px !important;
+  font-size: 0.6rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  background: var(--surface-control, rgba(255, 255, 255, 0.08)) !important;
+  color: var(--muted, #8A8F98) !important;
+}
+
+.spine-actions {
+  position: absolute !important;
+  bottom: 8px !important;
+  right: 8px !important;
+  left: auto !important;
+  transform: none !important;
+  display: flex !important;
+  gap: 4px !important;
+  opacity: 0 !important;
+  transition: opacity 150ms ease !important;
+}
+
+.worldbook-book-spine:hover .spine-actions {
+  opacity: 1 !important;
+}
+
+.spine-action-btn {
+  appearance: none !important;
+  border: 1px solid var(--border-control, rgba(255, 255, 255, 0.10)) !important;
+  border-radius: 6px !important;
+  padding: 4px 6px !important;
+  font-size: 0.65rem !important;
+  line-height: 1 !important;
+  background: var(--surface-control, rgba(255, 255, 255, 0.08)) !important;
+  color: var(--foreground, #EDEDEF) !important;
+  cursor: pointer !important;
+  transition: all 150ms ease !important;
+}
+
+.spine-action-btn:hover {
+  transform: scale(1.05) !important;
+  background: color-mix(in srgb, var(--foreground, #EDEDEF) 12%, transparent) !important;
+}
+
+.export-btn:hover {
+  border-color: var(--accent-cyan, #6872D9) !important;
+  background: color-mix(in srgb, var(--accent-cyan, #6872D9) 12%, transparent) !important;
+}
+
+.delete-btn:hover {
+  border-color: var(--accent-magenta, #5E6AD2) !important;
+  background: color-mix(in srgb, var(--accent-magenta, #5E6AD2) 12%, transparent) !important;
+}
+
+/* 删除确认弹窗 */
+.delete-confirm-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: color-mix(in srgb, var(--background, #050506) 80%, transparent) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.delete-confirm-dialog {
+  position: relative !important;
+  border: 1px solid var(--border-panel, rgba(255, 255, 255, 0.06)) !important;
+  border-radius: var(--radius-card, 16px) !important;
+  padding: 28px 32px !important;
+  max-width: 400px !important;
+  background: var(--surface-panel, rgba(255, 255, 255, 0.05)) !important;
+  box-shadow: var(--shadow-screen, 0 0 0 1px rgba(255, 255, 255, 0.06), 0 2px 20px rgba(0, 0, 0, 0.4)) !important;
+  text-align: center !important;
+}
+
+.delete-confirm-dialog h3 {
+  margin: 0 0 12px !important;
+  font-family: var(--font-heading, 'Inter', system-ui, sans-serif) !important;
+  font-size: 1.15rem !important;
+  font-weight: 600 !important;
+  color: var(--foreground, #EDEDEF) !important;
+}
+
+.delete-confirm-dialog p {
+  margin: 0 0 8px !important;
+  font-size: 0.9rem !important;
+  color: var(--muted, #8A8F98) !important;
+}
+
+.delete-warning {
+  color: var(--accent-orange, #9CA8F7) !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+}
+
+.delete-confirm-actions {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: center !important;
+  margin-top: 24px !important;
+}
+
+.cancel-btn {
+  appearance: none !important;
+  border: 1px solid var(--border-control, rgba(255, 255, 255, 0.10)) !important;
+  border-radius: var(--radius-button, 8px) !important;
+  padding: 10px 20px !important;
+  font: 600 0.85rem/1 var(--font-body, 'Inter', system-ui, sans-serif) !important;
+  color: var(--foreground, #EDEDEF) !important;
+  background: var(--surface-control, rgba(255, 255, 255, 0.08)) !important;
+  cursor: pointer !important;
+  transition: all 150ms ease !important;
+}
+
+.cancel-btn:hover {
+  background: color-mix(in srgb, var(--foreground, #EDEDEF) 12%, transparent) !important;
+}
+
+.confirm-delete-btn {
+  appearance: none !important;
+  border: 1px solid var(--accent-magenta, #5E6AD2) !important;
+  border-radius: var(--radius-button, 8px) !important;
+  padding: 10px 20px !important;
+  font: 600 0.85rem/1 var(--font-body, 'Inter', system-ui, sans-serif) !important;
+  color: var(--foreground, #EDEDEF) !important;
+  background: color-mix(in srgb, var(--accent-magenta, #5E6AD2) 15%, transparent) !important;
+  cursor: pointer !important;
+  transition: all 150ms ease !important;
+}
+
+.confirm-delete-btn:hover {
+  background: color-mix(in srgb, var(--accent-magenta, #5E6AD2) 25%, transparent) !important;
+}
+
+.book-tone-default {
+  background: var(--surface-card, rgba(255, 255, 255, 0.05)) !important;
+}
+
+.book-tone-magenta {
+  background: color-mix(in srgb, var(--accent-magenta, #5E6AD2) 8%, var(--surface-card, rgba(255, 255, 255, 0.05))) !important;
+}
+
+.book-tone-cyan {
+  background: color-mix(in srgb, var(--accent-cyan, #6872D9) 8%, var(--surface-card, rgba(255, 255, 255, 0.05))) !important;
+}
+
+.book-tone-orange {
+  background: color-mix(in srgb, var(--accent-orange, #9CA8F7) 8%, var(--surface-card, rgba(255, 255, 255, 0.05))) !important;
+}
+
+.book-tone-purple {
+  background: color-mix(in srgb, var(--accent-purple, #5E6AD2) 8%, var(--surface-card, rgba(255, 255, 255, 0.05))) !important;
+}
+
+.book-tone-yellow {
+  background: color-mix(in srgb, var(--accent-yellow, #8B9DF5) 8%, var(--surface-card, rgba(255, 255, 255, 0.05))) !important;
+  color: var(--foreground, #EDEDEF) !important;
+}
+
+.book-tone-yellow .spine-badge {
+  border-color: var(--border-control, rgba(255, 255, 255, 0.10)) !important;
+  background: var(--surface-control, rgba(255, 255, 255, 0.08)) !important;
+}
+
+@media (max-width: 980px) {
+  .worldbook-screen {
+    border: none !important;
+    min-height: calc(100vh - 30px) !important;
+  }
+
+  .worldbook-shelf {
+    min-height: 140px !important;
+  }
+
+  .worldbook-book-spine {
+    width: 64px !important;
+    min-height: 130px !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .worldbook-shelf-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .worldbook-add-button {
+    width: 100%;
+  }
+
+  .worldbook-bg-word {
+    font-size: clamp(4rem, 24vw, 7rem);
+    right: -7%;
+  }
+}
+
+/* 竖屏模式 - 现代化扁平化设计 */
+@media (max-width: 768px) and (orientation: portrait) {
+  .worldbook-screen {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100vh !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    background: var(--background, #050506) !important;
+  }
+
+  .worldbook-bg-word {
+    display: none !important;
+  }
+
+  /* 顶部区域 */
+  .worldbook-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 16px !important;
+    background: var(--background, #050506) !important;
+    border-bottom: 1px solid var(--border-panel, rgba(255, 255, 255, 0.06)) !important;
+  }
+
+  .back-button {
+    appearance: none !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 6px 12px !important;
+    font: 500 0.8rem/1 var(--font-body) !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent) !important;
+    background: transparent !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 150ms ease !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+    width: auto !important;
+    min-width: auto !important;
+    min-height: 44px !important;
+  }
+
+  .back-icon {
+    font-size: 1.3rem !important;
+    line-height: 1 !important;
+    font-weight: 700 !important;
+    display: inline-block !important;
+  }
+
+  .back-text {
+    display: inline !important;
+  }
+
+  .back-button:hover {
+    transform: none !important;
+    color: var(--foreground, #ffffff) !important;
+    background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent) !important;
+    box-shadow: none !important;
+  }
+
+  .back-button:focus-visible {
+    outline: 2px solid var(--accent-cyan, #00d4ff) !important;
+    outline-offset: 2px !important;
+  }
+
+  .worldbook-title-group {
+    gap: 8px !important;
+  }
+
+  .worldbook-tag {
+    display: none !important;
+  }
+
+  .worldbook-title {
+    font-size: 1.4rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    color: var(--foreground, #EDEDEF) !important;
+  }
+
+  .worldbook-title-gradient {
+    font-size: 0.7rem !important;
+    letter-spacing: 0.12em !important;
+    color: var(--muted, #8A8F98) !important;
+    background: none !important;
+    -webkit-text-fill-color: var(--muted, #8A8F98) !important;
+  }
+
+  /* 书架区域 */
+  .worldbook-shelf-zone {
+    padding: 0 !important;
+    overflow: visible !important;
+    flex: 1 !important;
+  }
+
+  .worldbook-shelf-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-bottom: 0 !important;
+    padding: 16px !important;
+    border-bottom: 1px solid var(--border-panel, rgba(255, 255, 255, 0.06)) !important;
+  }
+
+  .worldbook-shelf-title {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    color: var(--foreground, #EDEDEF) !important;
+  }
+
+  .worldbook-actions {
+    display: flex !important;
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .worldbook-import-button,
+  .worldbook-add-button {
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    border: 1px solid var(--border-control, rgba(255, 255, 255, 0.10)) !important;
+    border-radius: var(--radius-button, 8px) !important;
+    box-shadow: none !important;
+    min-height: 40px !important;
+  }
+
+  .worldbook-import-button {
+    background: var(--surface-control, rgba(255, 255, 255, 0.08)) !important;
+    color: var(--muted, #8A8F98) !important;
+  }
+
+  .worldbook-add-button {
+    background: var(--gradient-primary, linear-gradient(180deg, rgba(94, 106, 210, 0.15) 0%, transparent 50%, rgba(94, 106, 210, 0.05) 100%)) !important;
+    color: var(--foreground, #EDEDEF) !important;
+  }
+
+  /* 书籍列表 */
+  .worldbook-shelf {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* 书籍列表项 - 扁平化行样式 */
+  .worldbook-book-spine {
+    width: 100% !important;
+    min-height: 60px !important;
+    height: auto !important;
+    padding: 14px 16px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    box-shadow: none !important;
+    transition: background-color 150ms ease !important;
+    position: relative !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border-bottom: 1px solid var(--border-panel, rgba(255, 255, 255, 0.06)) !important;
+  }
+
+  .worldbook-book-spine:last-child {
+    border-bottom: none !important;
+  }
+
+  .worldbook-book-spine:hover {
+    transform: none !important;
+    background: var(--surface-control, rgba(255, 255, 255, 0.04)) !important;
+  }
+
+  .worldbook-book-spine.active {
+    border-color: transparent !important;
+    background: color-mix(in srgb, var(--accent-cyan, #6872D9) 6%, transparent) !important;
+    box-shadow: none !important;
+  }
+
+  .worldbook-book-spine.active::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 3px !important;
+    background: var(--accent-cyan, #6872D9) !important;
+    border-radius: 0 !important;
+  }
+
+  .book-tone-default,
+  .book-tone-magenta,
+  .book-tone-cyan,
+  .book-tone-orange,
+  .book-tone-purple,
+  .book-tone-yellow {
+    background: transparent !important;
+  }
+
+  .spine-badge {
+    position: static !important;
+    font-size: 0.65rem !important;
+    padding: 3px 8px !important;
+    border-radius: 6px !important;
+    background: var(--surface-status, rgba(255, 255, 255, 0.06)) !important;
+    color: var(--muted, #8A8F98) !important;
+    border: 1px solid var(--border-status, rgba(94, 106, 210, 0.30)) !important;
+    font-weight: 500 !important;
+    max-width: none !important;
+    white-space: nowrap !important;
+    z-index: auto !important;
+  }
+
+  .spine-title {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    flex: 1 !important;
+    text-align: left !important;
+    color: var(--foreground, #EDEDEF) !important;
+    padding-right: 0 !important;
+  }
+
+  .spine-actions {
+    position: static !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+    opacity: 1 !important;
+    z-index: auto !important;
+    flex-shrink: 0 !important;
+  }
+
+  .spine-action-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    font-size: 0.9rem !important;
+    border-radius: var(--radius-button, 8px) !important;
+    background: var(--surface-control, rgba(255, 255, 255, 0.08)) !important;
+    border: 1px solid var(--border-control, rgba(255, 255, 255, 0.10)) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    color: var(--muted, #8A8F98) !important;
+  }
+
+  .spine-action-btn:hover {
+    background: color-mix(in srgb, var(--foreground, #EDEDEF) 12%, transparent) !important;
+    color: var(--foreground, #EDEDEF) !important;
+  }
+
+  .spine-action-btn.delete-btn:hover {
+    background: color-mix(in srgb, var(--accent-magenta, #5E6AD2) 12%, transparent) !important;
+    color: var(--accent-magenta, #5E6AD2) !important;
+    border-color: var(--accent-magenta, #5E6AD2) !important;
+  }
+
+  .spine-action-btn:active {
+    background: color-mix(in srgb, var(--foreground, #EDEDEF) 15%, transparent) !important;
+  }
+
+  /* 删除确认弹窗 */
+  .delete-confirm-overlay {
+    padding: 20px !important;
+  }
+
+  .delete-confirm-dialog {
+    width: 90% !important;
+    max-width: 340px !important;
+    padding: 24px !important;
+    border-radius: var(--radius-card, 16px) !important;
+    background: var(--surface-panel, rgba(255, 255, 255, 0.05)) !important;
+    border: 1px solid var(--border-panel, rgba(255, 255, 255, 0.06)) !important;
+    box-shadow: var(--shadow-screen, 0 0 0 1px rgba(255, 255, 255, 0.06), 0 2px 20px rgba(0, 0, 0, 0.4)) !important;
+  }
+
+  .delete-confirm-dialog h3 {
+    font-size: 1.1rem !important;
+    color: var(--foreground, #EDEDEF) !important;
+    margin-bottom: 10px !important;
+  }
+
+  .delete-confirm-dialog p {
+    font-size: 0.85rem !important;
+    color: var(--muted, #8A8F98) !important;
+  }
+
+  .delete-confirm-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-top: 20px !important;
+  }
+
+  .cancel-btn,
+  .confirm-delete-btn {
+    flex: 1 !important;
+    padding: 12px 16px !important;
+    font-size: 0.85rem !important;
+    border-radius: var(--radius-button, 8px) !important;
+    min-height: 44px !important;
+  }
+
+  /* 新增世界书弹窗 */
+  .new-book-dialog {
+    width: 90% !important;
+    max-width: 340px !important;
+    padding: 24px !important;
+    border-radius: var(--radius-card, 16px) !important;
+    background: var(--surface-panel, rgba(255, 255, 255, 0.05)) !important;
+    border: 1px solid var(--border-panel, rgba(255, 255, 255, 0.06)) !important;
+    box-shadow: var(--shadow-screen, 0 0 0 1px rgba(255, 255, 255, 0.06), 0 2px 20px rgba(0, 0, 0, 0.4)) !important;
+  }
+
+  .new-book-dialog h3 {
+    font-size: 1.1rem !important;
+    color: var(--foreground, #EDEDEF) !important;
+    margin-bottom: 16px !important;
+  }
+
+  .new-book-field {
+    display: block !important;
+    margin-bottom: 16px !important;
+  }
+
+  .new-book-field .field-label {
+    display: block !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    color: var(--muted, #8A8F98) !important;
+    margin-bottom: 8px !important;
+  }
+
+  .new-book-input {
+    width: 100% !important;
+    padding: 10px 14px !important;
+    font-size: 0.9rem !important;
+    border: 1px solid var(--border-field, rgba(255, 255, 255, 0.06)) !important;
+    border-radius: var(--radius-button, 8px) !important;
+    background: var(--surface-field, rgba(255, 255, 255, 0.03)) !important;
+    color: var(--foreground, #EDEDEF) !important;
+    min-height: 44px !important;
+    box-sizing: border-box !important;
+  }
+
+  .new-book-input:focus {
+    outline: none !important;
+    border-color: var(--accent-cyan, #6872D9) !important;
+    box-shadow: none !important;
+  }
+
+  .confirm-btn {
+    background: var(--gradient-primary, linear-gradient(180deg, rgba(94, 106, 210, 0.15) 0%, transparent 50%, rgba(94, 106, 210, 0.05) 100%)) !important;
+    border: 1px solid var(--border-action, rgba(94, 106, 210, 0.50)) !important;
+    color: var(--foreground, #EDEDEF) !important;
+    border-radius: var(--radius-button, 8px) !important;
+    padding: 12px 16px !important;
+    min-height: 44px !important;
+    width: 100% !important;
+    font-weight: 600 !important;
+  }
+}
+

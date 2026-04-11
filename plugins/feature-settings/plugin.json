@@ -1,0 +1,27 @@
+{
+  "id": "settings",
+  "name": "设置",
+  "description": "调整音量、显示与 API 配置。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "settings",
+    "title": "设置",
+    "icon": "⚙",
+    "order": 40,
+    "variant": "tone-orange border-double tilt-right"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "settings"
+  },
+  "storage": {
+    "namespace": "settings"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

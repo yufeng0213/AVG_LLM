@@ -1,0 +1,31 @@
+{
+  "id": "face-to-face",
+  "name": "面对面",
+  "description": "上传本地视频并进入面对面对话界面。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "face-to-face",
+    "title": "面对面",
+    "icon": "🎥",
+    "order": 35,
+    "variant": "tone-cyan border-solid tilt-right"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "face-to-face"
+  },
+  "action": {
+    "type": "screen",
+    "screen": "face-to-face"
+  },
+  "storage": {
+    "namespace": "face-to-face"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

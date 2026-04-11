@@ -455,6 +455,142 @@ if (platform.isElectron()) {
 ## 八、推荐实施路径
 
 ```
+
+---
+
+## 九、Android UI 开发注意事项
+
+### 9.1 常见问题及原因
+
+#### 问题 1：文字被挤压/溢出显示范围
+
+**现象**：
+- 对话框标题文字被垂直挤压，显示不完整
+- 标签页文字超出显示范围，看不见
+- 关闭按钮变形
+
+**原因**：
+1. **CSS选择器不匹配**：Vue模板使用的class与CSS选择器不一致，导致Android专用样式未生效
+   - 错误示例：`:class="{ 'is-android': isAndroidPlatform }"` 但CSS使用 `.platform-android.android-portrait`
+   - 正确示例：`:class="{ 'platform-android': isAndroidPlatform, 'android-portrait': isAndroidPlatform }"`
+
+2. **缺少flex布局约束**：
+   - 父容器没有设置 `display: flex` 和正确的 `flex-direction`
+   - 子元素没有设置 `flex-shrink: 0` 防止被压缩
+   - 没有设置 `min-width: 0` 允许flex子元素正确收缩
+
+3. **文字溢出处理缺失**：
+   - 没有设置 `white-space: nowrap` 防止换行
+   - 没有设置 `overflow: hidden` 和 `text-overflow: ellipsis` 处理溢出
+
+#### 问题 2：按钮变形/文字截断
+
+**现象**：
+- 按钮文字被截断
+- 按钮高度不一致
+- 按钮超出容器宽度
+
+**原因**：
+1. **没有固定按钮尺寸**：Android端需要明确设置按钮的 `min-height` 和 `height`
+2. **缺少box-sizing**：没有设置 `box-sizing: border-box` 导致padding计算错误
+3. **没有white-space处理**：长文字导致按钮宽度超出
+
+### 9.2 解决方案
+
+#### 方案 1：修复CSS选择器匹配
+
+```vue
+<!-- Vue模板 -->
+<main class="save-load-screen" :class="{ 'platform-android': isAndroidPlatform, 'android-portrait': isAndroidPlatform }">
+```
+
+```css
+/* CSS选择器 */
+.platform-android.android-portrait .screen-header {
+  /* Android竖屏专用样式 */
+}
+```
+
+#### 方案 2：使用!important强制覆盖
+
+Android竖屏专用样式需要添加 `!important` 确保覆盖默认样式：
+
+```css
+.platform-android.android-portrait .dialog-header {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+
+.platform-android.android-portrait .dialog-title {
+  flex: 1 !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.platform-android.android-portrait .dialog-close {
+  flex-shrink: 0 !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+}
+```
+
+#### 方案 3：按钮样式规范
+
+```css
+.platform-android.android-portrait .dialog-btn {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 10px 8px !important;
+  font-size: 0.85rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+```
+
+### 9.3 Android UI 开发检查清单
+
+- [ ] **CSS选择器匹配**：确保Vue模板的class与CSS选择器一致
+- [ ] **flex布局约束**：
+  - 父容器设置 `display: flex` 和正确的 `flex-direction`
+  - 固定尺寸的元素设置 `flex-shrink: 0`
+  - 需要收缩的元素设置 `min-width: 0` 或 `min-height: 0`
+- [ ] **文字溢出处理**：
+  - 单行文字：`white-space: nowrap; overflow: hidden; text-overflow: ellipsis`
+  - 多行文字：`display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical`
+- [ ] **按钮尺寸固定**：设置 `min-height`、`height`、`width: 100%`
+- [ ] **box-sizing**：所有元素设置 `box-sizing: border-box`
+- [ ] **使用!important**：Android竖屏专用样式添加 `!important` 确保覆盖
+- [ ] **视口单位**：使用 `dvh` 代替 `vh` 适配移动端
+- [ ] **安全区域**：使用 `env(safe-area-inset-bottom)` 适配刘海屏
+
+### 9.4 调试技巧
+
+1. **使用Chrome DevTools远程调试**：
+   ```
+   chrome://inspect
+   ```
+
+2. **检查CSS选择器是否生效**：
+   - 在DevTools中检查元素，查看应用的样式
+   - 确认 `.platform-android.android-portrait` 选择器是否匹配
+
+3. **临时添加边框调试布局**：
+   ```css
+   .debug * { outline: 1px solid red; }
+   ```
 第一步：PWA 验证（1天）
     ↓
 验证核心功能可用

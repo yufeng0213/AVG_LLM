@@ -206,5 +206,5 @@ onMounted(async () => {
   </section>
 </template>
 
-<style scoped src="./ThemeSettingsPanel.css"></style>
+<style scoped src="./SettingsPanel.css"></style>
 

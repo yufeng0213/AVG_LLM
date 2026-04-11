@@ -4,6 +4,7 @@
 
 export {
   generateStory,
+  generateFaceToFaceJointDialogues,
   generateCgPrompt,
   generateMiniTheater,
   generateCharacterSpeech,
@@ -24,6 +25,8 @@ export {
   generateHandheldDungeonBanter,
   generateHandheldCampfireCompanions,
   generateWorldBookOpeningDialogue,
+  generateBedroomFurnitureItems,
+  generateMerchantItems,
   getActiveApiConfig,
 } from './llmService'
 export { buildStoryPrompt, buildQuickPrompt } from './promptGenerator'

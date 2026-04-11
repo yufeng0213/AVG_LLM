@@ -1,0 +1,27 @@
+{
+  "id": "plugin-manager",
+  "name": "插件管理",
+  "description": "加载和管理扩展插件。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "plugins",
+    "title": "插件管理",
+    "icon": "🔌",
+    "order": 60,
+    "variant": "tone-cyan border-dashed tilt-right"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "plugin-manager"
+  },
+  "storage": {
+    "namespace": "plugin-manager"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

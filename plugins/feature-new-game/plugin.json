@@ -1,0 +1,29 @@
+{
+  "id": "new-game",
+  "name": "新游戏",
+  "description": "开启新的主线并重置选择分支。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "new-game",
+    "title": "新游戏",
+    "icon": "★",
+    "order": 30,
+    "variant": "tone-cyan border-dashed tilt-left"
+  },
+  "entry": {
+    "type": "service",
+    "module": "./src/entry.js"
+  },
+  "action": {
+    "type": "new-game-dialog"
+  },
+  "storage": {
+    "namespace": "new-game"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

@@ -196,5 +196,5 @@ onMounted(loadCurrentDisplaySettings)
   </section>
 </template>
 
-<style scoped src="./DisplaySettingsPanel.css"></style>
+<style scoped src="./SettingsPanel.css"></style>
 

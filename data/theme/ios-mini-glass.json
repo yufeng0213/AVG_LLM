@@ -1,0 +1,419 @@
+{
+  "id": "ios-mini-glass",
+  "name": "iOS Mini Glass",
+  "description": "iOS 16 迷你玻璃播放器风格——精致的毛玻璃效果、紧凑的播放器布局、SF Pro 字体系统。轻盈通透的视觉体验，专为音乐播放器场景优化，具有 backdrop-filter 模糊、半透明材质和精致的阴影层次。",
+  "styleProfile": "ios-mini-glass",
+  "platform": "ios",
+  "aesthetic": "glassmorphism-player",
+  "tokens": {
+    "colors": {
+      "background": "transparent",
+      "backgroundSecondary": "rgba(255, 255, 255, 0.72)",
+      "backgroundTertiary": "rgba(255, 255, 255, 0.45)",
+      "foreground": "#FFFFFF",
+      "foregroundSecondary": "rgba(255, 255, 255, 0.85)",
+      "foregroundTertiary": "rgba(255, 255, 255, 0.6)",
+      "separator": "rgba(255, 255, 255, 0.2)",
+      "separatorOpaque": "rgba(255, 255, 255, 0.3)",
+
+      "systemBlue": "#007AFF",
+      "systemBlueDark": "#0051D5",
+      "systemGreen": "#34C759",
+      "systemRed": "#FF3B30",
+      "systemOrange": "#FF9500",
+      "systemYellow": "#FFCC00",
+      "systemPurple": "#AF52DE",
+      "systemPink": "#FF2D55",
+      "systemTeal": "#5AC8FA",
+      "systemIndigo": "#5856D6",
+
+      "glass": {
+        "ultraThin": "rgba(255, 255, 255, 0.18)",
+        "thin": "rgba(255, 255, 255, 0.45)",
+        "regular": "rgba(255, 255, 255, 0.72)",
+        "thick": "rgba(255, 255, 255, 0.85)",
+        "tinted": "rgba(255, 255, 255, 0.1)",
+        "tintedHover": "rgba(255, 255, 255, 0.15)"
+      },
+
+      "player": {
+        "background": "rgba(255, 255, 255, 0.1)",
+        "border": "rgba(255, 255, 255, 0.2)",
+        "shadow": "rgba(0, 0, 0, 0.3)",
+        "coverShadow": "rgba(0, 0, 0, 0.25)",
+        "buttonBackground": "rgba(255, 255, 255, 0.15)",
+        "buttonBackgroundHover": "rgba(255, 255, 255, 0.3)"
+      }
+    },
+
+    "fonts": {
+      "family": {
+        "text": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif",
+        "display": "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif",
+        "rounded": "-apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Segoe UI', sans-serif",
+        "mono": "'SF Mono', SFMono-Regular, 'Menlo', 'Monaco', 'Consolas', monospace"
+      },
+      "weights": {
+        "regular": "400",
+        "medium": "500",
+        "semibold": "600",
+        "bold": "700"
+      }
+    },
+
+    "radii": {
+      "small": "8px",
+      "medium": "12px",
+      "large": "16px",
+      "xlarge": "20px",
+      "xxlarge": "24px",
+      "pill": "9999px",
+      "cover": "12px",
+      "player": "24px"
+    },
+
+    "effects": {
+      "blur": {
+        "thin": "12px",
+        "regular": "20px",
+        "thick": "40px"
+      },
+      "saturate": {
+        "default": "180%",
+        "high": "200%"
+      },
+      "shadow": {
+        "player": "0 12px 40px rgba(0, 0, 0, 0.3)",
+        "cover": "0 4px 12px rgba(0, 0, 0, 0.25)",
+        "button": "0 4px 12px rgba(0, 0, 0, 0.25)",
+        "subtle": "0 2px 8px rgba(0, 0, 0, 0.08)"
+      },
+      "border": {
+        "glass": "1px solid rgba(255, 255, 255, 0.2)",
+        "glassSubtle": "1px solid rgba(255, 255, 255, 0.15)",
+        "glassStrong": "1px solid rgba(255, 255, 255, 0.3)"
+      }
+    },
+
+    "motion": {
+      "duration": {
+        "fast": "150ms",
+        "normal": "200ms",
+        "slow": "300ms"
+      },
+      "easing": {
+        "standard": "cubic-bezier(0.25, 0.1, 0.25, 1)",
+        "spring": "cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+        "bounce": "cubic-bezier(0.34, 1.56, 0.64, 1)"
+      }
+    }
+  },
+
+  "typography": {
+    "playerTitle": {
+      "size": "15px",
+      "weight": "600",
+      "lineHeight": "1.3",
+      "tracking": "-0.24px",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    },
+    "playerArtist": {
+      "size": "12px",
+      "weight": "400",
+      "lineHeight": "1.4",
+      "tracking": "0",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+      "color": "rgba(255, 255, 255, 0.6)"
+    },
+    "title1": {
+      "size": "28px",
+      "weight": "700",
+      "lineHeight": "1.21",
+      "tracking": "0.36px",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
+    },
+    "title2": {
+      "size": "22px",
+      "weight": "700",
+      "lineHeight": "1.27",
+      "tracking": "0.35px",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
+    },
+    "headline": {
+      "size": "17px",
+      "weight": "600",
+      "lineHeight": "1.29",
+      "tracking": "-0.41px",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    },
+    "body": {
+      "size": "17px",
+      "weight": "400",
+      "lineHeight": "1.29",
+      "tracking": "-0.41px",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    },
+    "callout": {
+      "size": "16px",
+      "weight": "400",
+      "lineHeight": "1.31",
+      "tracking": "-0.32px",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    },
+    "subheadline": {
+      "size": "15px",
+      "weight": "400",
+      "lineHeight": "1.33",
+      "tracking": "-0.24px",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    },
+    "footnote": {
+      "size": "13px",
+      "weight": "400",
+      "lineHeight": "1.38",
+      "tracking": "-0.08px",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    },
+    "caption": {
+      "size": "12px",
+      "weight": "400",
+      "lineHeight": "1.33",
+      "tracking": "0",
+      "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+    }
+  },
+
+  "spacing": {
+    "player": {
+      "width": "280px",
+      "padding": "16px 18px",
+      "gap": "14px"
+    },
+    "cover": {
+      "size": "50px",
+      "radius": "12px"
+    },
+    "button": {
+      "size": "36px",
+      "radius": "50%",
+      "iconSize": "16px"
+    },
+    "horizontal": "16px",
+    "horizontalLarge": "20px",
+    "vertical": "12px",
+    "verticalSmall": "8px",
+    "safeAreaTop": "59px",
+    "safeAreaBottom": "34px"
+  },
+
+  "components": {
+    "miniPlayer": {
+      "description": "iOS 16 迷你玻璃播放器",
+      "width": "280px",
+      "padding": "16px 18px",
+      "radius": "24px",
+      "background": "rgba(255, 255, 255, 0.1)",
+      "blur": "20px",
+      "saturate": "180%",
+      "border": "1px solid rgba(255, 255, 255, 0.2)",
+      "shadow": "0 12px 40px rgba(0, 0, 0, 0.3)",
+      "foreground": "#FFFFFF",
+      "layout": {
+        "display": "flex",
+        "alignItems": "center",
+        "gap": "14px"
+      },
+      "cover": {
+        "width": "50px",
+        "height": "50px",
+        "radius": "12px",
+        "shadow": "0 4px 12px rgba(0, 0, 0, 0.25)",
+        "objectFit": "cover"
+      },
+      "info": {
+        "flex": "1",
+        "whiteSpace": "nowrap",
+        "overflow": "hidden"
+      },
+      "title": {
+        "fontSize": "15px",
+        "fontWeight": "600",
+        "marginBottom": "3px",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+      },
+      "artist": {
+        "fontSize": "12px",
+        "color": "rgba(255, 255, 255, 0.6)",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+      },
+      "playButton": {
+        "width": "36px",
+        "height": "36px",
+        "radius": "50%",
+        "background": "rgba(255, 255, 255, 0.15)",
+        "foreground": "#FFFFFF",
+        "fontSize": "16px",
+        "border": "none",
+        "cursor": "pointer",
+        "transition": "all 200ms ease",
+        "hover": {
+          "background": "rgba(255, 255, 255, 0.3)",
+          "transform": "scale(1.05)"
+        },
+        "active": {
+          "transform": "scale(0.95)"
+        }
+      }
+    },
+
+    "buttons": {
+      "glassTinted": {
+        "description": "玻璃质感圆形按钮",
+        "width": "36px",
+        "height": "36px",
+        "radius": "50%",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+        "background": "rgba(255, 255, 255, 0.15)",
+        "foreground": "#FFFFFF",
+        "blur": "20px",
+        "saturate": "180%",
+        "border": "none",
+        "shadow": "0 4px 12px rgba(0, 0, 0, 0.25)",
+        "transition": "all 200ms ease",
+        "hover": {
+          "background": "rgba(255, 255, 255, 0.3)",
+          "transform": "scale(1.05)"
+        },
+        "active": {
+          "transform": "scale(0.95)"
+        }
+      },
+      "glass": {
+        "description": "玻璃质感按钮",
+        "height": "50px",
+        "padding": "0 20px",
+        "radius": "12px",
+        "fontSize": "17px",
+        "fontWeight": "600",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+        "background": "rgba(255, 255, 255, 0.72)",
+        "foreground": "#007AFF",
+        "blur": "20px",
+        "saturate": "180%",
+        "border": "1px solid rgba(255, 255, 255, 0.2)",
+        "shadow": "0 12px 40px rgba(0, 0, 0, 0.3)",
+        "pressed": {
+          "background": "rgba(255, 255, 255, 0.88)",
+          "scale": "0.96"
+        }
+      },
+      "prominent": {
+        "description": "主要操作按钮",
+        "height": "50px",
+        "padding": "0 20px",
+        "radius": "12px",
+        "fontSize": "17px",
+        "fontWeight": "600",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+        "background": "#007AFF",
+        "foreground": "#FFFFFF",
+        "pressed": {
+          "background": "#0051D5",
+          "scale": "0.96"
+        }
+      }
+    },
+
+    "cards": {
+      "glass": {
+        "description": "玻璃质感卡片",
+        "background": "rgba(255, 255, 255, 0.72)",
+        "radius": "24px",
+        "padding": "16px 18px",
+        "blur": "20px",
+        "saturate": "180%",
+        "border": "1px solid rgba(255, 255, 255, 0.2)",
+        "shadow": "0 12px 40px rgba(0, 0, 0, 0.3)"
+      },
+      "glassCompact": {
+        "description": "紧凑玻璃卡片（播放器风格）",
+        "background": "rgba(255, 255, 255, 0.1)",
+        "radius": "24px",
+        "padding": "16px 18px",
+        "blur": "20px",
+        "saturate": "180%",
+        "border": "1px solid rgba(255, 255, 255, 0.2)",
+        "shadow": "0 12px 40px rgba(0, 0, 0, 0.3)",
+        "foreground": "#FFFFFF"
+      }
+    },
+
+    "inputs": {
+      "glassField": {
+        "description": "玻璃风格输入框",
+        "height": "36px",
+        "padding": "0 12px",
+        "radius": "12px",
+        "fontSize": "17px",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+        "background": "rgba(255, 255, 255, 0.15)",
+        "foreground": "#FFFFFF",
+        "placeholder": "rgba(255, 255, 255, 0.6)",
+        "blur": "20px",
+        "border": "1px solid rgba(255, 255, 255, 0.1)",
+        "focused": {
+          "background": "rgba(255, 255, 255, 0.25)",
+          "borderColor": "rgba(255, 255, 255, 0.3)"
+        }
+      }
+    },
+
+    "sliders": {
+      "progress": {
+        "description": "播放进度条",
+        "height": "4px",
+        "radius": "2px",
+        "background": "rgba(255, 255, 255, 0.3)",
+        "fill": "#FFFFFF",
+        "thumb": {
+          "size": "12px",
+          "background": "#FFFFFF",
+          "shadow": "0 2px 6px rgba(0, 0, 0, 0.3)"
+        }
+      }
+    },
+
+    "navigation": {
+      "tabBar": {
+        "description": "底部标签栏",
+        "height": "49px",
+        "background": "rgba(249, 249, 249, 0.94)",
+        "blur": "20px",
+        "borderTop": "0.5px solid rgba(60, 60, 67, 0.18)",
+        "iconSize": "25px",
+        "activeColor": "#007AFF",
+        "inactiveColor": "#8E8E93"
+      }
+    }
+  },
+
+  "cssSnippets": {
+    "miniPlayer": ".ios-mini-player { width: 280px; padding: 16px 18px; border-radius: 24px; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3); display: flex; align-items: center; gap: 14px; color: #FFFFFF; } .ios-mini-player .cover { width: 50px; height: 50px; border-radius: 12px; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.25); } .ios-mini-player .info { flex: 1; white-space: nowrap; overflow: hidden; } .ios-mini-player .title { font-size: 15px; font-weight: 600; margin-bottom: 3px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; } .ios-mini-player .artist { font-size: 12px; color: rgba(255,255,255,0.6); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; } .ios-mini-player .play-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); color: #FFFFFF; font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 200ms ease; } .ios-mini-player .play-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); } .ios-mini-player .play-btn:active { transform: scale(0.95); }",
+
+    "buttonGlassTinted": ".ios-btn-glass-tinted { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-size: 16px; color: #FFFFFF; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: none; border-radius: 50%; cursor: pointer; transition: all 200ms ease; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); } .ios-btn-glass-tinted:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); } .ios-btn-glass-tinted:active { transform: scale(0.95); }",
+
+    "buttonGlass": ".ios-btn-glass { display: inline-flex; align-items: center; justify-content: center; height: 50px; padding: 0 20px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-size: 17px; font-weight: 600; color: #007AFF; background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; cursor: pointer; transition: all 150ms cubic-bezier(0.25, 0.1, 0.25, 1); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3); } .ios-btn-glass:active { background: rgba(255, 255, 255, 0.88); transform: scale(0.96); }",
+
+    "cardGlass": ".ios-card-glass { background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 24px; padding: 16px 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3); }",
+
+    "cardGlassCompact": ".ios-card-glass-compact { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 24px; padding: 16px 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3); color: #FFFFFF; }",
+
+    "inputGlass": ".ios-input-glass { height: 36px; padding: 0 12px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-size: 17px; color: #FFFFFF; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; outline: none; transition: all 150ms; } .ios-input-glass::placeholder { color: rgba(255, 255, 255, 0.6); } .ios-input-glass:focus { background: rgba(255, 255, 255, 0.25); border-color: rgba(255, 255, 255, 0.3); }",
+
+    "glass": ".ios-glass { background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.2); } .ios-glass-thick { background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); } .ios-glass-thin { background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(12px) saturate(180%); -webkit-backdrop-filter: blur(12px) saturate(180%); } .ios-glass-tinted { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.2); }",
+
+    "progressBar": ".ios-progress { width: 100%; height: 4px; background: rgba(255, 255, 255, 0.3); border-radius: 2px; overflow: hidden; } .ios-progress-fill { height: 100%; background: #FFFFFF; border-radius: 2px; transition: width 200ms ease; } .ios-progress-thumb { width: 12px; height: 12px; background: #FFFFFF; border-radius: 50%; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); position: absolute; top: 50%; transform: translate(-50%, -50%); }"
+  }
+}

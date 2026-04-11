@@ -31,10 +31,15 @@ const AREAS = [
     keywords: ['世界书', 'worldbook', '角色库', '设定', '词条'],
     must: [
       'src/worldbook/worldBookStore.js',
-      'src/screens/WorldBookScreen.vue',
-      'src/screens/WorldBookEditorScreen.vue',
+      'plugins/feature-worldbook/src/entry.js',
+      'plugins/feature-worldbook/src/WorldBookScreen.vue',
+      'plugins/feature-worldbook/src/WorldBookEditorScreen.vue',
     ],
-    optional: ['src/worldbook/emotionPresets.js', 'src/screens/GameScreen.vue'],
+    optional: [
+      'src/worldbook/emotionPresets.js',
+      'src/screens/GameScreen.vue',
+      'plugins/feature-worldbook/src/worldbook-editor/WorldBookEditorScreen.template.html',
+    ],
   },
   {
     id: 'phone',
@@ -48,7 +53,7 @@ const AREAS = [
     label: '掌机系统',
     keywords: ['handheld', '掌机', 'console', '小游戏', '插件容器'],
     must: ['src/components/HandheldConsole.vue', 'src/plugins/pluginManager.js'],
-    optional: ['src/screens/GameScreen.vue', 'src/screens/PluginManagerScreen.vue'],
+    optional: ['src/screens/GameScreen.vue', 'plugins/feature-plugin-manager/src/PluginManagerScreen.vue'],
   },
   {
     id: 'plugin-system',
@@ -57,9 +62,18 @@ const AREAS = [
     must: [
       'src/plugins/pluginManager.js',
       'src/plugins/PluginComponent.vue',
-      'src/screens/PluginManagerScreen.vue',
+      'src/features/localFeaturePluginManifests.js',
+      'src/features/localFeaturePluginEntries.js',
+      'src/features/pluginScreenRegistry.js',
+      'plugins/feature-plugin-manager/src/PluginManagerScreen.vue',
     ],
-    optional: ['src/components/HandheldConsole.vue', 'src/screens/GameScreen.vue'],
+    optional: [
+      'src/features/startMenuRegistry.js',
+      'src/features/featurePluginRuntimeState.js',
+      'src/components/HandheldConsole.vue',
+      'src/screens/GameScreen.vue',
+      'src/App.vue',
+    ],
   },
   {
     id: 'dungeon-plugin',
@@ -71,13 +85,22 @@ const AREAS = [
       'src/plugins/handheld-xx-dungeon-adventure/logic/roleEngine.js',
       'src/plugins/handheld-xx-dungeon-adventure/MAINTENANCE.md',
     ],
-    optional: ['src/llm/llmService.js', 'src/components/HandheldConsole.vue'],
+    optional: [
+      'src/llm/llmService.js',
+      'src/llm/llmService.handheld.js',
+      'src/components/HandheldConsole.vue',
+      'plugins/feature-adventure-game/src/AdventureGameScreen.vue',
+    ],
   },
   {
     id: 'save-storage',
     label: '存档与本地存储',
     keywords: ['save', 'storage', '存档', '读档', '缓存', 'preferences'],
-    must: ['src/save/saveManager.js', 'src/storage/index.js', 'src/screens/SaveLoadScreen.vue'],
+    must: [
+      'src/save/saveManager.js',
+      'src/storage/index.js',
+      'plugins/feature-load-save/src/SaveLoadScreen.vue',
+    ],
     optional: ['src/screens/GameScreen.vue', 'src/worldbook/worldBookStore.js'],
   },
   {
@@ -85,7 +108,7 @@ const AREAS = [
     label: '设置与主题',
     keywords: ['settings', 'theme', '设置', '主题', '显示', '音频', 'api设置'],
     must: [
-      'src/screens/SettingsScreen.vue',
+      'plugins/feature-settings/src/SettingsScreen.vue',
       'src/settings/ApiSettingsPanel.vue',
       'src/settings/DisplaySettingsPanel.vue',
       'src/settings/ThemeSettingsPanel.vue',
@@ -113,7 +136,13 @@ const AREAS = [
     label: '平台构建（Electron/Android）',
     keywords: ['android', 'electron', 'capacitor', 'apk', 'build', '打包'],
     must: ['package.json', 'vite.config.js', 'electron/main.js'],
-    styleMust: ['src/style.css', 'src/App.css', 'src/screens/GameScreen.css', 'src/components/Phone.css', 'src/components/HandheldConsole.css'],
+    styleMust: [
+      'src/style.css',
+      'src/App.css',
+      'src/screens/game/styles/game-01.css',
+      'src/components/phone/styles/phone-01.css',
+      'src/components/handheld/styles/handheld-01.css',
+    ],
     optional: ['android/capacitor.config.ts'],
   },
 ]

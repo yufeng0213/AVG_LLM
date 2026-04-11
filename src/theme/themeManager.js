@@ -1,13 +1,15 @@
 import dopamineMax from '../themes/presets/dopamine-max.json'
 import clayHiFi from '../themes/presets/clay-hifi.json'
 import linearModern from '../themes/presets/linear-modern.json'
+import iosGlass from '../themes/presets/ios-glass.json'
 import { kvStorage } from '../storage/index.js'
 
 const ACTIVE_THEME_KEY = 'active_theme'
 const CUSTOM_THEMES_KEY = 'custom_themes'
+const EXTERNAL_THEMES_KEY = 'external_themes'
 const DEFAULT_STYLE_PROFILE = 'dopamine-max'
 
-const presetThemes = [dopamineMax, clayHiFi, linearModern]
+const presetThemes = [dopamineMax, clayHiFi, linearModern, iosGlass]
 const fallbackTheme = presetThemes[0]
 
 const tokenToCssVar = {
@@ -53,6 +55,30 @@ const tokenToCssVar = {
   backdropBlur: '--backdrop-blur',
 }
 
+// 组件级 CSS 变量映射（用于 StartScreen.css 等组件的变量化样式）
+const componentVarToCssVar = {
+  launchScreenBorder: '--launch-screen-border',
+  launchScreenRadius: '--launch-screen-radius',
+  launchScreenBg: '--launch-screen-bg',
+  launchScreenBackdrop: '--launch-screen-backdrop',
+  launchScreenTransform: '--launch-screen-transform',
+  launchScreenShadow: '--launch-screen-shadow',
+  heroTagBorder: '--hero-tag-border',
+  heroTagRadius: '--hero-tag-radius',
+  heroTagBg: '--hero-tag-bg',
+  heroTagShadow: '--hero-tag-shadow',
+  menuPanelBorder: '--menu-panel-border',
+  menuPanelBg: '--menu-panel-bg',
+  menuPanelShadow: '--menu-panel-shadow',
+  menuButtonBorder: '--menu-button-border',
+  menuButtonTransform: '--menu-button-transform',
+  menuButtonShadow: '--menu-button-shadow',
+  metaChipBorder: '--meta-chip-border',
+  metaChipRadius: '--meta-chip-radius',
+  metaChipBg: '--meta-chip-bg',
+  metaChipShadow: '--meta-chip-shadow',
+}
+
 const sanitizeTokens = (tokens = {}) => {
   const normalized = { ...fallbackTheme.tokens }
 
@@ -78,6 +104,10 @@ const normalizeTheme = (theme, source = 'custom') => {
     styleProfile: nextStyleProfile,
     source,
     tokens: sanitizeTokens(theme?.tokens),
+    // 支持组件级变量
+    componentVars: theme?.componentVars || {},
+    // 支持外部文件路径
+    externalPath: theme?.externalPath || null,
   }
 }
 
@@ -102,9 +132,72 @@ export const getCustomThemes = async () => {
   return raw.map((theme) => normalizeTheme(theme, 'custom'))
 }
 
+// 从 data/theme/ 目录加载外部主题
+export const loadExternalThemes = async () => {
+  if (typeof window === 'undefined') return []
+  
+  try {
+    // 尝试从 data/theme/ 目录加载主题文件
+    const themeFiles = await fetchExternalThemeFiles()
+    const themes = []
+    
+    for (const themeData of themeFiles) {
+      const normalized = normalizeTheme(themeData, 'external')
+      normalized.externalPath = themeData._filePath
+      themes.push(normalized)
+    }
+    
+    return themes
+  } catch (error) {
+    console.warn('[ThemeManager] Failed to load external themes:', error)
+    return []
+  }
+}
+
+// 获取外部主题文件（通过 fetch 或预定义列表）
+const fetchExternalThemeFiles = async () => {
+  // 预定义的外部主题文件列表
+  const externalThemePaths = [
+    '/data/theme/ios-glass.json',
+    '/data/theme/art-deco.json',
+    '/data/theme/material-you.json',
+  ]
+  
+  const themes = []
+  
+  for (const path of externalThemePaths) {
+    try {
+      const response = await fetch(path)
+      if (response.ok) {
+        const themeData = await response.json()
+        themeData._filePath = path
+        themes.push(themeData)
+      }
+    } catch {
+      // 忽略加载失败的文件
+    }
+  }
+  
+  return themes
+}
+
 export const getThemeCatalog = async () => {
   const normalizedPresets = presetThemes.map((theme) => normalizeTheme(theme, 'preset'))
-  return [...normalizedPresets, ...await getCustomThemes()]
+  const customThemes = await getCustomThemes()
+  const externalThemes = await loadExternalThemes()
+  
+  // 合并所有主题，去重（按 id）
+  const allThemes = [...normalizedPresets, ...customThemes]
+  const existingIds = new Set(allThemes.map(t => t.id))
+  
+  for (const theme of externalThemes) {
+    if (!existingIds.has(theme.id)) {
+      allThemes.push(theme)
+      existingIds.add(theme.id)
+    }
+  }
+  
+  return allThemes
 }
 
 export const getActiveThemeId = async () => {
@@ -126,6 +219,18 @@ const applyTokensToDocument = (tokens) => {
   }
 }
 
+// 应用组件级 CSS 变量
+const applyComponentVarsToDocument = (componentVars = {}) => {
+  if (typeof document === 'undefined') return
+
+  const root = document.documentElement
+  for (const [varName, cssVar] of Object.entries(componentVarToCssVar)) {
+    if (componentVars[varName] !== undefined) {
+      root.style.setProperty(cssVar, componentVars[varName])
+    }
+  }
+}
+
 const applyStyleProfileToDocument = (styleProfile) => {
   if (typeof document === 'undefined') return
 
@@ -139,6 +244,7 @@ export const applyThemeById = async (themeId, { persist = true } = {}) => {
   if (!selected) return null
 
   applyTokensToDocument(selected.tokens)
+  applyComponentVarsToDocument(selected.componentVars)
   applyStyleProfileToDocument(selected.styleProfile)
 
   if (persist) {
@@ -236,6 +342,29 @@ export const getThemeTemplate = () => {
         blobSecondary: 'rgba(0, 245, 212, 0.22)',
         blobTertiary: 'rgba(123, 47, 255, 0.2)',
         backdropBlur: '9px',
+      },
+      // 组件级变量（可选）
+      componentVars: {
+        launchScreenBorder: '1px solid var(--border-panel)',
+        launchScreenRadius: 'var(--radius-card)',
+        launchScreenBg: 'var(--surface-panel)',
+        launchScreenBackdrop: 'blur(var(--backdrop-blur)) saturate(180%)',
+        launchScreenTransform: 'none',
+        launchScreenShadow: 'var(--shadow-screen)',
+        heroTagBorder: '1px solid var(--border-status)',
+        heroTagRadius: '9999px',
+        heroTagBg: 'var(--surface-status)',
+        heroTagShadow: 'var(--shadow-field)',
+        menuPanelBorder: '1px solid var(--border-panel)',
+        menuPanelBg: 'var(--surface-panel)',
+        menuPanelShadow: 'var(--shadow-panel)',
+        menuButtonBorder: '1px solid var(--border-control)',
+        menuButtonTransform: 'none',
+        menuButtonShadow: 'var(--shadow-button)',
+        metaChipBorder: '1px solid var(--border-field)',
+        metaChipRadius: '9999px',
+        metaChipBg: 'var(--surface-field)',
+        metaChipShadow: 'var(--shadow-field)',
       },
     },
     null,

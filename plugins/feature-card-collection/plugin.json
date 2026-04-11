@@ -1,0 +1,28 @@
+{
+  "id": "card-collection",
+  "name": "卡片收藏室",
+  "description": "查看和管理收藏的小卡片。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "card-collection",
+    "title": "卡片收藏室",
+    "icon": "🃏",
+    "order": 80,
+    "variant": "tone-magenta border-dashed tilt-right"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "card-collection"
+  },
+  "storage": {
+    "namespace": "card-collection"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}
+

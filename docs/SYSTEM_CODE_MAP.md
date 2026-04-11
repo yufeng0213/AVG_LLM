@@ -28,8 +28,9 @@ npm run ctx -- --task "你的需求" --mode logic
   - `src/llm/index.js`
 3. 世界书
   - `src/worldbook/worldBookStore.js`
-  - `src/screens/WorldBookScreen.vue`
-  - `src/screens/WorldBookEditorScreen.vue`
+  - `plugins/feature-worldbook/src/WorldBookScreen.vue`
+  - `plugins/feature-worldbook/src/WorldBookEditorScreen.vue`
+  - `plugins/feature-worldbook/src/entry.js`
 4. 手机系统
   - `src/components/Phone.vue`
 5. 掌机系统
@@ -38,7 +39,10 @@ npm run ctx -- --task "你的需求" --mode logic
 6. 插件系统
   - `src/plugins/pluginManager.js`
   - `src/plugins/PluginComponent.vue`
-  - `src/screens/PluginManagerScreen.vue`
+  - `src/features/localFeaturePluginManifests.js`
+  - `src/features/localFeaturePluginEntries.js`
+  - `src/features/pluginScreenRegistry.js`
+  - `plugins/feature-plugin-manager/src/PluginManagerScreen.vue`
 7. RPG 地下城插件
   - `src/plugins/handheld-xx-dungeon-adventure/index.vue`
   - `src/plugins/handheld-xx-dungeon-adventure/logic/dungeonMapEngine.js`
@@ -47,9 +51,9 @@ npm run ctx -- --task "你的需求" --mode logic
 8. 存档与本地存储
   - `src/save/saveManager.js`
   - `src/storage/index.js`
-  - `src/screens/SaveLoadScreen.vue`
+  - `plugins/feature-load-save/src/SaveLoadScreen.vue`
 9. 设置与主题
-  - `src/screens/SettingsScreen.vue`
+  - `plugins/feature-settings/src/SettingsScreen.vue`
   - `src/settings/ApiSettingsPanel.vue`
   - `src/settings/DisplaySettingsPanel.vue`
   - `src/settings/ThemeSettingsPanel.vue`

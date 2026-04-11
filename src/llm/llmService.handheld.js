@@ -670,6 +670,278 @@ const CAMPFIRE_PALETTE_SET = new Set(['ember', 'forest', 'sky', 'violet', 'sand'
 const CAMPFIRE_ACTION_SET = new Set(['idle', 'warm_hands', 'sharpen_blade', 'lookout', 'stretch', 'cheer'])
 const CAMPFIRE_ROLE_FALLBACK_LIST = ['守护者', '侦察员', '施法者', '炼金师', '机关师', '驯兽师']
 const DUNGEON_MAP_TILE_TYPE_SET = new Set(['monster', 'boss', 'treasure', 'empty'])
+const DUNGEON_OBJECT_TYPE_SET = new Set(['start', 'exit', 'monster', 'boss', 'treasure', 'empty'])
+const DUNGEON_TILE_CATALOG_COLOR_RE = /^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/i
+const DUNGEON_TILE_CATALOG_ID_RE = /[^a-z0-9_-]/g
+const DUNGEON_TILE_MATRIX_SIZE = 16
+
+const createDungeonTileMatrixFallback = (main = '1', accent = '2', accentStep = 7) => {
+  const rows = []
+  const mainChar = String(main || '1').slice(0, 1) || '1'
+  const accentChar = String(accent || '2').slice(0, 1) || '2'
+  const step = Math.max(2, Math.min(15, Number.parseInt(String(accentStep), 10) || 7))
+  for (let y = 0; y < DUNGEON_TILE_MATRIX_SIZE; y += 1) {
+    let line = ''
+    for (let x = 0; x < DUNGEON_TILE_MATRIX_SIZE; x += 1) {
+      const useAccent = ((x * 3 + y * 5) % step) === 0
+      line += useAccent ? accentChar : mainChar
+    }
+    rows.push(line)
+  }
+  return rows
+}
+
+const wrapHue = (value) => {
+  const raw = Number(value) || 0
+  const wrapped = raw % 360
+  return wrapped < 0 ? wrapped + 360 : wrapped
+}
+
+const toHexByte = (value) => {
+  const clipped = Math.max(0, Math.min(255, Math.round(Number(value) || 0)))
+  return clipped.toString(16).padStart(2, '0')
+}
+
+const hslToHex = (h, s, l, alpha = 1) => {
+  const hue = wrapHue(h) / 360
+  const sat = Math.max(0, Math.min(1, (Number(s) || 0) / 100))
+  const lig = Math.max(0, Math.min(1, (Number(l) || 0) / 100))
+  const a = Math.max(0, Math.min(1, Number(alpha)))
+
+  if (sat <= 0) {
+    const v = Math.round(lig * 255)
+    if (a >= 0.999) {
+      return `#${toHexByte(v)}${toHexByte(v)}${toHexByte(v)}`
+    }
+    return `#${toHexByte(v)}${toHexByte(v)}${toHexByte(v)}${toHexByte(a * 255)}`
+  }
+
+  const q = lig < 0.5 ? lig * (1 + sat) : lig + sat - lig * sat
+  const p = 2 * lig - q
+  const hueToRgb = (t) => {
+    let tt = t
+    if (tt < 0) tt += 1
+    if (tt > 1) tt -= 1
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt
+    if (tt < 1 / 2) return q
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6
+    return p
+  }
+  const r = Math.round(hueToRgb(hue + 1 / 3) * 255)
+  const g = Math.round(hueToRgb(hue) * 255)
+  const b = Math.round(hueToRgb(hue - 1 / 3) * 255)
+  if (a >= 0.999) {
+    return `#${toHexByte(r)}${toHexByte(g)}${toHexByte(b)}`
+  }
+  return `#${toHexByte(r)}${toHexByte(g)}${toHexByte(b)}${toHexByte(a * 255)}`
+}
+
+const hashSeed32 = (seedSource) => {
+  const text = String(seedSource || 'seed')
+  let seed = 2166136261 >>> 0
+  for (let index = 0; index < text.length; index += 1) {
+    seed ^= text.charCodeAt(index)
+    seed = Math.imul(seed, 16777619)
+    seed >>>= 0
+  }
+  return seed >>> 0
+}
+
+const createDungeonSeededRandom = (seedSource) => {
+  let seed = hashSeed32(seedSource)
+  if (seed === 0) seed = 0x9e3779b9
+  return () => {
+    seed += 0x6d2b79f5
+    let t = seed
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const createDungeonTilePaletteFallback = (seedHint, passable = true) => {
+  const random = createDungeonSeededRandom(`tile-palette|${seedHint}|${passable ? 'p' : 'b'}`)
+  const baseHue = Math.floor(random() * 360)
+  if (passable) {
+    const sat = 32 + Math.floor(random() * 30)
+    const light = 24 + Math.floor(random() * 10)
+    return [
+      '#00000000',
+      hslToHex(baseHue, sat, light),
+      hslToHex(baseHue + 9 + random() * 18, sat + 8, light + 8),
+      hslToHex(baseHue + 20 + random() * 24, sat + 10, light + 18),
+      hslToHex(baseHue + 32 + random() * 26, sat + 5, light + 30),
+    ]
+  }
+  const sat = 18 + Math.floor(random() * 22)
+  const light = 13 + Math.floor(random() * 7)
+  return [
+    '#00000000',
+    hslToHex(baseHue, sat, light),
+    hslToHex(baseHue + 8 + random() * 14, sat + 5, light + 5),
+    hslToHex(baseHue + 18 + random() * 18, sat + 7, light + 11),
+    hslToHex(baseHue + 30 + random() * 18, sat + 6, light + 18),
+  ]
+}
+
+const createDungeonTilePixelsFallback = (seedHint, passable = true) => {
+  const seed = hashSeed32(`tile-pixels|${seedHint}|${passable ? 'p' : 'b'}`)
+  const stepA = 4 + (seed % 7)
+  const stepB = 5 + ((seed >>> 3) % 6)
+  const stepC = 6 + ((seed >>> 6) % 5)
+  const offsetA = (seed >>> 8) % 29
+  const offsetB = (seed >>> 13) % 31
+  const offsetC = (seed >>> 17) % 37
+  const baseChar = passable ? '1' : '2'
+  const accentA = passable ? '2' : '3'
+  const accentB = passable ? '3' : '4'
+  const ridge = passable ? '4' : '1'
+  const rows = []
+  for (let y = 0; y < DUNGEON_TILE_MATRIX_SIZE; y += 1) {
+    let line = ''
+    for (let x = 0; x < DUNGEON_TILE_MATRIX_SIZE; x += 1) {
+      let char = baseChar
+      if (((x * 3 + y * 5 + offsetA) % stepA) === 0) char = accentA
+      if (((x * 7 + y * 2 + offsetB) % stepB) === 0) char = accentB
+      if (((x - y + offsetC) % stepC) === 0) char = ridge
+      line += char
+    }
+    rows.push(line)
+  }
+  return rows
+}
+
+const createDungeonTileCatalogFallback = (seedHint = 'fallback-seed', themeHint = '迷宫遗迹') => {
+  const random = createDungeonSeededRandom(`tile-catalog|${seedHint}|${themeHint}`)
+  const pathNames = ['碎石步道', '苔纹地砖', '雾影小径', '古阶回廊', '藤蔓走道', '青石甬道']
+  const blockNames = ['断壁残垣', '深渊裂缝', '荆棘岩墙', '塌陷石堆', '毒雾泥潭', '黑曜障壁']
+  const pickName = (list, fallback, index) => {
+    if (!Array.isArray(list) || list.length < 1) return `${fallback}${index + 1}`
+    const picked = list[Math.floor(random() * list.length)]
+    return String(picked || `${fallback}${index + 1}`).trim().slice(0, 20) || `${fallback}${index + 1}`
+  }
+  const makeTile = (passable, slot) => {
+    const suffix = hashSeed32(`${seedHint}|${themeHint}|${passable ? 'p' : 'b'}|${slot}`).toString(16).slice(-4)
+    const id = passable ? `llm-path-${slot + 1}-${suffix}` : `llm-block-${slot + 1}-${suffix}`
+    const name = passable
+      ? pickName(pathNames, '可通行地形', slot)
+      : pickName(blockNames, '阻塞地形', slot)
+    return {
+      id,
+      name,
+      passable,
+      weight: clampInt(28 + Math.round(random() * 52), 1, 100, 40),
+      palette: createDungeonTilePaletteFallback(`${seedHint}|${themeHint}|${id}`, passable),
+      pixels16: createDungeonTilePixelsFallback(`${seedHint}|${themeHint}|${id}`, passable),
+    }
+  }
+  return [
+    makeTile(true, 0),
+    makeTile(true, 1),
+    makeTile(false, 0),
+    makeTile(false, 1),
+  ]
+}
+
+const createDungeonObjectMatrixFallback = (kind = 'empty', main = '2', accent = '3', detail = '4') => {
+  const rows = []
+  const mainChar = String(main || '2').slice(0, 1) || '2'
+  const accentChar = String(accent || '3').slice(0, 1) || '3'
+  const detailChar = String(detail || '4').slice(0, 1) || '4'
+
+  for (let y = 0; y < DUNGEON_TILE_MATRIX_SIZE; y += 1) {
+    let line = ''
+    for (let x = 0; x < DUNGEON_TILE_MATRIX_SIZE; x += 1) {
+      let char = '0'
+
+      if (kind === 'start') {
+        const inCore = x >= 5 && x <= 10 && y >= 5 && y <= 10
+        if (inCore) char = (x + y) % 2 === 0 ? mainChar : accentChar
+        if ((x === 7 || x === 8) && y >= 2 && y <= 13) char = detailChar
+        if ((y === 7 || y === 8) && x >= 2 && x <= 13) char = detailChar
+      } else if (kind === 'exit') {
+        const dx = x - 7.5
+        const dy = y - 7.5
+        const dist = dx * dx + dy * dy
+        if (dist >= 20 && dist <= 52) char = mainChar
+        if (dist >= 30 && dist <= 36 && (x + y) % 2 === 0) char = accentChar
+        if (dist < 8) char = detailChar
+      } else if (kind === 'monster') {
+        if (x >= 4 && x <= 11 && y >= 4 && y <= 11) char = mainChar
+        if ((x === 6 || x === 9) && y >= 6 && y <= 7) char = '0'
+        if ((x === 6 || x === 9) && y >= 9 && y <= 10) char = '0'
+        if (y === 11 && x >= 6 && x <= 9) char = accentChar
+        if (y === 12 && x >= 5 && x <= 10) char = accentChar
+      } else if (kind === 'boss') {
+        if (x >= 4 && x <= 11 && y >= 5 && y <= 12) char = mainChar
+        if (y >= 2 && y <= 5 && (x === 5 || x === 7 || x === 9 || x === 11)) char = accentChar
+        if (y === 6 && x >= 4 && x <= 11) char = detailChar
+      } else if (kind === 'treasure') {
+        if (x >= 4 && x <= 11 && y >= 8 && y <= 12) char = mainChar
+        if (x >= 5 && x <= 10 && y >= 6 && y <= 8) char = accentChar
+        if (y === 9 && (x === 7 || x === 8)) char = detailChar
+      } else if (kind === 'empty') {
+        if ((x * 3 + y * 5) % 17 === 0) char = mainChar
+        if ((x + y) % 11 === 0) char = accentChar
+      }
+
+      line += char
+    }
+    rows.push(line)
+  }
+  return rows
+}
+
+const DUNGEON_OBJECT_CATALOG_FALLBACK = [
+  {
+    id: 'obj-start-rune',
+    type: 'start',
+    name: '启程符阵',
+    weight: 46,
+    palette: ['#00000000', '#1d2d3a', '#2f6f72', '#5bd0cf', '#cffff8'],
+    pixels16: createDungeonObjectMatrixFallback('start', '2', '3', '4'),
+  },
+  {
+    id: 'obj-exit-gate',
+    type: 'exit',
+    name: '传送门',
+    weight: 44,
+    palette: ['#00000000', '#1d1f39', '#4250a8', '#7f9dff', '#d3e1ff'],
+    pixels16: createDungeonObjectMatrixFallback('exit', '2', '3', '4'),
+  },
+  {
+    id: 'obj-monster-totem',
+    type: 'monster',
+    name: '魔物图腾',
+    weight: 50,
+    palette: ['#00000000', '#2b1d21', '#7b3a43', '#c85a63', '#ffd0b8'],
+    pixels16: createDungeonObjectMatrixFallback('monster', '2', '3', '4'),
+  },
+  {
+    id: 'obj-boss-crown',
+    type: 'boss',
+    name: '王冠祭坛',
+    weight: 52,
+    palette: ['#00000000', '#26170f', '#7c3f1a', '#d68f33', '#ffe08a'],
+    pixels16: createDungeonObjectMatrixFallback('boss', '2', '3', '4'),
+  },
+  {
+    id: 'obj-treasure-chest',
+    type: 'treasure',
+    name: '宝箱',
+    weight: 48,
+    palette: ['#00000000', '#2a2216', '#7d4f23', '#c58b3e', '#f6de9a'],
+    pixels16: createDungeonObjectMatrixFallback('treasure', '2', '3', '4'),
+  },
+  {
+    id: 'obj-empty-rubble',
+    type: 'empty',
+    name: '碎石堆',
+    weight: 20,
+    palette: ['#00000000', '#1f2530', '#384255', '#59667f', '#8b9ab4'],
+    pixels16: createDungeonObjectMatrixFallback('empty', '2', '3', '4'),
+  },
+]
 
 const normalizeDungeonSceneEventType = (value, fallback = 'battle') => {
   const eventType = String(value || '').trim().toLowerCase()
@@ -802,7 +1074,7 @@ const normalizeHandheldCampfireCompanions = (rawValue, fallbackNames = [], fallb
   return list
 }
 
-const HANDHELD_DUNGEON_MAP_SYSTEM_PROMPT = `你是“掌机RPG地下城网格生成器”。
+const HANDHELD_DUNGEON_MAP_SYSTEM_PROMPT = `你是“掌机RPG地下城地形像素素材生成器”。
 你只输出 JSON 对象，不要解释，不要 markdown。
 
 输出格式：
@@ -812,40 +1084,31 @@ const HANDHELD_DUNGEON_MAP_SYSTEM_PROMPT = `你是“掌机RPG地下城网格生
   "height":6,
   "start":{"x":0,"y":5},
   "exit":{"x":6,"y":0},
-  "tiles":[
+  "tileCatalog":[
     {
-      "x":2,
-      "y":4,
-      "type":"monster",
-      "enemy":{
-        "name":"腐骨战兵",
-        "hp":180,
-        "attack":26,
-        "drops":[
-          {"name":"小型回复瓶","effectType":"heal_hp","target":"ally","value":20,"amount":1,"desc":"恢复20点生命"}
-        ]
-      },
-      "reward":{"coins":120,"gems":28,"exp":64,"equipmentChance":0.22}
-    },
-    {
-      "x":4,
-      "y":1,
-      "type":"boss",
-      "enemy":{
-        "name":"断刃督军",
-        "hp":560,
-        "attack":52,
-        "drops":[
-          {"name":"王者回复药","effectType":"heal_hp","target":"ally","value":48,"amount":1,"desc":"恢复48点生命"}
-        ]
-      },
-      "reward":{"coins":420,"gems":120,"exp":220,"equipmentChance":0.58}
-    },
-    {
-      "x":1,
-      "y":2,
-      "type":"treasure",
-      "reward":{"coins":150,"gems":36,"exp":50,"equipmentChance":0.2}
+      "id":"tile_alpha_path",
+      "name":"潮湿石纹地",
+      "passable":true,
+      "weight":42,
+      "palette":["#00000000","#2f462c","#4f7244","#78a061","#9ec486"],
+      "pixels16":[
+        "1111111111111111",
+        "1121111111111211",
+        "1111113111111111",
+        "1112111111111121",
+        "1111111112111111",
+        "1131111111113111",
+        "1111111211111111",
+        "1111111111111111",
+        "1112111111111211",
+        "1111113111111111",
+        "1121111111111111",
+        "1111111112111111",
+        "1111311111111111",
+        "1111111211111111",
+        "1111111111111111",
+        "1111111111111111"
+      ]
     }
   ]
 }
@@ -853,14 +1116,234 @@ const HANDHELD_DUNGEON_MAP_SYSTEM_PROMPT = `你是“掌机RPG地下城网格生
 硬性约束：
 1) width/height 均为 5-9 的整数。
 2) start/exit 必须在地图内，且不能重叠。
-3) tiles 只能包含 type: "monster"|"boss"|"treasure"|"empty"。
-4) 每层必须同时有 boss 与 monster，且至少 2 个 boss、6 个 monster。
-5) 同一坐标最多 1 个 tile；不要占用 start/exit。
-6) monster/boss 必须包含 enemy + reward；treasure 至少包含 reward。
-7) enemy 必须包含 drops 数组，至少 1 条掉落；每条掉落含 name/effectType/target/value/amount/desc。
-8) effectType 仅使用 "heal_hp"，target 仅使用 "ally"。
-9) reward 的 equipmentChance 为 0-1 浮点数。
-10) 数值要与楼层递增相关，但不要夸张。`
+3) tileCatalog 必须 3-6 种地形，至少 1 种 passable=true，至少 1 种 passable=false。
+4) tileCatalog 每项必须含 id/name/passable/weight/palette/pixels16。
+5) weight 为 1-100 的整数；palette 长度 2-8，颜色仅用 #RRGGBB 或 #RRGGBBAA。
+6) pixels16 必须是 16 行，每行 16 字符；字符只能是 0-9a-f，且索引不能超过 palette 长度-1。
+7) tileCatalog 必须是本次地图原创像素风，不要复用固定模板或固定命名。
+8) 不要生成 monster/boss/treasure 的坐标与数值配置，这部分由前端算法处理。`
+
+const cloneDungeonTileCatalogFallback = (seedHint = 'fallback-seed', themeHint = '迷宫遗迹') => {
+  return createDungeonTileCatalogFallback(seedHint, themeHint).map((tile) => ({
+    id: tile.id,
+    name: tile.name,
+    passable: Boolean(tile.passable),
+    weight: clampInt(tile.weight, 1, 100, 10),
+    palette: Array.isArray(tile.palette) ? tile.palette.map((color) => String(color || '')) : [],
+    pixels16: Array.isArray(tile.pixels16) ? tile.pixels16.map((line) => String(line || '')) : [],
+  }))
+}
+
+const cloneDungeonObjectCatalogFallback = () => {
+  return DUNGEON_OBJECT_CATALOG_FALLBACK.map((item) => ({
+    id: item.id,
+    type: String(item.type || 'empty').trim().toLowerCase(),
+    name: item.name,
+    weight: clampInt(item.weight, 1, 100, 20),
+    palette: Array.isArray(item.palette) ? item.palette.map((color) => String(color || '')) : [],
+    pixels16: Array.isArray(item.pixels16) ? item.pixels16.map((line) => String(line || '')) : [],
+  }))
+}
+
+const normalizeDungeonTileCatalogId = (value, fallback = 'terrain') => {
+  const cleaned = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(DUNGEON_TILE_CATALOG_ID_RE, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+  return cleaned || fallback
+}
+
+const normalizeDungeonTileCatalogColor = (value, fallback = '#00000000') => {
+  const text = String(value || '').trim()
+  if (DUNGEON_TILE_CATALOG_COLOR_RE.test(text)) return text
+  return fallback
+}
+
+const normalizeDungeonTileCatalogPalette = (rawPalette, fallbackPalette) => {
+  const source = Array.isArray(rawPalette) ? rawPalette : []
+  const fallback = Array.isArray(fallbackPalette) ? fallbackPalette : ['#00000000', '#2f462c', '#4f7244']
+  const normalized = source
+    .map((item, index) => normalizeDungeonTileCatalogColor(item, fallback[index] || fallback[fallback.length - 1] || '#00000000'))
+    .slice(0, 8)
+  if (normalized.length < 2) {
+    return fallback.map((item) => normalizeDungeonTileCatalogColor(item, '#00000000')).slice(0, 8)
+  }
+  return normalized
+}
+
+const normalizeDungeonTileCatalogPixels16 = (rawPixels, paletteSize, fallbackPixels) => {
+  const fallbackRows = Array.isArray(fallbackPixels) ? fallbackPixels : []
+  const safeFallback = []
+  for (let row = 0; row < DUNGEON_TILE_MATRIX_SIZE; row += 1) {
+    const fallbackRow = String(fallbackRows[row] || '')
+    const fallbackChar = fallbackRow[0] || '0'
+    safeFallback.push((fallbackRow.padEnd(DUNGEON_TILE_MATRIX_SIZE, fallbackChar)).slice(0, DUNGEON_TILE_MATRIX_SIZE))
+  }
+
+  const source = Array.isArray(rawPixels) ? rawPixels : null
+  if (!source || source.length < DUNGEON_TILE_MATRIX_SIZE) {
+    return safeFallback
+  }
+
+  const maxIndex = Math.max(0, Math.min(15, (Number.parseInt(String(paletteSize), 10) || 1) - 1))
+  const rows = []
+  for (let y = 0; y < DUNGEON_TILE_MATRIX_SIZE; y += 1) {
+    const rawLine = String(source[y] || '')
+    const fallbackLine = safeFallback[y] || safeFallback[0] || '0'.repeat(DUNGEON_TILE_MATRIX_SIZE)
+    if (!rawLine) {
+      rows.push(fallbackLine)
+      continue
+    }
+    let line = ''
+    for (let x = 0; x < DUNGEON_TILE_MATRIX_SIZE; x += 1) {
+      const char = rawLine[x] || fallbackLine[x] || '0'
+      const value = Number.parseInt(char, 16)
+      if (!Number.isFinite(value)) {
+        line += fallbackLine[x] || '0'
+        continue
+      }
+      const clipped = Math.max(0, Math.min(maxIndex, Math.round(value)))
+      line += clipped.toString(16)
+    }
+    rows.push(line)
+  }
+  return rows
+}
+
+const normalizeDungeonTileCatalog = (rawCatalog, options = {}) => {
+  const fallback = cloneDungeonTileCatalogFallback(
+    String(options.seedHint || 'fallback-seed'),
+    String(options.themeHint || '迷宫遗迹'),
+  )
+  const source = Array.isArray(rawCatalog) ? rawCatalog : []
+  const result = []
+  const usedIds = new Set()
+  for (let index = 0; index < source.length; index += 1) {
+    const item = source[index]
+    if (!item || typeof item !== 'object') continue
+    const fallbackTile = fallback[index % fallback.length]
+    const id = normalizeDungeonTileCatalogId(item.id, `${fallbackTile.id}-${index + 1}`)
+    if (usedIds.has(id)) continue
+    const passable = typeof item.passable === 'boolean' ? item.passable : Boolean(fallbackTile.passable)
+    const palette = normalizeDungeonTileCatalogPalette(item.palette, fallbackTile.palette)
+    const pixels16 = normalizeDungeonTileCatalogPixels16(
+      item.pixels16 || item.matrix16 || item.pixels || item.pattern,
+      palette.length,
+      fallbackTile.pixels16,
+    )
+    result.push({
+      id,
+      name: String(item.name || fallbackTile.name).trim().slice(0, 20) || fallbackTile.name,
+      passable,
+      weight: clampInt(item.weight, 1, 100, fallbackTile.weight),
+      palette,
+      pixels16,
+    })
+    usedIds.add(id)
+    if (result.length >= 8) break
+  }
+
+  const pushFallbackTile = (tile) => {
+    if (!tile || typeof tile !== 'object') return
+    const id = normalizeDungeonTileCatalogId(tile.id, `fallback-${result.length + 1}`)
+    if (usedIds.has(id)) return
+    result.push({
+      id,
+      name: String(tile.name || '地形').trim().slice(0, 20) || '地形',
+      passable: Boolean(tile.passable),
+      weight: clampInt(tile.weight, 1, 100, 10),
+      palette: normalizeDungeonTileCatalogPalette(tile.palette, ['#00000000', '#2f462c', '#4f7244']),
+      pixels16: normalizeDungeonTileCatalogPixels16(tile.pixels16, Array.isArray(tile.palette) ? tile.palette.length : 3, tile.pixels16),
+    })
+    usedIds.add(id)
+  }
+
+  if (result.length < 3) {
+    fallback.forEach((item) => {
+      if (result.length >= 4) return
+      pushFallbackTile(item)
+    })
+  }
+
+  if (!result.some((item) => item.passable)) {
+    pushFallbackTile(fallback.find((item) => item.passable) || fallback[0])
+  }
+  if (!result.some((item) => !item.passable)) {
+    pushFallbackTile(fallback.find((item) => !item.passable) || fallback[fallback.length - 1])
+  }
+  return result.slice(0, 8)
+}
+
+const normalizeDungeonObjectCatalogType = (value, fallback = 'empty') => {
+  const type = String(value || '').trim().toLowerCase()
+  if (DUNGEON_OBJECT_TYPE_SET.has(type)) return type
+  return fallback
+}
+
+const normalizeDungeonObjectCatalog = (rawCatalog) => {
+  const fallback = cloneDungeonObjectCatalogFallback()
+  const source = Array.isArray(rawCatalog) ? rawCatalog : []
+  const result = []
+  const usedIds = new Set()
+  for (let index = 0; index < source.length; index += 1) {
+    const item = source[index]
+    if (!item || typeof item !== 'object') continue
+    const fallbackItem = fallback[index % fallback.length]
+    const id = normalizeDungeonTileCatalogId(item.id, `${fallbackItem.id}-${index + 1}`)
+    if (usedIds.has(id)) continue
+    const type = normalizeDungeonObjectCatalogType(item.type || item.kind || item.cellType, fallbackItem.type)
+    const palette = normalizeDungeonTileCatalogPalette(item.palette, fallbackItem.palette)
+    const pixels16 = normalizeDungeonTileCatalogPixels16(
+      item.pixels16 || item.matrix16 || item.pixels || item.pattern,
+      palette.length,
+      fallbackItem.pixels16,
+    )
+    result.push({
+      id,
+      type,
+      name: String(item.name || fallbackItem.name).trim().slice(0, 20) || fallbackItem.name,
+      weight: clampInt(item.weight, 1, 100, fallbackItem.weight),
+      palette,
+      pixels16,
+    })
+    usedIds.add(id)
+    if (result.length >= 12) break
+  }
+
+  const pushFallbackObject = (item) => {
+    if (!item || typeof item !== 'object') return
+    const id = normalizeDungeonTileCatalogId(item.id, `object-fallback-${result.length + 1}`)
+    if (usedIds.has(id)) return
+    result.push({
+      id,
+      type: normalizeDungeonObjectCatalogType(item.type, 'empty'),
+      name: String(item.name || '场景物体').trim().slice(0, 20) || '场景物体',
+      weight: clampInt(item.weight, 1, 100, 20),
+      palette: normalizeDungeonTileCatalogPalette(item.palette, ['#00000000', '#2b3947', '#4a7f9a']),
+      pixels16: normalizeDungeonTileCatalogPixels16(item.pixels16, Array.isArray(item.palette) ? item.palette.length : 3, item.pixels16),
+    })
+    usedIds.add(id)
+  }
+
+  const requiredTypes = ['start', 'exit', 'monster', 'boss', 'treasure']
+  requiredTypes.forEach((type) => {
+    if (result.some((item) => item.type === type)) return
+    const fallbackItem = fallback.find((item) => item.type === type)
+    pushFallbackObject(fallbackItem)
+  })
+
+  if (result.length < 4) {
+    fallback.forEach((item) => {
+      if (result.length >= 6) return
+      pushFallbackObject(item)
+    })
+  }
+
+  return result.slice(0, 12)
+}
 
 const normalizeDungeonMapTileType = (value, fallback = 'empty') => {
   const type = String(value || '').trim().toLowerCase()
@@ -909,168 +1392,25 @@ const normalizeHandheldDungeonMap = (rawValue, options = {}) => {
   const exit = startX === exitX && startY === exitY
     ? { x: fallbackExitX, y: fallbackExitY }
     : { x: exitX, y: exitY }
-
-  const used = new Set([`${startX}:${startY}`, `${exit.x}:${exit.y}`])
-  const tiles = []
-  const monsterNames = ['洞窟狼', '骸骨兵', '腐沼蜥', '巡逻石像', '暗影潜伏者', '裂隙蠕虫']
-  const bossNames = ['灰烬领主', '深井守门者', '幽冥主教', '巨械监工', '碎星骑士', '虚影女王']
-  const monsterDropNames = ['小型回复瓶', '应急绷带', '草本药剂', '止痛药水']
-  const bossDropNames = ['王者回复药', '圣愈药剂', '战地急救包', '炽焰回生药']
-
-  const normalizeDrop = (rawDrop, isBoss = false, index = 0) => {
-    const drop = rawDrop && typeof rawDrop === 'object' ? rawDrop : {}
-    const fallbackValue = isBoss ? Math.round(42 + floor * 3) : Math.round(18 + floor * 2)
-    const fallbackName = isBoss ? bossDropNames[index % bossDropNames.length] : monsterDropNames[index % monsterDropNames.length]
-    const effectTypeRaw = String(drop.effectType || drop.type || drop.effect || '').trim().toLowerCase()
-    const effectType = effectTypeRaw === 'heal_hp' ? 'heal_hp' : 'heal_hp'
-    const targetRaw = String(drop.target || drop.targetType || '').trim().toLowerCase()
-    const target = targetRaw === 'ally' ? 'ally' : 'ally'
-    const value = clampInt(drop.value ?? drop.effectValue ?? drop.hp, 1, 9999, fallbackValue)
-    const amount = clampInt(drop.amount ?? drop.count ?? drop.quantity, 1, 99, 1)
-    const name = String(drop.name || fallbackName).trim().slice(0, 24) || fallbackName
-    const desc = String(drop.desc || drop.description || `恢复${value}点生命`).trim().slice(0, 40) || `恢复${value}点生命`
-    return {
-      name,
-      effectType,
-      target,
-      value,
-      amount,
-      desc,
-    }
-  }
-
-  const normalizeEnemy = (rawEnemy, isBoss = false, index = 0) => {
-    const enemy = rawEnemy && typeof rawEnemy === 'object' ? rawEnemy : {}
-    const fallbackName = isBoss
-      ? `${bossNames[index % bossNames.length]}`
-      : `${monsterNames[index % monsterNames.length]}`
-    const rawDrops = Array.isArray(enemy.drops)
-      ? enemy.drops
-      : (Array.isArray(enemy.dropItems) ? enemy.dropItems : [])
-    const drops = (rawDrops.length > 0 ? rawDrops : [null])
-      .map((item, dropIndex) => normalizeDrop(item, isBoss, index + dropIndex))
-      .slice(0, 3)
-    return {
-      name: String(enemy.name || fallbackName).trim().slice(0, 24) || fallbackName,
-      hp: clampInt(enemy.hp, 20, 999999, Math.round((isBoss ? 230 : 108) + floor * (isBoss ? 40 : 20))),
-      attack: clampInt(enemy.attack, 6, 99999, Math.round((isBoss ? 34 : 17) + floor * (isBoss ? 4 : 2))),
-      drops,
-    }
-  }
-
-  const normalizeReward = (rawReward, isBoss = false) => {
-    const reward = rawReward && typeof rawReward === 'object' ? rawReward : {}
-    const chanceRaw = Number.parseFloat(String(reward.equipmentChance))
-    return {
-      coins: clampInt(reward.coins, 0, 999999, Math.round((isBoss ? 280 : 86) + floor * (isBoss ? 54 : 16))),
-      gems: clampInt(reward.gems, 0, 999999, Math.round((isBoss ? 90 : 24) + floor * (isBoss ? 10 : 4))),
-      exp: clampInt(reward.exp, 0, 999999, Math.round((isBoss ? 136 : 42) + floor * (isBoss ? 30 : 10))),
-      equipmentChance: Number.isFinite(chanceRaw)
-        ? Math.max(0, Math.min(1, chanceRaw))
-        : (isBoss ? 0.56 : 0.2),
-    }
-  }
-
-  const pushTile = (x, y, type, payload = {}) => {
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return false
-    if (x < 0 || y < 0 || x >= width || y >= height) return false
-    const key = `${x}:${y}`
-    if (used.has(key)) return false
-    used.add(key)
-    tiles.push({
-      x,
-      y,
-      type,
-      ...payload,
-    })
-    return true
-  }
-
-  const rawTiles = Array.isArray(rawValue.tiles) ? rawValue.tiles : []
-  let monsterCount = 0
-  let bossCount = 0
-  let treasureCount = 0
-
-  for (const item of rawTiles) {
-    const x = clampInt(item?.x, 0, width - 1, Number.NaN)
-    const y = clampInt(item?.y, 0, height - 1, Number.NaN)
-    if (!Number.isFinite(x) || !Number.isFinite(y)) continue
-    const type = normalizeDungeonMapTileType(item?.type, 'empty')
-    if (type === 'boss') {
-      const added = pushTile(x, y, type, {
-        enemy: normalizeEnemy(item?.enemy, true, bossCount),
-        reward: normalizeReward(item?.reward, true),
-      })
-      if (added) bossCount += 1
-      continue
-    }
-    if (type === 'monster') {
-      const added = pushTile(x, y, type, {
-        enemy: normalizeEnemy(item?.enemy, false, monsterCount),
-        reward: normalizeReward(item?.reward, false),
-      })
-      if (added) monsterCount += 1
-      continue
-    }
-    if (type === 'treasure') {
-      const added = pushTile(x, y, type, {
-        reward: normalizeReward(item?.reward, false),
-      })
-      if (added) treasureCount += 1
-      continue
-    }
-  }
-
-  const pickFreePos = () => {
-    const maxTry = width * height * 3
-    for (let index = 0; index < maxTry; index += 1) {
-      const x = clampInt(Math.random() * width, 0, width - 1, 0)
-      const y = clampInt(Math.random() * height, 0, height - 1, 0)
-      const key = `${x}:${y}`
-      if (used.has(key)) continue
-      return { x, y }
-    }
-    return null
-  }
-
-  const minBoss = Math.max(2, Math.min(3, Math.round(width * height * 0.08)))
-  const minMonster = Math.max(6, Math.min(18, Math.round(width * height * 0.3)))
-  const targetTreasure = Math.max(2, Math.min(7, Math.round(width * height * 0.1)))
-
-  while (bossCount < minBoss) {
-    const pos = pickFreePos()
-    if (!pos) break
-    const added = pushTile(pos.x, pos.y, 'boss', {
-      enemy: normalizeEnemy(null, true, bossCount),
-      reward: normalizeReward(null, true),
-    })
-    if (!added) break
-    bossCount += 1
-  }
-
-  while (monsterCount < minMonster) {
-    const pos = pickFreePos()
-    if (!pos) break
-    const added = pushTile(pos.x, pos.y, 'monster', {
-      enemy: normalizeEnemy(null, false, monsterCount),
-      reward: normalizeReward(null, false),
-    })
-    if (!added) break
-    monsterCount += 1
-  }
-
-  while (treasureCount < targetTreasure) {
-    const pos = pickFreePos()
-    if (!pos) break
-    const added = pushTile(pos.x, pos.y, 'treasure', {
-      reward: normalizeReward(null, false),
-    })
-    if (!added) break
-    treasureCount += 1
-  }
+  const terrainSeed = String(
+    rawValue.terrainSeed ||
+    rawValue.seed ||
+    rawValue.mapSeed ||
+    `f${floor}-${theme}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+  ).trim().slice(0, 120)
+  const tileCatalog = normalizeDungeonTileCatalog(
+    rawValue.tileCatalog || rawValue.terrainTiles || rawValue.tileset,
+    { seedHint: terrainSeed, themeHint: theme },
+  )
+  const objectCatalog = normalizeDungeonObjectCatalog(
+    rawValue.objectCatalog ||
+    rawValue.sceneObjectCatalog ||
+    rawValue.objectTiles ||
+    rawValue.objectSet,
+  )
 
   return {
-    id: String(rawValue.id || `dungeon-map-f${floor}`).trim().slice(0, 80) || `dungeon-map-f${floor}`,
+    id: String(rawValue.id || `dungeon-map-f${floor}-${terrainSeed.slice(0, 6)}`).trim().slice(0, 80) || `dungeon-map-f${floor}-${terrainSeed.slice(0, 6)}`,
     floor,
     theme,
     width,
@@ -1078,7 +1418,11 @@ const normalizeHandheldDungeonMap = (rawValue, options = {}) => {
     start: { x: startX, y: startY },
     exit,
     player: { x: startX, y: startY },
-    tiles,
+    terrainSeed,
+    tileCatalog,
+    objectCatalog,
+    // 遭遇点坐标由前端地图算法决定，LLM只负责地形素材。
+    tiles: [],
   }
 }
 
@@ -1099,13 +1443,16 @@ export const generateHandheldDungeonMap = async (params = {}) => {
   const sizeHint = String(params.sizeHint || '5-9').trim()
 
   const userPrompt = [
-    '【任务】生成掌机 RPG 地下城网格地图 JSON。',
+    '【任务】生成掌机 RPG 地下城地图用的 tileCatalog（像素地形素材）JSON。',
     `【楼层】${floor}`,
     `【地图尺寸范围】${sizeHint}`,
     worldTitle ? `【世界书标题】${worldTitle}` : '',
     worldSummary ? `【世界背景】${worldSummary}` : '',
     partySummary ? `【队伍】${partySummary}` : '',
-    '要求：给出随机主题、地图尺寸、小怪/Boss、血量、奖励配置；每层必须同时有 Boss 和小怪；每个怪都必须给 drops（至少1项，可直接用于背包消耗品）；可玩性优先，数值随楼层递增。',
+    '要求：给出随机主题、地图尺寸、tileCatalog（地形属性+像素素材）。',
+    'tileCatalog 每个地形必须包含 passable/weight/palette/pixels16（16x16，字符索引）。',
+    'tileCatalog 必须每次重新设计，不要沿用固定地板模板或固定命名。',
+    '不要生成 monster/boss/treasure 的坐标与数值配置，遭遇点由前端算法生成。',
     '只返回 JSON 对象。',
   ]
     .filter(Boolean)
@@ -1116,7 +1463,7 @@ export const generateHandheldDungeonMap = async (params = {}) => {
     systemPrompt: HANDHELD_DUNGEON_MAP_SYSTEM_PROMPT,
     userPrompt,
     temperature: params.options?.temperature ?? 0.9,
-    maxTokens: params.options?.maxTokens ?? 980,
+    maxTokens: params.options?.maxTokens ?? 1900,
     extraParams: params.options?.extraParams,
   })
 
@@ -1523,10 +1870,10 @@ export const generateWorldBookOpeningDialogue = async (params = {}) => {
     }
   }
 
-  const parsedObject = parseFirstJsonObject(result.data)
-  const parsedArray = parseFirstJsonArray(result.data)
-  const normalized = normalizeWorldBookOpeningDialogue(
-    parsedObject?.openingDialogue ? parsedObject : parsedArray,
+const parsedObject = parseFirstJsonObject(result.data)
+const parsedArray = parseFirstJsonArray(result.data)
+const normalized = normalizeWorldBookOpeningDialogue(
+  parsedObject?.openingDialogue ? parsedObject : parsedArray,
     { minLines, maxLines },
   )
 
@@ -1544,6 +1891,460 @@ export const generateWorldBookOpeningDialogue = async (params = {}) => {
     success: true,
     error: null,
     openingDialogue: normalized,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+// 卧室家具生成
+const BEDROOM_FURNITURE_SYSTEM_PROMPT = `你是“像素风卧室家具素材生成器”。
+你只输出 JSON，不要输出 markdown，不要解释。
+
+输出格式必须是：
+{
+  "items": [
+    {
+      "name": "家具名称",
+      "kind": "floor|sleep|storage|decor|utility",
+      "width": 1-4,
+      "height": 1-4,
+      "z": 0-60,
+      "walkable": true 或 false,
+      "desc": "简短描述",
+      "spriteTemplate": {
+        "w": 16,
+        "h": 16,
+        "palette": {
+          "a": "#7a5a3a",
+          "b": "#c89f72",
+          "g": "#efe2c2"
+        },
+        "rows": [
+          "................",
+          "....aaaabbbb....",
+          "...(共 h 行，每行长度 = w)"
+        ]
+      }
+    }
+  ]
+}
+
+要求：
+1. items 数组长度建议为 3-6。
+2. 至少包含 1 个 floor 或 sleep 类家具。
+3. 不同 kind 的家具尽量混搭，避免重复。
+4. 像素风，描述简短，适合奇幻冒险营地卧室。
+5. 每件必须提供 spriteTemplate；w/h 范围 8-24。
+6. rows 只允许字符 "." 或 palette 中定义的单字符 token（建议 a/b/c/g 等小写字母）。
+7. palette 的颜色值只能是 #RGB 或 #RRGGBB。
+8. 不同家具的 spriteTemplate 要明显不同，避免重复或轻微改色。`
+
+const BEDROOM_FURNITURE_KIND_SET = new Set(['floor', 'sleep', 'storage', 'decor', 'utility'])
+const BEDROOM_SPRITE_MOTIF_SET = new Set(['tile', 'rug', 'bed', 'sofa', 'desk', 'table', 'chair', 'cabinet', 'shelf', 'plant', 'lamp', 'window', 'chest', 'screen'])
+const BEDROOM_SPRITE_PALETTE_SET = new Set(['oak', 'pine', 'walnut', 'mint', 'sky', 'rose', 'stone', 'violet'])
+const BEDROOM_SPRITE_SILHOUETTE_SET = new Set(['compact', 'wide', 'tall', 'low'])
+const BEDROOM_SPRITE_ORNAMENT_SET = new Set(['none', 'border', 'cushion', 'drawer', 'leaf', 'rune'])
+const BEDROOM_SPRITE_MOTIFS_BY_KIND = {
+  floor: ['tile', 'rug'],
+  sleep: ['bed', 'sofa'],
+  storage: ['cabinet', 'shelf', 'chest'],
+  decor: ['plant', 'lamp', 'window', 'screen'],
+  utility: ['desk', 'table', 'chair'],
+}
+const BEDROOM_SPRITE_PALETTES_BY_KIND = {
+  floor: ['oak', 'pine', 'stone'],
+  sleep: ['walnut', 'rose', 'mint'],
+  storage: ['oak', 'walnut', 'stone'],
+  decor: ['mint', 'sky', 'violet'],
+  utility: ['oak', 'pine', 'sky'],
+}
+
+const BEDROOM_TEMPLATE_TOKEN_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const BEDROOM_TEMPLATE_TOKEN_SET = new Set(BEDROOM_TEMPLATE_TOKEN_ALPHABET.split(''))
+const BEDROOM_TEMPLATE_MAX_COLORS = 12
+const BEDROOM_TEMPLATE_FALLBACK_PALETTE = {
+  a: '#7a5a3a',
+  b: '#c89f72',
+  g: '#efe2c2',
+}
+
+const isValidBedroomTemplateColor = (value) => {
+  const text = String(value || '').trim()
+  return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(text)
+}
+
+const sanitizeBedroomSpriteTemplate = (rawValue) => {
+  if (!rawValue || typeof rawValue !== 'object') return null
+  const width = clampInt(rawValue?.w ?? rawValue?.width, 8, 24, 16)
+  const height = clampInt(rawValue?.h ?? rawValue?.height, 8, 24, 16)
+
+  const paletteSource = rawValue?.palette && typeof rawValue.palette === 'object' ? rawValue.palette : {}
+  const palette = {}
+  const paletteEntries = Object.entries(paletteSource)
+  for (let i = 0; i < paletteEntries.length; i += 1) {
+    if (Object.keys(palette).length >= BEDROOM_TEMPLATE_MAX_COLORS) break
+    const [tokenRaw, colorRaw] = paletteEntries[i]
+    const token = String(tokenRaw || '').trim().slice(0, 1).toLowerCase()
+    if (!token || token === '.' || !BEDROOM_TEMPLATE_TOKEN_SET.has(token) || palette[token]) continue
+    if (!isValidBedroomTemplateColor(colorRaw)) continue
+    palette[token] = String(colorRaw).trim()
+  }
+  if (Object.keys(palette).length < 1) {
+    Object.assign(palette, BEDROOM_TEMPLATE_FALLBACK_PALETTE)
+  }
+
+  let rowsRaw = []
+  if (Array.isArray(rawValue?.rows)) {
+    rowsRaw = rawValue.rows
+  } else if (typeof rawValue?.rows === 'string') {
+    rowsRaw = rawValue.rows.split(/\r?\n/g)
+  } else if (typeof rawValue?.pixels === 'string') {
+    rowsRaw = rawValue.pixels.split(/\r?\n/g)
+  }
+  if (rowsRaw.length < 1) return null
+
+  const validTokens = new Set(['.', ...Object.keys(palette)])
+  const normalizedRows = rowsRaw
+    .slice(0, height)
+    .map((line) => {
+      const rawLine = String(line || '').toLowerCase()
+      let next = ''
+      for (let i = 0; i < width; i += 1) {
+        const token = rawLine[i] || '.'
+        next += validTokens.has(token) ? token : '.'
+      }
+      return next
+    })
+
+  while (normalizedRows.length < height) {
+    normalizedRows.push('.'.repeat(width))
+  }
+
+  const hasVisible = normalizedRows.some((line) => {
+    for (let i = 0; i < line.length; i += 1) {
+      const token = line[i]
+      if (token === '.') continue
+      if (palette[token]) return true
+    }
+    return false
+  })
+  if (!hasVisible) return null
+
+  return {
+    w: width,
+    h: height,
+    palette,
+    rows: normalizedRows,
+  }
+}
+
+const sanitizeBedroomSpriteSpec = (rawValue, kind = 'decor', index = 0) => {
+  const motifFallbackList = BEDROOM_SPRITE_MOTIFS_BY_KIND[kind] || BEDROOM_SPRITE_MOTIFS_BY_KIND.decor
+  const paletteFallbackList = BEDROOM_SPRITE_PALETTES_BY_KIND[kind] || BEDROOM_SPRITE_PALETTES_BY_KIND.decor
+  const fallback = {
+    motif: motifFallbackList[index % motifFallbackList.length] || 'table',
+    palette: paletteFallbackList[index % paletteFallbackList.length] || 'oak',
+    silhouette: ['compact', 'wide', 'tall', 'low'][index % 4],
+    ornament: ['none', 'border', 'cushion', 'drawer', 'leaf', 'rune'][index % 6],
+    glow: kind === 'decor' ? 1 : 0,
+    seed: Math.max(0, Math.min(999999, (index + 3) * 6151)),
+  }
+
+  const value = rawValue && typeof rawValue === 'object' ? rawValue : {}
+  const motifRaw = String(value.motif || '').trim().toLowerCase()
+  const paletteRaw = String(value.palette || '').trim().toLowerCase()
+  const silhouetteRaw = String(value.silhouette || '').trim().toLowerCase()
+  const ornamentRaw = String(value.ornament || '').trim().toLowerCase()
+  const glowRaw = String(value.glow ?? '').trim().toLowerCase()
+  const hasGlowInput = glowRaw !== ''
+  const glowParsed = hasGlowInput && (glowRaw === '1' || glowRaw === 'true' || glowRaw === 'yes') ? 1 : 0
+  const seed = Number.isFinite(Number(value.seed))
+    ? Math.max(0, Math.min(999999, Math.round(Number(value.seed))))
+    : fallback.seed
+
+  return {
+    motif: BEDROOM_SPRITE_MOTIF_SET.has(motifRaw) ? motifRaw : fallback.motif,
+    palette: BEDROOM_SPRITE_PALETTE_SET.has(paletteRaw) ? paletteRaw : fallback.palette,
+    silhouette: BEDROOM_SPRITE_SILHOUETTE_SET.has(silhouetteRaw) ? silhouetteRaw : fallback.silhouette,
+    ornament: BEDROOM_SPRITE_ORNAMENT_SET.has(ornamentRaw) ? ornamentRaw : fallback.ornament,
+    glow: hasGlowInput ? glowParsed : fallback.glow,
+    seed,
+  }
+}
+
+const normalizeBedroomFurnitureItems = (rawData) => {
+  if (!rawData || typeof rawData !== 'object') return null
+  const items = Array.isArray(rawData.items) ? rawData.items : []
+  if (items.length < 1) return null
+
+  return items
+    .slice(0, 8)
+    .map((item, index) => {
+      const kindRaw = String(item?.kind || '').trim().toLowerCase()
+      const kind = BEDROOM_FURNITURE_KIND_SET.has(kindRaw) ? kindRaw : 'decor'
+      const width = clampInt(item?.width, 1, 4, kind === 'floor' ? 3 : 2)
+      const height = clampInt(item?.height, 1, 4, kind === 'floor' ? 2 : (kind === 'sleep' ? 2 : 1))
+      const z = clampInt(item?.z, 0, 60, kind === 'floor' ? 0 : 8 + index * 2)
+      const walkable = typeof item?.walkable === 'boolean'
+        ? item.walkable
+        : kind === 'floor' || kind === 'decor'
+      const name = String(item?.name || `家具${index + 1}`).trim().slice(0, 18)
+      return {
+        name: name || `家具${index + 1}`,
+        kind,
+        width,
+        height,
+        z,
+        walkable,
+        desc: String(item?.desc || '').trim().slice(0, 60),
+        spriteTemplate: sanitizeBedroomSpriteTemplate(item?.spriteTemplate),
+        spriteSpec: sanitizeBedroomSpriteSpec(item?.spriteSpec, kind, index),
+      }
+    })
+    .filter(Boolean)
+}
+
+export const generateBedroomFurnitureItems = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      items: [],
+    }
+  }
+
+  const worldTitle = String(params.worldTitle || '').trim()
+  const worldSummary = String(params.worldSummary || '').trim()
+  const floor = Math.max(1, Number(params.floor) || 1)
+  const styleHint = String(params.styleHint || '像素风冒险者卧室').trim().slice(0, 120)
+  const itemCount = clampInt(params.itemCount, 1, 8, 4)
+
+  const userPrompt = [
+    `【任务】生成 ${itemCount} 件卧室家具数据，供前端像素网格摆放。`,
+    worldTitle ? `【世界书标题】${worldTitle}` : '',
+    worldSummary ? `【世界背景】${worldSummary}` : '',
+    `【当前楼层】${floor}`,
+    `【风格提示】${styleHint}`,
+    '请保证有可用于地面的元素（floor 或 rug/tile）以及可交互家具。',
+    '每件家具都要提供 spriteTemplate，确保 rows 与 w/h 一致。',
+    '请直接输出 JSON 对象，不要补充解释。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: BEDROOM_FURNITURE_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.88,
+    maxTokens: params.options?.maxTokens ?? 1800,
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '卧室家具生成失败',
+      items: [],
+    }
+  }
+
+  const parsed = normalizeBedroomFurnitureItems(parseFirstJsonObject(result.data))
+  if (!parsed || parsed.length === 0) {
+    return {
+      success: false,
+      error: '卧室家具解析失败',
+      items: [],
+      data: result.data,
+      rawResponse: result.rawResponse,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    items: parsed,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+// 流浪商人商品生成
+const MERCHANT_ITEMS_SYSTEM_PROMPT = `你是"流浪商人商品生成器"。
+你只输出 JSON，不要输出 markdown，不要解释。
+
+输出格式必须是：
+{
+  "items": [
+    {
+      "name": "装备名称",
+      "rarity": "R|SR|SSR",
+      "slot": "weapon|armor|relic",
+      "atk": 0-999,
+      "def": 0-999,
+      "hp": 0-9999,
+      "price": 50-9999,
+      "desc": "简短描述",
+      "spriteSpec": {
+        "motif": "blade|axe|spear|shield|armor|helm|ring|orb|amulet",
+        "palette": "iron|frost|jade|royal|ember|obsidian",
+        "silhouette": "slim|wide|spike|round",
+        "ornament": "none|rune|gem|wing|chain",
+        "glow": 0,
+        "seed": 0-999999
+      }
+    }
+  ]
+}
+
+要求：
+1. items 数组长度必须为 6
+2. rarity 分布：R 约 70%，SR 约 25%，SSR 约 5%
+3. slot 分布：weapon、armor、relic 各约 1/3
+4. 属性值根据稀有度递增：R < SR < SSR
+5. 价格根据稀有度和属性合理定价
+6. 名称要有创意，符合奇幻RPG风格
+7. 描述简短有趣，体现装备特点
+8. 每件商品都必须提供 spriteSpec，且字段值只能从枚举中选择
+9. 武器优先使用 blade|axe|spear，护甲优先使用 shield|armor|helm，饰品优先使用 ring|orb|amulet`
+
+const MERCHANT_SPRITE_MOTIF_SET = new Set(['blade', 'axe', 'spear', 'shield', 'armor', 'helm', 'ring', 'orb', 'amulet'])
+const MERCHANT_SPRITE_PALETTE_SET = new Set(['iron', 'frost', 'jade', 'royal', 'ember', 'obsidian'])
+const MERCHANT_SPRITE_SILHOUETTE_SET = new Set(['slim', 'wide', 'spike', 'round'])
+const MERCHANT_SPRITE_ORNAMENT_SET = new Set(['none', 'rune', 'gem', 'wing', 'chain'])
+const MERCHANT_SPRITE_MOTIFS_BY_SLOT = {
+  weapon: ['blade', 'axe', 'spear'],
+  armor: ['shield', 'armor', 'helm'],
+  relic: ['ring', 'orb', 'amulet'],
+}
+const MERCHANT_SPRITE_PALETTES_BY_RARITY = {
+  R: ['iron', 'frost'],
+  SR: ['jade', 'royal'],
+  SSR: ['ember', 'obsidian'],
+}
+
+const sanitizeMerchantSpriteSpec = (rawValue, rarity = 'R', slot = 'weapon', index = 0) => {
+  const motifFallbackList = MERCHANT_SPRITE_MOTIFS_BY_SLOT[slot] || MERCHANT_SPRITE_MOTIFS_BY_SLOT.weapon
+  const paletteFallbackList = MERCHANT_SPRITE_PALETTES_BY_RARITY[rarity] || MERCHANT_SPRITE_PALETTES_BY_RARITY.R
+  const fallbackSeed = Math.max(0, Math.min(999999, (index + 1) * 7919))
+  const fallback = {
+    motif: motifFallbackList[index % motifFallbackList.length] || 'blade',
+    palette: paletteFallbackList[index % paletteFallbackList.length] || 'iron',
+    silhouette: ['slim', 'wide', 'spike', 'round'][index % 4],
+    ornament: ['none', 'rune', 'gem', 'wing', 'chain'][index % 5],
+    glow: rarity === 'SSR' ? 1 : 0,
+    seed: fallbackSeed,
+  }
+
+  const value = rawValue && typeof rawValue === 'object' ? rawValue : {}
+  const motifRaw = String(value.motif || '').trim().toLowerCase()
+  const paletteRaw = String(value.palette || '').trim().toLowerCase()
+  const silhouetteRaw = String(value.silhouette || '').trim().toLowerCase()
+  const ornamentRaw = String(value.ornament || '').trim().toLowerCase()
+  const glowRaw = String(value.glow ?? '').trim().toLowerCase()
+
+  const hasGlowInput = glowRaw !== ''
+  const glowParsed = hasGlowInput && (glowRaw === '1' || glowRaw === 'true' || glowRaw === 'yes') ? 1 : 0
+  const seed = Number.isFinite(Number(value.seed))
+    ? Math.max(0, Math.min(999999, Math.round(Number(value.seed))))
+    : fallback.seed
+
+  return {
+    motif: MERCHANT_SPRITE_MOTIF_SET.has(motifRaw) ? motifRaw : fallback.motif,
+    palette: MERCHANT_SPRITE_PALETTE_SET.has(paletteRaw) ? paletteRaw : fallback.palette,
+    silhouette: MERCHANT_SPRITE_SILHOUETTE_SET.has(silhouetteRaw) ? silhouetteRaw : fallback.silhouette,
+    ornament: MERCHANT_SPRITE_ORNAMENT_SET.has(ornamentRaw) ? ornamentRaw : fallback.ornament,
+    glow: hasGlowInput ? glowParsed : fallback.glow,
+    seed,
+  }
+}
+
+const normalizeMerchantItems = (rawData, fallbackItems = []) => {
+  if (!rawData || typeof rawData !== 'object') return null
+  const items = Array.isArray(rawData.items) ? rawData.items : []
+  if (items.length === 0) return null
+
+  return items.slice(0, 6).map((item, index) => {
+    const rarity = String(item?.rarity || 'R').toUpperCase()
+    const slot = String(item?.slot || 'weapon').toLowerCase()
+    const name = String(item?.name || `商品${index + 1}`).trim().slice(0, 18)
+    const normalizedRarity = ['R', 'SR', 'SSR'].includes(rarity) ? rarity : 'R'
+    const normalizedSlot = ['weapon', 'armor', 'relic'].includes(slot) ? slot : 'weapon'
+    
+    return {
+      name,
+      rarity: normalizedRarity,
+      slot: normalizedSlot,
+      atk: Math.max(0, Math.min(999, Number(item?.atk) || 0)),
+      def: Math.max(0, Math.min(999, Number(item?.def) || 0)),
+      hp: Math.max(0, Math.min(9999, Number(item?.hp) || 0)),
+      price: Math.max(50, Math.min(9999, Number(item?.price) || 50)),
+      desc: String(item?.desc || '').trim().slice(0, 40),
+      spriteSpec: sanitizeMerchantSpriteSpec(item?.spriteSpec, normalizedRarity, normalizedSlot, index),
+    }
+  })
+}
+
+export const generateMerchantItems = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      items: [],
+    }
+  }
+
+  const worldTitle = String(params.worldTitle || '').trim()
+  const worldSummary = String(params.worldSummary || '').trim()
+  const floor = Math.max(1, Number(params.floor) || 1)
+  const playerLevel = Math.max(1, Number(params.playerLevel) || 1)
+
+  const userPrompt = [
+    '【任务】为流浪商人生成 6 件装备商品。',
+    worldTitle ? `【世界书标题】${worldTitle}` : '',
+    worldSummary ? `【世界背景】${worldSummary}` : '',
+    `【当前楼层】${floor}`,
+    `【玩家等级】${playerLevel}`,
+    '请根据世界背景和玩家进度生成合适的装备。',
+    '请直接输出 JSON 对象，不要补充解释。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: MERCHANT_ITEMS_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.85,
+    maxTokens: params.options?.maxTokens ?? 900,
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '商人商品生成失败',
+      items: [],
+    }
+  }
+
+  const parsed = normalizeMerchantItems(parseFirstJsonObject(result.data))
+  if (!parsed || parsed.length === 0) {
+    return {
+      success: false,
+      error: '商人商品解析失败',
+      items: [],
+      data: result.data,
+      rawResponse: result.rawResponse,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    items: parsed,
     data: result.data,
     rawResponse: result.rawResponse,
   }

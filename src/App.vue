@@ -1,15 +1,17 @@
 ﻿<script setup>
 import { onBeforeUnmount, onMounted, ref, computed, watch } from 'vue'
 import GameScreen from './screens/GameScreen.vue'
-import SettingsScreen from './screens/SettingsScreen.vue'
 import StartScreen from './screens/StartScreen.vue'
-import WorldBookEditorScreen from './screens/WorldBookEditorScreen.vue'
-import WorldBookScreen from './screens/WorldBookScreen.vue'
-import SaveLoadScreen from './screens/SaveLoadScreen.vue'
-import PluginManagerScreen from './screens/PluginManagerScreen.vue'
-import NarratorManagerScreen from './screens/NarratorManagerScreen.vue'
-import CardCollectionScreen from './screens/CardCollectionScreen.vue'
 import { getPlatform, isMobileDevice, isNative, isAndroid } from './utils/platform'
+import { buildStartMenuRegistry, resolveStartMenuAction } from './features/startMenuRegistry'
+import { getLocalFeaturePluginManifests } from './features/localFeaturePluginManifests'
+import { getLocalFeaturePluginEntries } from './features/localFeaturePluginEntries'
+import { buildPluginScreenRegistry, resolvePluginScreenByRoute } from './features/pluginScreenRegistry'
+import {
+  getFeaturePluginRuntimeState,
+  filterEnabledFeaturePluginManifests,
+  subscribeFeaturePluginRuntimeState,
+} from './features/featurePluginRuntimeState'
 import { StatusBar, Style } from '@capacitor/status-bar'
 
 // PC 端设计基准分辨率（16:9 横屏比例）
@@ -119,9 +121,42 @@ const handleAndroidResize = () => {
 
 // 存档数据（用于加载存档后传递给游戏界面）
 const loadedSaveData = ref(null)
+const localFeaturePluginManifests = getLocalFeaturePluginManifests()
+const localFeaturePluginEntries = getLocalFeaturePluginEntries()
+const featurePluginRuntimeState = ref(getFeaturePluginRuntimeState())
+const enabledFeaturePluginManifests = computed(() => {
+  return filterEnabledFeaturePluginManifests(
+    localFeaturePluginManifests,
+    featurePluginRuntimeState.value,
+  )
+})
+const startMenuRegistry = computed(() => buildStartMenuRegistry({
+  pluginManifests: enabledFeaturePluginManifests.value,
+}))
+const startMenuItems = computed(() => {
+  return startMenuRegistry.value.items
+})
+const startMenuActionMap = computed(() => {
+  return startMenuRegistry.value.actionMap
+})
 
-const openSettings = () => {
-  currentScreen.value = 'settings'
+const openScreenByKey = (screenKey) => {
+  const next = String(screenKey || '').trim()
+  if (!next) return
+  currentScreen.value = next
+}
+
+const handleStartMenuAction = (payload) => {
+  const itemId = typeof payload === 'string'
+    ? payload
+    : payload?.itemId
+  const action = payload?.action && typeof payload.action === 'object'
+    ? payload.action
+    : resolveStartMenuAction(startMenuActionMap.value, itemId)
+  if (action.type === 'screen') {
+    openScreenByKey(action.screen)
+    return
+  }
 }
 
 const openNewGame = (payload = 'default_world_book') => {
@@ -138,29 +173,9 @@ const openNewGame = (payload = 'default_world_book') => {
   currentScreen.value = 'game'
 }
 
-const openWorldBook = () => {
-  currentScreen.value = 'worldbook-shelf'
-}
-
 const openWorldBookEditor = (bookId) => {
   activeWorldBookId.value = bookId || 'default_world_book'
   currentScreen.value = 'worldbook-editor'
-}
-
-const openSaveLoad = () => {
-  currentScreen.value = 'save-load'
-}
-
-const openPluginManager = () => {
-  currentScreen.value = 'plugin-manager'
-}
-
-const openNarratorManager = () => {
-  currentScreen.value = 'narrator-manager'
-}
-
-const openCardCollection = () => {
-  currentScreen.value = 'card-collection'
 }
 
 const backToWorldBookShelf = () => {
@@ -201,6 +216,21 @@ const handleLoadBackup = (backupData) => {
   currentScreen.value = 'game'
 }
 
+const pluginScreenRegistry = computed(() => buildPluginScreenRegistry({
+  pluginManifests: enabledFeaturePluginManifests.value,
+  pluginEntries: localFeaturePluginEntries,
+  activeWorldBookIdRef: activeWorldBookId,
+  onBackToStart: backToStart,
+  onBackToWorldBookShelf: backToWorldBookShelf,
+  onLoadSave: handleLoadSave,
+  onLoadBackup: handleLoadBackup,
+  onOpenWorldBookEditor: openWorldBookEditor,
+}))
+
+const activePluginScreen = computed(() => {
+  return resolvePluginScreenByRoute(pluginScreenRegistry.value, currentScreen.value)
+})
+
 /**
  * 计算 UI 缩放比例
  * Android 竖屏模式下，使用 9:16 设计比例
@@ -239,9 +269,18 @@ const updateUiScale = () => {
   }
 }
 
+let unsubscribeFeaturePluginRuntime = null
+
+const handleFeaturePluginRuntimeStateChange = (nextState) => {
+  featurePluginRuntimeState.value = nextState
+}
+
 onMounted(() => {
   updateUiScale()
   window.addEventListener('resize', updateUiScale)
+  unsubscribeFeaturePluginRuntime = subscribeFeaturePluginRuntimeState(
+    handleFeaturePluginRuntimeStateChange,
+  )
   
   // 添加平台类名到 body
   const body = document.body
@@ -282,6 +321,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateUiScale)
+  if (unsubscribeFeaturePluginRuntime) {
+    unsubscribeFeaturePluginRuntime()
+    unsubscribeFeaturePluginRuntime = null
+  }
 
   if (isAndroidPlatform.value) {
     document.removeEventListener('visibilitychange', handleAndroidVisibilityChange)
@@ -297,24 +340,31 @@ watch(currentScreen, (screen) => {
     scheduleAndroidLayoutDebug('screen-to-game')
   }
 })
+
+watch(activePluginScreen, (pluginScreen) => {
+  const screen = currentScreen.value
+  if (screen === 'start' || screen === 'game') {
+    return
+  }
+  if (!pluginScreen) {
+    currentScreen.value = 'start'
+  }
+})
 </script>
 
 <template>
   <div class="app-stage" :class="[`platform-${platform}`, { 'android-portrait': isAndroidPlatform }]">
     <div
       class="app-shell"
-      :class="{ 'game-fullscreen': currentScreen === 'game' }"
+      :class="{ 'game-fullscreen': currentScreen === 'game' || currentScreen === 'face-to-face' }"
       :style="{ '--ui-scale': uiScale, ...containerStyle }"
     >
       <StartScreen
         v-if="currentScreen === 'start'"
-        @open-settings="openSettings"
+        :menu-items="startMenuItems"
+        :menu-action-map="startMenuActionMap"
         @open-new-game="openNewGame"
-        @open-worldbook="openWorldBook"
-        @open-save-load="openSaveLoad"
-        @open-plugin-manager="openPluginManager"
-        @open-narrator-manager="openNarratorManager"
-        @open-card-collection="openCardCollection"
+        @menu-action="handleStartMenuAction"
       />
       <GameScreen
         v-else-if="currentScreen === 'game'"
@@ -323,38 +373,15 @@ watch(currentScreen, (screen) => {
         :session-narrator-id="activeNarratorId"
         @back="backToStart"
       />
-      <SettingsScreen v-else-if="currentScreen === 'settings'" @back="backToStart" />
-      <SaveLoadScreen
-        v-else-if="currentScreen === 'save-load'"
-        @back="backToStart"
-        @load-save="handleLoadSave"
-        @load-backup="handleLoadBackup"
-      />
-      <WorldBookScreen
-        v-else-if="currentScreen === 'worldbook-shelf'"
-        @back="backToStart"
-        @open-book="openWorldBookEditor"
-      />
-      <PluginManagerScreen
-        v-else-if="currentScreen === 'plugin-manager'"
-        @back="backToStart"
-      />
-      <NarratorManagerScreen
-        v-else-if="currentScreen === 'narrator-manager'"
-        @back="backToStart"
-      />
-      <CardCollectionScreen
-        v-else-if="currentScreen === 'card-collection'"
-        @back="backToStart"
-      />
-      <WorldBookEditorScreen
-        v-else
-        :book-id="activeWorldBookId"
-        @back="backToWorldBookShelf"
+      <component
+        v-else-if="activePluginScreen"
+        :is="activePluginScreen.component"
+        v-bind="activePluginScreen.props"
+        v-on="activePluginScreen.events"
       />
     </div>
   </div>
 </template>
 
 <style scoped src="./App.css"></style>
-
+<style src="./theme/themeProfiles.css"></style>

@@ -418,19 +418,1295 @@
   left: 50%;
   bottom: 74px;
   transform: translateX(-50%);
-  min-width: 62px;
-  max-width: 148px;
-  padding: 4px 6px;
+  min-width: 100px;
+  max-width: 200px;
+  min-height: 24px;
+  padding: 6px 10px;
   border: 2px solid rgba(217, 230, 255, 0.96);
   background: #15203d;
   box-shadow: 0 0 0 2px rgba(8, 13, 28, 0.98);
   color: #f5f9ff;
-  font-size: 9px;
-  line-height: 1.34;
+  font-size: 11px;
+  line-height: 1.4;
   text-align: left;
   letter-spacing: 0.1px;
   word-break: break-word;
   pointer-events: none;
   z-index: 9;
   image-rendering: pixelated;
+  border-radius: 8px;
+}
+
+/* 队伍卡片样式 */
+.xx-team-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.xx-team-member-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: linear-gradient(145deg, rgba(30, 45, 80, 0.8), rgba(20, 35, 65, 0.9));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.xx-team-member-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(100, 180, 255, 0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.xx-team-member-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(100, 180, 255, 0.4);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(100, 180, 255, 0.15);
+}
+
+.xx-team-member-btn:hover::before {
+  opacity: 1;
+}
+
+.xx-team-member-btn.is-active {
+  border-color: #5a9fff;
+  background: linear-gradient(145deg, rgba(40, 65, 110, 0.9), rgba(30, 50, 90, 0.95));
+  box-shadow: 0 0 20px rgba(90, 160, 255, 0.3), inset 0 0 20px rgba(90, 160, 255, 0.1);
+}
+
+.xx-team-member-btn.is-active::before {
+  opacity: 1;
+  background: linear-gradient(90deg, transparent, #5a9fff, transparent);
+}
+
+.xx-team-member-btn.is-empty {
+  background: rgba(15, 25, 45, 0.5);
+  border: 1px dashed rgba(100, 120, 160, 0.3);
+  cursor: default;
+}
+
+.xx-team-member-btn.is-empty:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* 像素小人容器 */
+.xx-team-member-sprite-wrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  background: radial-gradient(circle at center, rgba(80, 120, 180, 0.2), transparent 70%);
+  border-radius: 50%;
+}
+
+.xx-team-member-sprite {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* 稀有度指示器 */
+.xx-team-member-rarity {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.xx-team-member-rarity.is-SSR {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #ffd700;
+}
+
+.xx-team-member-rarity.is-SR {
+  background: linear-gradient(135deg, #c0a0ff, #8060d0);
+  color: #c0a0ff;
+}
+
+.xx-team-member-rarity.is-R {
+  background: linear-gradient(135deg, #a0c0ff, #6090d0);
+  color: #a0c0ff;
+}
+
+/* 队员名称 */
+.xx-team-member-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8f0ff;
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 队员职业 */
+.xx-team-member-role {
+  font-size: 10px;
+  color: #8898b8;
+  margin-top: 2px;
+}
+
+/* HP条 */
+.xx-team-member-hp-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.xx-team-member-hp-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.xx-team-member-hp-fill.is-high {
+  background: linear-gradient(90deg, #40c080, #60e0a0);
+}
+
+.xx-team-member-hp-fill.is-mid {
+  background: linear-gradient(90deg, #c0a040, #e0c060);
+}
+
+.xx-team-member-hp-fill.is-low {
+  background: linear-gradient(90deg, #c04040, #e06060);
+}
+
+/* 队员装备栏样式 */
+.xx-member-equip-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.xx-member-equip-title {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b8c8e8;
+}
+
+.xx-member-equip-grid {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.xx-member-equip-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(20, 32, 60, 0.6);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.xx-member-equip-slot:hover {
+  border-color: rgba(100, 160, 255, 0.5);
+  background: rgba(30, 48, 90, 0.7);
+}
+
+.xx-member-equip-slot.is-selected {
+  border-color: #5a9fff;
+  background: rgba(40, 64, 120, 0.8);
+  box-shadow: 0 0 8px rgba(90, 160, 255, 0.3);
+}
+
+.xx-slot-label {
+  font-size: 10px;
+  color: #8898b8;
+  margin-bottom: 4px;
+}
+
+.xx-slot-item {
+  font-size: 11px;
+  font-weight: 600;
+  color: #e8f0ff;
+  text-align: center;
+  word-break: break-word;
+}
+
+.xx-slot-stats {
+  font-size: 9px;
+  color: #7ac0ff;
+  margin-top: 2px;
+}
+
+.xx-member-equip-bonus {
+  margin: 0;
+  font-size: 10px;
+  color: #98b0d0;
+}
+
+.xx-equip-select-list {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 24, 48, 0.5);
+}
+
+.xx-equip-select-title {
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #a8b8d8;
+}
+
+.xx-equip-select-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.xx-equip-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(25, 40, 80, 0.5);
+  color: #e0e8ff;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.xx-equip-select-btn:hover {
+  border-color: rgba(100, 160, 255, 0.4);
+  background: rgba(35, 56, 100, 0.6);
+}
+
+.xx-equip-select-btn.is-selected {
+  border-color: #5a9fff;
+  background: rgba(50, 80, 140, 0.7);
+}
+
+.xx-equip-name {
+  font-weight: 600;
+}
+
+.xx-equip-rarity {
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.xx-equip-rarity.is-R {
+  background: #4a6080;
+  color: #c0d0e8;
+}
+
+.xx-equip-rarity.is-SR {
+  background: #6050a0;
+  color: #d0c0ff;
+}
+
+.xx-equip-rarity.is-SSR {
+  background: #a08040;
+  color: #ffe8c0;
+}
+
+.xx-equip-stats {
+  font-size: 9px;
+  color: #80b0e0;
+}
+
+.xx-equip-empty {
+  margin: 0;
+  padding: 8px;
+  font-size: 10px;
+  color: #8090a0;
+  text-align: center;
+}
+
+.xx-equip-confirm-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #5a9fff;
+  background: linear-gradient(135deg, #3a6aaf, #2a5090);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.xx-equip-confirm-btn:hover {
+  background: linear-gradient(135deg, #4a7abf, #3a60a0);
+}
+
+.xx-equip-unequip-btn {
+  margin-top: 6px;
+  width: 100%;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 100, 100, 0.4);
+  background: rgba(80, 40, 40, 0.5);
+  color: #ffa0a0;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.xx-equip-unequip-btn:hover {
+  border-color: rgba(255, 100, 100, 0.6);
+  background: rgba(100, 50, 50, 0.6);
+}
+
+/* 帐篷队伍选择区 */
+.xx-tent-party-section {
+  margin-bottom: 16px;
+}
+
+.xx-team-select-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.xx-team-select-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: linear-gradient(145deg, rgba(30, 45, 80, 0.8), rgba(20, 35, 65, 0.9));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.xx-team-select-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(100, 180, 255, 0.4);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(100, 180, 255, 0.15);
+}
+
+.xx-team-select-btn.is-active {
+  border-color: #5a9fff;
+  background: linear-gradient(145deg, rgba(40, 65, 110, 0.9), rgba(30, 50, 90, 0.95));
+  box-shadow: 0 0 20px rgba(90, 160, 255, 0.3), inset 0 0 20px rgba(90, 160, 255, 0.1);
+}
+
+.xx-team-select-btn.is-empty {
+  background: rgba(15, 25, 45, 0.5);
+  border: 1px dashed rgba(100, 120, 160, 0.3);
+  cursor: default;
+}
+
+.xx-team-select-btn.is-empty:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.xx-team-select-sprite {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  background: radial-gradient(circle at center, rgba(80, 120, 180, 0.2), transparent 70%);
+  border-radius: 50%;
+}
+
+.xx-team-select-sprite-img {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.xx-team-select-empty {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: rgba(40, 50, 70, 0.3);
+  border: 1px dashed rgba(100, 120, 160, 0.3);
+}
+
+.xx-team-select-empty span {
+  font-size: 12px;
+  color: #607090;
+}
+
+.xx-team-select-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8f0ff;
+  text-align: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xx-team-select-rarity {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.xx-team-select-rarity.is-SSR {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #fff;
+}
+
+.xx-team-select-rarity.is-SR {
+  background: linear-gradient(135deg, #c0a0ff, #8060d0);
+  color: #fff;
+}
+
+.xx-team-select-rarity.is-R {
+  background: linear-gradient(135deg, #a0c0ff, #6090d0);
+  color: #fff;
+}
+
+/* 队员详情卡片 */
+.xx-member-detail-card {
+  background: linear-gradient(145deg, rgba(25, 40, 75, 0.9), rgba(15, 30, 55, 0.95));
+  border-radius: 16px;
+  border: 1px solid rgba(100, 140, 200, 0.2);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.xx-member-detail-card.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  background: rgba(15, 25, 45, 0.5);
+  border: 1px dashed rgba(100, 120, 160, 0.3);
+}
+
+.xx-member-empty-hint {
+  margin: 0;
+  font-size: 14px;
+  color: #6080a0;
+  text-align: center;
+}
+
+.xx-member-detail-layout {
+  display: flex;
+  gap: 24px;
+}
+
+/* 左侧：像素小人面板 */
+.xx-member-sprite-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background: rgba(20, 35, 65, 0.6);
+  border-radius: 12px;
+  border: 1px solid rgba(80, 120, 180, 0.2);
+  min-width: 160px;
+}
+
+.xx-member-sprite-large {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  background: radial-gradient(circle at center, rgba(80, 120, 180, 0.3), transparent 70%);
+  border-radius: 50%;
+}
+
+.xx-member-sprite-large img {
+  width: 80px;
+  height: 80px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+.xx-member-name-large {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e8f0ff;
+  text-align: center;
+}
+
+.xx-member-role-large {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  color: #8898b8;
+  text-align: center;
+}
+
+.xx-member-hp-large {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.xx-member-hp-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #80a0c0;
+  flex-shrink: 0;
+}
+
+.xx-member-hp-bar-large {
+  flex: 1;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.xx-member-hp-fill-large {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.xx-member-hp-fill-large.is-high {
+  background: linear-gradient(90deg, #40c080, #60e0a0);
+}
+
+.xx-member-hp-fill-large.is-mid {
+  background: linear-gradient(90deg, #c0a040, #e0c060);
+}
+
+.xx-member-hp-fill-large.is-low {
+  background: linear-gradient(90deg, #c04040, #e06060);
+}
+
+.xx-member-hp-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a0c0e0;
+  flex-shrink: 0;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* 右侧：属性和装备面板 */
+.xx-member-info-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.xx-member-stats-section {
+  background: rgba(20, 35, 65, 0.4);
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid rgba(80, 120, 180, 0.15);
+}
+
+.xx-section-title {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #b8c8e8;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(100, 140, 200, 0.2);
+}
+
+.xx-member-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.xx-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  background: rgba(30, 50, 90, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(80, 120, 180, 0.1);
+}
+
+.xx-stat-label {
+  font-size: 10px;
+  color: #7890b0;
+  margin-bottom: 4px;
+}
+
+.xx-stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e8f0ff;
+}
+
+/* PC端适配 */
+@media (min-width: 768px) {
+  .xx-team-select-row {
+    gap: 16px;
+  }
+
+  .xx-team-select-btn {
+    width: 120px;
+    padding: 16px 12px;
+  }
+
+  .xx-team-select-sprite {
+    width: 64px;
+    height: 64px;
+  }
+
+  .xx-team-select-sprite-img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .xx-team-select-empty {
+    width: 64px;
+    height: 64px;
+  }
+
+  .xx-team-select-name {
+    font-size: 14px;
+    max-width: 100px;
+  }
+
+  .xx-member-detail-card {
+    padding: 24px;
+  }
+
+  .xx-member-detail-layout {
+    gap: 32px;
+  }
+
+  .xx-member-sprite-panel {
+    min-width: 200px;
+    padding: 24px;
+  }
+
+  .xx-member-sprite-large {
+    width: 120px;
+    height: 120px;
+  }
+
+  .xx-member-sprite-large img {
+    width: 100px;
+    height: 100px;
+  }
+
+  .xx-member-name-large {
+    font-size: 18px;
+  }
+
+  .xx-member-role-large {
+    font-size: 14px;
+  }
+
+  .xx-member-hp-bar-large {
+    height: 10px;
+  }
+
+  .xx-member-hp-text {
+    font-size: 13px;
+  }
+
+  .xx-member-stats-section {
+    padding: 16px;
+  }
+
+  .xx-section-title {
+    font-size: 15px;
+  }
+
+  .xx-member-stats-grid {
+    gap: 12px;
+  }
+
+  .xx-stat-item {
+    padding: 12px 8px;
+  }
+
+  .xx-stat-label {
+    font-size: 12px;
+  }
+
+  .xx-stat-value {
+    font-size: 16px;
+  }
+}
+
+/* 流浪商人样式 */
+.xx-merchant-card {
+  background: linear-gradient(145deg, rgba(25, 40, 75, 0.9), rgba(15, 30, 55, 0.95));
+  border-radius: 16px;
+  border: 1px solid rgba(100, 140, 200, 0.2);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.xx-merchant-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(100, 140, 200, 0.2);
+}
+
+.xx-merchant-sprite {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(180, 140, 80, 0.3), transparent 70%);
+  border-radius: 12px;
+  border: 2px solid rgba(200, 160, 100, 0.3);
+}
+
+.xx-merchant-sprite img {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+.xx-merchant-info {
+  flex: 1;
+}
+
+.xx-merchant-name {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffd080;
+}
+
+.xx-merchant-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #8898b8;
+  line-height: 1.4;
+}
+
+.xx-merchant-items {
+  margin-bottom: 16px;
+}
+
+.xx-merchant-item-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.xx-merchant-item-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: linear-gradient(145deg, rgba(30, 45, 80, 0.8), rgba(20, 35, 65, 0.9));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.xx-merchant-item-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(200, 160, 100, 0.4);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(200, 160, 100, 0.15);
+}
+
+.xx-merchant-item-btn.is-sell {
+  background: linear-gradient(145deg, rgba(22, 54, 44, 0.9), rgba(16, 46, 36, 0.95));
+}
+
+.xx-merchant-item-btn.is-sell:hover:not(:disabled) {
+  border-color: rgba(120, 220, 170, 0.45);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 0 16px rgba(100, 240, 170, 0.2);
+}
+
+.xx-merchant-item-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.xx-merchant-item-sprite {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  background: radial-gradient(circle at center, rgba(100, 80, 60, 0.2), transparent 70%);
+  border-radius: 8px;
+}
+
+.xx-merchant-item-sprite img {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.xx-merchant-item-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.xx-merchant-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8f0ff;
+  text-align: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xx-merchant-item-rarity {
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.xx-merchant-item-rarity.is-SSR {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #fff;
+}
+
+.xx-merchant-item-rarity.is-SR {
+  background: linear-gradient(135deg, #c0a0ff, #8060d0);
+  color: #fff;
+}
+
+.xx-merchant-item-rarity.is-R {
+  background: linear-gradient(135deg, #a0c0ff, #6090d0);
+  color: #fff;
+}
+
+.xx-merchant-item-stats {
+  font-size: 10px;
+  color: #80b0e0;
+}
+
+.xx-merchant-item-price {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd080;
+}
+
+.xx-merchant-item-price.is-base {
+  color: #8fa8c8;
+  font-size: 10px;
+}
+
+.xx-merchant-item-price.is-sell {
+  color: #8ff0a8;
+}
+
+.xx-merchant-sell-section {
+  margin-top: 12px;
+}
+
+.xx-merchant-sell-tip {
+  margin: 10px 0 0;
+  text-align: right;
+  font-size: 11px;
+  color: #88bca0;
+}
+
+.xx-merchant-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  background: rgba(15, 25, 45, 0.5);
+  border: 1px dashed rgba(100, 120, 160, 0.3);
+  border-radius: 12px;
+}
+
+.xx-merchant-empty p {
+  margin: 0;
+  font-size: 14px;
+  color: #6080a0;
+}
+
+.xx-merchant-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.xx-btn.is-secondary {
+  background: linear-gradient(135deg, #506080, #405060);
+  border: 2px solid rgba(80, 100, 140, 0.5);
+  color: #c0d0e0;
+  font-weight: 600;
+}
+
+.xx-btn.is-secondary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #607090, #506070);
+  border-color: rgba(100, 120, 160, 0.6);
+}
+
+.xx-btn.is-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.xx-btn.is-primary {
+  background: linear-gradient(135deg, #c08040, #a06030);
+  border: 2px solid rgba(200, 160, 100, 0.5);
+  color: #fff;
+  font-weight: 700;
+}
+
+.xx-btn.is-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d09050, #b07040);
+  border-color: rgba(220, 180, 120, 0.6);
+}
+
+.xx-btn.is-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 卧室装饰样式 */
+.xx-bedroom-card {
+  background: linear-gradient(145deg, rgba(28, 36, 66, 0.92), rgba(18, 24, 46, 0.98));
+  border-radius: 16px;
+  border: 1px solid rgba(136, 162, 214, 0.24);
+  padding: 16px;
+}
+
+.xx-bedroom-board-wrap {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.xx-bedroom-board {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(168, 195, 255, 0.25);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(123, 167, 255, 0.2), transparent 65%),
+    linear-gradient(180deg, rgba(20, 34, 68, 0.9), rgba(11, 20, 40, 0.95));
+  box-shadow:
+    inset 0 0 0 1px rgba(9, 14, 30, 0.95),
+    0 10px 24px rgba(0, 0, 0, 0.36);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: visible;
+}
+
+.xx-bedroom-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  pointer-events: none;
+}
+
+.xx-bedroom-grid-cell {
+  border: 1px solid rgba(165, 187, 235, 0.2);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.xx-bedroom-item {
+  appearance: none;
+  -webkit-appearance: none;
+  position: absolute;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: grab;
+  overflow: visible;
+}
+
+.xx-bedroom-item:active {
+  cursor: grabbing;
+}
+
+.xx-bedroom-item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
+}
+
+.xx-bedroom-item-name {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
+  max-width: 100%;
+  padding: 0 3px;
+  font-size: 9px;
+  line-height: 1.2;
+  color: rgba(228, 240, 255, 0.95);
+  text-shadow: 0 1px 0 rgba(6, 11, 26, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.xx-bedroom-item.is-floor .xx-bedroom-item-name {
+  display: none;
+}
+
+.xx-bedroom-item.is-selected img {
+  filter:
+    drop-shadow(0 0 0 rgba(0, 0, 0, 0))
+    drop-shadow(0 0 10px rgba(140, 205, 255, 0.7));
+}
+
+.xx-bedroom-item.is-dragging {
+  z-index: 999 !important;
+}
+
+.xx-bedroom-tip {
+  margin: 18px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(201, 223, 255, 0.88);
+}
+
+.xx-bedroom-actions {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.xx-bedroom-selected {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(154, 182, 240, 0.24);
+  background: rgba(19, 32, 64, 0.72);
+}
+
+.xx-bedroom-selected-title {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(223, 236, 255, 0.94);
+}
+
+.xx-bedroom-z-actions {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* 商人按钮位置 */
+.xx-orbit-btn.is-merchant {
+  right: 4%;
+  bottom: 25%;
+}
+
+.xx-orbit-btn.is-bedroom {
+  left: 4%;
+  bottom: 25%;
+}
+
+/* 商人进货弹窗样式 */
+.xx-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+.xx-modal-content {
+  background: linear-gradient(135deg, #2a3040, #1a2030);
+  border: 2px solid rgba(200, 160, 100, 0.4);
+  border-radius: 16px;
+  padding: 32px 48px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.xx-merchant-restock-modal .xx-modal-spinner {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border: 4px solid rgba(200, 160, 100, 0.2);
+  border-top-color: #c08040;
+  border-radius: 50%;
+  animation: xx-modal-spin 1s linear infinite;
+}
+
+@keyframes xx-modal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.xx-modal-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e0c080;
+  margin: 0 0 8px;
+}
+
+.xx-modal-subtext {
+  font-size: 14px;
+  color: #8090a0;
+  margin: 0;
+}
+
+/* 弹窗过渡动画 */
+.xx-modal-fade-enter-active,
+.xx-modal-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.xx-modal-fade-enter-from,
+.xx-modal-fade-leave-to {
+  opacity: 0;
+}
+
+/* PC端商人样式 */
+@media (min-width: 768px) {
+  .xx-merchant-card {
+    padding: 24px;
+  }
+
+  .xx-merchant-header {
+    gap: 24px;
+  }
+
+  .xx-merchant-sprite {
+    width: 100px;
+    height: 100px;
+  }
+
+  .xx-merchant-sprite img {
+    width: 80px;
+    height: 80px;
+  }
+
+  .xx-merchant-name {
+    font-size: 22px;
+  }
+
+  .xx-merchant-desc {
+    font-size: 14px;
+  }
+
+  .xx-merchant-item-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+  }
+
+  .xx-merchant-item-btn {
+    padding: 16px 12px;
+  }
+
+  .xx-merchant-item-sprite {
+    width: 64px;
+    height: 64px;
+  }
+
+  .xx-merchant-item-sprite img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .xx-merchant-item-name {
+    font-size: 14px;
+    max-width: 100px;
+  }
+
+  .xx-bedroom-card {
+    padding: 20px;
+  }
+
+  .xx-bedroom-tip {
+    font-size: 13px;
+  }
+
+  .xx-bedroom-item-name {
+    font-size: 10px;
+  }
 }

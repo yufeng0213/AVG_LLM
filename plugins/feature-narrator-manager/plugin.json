@@ -1,0 +1,28 @@
+{
+  "id": "narrator-manager",
+  "name": "叙事者管理",
+  "description": "管理不同主笔风格与叙事模板。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "narrators",
+    "title": "叙事者",
+    "icon": "🧠",
+    "order": 70,
+    "variant": "tone-orange border-dashed tilt-left"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "narrator-manager"
+  },
+  "storage": {
+    "namespace": "narrator-manager"
+  },
+  "capabilities": [
+    "storage",
+    "narrator"
+  ],
+  "enabledByDefault": true
+}

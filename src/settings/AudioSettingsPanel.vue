@@ -43,3 +43,5 @@ const audioState = reactive({
     </label>
   </section>
 </template>
+
+<style scoped src="./SettingsPanel.css"></style>

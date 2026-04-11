@@ -1,0 +1,1306 @@
+/* ============================================
+   冒险游戏全屏界面 - 现代化美化样式
+   ============================================ */
+
+/* 主容器样式 */
+.adventure-game-screen {
+  --adventure-bg-primary: #0a0e1a;
+  --adventure-bg-secondary: #111827;
+  --adventure-bg-card: rgba(17, 24, 39, 0.9);
+  --adventure-border: rgba(99, 102, 241, 0.3);
+  --adventure-border-glow: rgba(99, 102, 241, 0.5);
+  --adventure-text-primary: #f1f5f9;
+  --adventure-text-secondary: #94a3b8;
+  --adventure-text-muted: #64748b;
+  --adventure-accent-cyan: #22d3ee;
+  --adventure-accent-magenta: #e879f9;
+  --adventure-accent-gold: #fbbf24;
+  --adventure-accent-green: #4ade80;
+  --adventure-accent-red: #f87171;
+  --adventure-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* 游戏容器 - 全屏 */
+.adventure-game-container {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.adventure-game-container *,
+.adventure-game-container *::before,
+.adventure-game-container *::after {
+  box-sizing: border-box;
+}
+
+.adventure-game-container :deep(.xx-handheld) {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 1 !important;
+  font-family: 'Inter', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  background: linear-gradient(135deg, var(--adventure-bg-primary) 0%, #0f172a 50%, var(--adventure-bg-secondary) 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 隐藏触发按钮组 */
+.adventure-game-container :deep(.xx-trigger-group) {
+  display: none;
+}
+
+/* 面板全屏样式 */
+.adventure-game-container :deep(.xx-panel) {
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 隐藏关闭按钮 */
+.adventure-game-container :deep(.xx-close) {
+  display: none;
+}
+
+/* ============================================
+   营地主界面 - 全屏布局
+   ============================================ */
+
+.adventure-game-container :deep(.xx-home-main) {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  position: relative;
+  background: 
+    radial-gradient(ellipse at 50% 70%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 20%, rgba(34, 211, 238, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 30%, rgba(232, 121, 249, 0.08) 0%, transparent 40%);
+}
+
+.adventure-game-container :deep(.xx-home-screen) {
+  height: 100%;
+}
+
+.adventure-game-container :deep(.xx-campfire-field) {
+  height: 100%;
+  min-height: auto !important;
+  position: relative;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background:
+    radial-gradient(circle at 50% 55%, rgba(251, 191, 36, 0.06) 0%, transparent 45%);
+  overflow: hidden;
+}
+
+/* 营地按钮 - 现代化设计 */
+.adventure-game-container :deep(.xx-orbit-btn) {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  border: 2px solid var(--adventure-border);
+  background: var(--adventure-bg-card);
+  backdrop-filter: blur(16px);
+  color: var(--adventure-text-primary);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow:
+    0 6px 12px -3px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  z-index: 10;
+}
+
+.adventure-game-container :deep(.xx-orbit-btn:hover) {
+  transform: translateY(-4px);
+  border-color: var(--adventure-border-glow);
+  box-shadow:
+    0 16px 24px -8px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(99, 102, 241, 0.25);
+}
+
+.adventure-game-container :deep(.xx-orbit-btn:active) {
+  transform: translateY(-3px) scale(1.04);
+}
+
+.adventure-game-container :deep(.xx-orbit-icon) {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.adventure-game-container :deep(.xx-orbit-label) {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* 按钮位置 - 四角布局，确保不超出屏幕 */
+.adventure-game-container :deep(.xx-orbit-btn.is-dungeon) {
+  top: 60px;
+  left: 20px;
+  border-color: rgba(34, 211, 238, 0.4);
+}
+
+.adventure-game-container :deep(.xx-orbit-btn.is-dungeon:hover) {
+  border-color: var(--adventure-accent-cyan);
+  box-shadow:
+    0 12px 20px -6px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(34, 211, 238, 0.35);
+}
+
+.adventure-game-container :deep(.xx-orbit-btn.is-gacha) {
+  top: 60px;
+  right: 20px;
+  border-color: rgba(232, 121, 249, 0.4);
+}
+
+.adventure-game-container :deep(.xx-orbit-btn.is-gacha:hover) {
+  border-color: var(--adventure-accent-magenta);
+  box-shadow:
+    0 12px 20px -6px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(232, 121, 249, 0.35);
+}
+
+.adventure-game-container :deep(.xx-orbit-btn.is-rest) {
+  bottom: 60px;
+  left: 20px;
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+.adventure-game-container :deep(.xx-orbit-btn.is-rest:hover) {
+  border-color: var(--adventure-accent-green);
+  box-shadow:
+    0 12px 20px -6px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(74, 222, 128, 0.35);
+}
+
+.adventure-game-container :deep(.xx-orbit-btn.is-tent) {
+  bottom: 60px;
+  right: 20px;
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.adventure-game-container :deep(.xx-orbit-btn.is-tent:hover) {
+  border-color: var(--adventure-accent-gold);
+  box-shadow:
+    0 12px 20px -6px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(251, 191, 36, 0.35);
+}
+
+/* 篝火核心 - 居中放大 */
+.adventure-game-container :deep(.xx-campfire-core) {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(2);
+}
+
+.adventure-game-container :deep(.xx-campfire-flame) {
+  filter: blur(0.5px);
+}
+
+.adventure-game-container :deep(.xx-campfire-glow) {
+  opacity: 0.5;
+}
+
+/* 像素角色 - 放大显示 */
+.adventure-game-container :deep(.xx-camper) {
+  width: 70px;
+  height: 115px;
+  cursor: grab;
+  transition: transform 0.2s ease;
+}
+
+.adventure-game-container :deep(.xx-camper:hover) {
+  transform: translate(-50%, -50%) scale(1.15);
+  z-index: 10;
+}
+
+.adventure-game-container :deep(.xx-camper-sprite) {
+  width: 64px;
+  height: 64px;
+  top: 12px;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+}
+
+.adventure-game-container :deep(.xx-camper-name) {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.adventure-game-container :deep(.xx-camper-bubble) {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid var(--adventure-border);
+  max-width: 200px;
+  bottom: 90px;
+}
+
+/* ============================================
+   子视图通用样式 - 全屏布局
+   ============================================ */
+
+.adventure-game-container :deep(.xx-header) {
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--adventure-border);
+  background: var(--adventure-bg-card);
+  backdrop-filter: blur(16px);
+  flex-shrink: 0;
+}
+
+.adventure-game-container :deep(.xx-title) {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--adventure-accent-cyan), var(--adventure-accent-magenta));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.adventure-game-container :deep(.xx-subtitle) {
+  font-size: 15px;
+  color: var(--adventure-text-secondary);
+  margin-top: 6px;
+}
+
+.adventure-game-container :deep(.xx-main) {
+  flex: 1;
+  min-height: 0;
+  padding: 24px;
+  gap: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+}
+
+.adventure-game-container :deep(.xx-subview-head) {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.adventure-game-container :deep(.xx-back-btn) {
+  padding: 12px 24px;
+  border-radius: 14px;
+  border: 1px solid var(--adventure-border);
+  background: var(--adventure-bg-card);
+  color: var(--adventure-text-primary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.adventure-game-container :deep(.xx-back-btn:hover) {
+  border-color: var(--adventure-accent-cyan);
+  background: rgba(34, 211, 238, 0.1);
+}
+
+.adventure-game-container :deep(.xx-subview-title) {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--adventure-text-primary);
+  margin: 0;
+}
+
+/* ============================================
+   统计面板 - 横向布局
+   ============================================ */
+
+.adventure-game-container :deep(.xx-stats) {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.adventure-game-container :deep(.xx-stats-dungeon) {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.adventure-game-container :deep(.xx-chip) {
+  padding: 18px 20px;
+  border-radius: 16px;
+  border: 1px solid var(--adventure-border);
+  background: var(--adventure-bg-card);
+  backdrop-filter: blur(12px);
+  text-align: center;
+  transition: all 0.2s ease;
+  margin: 0;
+}
+
+.adventure-game-container :deep(.xx-chip:hover) {
+  border-color: var(--adventure-border-glow);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+.adventure-game-container :deep(.xx-chip-label) {
+  font-size: 13px;
+  color: var(--adventure-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.adventure-game-container :deep(.xx-chip-value) {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--adventure-text-primary);
+}
+
+/* ============================================
+   场景卡片
+   ============================================ */
+
+.adventure-game-container :deep(.xx-scene-card) {
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid var(--adventure-border);
+  background: var(--adventure-bg-card);
+  backdrop-filter: blur(16px);
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.adventure-game-container :deep(.xx-scene-title) {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--adventure-text-primary);
+  margin: 0 0 16px 0;
+}
+
+.adventure-game-container :deep(.xx-hp-track) {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.adventure-game-container :deep(.xx-hp-fill) {
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--adventure-accent-green), var(--adventure-accent-cyan));
+  transition: width 0.3s ease;
+}
+
+.adventure-game-container :deep(.xx-hp-text) {
+  font-size: 15px;
+  color: var(--adventure-text-secondary);
+  margin: 0;
+}
+
+.adventure-game-container :deep(.xx-banter) {
+  font-size: 15px;
+  color: var(--adventure-text-muted);
+  margin: 16px 0 0 0;
+  line-height: 1.7;
+}
+
+/* ============================================
+   按钮样式
+   ============================================ */
+
+.adventure-game-container :deep(.xx-btn) {
+  padding: 16px 32px;
+  border-radius: 16px;
+  border: 1px solid var(--adventure-border);
+  background: var(--adventure-bg-card);
+  color: var(--adventure-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.adventure-game-container :deep(.xx-btn:hover:not(:disabled)) {
+  border-color: var(--adventure-border-glow);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+.adventure-game-container :deep(.xx-btn:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.adventure-game-container :deep(.xx-btn.is-primary) {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-color: transparent;
+}
+
+.adventure-game-container :deep(.xx-btn.is-primary:hover:not(:disabled)) {
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.4);
+}
+
+.adventure-game-container :deep(.xx-btn.is-ghost) {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.adventure-game-container :deep(.xx-action-grid) {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   地下城地图卡片
+   ============================================ */
+
+.adventure-game-container :deep(.xx-dungeon-map-card) {
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid var(--adventure-border);
+  background: var(--adventure-bg-card);
+  backdrop-filter: blur(16px);
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.adventure-game-container :deep(.xx-dungeon-map-head) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.adventure-game-container :deep(.xx-dungeon-map-title) {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--adventure-text-primary);
+  margin: 0;
+}
+
+.adventure-game-container :deep(.xx-dungeon-map-meta) {
+  font-size: 13px;
+  color: var(--adventure-text-secondary);
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.adventure-game-container :deep(.xx-dungeon-current-enemy) {
+  margin-top: 16px;
+}
+
+.adventure-game-container :deep(.xx-dungeon-enemy-card) {
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.adventure-game-container :deep(.xx-dungeon-enemy-card.is-boss) {
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.adventure-game-container :deep(.xx-dungeon-enemy-name) {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--adventure-text-primary);
+  margin: 0 0 10px 0;
+}
+
+.adventure-game-container :deep(.xx-dungeon-enemy-hp) {
+  font-size: 15px;
+  color: var(--adventure-accent-red);
+  margin: 0 0 6px 0;
+}
+
+.adventure-game-container :deep(.xx-dungeon-enemy-drop) {
+  font-size: 14px;
+  color: var(--adventure-text-secondary);
+  margin: 0;
+}
+
+.adventure-game-container :deep(.xx-dungeon-empty-tip) {
+  font-size: 15px;
+  color: var(--adventure-text-muted);
+  text-align: center;
+  padding: 24px;
+  margin: 0;
+}
+
+/* ============================================
+   背包、队伍、装备、日志卡片
+   ============================================ */
+
+.adventure-game-container :deep(.xx-backpack-card),
+.adventure-game-container :deep(.xx-roster-card),
+.adventure-game-container :deep(.xx-equip-card),
+.adventure-game-container :deep(.xx-log-card),
+.adventure-game-container :deep(.xx-gacha-card) {
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid var(--adventure-border);
+  background: var(--adventure-bg-card);
+  backdrop-filter: blur(16px);
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.adventure-game-container :deep(.xx-card-head) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.adventure-game-container :deep(.xx-card-head p) {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--adventure-text-primary);
+  margin: 0;
+}
+
+.adventure-game-container :deep(.xx-card-head span) {
+  font-size: 13px;
+  color: var(--adventure-text-secondary);
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.adventure-game-container :deep(.xx-backpack-list) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.adventure-game-container :deep(.xx-backpack-item) {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.adventure-game-container :deep(.xx-backpack-item:hover) {
+  border-color: var(--adventure-border-glow);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.adventure-game-container :deep(.xx-backpack-item.is-selected) {
+  border-color: var(--adventure-accent-cyan);
+  background: rgba(34, 211, 238, 0.15);
+}
+
+.adventure-game-container :deep(.xx-backpack-name) {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--adventure-text-primary);
+  display: block;
+}
+
+.adventure-game-container :deep(.xx-backpack-effect) {
+  font-size: 12px;
+  color: var(--adventure-text-secondary);
+  display: block;
+  margin-top: 6px;
+}
+
+.adventure-game-container :deep(.xx-backpack-empty) {
+  text-align: center;
+  color: var(--adventure-text-muted);
+  padding: 24px;
+  font-size: 15px;
+}
+
+.adventure-game-container :deep(.xx-backpack-tip) {
+  font-size: 13px;
+  color: var(--adventure-text-muted);
+  text-align: center;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ============================================
+   队伍卡片
+   ============================================ */
+
+.adventure-game-container :deep(.xx-team-row) {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.adventure-game-container :deep(.xx-team-member-btn) {
+  flex: 1;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--adventure-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.adventure-game-container :deep(.xx-team-member-btn:hover:not(:disabled)) {
+  border-color: var(--adventure-border-glow);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.adventure-game-container :deep(.xx-team-member-btn.is-active) {
+  border-color: var(--adventure-accent-cyan);
+  background: rgba(34, 211, 238, 0.15);
+}
+
+.adventure-game-container :deep(.xx-team-member-btn.is-empty) {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.adventure-game-container :deep(.xx-team-detail) {
+  padding: 20px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.adventure-game-container :deep(.xx-team-detail.is-empty) {
+  text-align: center;
+  color: var(--adventure-text-muted);
+  font-size: 15px;
+}
+
+.adventure-game-container :deep(.xx-team-detail-name) {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--adventure-text-primary);
+  margin: 0 0 10px 0;
+}
+
+.adventure-game-container :deep(.xx-team-detail-line) {
+  font-size: 14px;
+  color: var(--adventure-text-secondary);
+  margin: 0 0 6px 0;
+}
+
+/* ============================================
+   日志卡片
+   ============================================ */
+
+.adventure-game-container :deep(.xx-log-list) {
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.adventure-game-container :deep(.xx-log-list::-webkit-scrollbar) {
+  width: 6px;
+}
+
+.adventure-game-container :deep(.xx-log-list::-webkit-scrollbar-track) {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.adventure-game-container :deep(.xx-log-list::-webkit-scrollbar-thumb) {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.adventure-game-container :deep(.xx-log-line) {
+  font-size: 14px;
+  color: var(--adventure-text-secondary);
+  padding: 10px 14px;
+  margin: 0 0 6px 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  line-height: 1.6;
+}
+
+/* ============================================
+   抽卡界面
+   ============================================ */
+
+.adventure-game-container :deep(.xx-gacha-grid) {
+  display: grid;
+  gap: 20px;
+  flex-shrink: 0;
+  width: 100%;
+  grid-template-columns: 1fr;
+}
+
+.adventure-game-container :deep(.xx-gacha-card) {
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid var(--adventure-border);
+  background: var(--adventure-bg-card);
+  backdrop-filter: blur(16px);
+  width: 100%;
+}
+
+.adventure-game-container :deep(.xx-gacha-title) {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--adventure-text-primary);
+  margin: 0 0 10px 0;
+}
+
+.adventure-game-container :deep(.xx-gacha-desc) {
+  font-size: 15px;
+  color: var(--adventure-text-secondary);
+  margin: 0 0 24px 0;
+}
+
+.adventure-game-container :deep(.xx-gacha-actions) {
+  display: flex;
+  gap: 16px;
+}
+
+.adventure-game-container :deep(.xx-roster-list) {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adventure-game-container :deep(.xx-roster-item) {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.adventure-game-container :deep(.xx-rarity) {
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.adventure-game-container :deep(.xx-rarity.is-ssr) {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #000;
+}
+
+.adventure-game-container :deep(.xx-rarity.is-sr) {
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  color: #fff;
+}
+
+.adventure-game-container :deep(.xx-rarity.is-r) {
+  background: rgba(99, 102, 241, 0.3);
+  color: var(--adventure-text-primary);
+}
+
+.adventure-game-container :deep(.xx-member-name) {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--adventure-text-primary);
+}
+
+.adventure-game-container :deep(.xx-member-role) {
+  font-size: 13px;
+  color: var(--adventure-text-secondary);
+}
+
+.adventure-game-container :deep(.xx-member-power) {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--adventure-accent-cyan);
+}
+
+/* ============================================
+   装备界面
+   ============================================ */
+
+.adventure-game-container :deep(.xx-equip-grid) {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.adventure-game-container :deep(.xx-equip-item) {
+  padding: 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.adventure-game-container :deep(.xx-equip-slot) {
+  font-size: 13px;
+  color: var(--adventure-text-muted);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.adventure-game-container :deep(.xx-equip-name) {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--adventure-text-primary);
+}
+
+.adventure-game-container :deep(.xx-equip-bonus) {
+  font-size: 14px;
+  color: var(--adventure-accent-green);
+  text-align: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(74, 222, 128, 0.1);
+  margin: 0;
+}
+
+/* ============================================
+   休息界面
+   ============================================ */
+
+.adventure-game-container :deep(.xx-rest-card) {
+  text-align: center;
+}
+
+.adventure-game-container :deep(.xx-rest-actions) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+/* ============================================
+   错误提示
+   ============================================ */
+
+.adventure-game-container :deep(.xx-error) {
+  padding: 14px 20px;
+  border-radius: 14px;
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: var(--adventure-accent-red);
+  font-size: 15px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* ============================================
+   PC端适配 - 更大的元素
+   ============================================ */
+
+@media (min-width: 769px) {
+  /* 营地按钮 - PC端更大 */
+  .adventure-game-container :deep(.xx-orbit-btn) {
+    width: 120px;
+    height: 120px;
+    border-radius: 24px;
+  }
+
+  .adventure-game-container :deep(.xx-orbit-icon) {
+    font-size: 38px;
+  }
+
+  .adventure-game-container :deep(.xx-orbit-label) {
+    font-size: 15px;
+  }
+
+  /* 按钮位置 - PC端调整 */
+  .adventure-game-container :deep(.xx-orbit-btn.is-dungeon) {
+    top: 80px;
+    left: 40px;
+  }
+
+  .adventure-game-container :deep(.xx-orbit-btn.is-gacha) {
+    top: 80px;
+    right: 40px;
+  }
+
+  .adventure-game-container :deep(.xx-orbit-btn.is-rest) {
+    bottom: 80px;
+    left: 40px;
+  }
+
+  .adventure-game-container :deep(.xx-orbit-btn.is-tent) {
+    bottom: 80px;
+    right: 40px;
+  }
+
+  /* 像素角色 - PC端放大 */
+  .adventure-game-container :deep(.xx-camper) {
+    width: 90px;
+    height: 145px;
+  }
+
+  .adventure-game-container :deep(.xx-camper-sprite) {
+    width: 82px;
+    height: 82px;
+  }
+
+  .adventure-game-container :deep(.xx-camper-name) {
+    font-size: 14px;
+  }
+
+  .adventure-game-container :deep(.xx-camper-bubble) {
+    font-size: 15px;
+    max-width: 260px;
+  }
+
+  /* 篝火 - PC端放大 */
+  .adventure-game-container :deep(.xx-campfire-core) {
+    transform: translate(-50%, -50%) scale(2.5);
+  }
+
+  /* 头部标题 - PC端 */
+  .adventure-game-container :deep(.xx-header) {
+    padding: 24px 40px;
+  }
+
+  .adventure-game-container :deep(.xx-title) {
+    font-size: 32px;
+  }
+
+  .adventure-game-container :deep(.xx-subtitle) {
+    font-size: 16px;
+  }
+
+  /* 主内容区 - PC端全屏布局 */
+  .adventure-game-container :deep(.xx-main) {
+    padding: 32px 40px;
+    max-width: none !important;
+    margin: 0;
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 统计面板 - PC端 */
+  .adventure-game-container :deep(.xx-stats) {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+  }
+
+  .adventure-game-container :deep(.xx-stats-dungeon) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .adventure-game-container :deep(.xx-chip) {
+    padding: 20px 24px;
+  }
+
+  .adventure-game-container :deep(.xx-chip-label) {
+    font-size: 14px;
+  }
+
+  .adventure-game-container :deep(.xx-chip-value) {
+    font-size: 28px;
+  }
+
+  /* 场景卡片 - PC端 */
+  .adventure-game-container :deep(.xx-scene-card) {
+    padding: 32px;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .adventure-game-container :deep(.xx-scene-title) {
+    font-size: 26px;
+  }
+
+  .adventure-game-container :deep(.xx-banter) {
+    font-size: 16px;
+    line-height: 1.8;
+  }
+
+  /* 按钮样式 - PC端 */
+  .adventure-game-container :deep(.xx-btn) {
+    padding: 18px 40px;
+    font-size: 17px;
+    border-radius: 18px;
+  }
+
+  .adventure-game-container :deep(.xx-back-btn) {
+    padding: 14px 28px;
+    font-size: 16px;
+  }
+
+  .adventure-game-container :deep(.xx-subview-title) {
+    font-size: 24px;
+  }
+
+  /* 地下城界面 - PC端 */
+  .adventure-game-container :deep(.xx-dungeon-map-card) {
+    padding: 32px;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .adventure-game-container :deep(.xx-dungeon-map-title) {
+    font-size: 20px;
+  }
+
+  .adventure-game-container :deep(.xx-dungeon-enemy-card) {
+    padding: 24px;
+  }
+
+  .adventure-game-container :deep(.xx-dungeon-enemy-name) {
+    font-size: 20px;
+  }
+
+  .adventure-game-container :deep(.xx-dungeon-enemy-hp) {
+    font-size: 16px;
+  }
+
+  .adventure-game-container :deep(.xx-dungeon-enemy-drop) {
+    font-size: 15px;
+  }
+
+  /* 背包卡片 - PC端 */
+  .adventure-game-container :deep(.xx-backpack-card),
+  .adventure-game-container :deep(.xx-roster-card),
+  .adventure-game-container :deep(.xx-equip-card),
+  .adventure-game-container :deep(.xx-log-card) {
+    padding: 32px;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .adventure-game-container :deep(.xx-card-head p) {
+    font-size: 20px;
+  }
+
+  .adventure-game-container :deep(.xx-backpack-list) {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .adventure-game-container :deep(.xx-backpack-item) {
+    padding: 18px;
+  }
+
+  .adventure-game-container :deep(.xx-backpack-name) {
+    font-size: 16px;
+  }
+
+  .adventure-game-container :deep(.xx-backpack-effect) {
+    font-size: 14px;
+  }
+
+  /* 队伍卡片 - PC端 */
+  .adventure-game-container :deep(.xx-team-row) {
+    gap: 16px;
+  }
+
+  .adventure-game-container :deep(.xx-team-member-btn) {
+    padding: 18px;
+    font-size: 16px;
+  }
+
+  .adventure-game-container :deep(.xx-team-detail) {
+    padding: 24px;
+  }
+
+  .adventure-game-container :deep(.xx-team-detail-name) {
+    font-size: 20px;
+  }
+
+  .adventure-game-container :deep(.xx-team-detail-line) {
+    font-size: 15px;
+  }
+
+  /* 日志卡片 - PC端 */
+  .adventure-game-container :deep(.xx-log-list) {
+    max-height: 350px;
+  }
+
+  .adventure-game-container :deep(.xx-log-line) {
+    font-size: 15px;
+    padding: 12px 18px;
+  }
+
+  /* 抽卡界面 - PC端 */
+  .adventure-game-container :deep(.xx-gacha-card) {
+    padding: 32px;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .adventure-game-container :deep(.xx-gacha-grid) {
+    width: 100%;
+  }
+
+  .adventure-game-container :deep(.xx-gacha-title) {
+    font-size: 28px;
+  }
+
+  .adventure-game-container :deep(.xx-gacha-desc) {
+    font-size: 16px;
+  }
+
+  .adventure-game-container :deep(.xx-gacha-actions) {
+    gap: 20px;
+  }
+
+  .adventure-game-container :deep(.xx-roster-item) {
+    padding: 18px;
+  }
+
+  .adventure-game-container :deep(.xx-member-name) {
+    font-size: 17px;
+  }
+
+  .adventure-game-container :deep(.xx-member-role) {
+    font-size: 14px;
+  }
+
+  .adventure-game-container :deep(.xx-member-power) {
+    font-size: 17px;
+  }
+
+  /* 装备界面 - PC端 */
+  .adventure-game-container :deep(.xx-equip-grid) {
+    gap: 20px;
+  }
+
+  .adventure-game-container :deep(.xx-equip-item) {
+    padding: 24px;
+  }
+
+  .adventure-game-container :deep(.xx-equip-slot) {
+    font-size: 14px;
+  }
+
+  .adventure-game-container :deep(.xx-equip-name) {
+    font-size: 16px;
+  }
+
+  .adventure-game-container :deep(.xx-equip-bonus) {
+    font-size: 15px;
+    padding: 16px;
+  }
+
+  /* 休息界面 - PC端 */
+  .adventure-game-container :deep(.xx-rest-actions) {
+    gap: 20px;
+  }
+
+  /* 稀有度标签 - PC端 */
+  .adventure-game-container :deep(.xx-rarity) {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  /* 子视图头部 - PC端 */
+  .adventure-game-container :deep(.xx-subview-head) {
+    gap: 24px;
+    margin-bottom: 20px;
+  }
+
+  /* 动作按钮组 - PC端 */
+  .adventure-game-container :deep(.xx-action-grid) {
+    gap: 20px;
+  }
+
+  /* 错误提示 - PC端 */
+  .adventure-game-container :deep(.xx-error) {
+    padding: 18px 24px;
+    font-size: 16px;
+  }
+}
+
+/* ============================================
+   移动端适配
+   ============================================ */
+
+@media (max-width: 768px) {
+  .adventure-game-container :deep(.xx-orbit-btn) {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+  }
+
+  .adventure-game-container :deep(.xx-orbit-icon) {
+    font-size: 26px;
+  }
+
+  .adventure-game-container :deep(.xx-orbit-label) {
+    font-size: 11px;
+  }
+
+  .adventure-game-container :deep(.xx-main) {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .adventure-game-container :deep(.xx-stats) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .adventure-game-container :deep(.xx-chip) {
+    padding: 12px 14px;
+  }
+
+  .adventure-game-container :deep(.xx-chip-value) {
+    font-size: 18px;
+  }
+
+  .adventure-game-container :deep(.xx-action-grid) {
+    flex-direction: column;
+  }
+
+  .adventure-game-container :deep(.xx-gacha-actions) {
+    flex-direction: column;
+  }
+
+  .adventure-game-container :deep(.xx-equip-grid) {
+    grid-template-columns: 1fr;
+  }
+
+  .adventure-game-container :deep(.xx-header) {
+    padding: 16px 20px;
+  }
+
+  .adventure-game-container :deep(.xx-title) {
+    font-size: 22px;
+  }
+}

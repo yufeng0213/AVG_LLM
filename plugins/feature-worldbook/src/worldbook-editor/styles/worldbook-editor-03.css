@@ -1,0 +1,108 @@
+
+
+/* 编辑标题对话框样式 */
+.dialog-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(6px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 1000 !important;
+}
+.dialog-content {
+  background: var(--surface-panel) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan) 25%, transparent) !important;
+  border-radius: 12px !important;
+  padding: 24px !important;
+  max-width: 400px !important;
+  width: 90% !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+}
+.edit-title-dialog .dialog-title {
+  margin: 0 0 16px 0 !important;
+  font-family: var(--font-heading) !important;
+  font-size: 1.3rem !important;
+  color: var(--accent-cyan) !important;
+  text-shadow: none !important;
+}
+.edit-title-dialog .setting-field {
+  margin-bottom: 16px !important;
+}
+.edit-title-dialog .setting-label {
+  display: block !important;
+  margin-bottom: 6px !important;
+  font-size: 0.85rem !important;
+  color: color-mix(in srgb, var(--foreground) 60%, transparent) !important;
+}
+.edit-title-dialog .setting-input {
+  width: 100% !important;
+  padding: 10px 14px !important;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan) 25%, transparent) !important;
+  border-radius: 8px !important;
+  background: color-mix(in srgb, var(--foreground) 6%, transparent) !important;
+  color: var(--text-primary) !important;
+  font-size: 0.95rem !important;
+  box-shadow: none !important;
+}
+.edit-title-dialog .setting-input:focus {
+  outline: none !important;
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-cyan) 12%, transparent) !important;
+}
+.dialog-actions {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+}
+.dialog-actions .dialog-btn {
+  appearance: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 80px !important;
+  min-height: 36px !important;
+  padding: 8px 14px !important;
+  border-radius: 8px !important;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan) 25%, transparent) !important;
+  font: 600 0.85rem/1 var(--font-body) !important;
+  letter-spacing: 0.01em !important;
+  cursor: pointer !important;
+  transition: background-color 180ms ease, border-color 180ms ease !important;
+  box-sizing: border-box !important;
+  box-shadow: none !important;
+}
+.dialog-actions .dialog-btn:hover {
+  background: color-mix(in srgb, var(--accent-cyan) 8%, transparent) !important;
+}
+.dialog-actions .dialog-btn:active {
+  background: color-mix(in srgb, var(--accent-cyan) 12%, transparent) !important;
+}
+.dialog-actions .dialog-btn-cancel {
+  background: transparent !important;
+  color: var(--foreground) !important;
+  border-color: color-mix(in srgb, var(--foreground) 15%, transparent) !important;
+}
+.dialog-actions .dialog-btn-cancel:hover {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent) !important;
+}
+.dialog-actions .dialog-btn-confirm {
+  background: color-mix(in srgb, var(--accent-cyan) 15%, transparent) !important;
+  color: var(--accent-cyan) !important;
+  border-color: color-mix(in srgb, var(--accent-cyan) 35%, transparent) !important;
+}
+.dialog-actions .dialog-btn-confirm:hover {
+  background: color-mix(in srgb, var(--accent-cyan) 25%, transparent) !important;
+  border-color: var(--accent-cyan) !important;
+}
+.platform-android.android-portrait .edit-title-dialog .dialog-actions .dialog-btn {
+  min-width: 72px !important;
+  min-height: 32px !important;
+  padding: 6px 12px !important;
+  font-size: 0.85rem !important;
+}

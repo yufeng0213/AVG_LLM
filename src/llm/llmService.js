@@ -6,6 +6,7 @@
 export {
   getActiveApiConfig,
   generateStory,
+  generateFaceToFaceJointDialogues,
   generateCgPrompt,
   generateMiniTheater,
   generateCharacterSpeech,
@@ -32,11 +33,14 @@ export {
   generateHandheldDungeonBanter,
   generateHandheldCampfireCompanions,
   generateWorldBookOpeningDialogue,
+  generateBedroomFurnitureItems,
+  generateMerchantItems,
 } from './llmService.handheld'
 
 import {
   getActiveApiConfig,
   generateStory,
+  generateFaceToFaceJointDialogues,
   generateCgPrompt,
   generateMiniTheater,
   generateCharacterSpeech,
@@ -61,10 +65,13 @@ import {
   generateHandheldDungeonBanter,
   generateHandheldCampfireCompanions,
   generateWorldBookOpeningDialogue,
+  generateBedroomFurnitureItems,
+  generateMerchantItems,
 } from './llmService.handheld'
 
 export default {
   generateStory,
+  generateFaceToFaceJointDialogues,
   generateCgPrompt,
   generateMiniTheater,
   generateCharacterSpeech,
@@ -84,6 +91,8 @@ export default {
   generateHandheldDungeonBanter,
   generateHandheldCampfireCompanions,
   generateWorldBookOpeningDialogue,
+  generateBedroomFurnitureItems,
+  generateMerchantItems,
   generateBackpackUseResult,
   getActiveApiConfig,
 }

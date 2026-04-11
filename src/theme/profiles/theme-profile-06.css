@@ -1,0 +1,1115 @@
+
+/* ============================================
+   iOS GLASS THEME - 完整覆盖方案
+   iOS 16 风格毛玻璃主题
+   使用 !important 确保覆盖基础CSS
+   ============================================ */
+
+/* ========== 全局背景与字体 ========== */
+
+:root[data-theme-style='ios-glass'] body {
+  color: var(--foreground) !important;
+  background: var(--background) !important;
+  font-family: var(--font-body) !important;
+}
+
+/* 背景装饰 - 柔和光斑 */
+
+:root[data-theme-style='ios-glass'] body::before {
+  content: '' !important;
+  position: fixed !important;
+  inset: 0 !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  background: radial-gradient(ellipse at top, #0a0a0a 0%, #000000 50%, #000000 100%) !important;
+  animation: ios-float 10s ease-in-out infinite !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+:root[data-theme-style='ios-glass'] body::after {
+  content: '' !important;
+  position: fixed !important;
+  inset: 0 !important;
+  opacity: 1 !important;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 45, 85, 0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at 70% 60%, rgba(90, 200, 250, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(175, 82, 222, 0.08) 0%, transparent 55%) !important;
+  animation: ios-float-delayed 12s ease-in-out infinite !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+/* ========== 启动屏幕 (Launch Screen) ========== */
+
+:root[data-theme-style='ios-glass'] .launch-screen {
+  position: relative !important;
+  isolation: isolate !important;
+  width: 100% !important;
+  min-height: calc(100vh - clamp(40px, 8vw, 110px)) !important;
+  padding: clamp(22px, 4vw, 48px) !important;
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto auto 1fr !important;
+  gap: clamp(20px, 3vw, 34px) !important;
+  transform: none !important;
+  box-shadow: var(--shadow-screen) !important;
+}
+
+:root[data-theme-style='ios-glass'] .launch-screen::before,
+:root[data-theme-style='ios-glass'] .launch-screen::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  background: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .massive-word {
+  display: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .floating-layer {
+  display: none !important;
+}
+
+/* ========== 英雄区块 ========== */
+
+:root[data-theme-style='ios-glass'] .hero-block {
+  position: relative !important;
+  z-index: 10 !important;
+  max-width: 820px !important;
+  display: grid !important;
+  gap: 14px !important;
+}
+
+:root[data-theme-style='ios-glass'] .hero-tag {
+  margin: 0 !important;
+  width: fit-content !important;
+  padding: 9px 18px !important;
+  border: 1px solid var(--border-status) !important;
+  border-radius: 9999px !important;
+  background: var(--surface-status) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  color: var(--foreground) !important;
+  font-size: clamp(0.78rem, 1.4vw, 1rem) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  text-shadow: none !important;
+  box-shadow: var(--shadow-field) !important;
+}
+
+:root[data-theme-style='ios-glass'] .hero-title {
+  margin: 0 !important;
+  display: grid !important;
+  gap: 4px !important;
+  line-height: 0.9 !important;
+  text-transform: uppercase !important;
+}
+
+:root[data-theme-style='ios-glass'] .hero-title-main {
+  font-family: var(--font-heading) !important;
+  font-size: clamp(2.9rem, 9vw, 7rem) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  text-shadow: none !important;
+  color: var(--foreground) !important;
+}
+
+:root[data-theme-style='ios-glass'] .hero-title-gradient {
+  width: fit-content !important;
+  font-family: var(--font-display) !important;
+  font-size: clamp(2.1rem, 7vw, 4.6rem) !important;
+  letter-spacing: 0.02em !important;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.7) 100%) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .hero-subtitle {
+  margin: 0 !important;
+  max-width: 680px !important;
+  font-size: clamp(1rem, 2.2vw, 1.3rem) !important;
+  font-weight: 400 !important;
+  color: var(--muted) !important;
+}
+
+/* ========== 菜单面板 ========== */
+
+:root[data-theme-style='ios-glass'] .menu-panel {
+  position: relative !important;
+  z-index: 12 !important;
+  padding: clamp(16px, 3vw, 28px) !important;
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-panel) !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-panel::before {
+  opacity: 0 !important;
+  background: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-heading-row {
+  position: relative !important;
+  z-index: 2 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-bottom: 14px !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-heading {
+  margin: 0 !important;
+  font-family: var(--font-heading) !important;
+  font-size: clamp(1.5rem, 3.2vw, 2.2rem) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  color: var(--foreground) !important;
+  text-shadow: none !important;
+  transform: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-heading-emoji {
+  margin: 0 !important;
+  font-size: clamp(1.4rem, 3vw, 2.2rem) !important;
+  animation: none !important;
+}
+
+/* ========== 菜单网格 ========== */
+
+:root[data-theme-style='ios-glass'] .menu-grid {
+  position: relative !important;
+  z-index: 2 !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: clamp(14px, 2.4vw, 22px) !important;
+}
+
+/* ========== 菜单按钮 - iOS 风格 ========== */
+
+:root[data-theme-style='ios-glass'] .menu-button {
+  --button-tilt: 0deg !important;
+  appearance: none !important;
+  border: 1px solid var(--border-control) !important;
+  border-radius: var(--radius-button) !important;
+  min-height: 132px !important;
+  padding: 14px 16px !important;
+  display: grid !important;
+  align-content: center !important;
+  justify-items: start !important;
+  gap: 6px !important;
+  color: var(--foreground) !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transform: none !important;
+  transition: all 0.2s ease !important;
+  background: var(--surface-control) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: var(--shadow-button) !important;
+  will-change: auto !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-button:hover {
+  transform: scale(1.05) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-button:active {
+  transform: scale(0.95) !important;
+  box-shadow: var(--shadow-pressed) !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-button:focus-visible {
+  outline: 2px solid var(--accent-cyan) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(90, 200, 250, 0.2) !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-button-icon {
+  font-size: clamp(1.8rem, 4vw, 2.8rem) !important;
+  line-height: 1 !important;
+  text-shadow: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-button-text {
+  font-family: var(--font-heading) !important;
+  font-size: clamp(1.05rem, 1.9vw, 1.45rem) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  text-shadow: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .menu-button-desc {
+  font-size: clamp(0.78rem, 1.2vw, 0.9rem) !important;
+  font-weight: 400 !important;
+  color: var(--muted) !important;
+}
+
+/* 按钮颜色变体 - iOS 风格渐变 */
+
+:root[data-theme-style='ios-glass'] .tone-magenta {
+  background: linear-gradient(135deg, rgba(255, 45, 85, 0.5) 0%, rgba(175, 82, 222, 0.4) 100%) !important;
+  border-color: var(--border-control) !important;
+}
+
+:root[data-theme-style='ios-glass'] .tone-cyan {
+  background: linear-gradient(135deg, rgba(90, 200, 250, 0.5) 0%, rgba(90, 200, 250, 0.3) 100%) !important;
+  border-color: var(--border-control) !important;
+}
+
+:root[data-theme-style='ios-glass'] .tone-orange {
+  background: linear-gradient(135deg, rgba(255, 149, 0, 0.5) 0%, rgba(255, 204, 0, 0.4) 100%) !important;
+  border-color: var(--border-control) !important;
+}
+
+:root[data-theme-style='ios-glass'] .border-solid,
+:root[data-theme-style='ios-glass'] .border-dashed,
+:root[data-theme-style='ios-glass'] .border-double {
+  border-style: solid !important;
+}
+
+:root[data-theme-style='ios-glass'] .tilt-left,
+:root[data-theme-style='ios-glass'] .tilt-right {
+  --button-tilt: 0deg !important;
+}
+
+/* ========== 元信息芯片 ========== */
+
+:root[data-theme-style='ios-glass'] .menu-meta {
+  position: relative !important;
+  z-index: 2 !important;
+  margin-top: clamp(16px, 2vw, 20px) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+}
+
+:root[data-theme-style='ios-glass'] .meta-chip {
+  margin: 0 !important;
+  padding: 8px 16px !important;
+  border: 1px solid var(--border-field) !important;
+  border-radius: 9999px !important;
+  font-size: 0.88rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  background: var(--surface-field) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: var(--shadow-field) !important;
+}
+
+:root[data-theme-style='ios-glass'] .chip-yellow {
+  border-color: var(--accent-yellow) !important;
+  color: var(--accent-yellow) !important;
+  transform: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .chip-cyan {
+  border-color: var(--accent-cyan) !important;
+  color: var(--accent-cyan) !important;
+  border-style: solid !important;
+  transform: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .chip-orange {
+  border-color: var(--accent-orange) !important;
+  color: var(--accent-orange) !important;
+  border-style: solid !important;
+  transform: none !important;
+}
+
+/* ========== 动画 ========== */
+
+:root[data-theme-style='ios-glass'] .motion-float,
+:root[data-theme-style='ios-glass'] .motion-float-reverse,
+:root[data-theme-style='ios-glass'] .motion-wiggle,
+:root[data-theme-style='ios-glass'] .motion-bounce {
+  animation: none !important;
+}
+
+@keyframes ios-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-10px) scale(1.02); }
+}
+
+@keyframes ios-float-delayed {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-15px) scale(0.98); }
+}
+
+/* ========== 世界书选择弹窗 ========== */
+
+:root[data-theme-style='ios-glass'] .worldbook-select-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-select-dialog {
+  position: relative !important;
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  padding: 24px 32px !important;
+  max-width: 500px !important;
+  width: 90% !important;
+  max-height: 80vh !important;
+  overflow-y: auto !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-screen) !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-title {
+  margin: 0 0 8px !important;
+  font-family: var(--font-heading) !important;
+  font-size: 1.4rem !important;
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
+  text-shadow: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-desc {
+  margin: 0 0 20px !important;
+  font-size: 0.9rem !important;
+  color: var(--muted) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  margin-bottom: 20px !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-item {
+  appearance: none !important;
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-button) !important;
+  padding: 16px !important;
+  background: var(--surface-field) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-item:hover {
+  border-color: var(--border-action) !important;
+  background: var(--surface-control) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-item.selected {
+  border-color: var(--accent-cyan) !important;
+  background: rgba(90, 200, 250, 0.15) !important;
+}
+
+:root[data-theme-style='ios-glass'] .book-indicator {
+  flex: 0 0 24px !important;
+  width: 24px !important;
+  height: 24px !important;
+  border: 1px solid var(--border-panel) !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  color: var(--muted) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-item.selected .book-indicator {
+  border-color: var(--accent-cyan) !important;
+  background: var(--accent-cyan) !important;
+  color: #000 !important;
+}
+
+:root[data-theme-style='ios-glass'] .book-info {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+:root[data-theme-style='ios-glass'] .book-title {
+  font-family: var(--font-heading) !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
+}
+
+:root[data-theme-style='ios-glass'] .book-badge {
+  display: inline-block !important;
+  padding: 2px 8px !important;
+  border: 1px solid var(--accent-orange) !important;
+  border-radius: 9999px !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  color: var(--accent-orange) !important;
+  background: rgba(255, 149, 0, 0.15) !important;
+}
+
+:root[data-theme-style='ios-glass'] .book-summary {
+  font-size: 0.85rem !important;
+  color: var(--muted) !important;
+  line-height: 1.4 !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-select-field {
+  display: grid !important;
+  gap: 6px !important;
+  margin-bottom: 18px !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-select-label {
+  font-size: 0.86rem !important;
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-select-control {
+  appearance: none !important;
+  width: 100% !important;
+  border: 1px solid var(--border-field) !important;
+  border-radius: var(--radius-button) !important;
+  padding: 10px 12px !important;
+  font-size: 0.9rem !important;
+  color: var(--foreground) !important;
+  background: var(--surface-field) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-select-control:focus {
+  outline: none !important;
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(90, 200, 250, 0.2) !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-select-hint {
+  font-size: 0.76rem !important;
+  color: var(--muted) !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-actions {
+  display: flex !important;
+  gap: 12px !important;
+  justify-content: flex-end !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-btn {
+  appearance: none !important;
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-button) !important;
+  padding: 12px 24px !important;
+  font: 600 0.9rem/1 var(--font-body) !important;
+  color: var(--foreground) !important;
+  background: var(--surface-control) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-btn:hover {
+  transform: scale(1.05) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-btn.cancel:hover {
+  border-color: var(--accent-magenta) !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-btn.confirm {
+  border-color: var(--accent-cyan) !important;
+  background: var(--accent-cyan) !important;
+  color: #000 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-btn.confirm:hover {
+  border-color: var(--accent-cyan) !important;
+  background: rgba(90, 200, 250, 0.8) !important;
+}
+
+/* ========== 设置屏幕 ========== */
+
+:root[data-theme-style='ios-glass'] .settings-screen {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-panel) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-screen) !important;
+}
+
+:root[data-theme-style='ios-glass'] .settings-screen::before,
+:root[data-theme-style='ios-glass'] .settings-screen::after {
+  opacity: 0 !important;
+  background: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .settings-bg-word {
+  color: rgba(175, 82, 222, 0.12) !important;
+  opacity: 0.15 !important;
+}
+
+:root[data-theme-style='ios-glass'] .back-button {
+  border: 1px solid var(--border-action) !important;
+  border-radius: var(--radius-button) !important;
+  color: var(--foreground) !important;
+  background: var(--surface-control) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: var(--shadow-field) !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .back-button:hover {
+  transform: scale(1.05) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: var(--shadow-button) !important;
+}
+
+:root[data-theme-style='ios-glass'] .settings-tag {
+  border: 1px solid var(--border-action) !important;
+  border-radius: 9999px !important;
+  background: var(--surface-control) !important;
+  color: var(--foreground) !important;
+  text-shadow: none !important;
+}
+
+/* ========== 设置面板通用样式 ========== */
+
+:root[data-theme-style='ios-glass'] .setting-field {
+  border: 1px solid var(--border-field) !important;
+  border-radius: var(--radius-button) !important;
+  background: var(--surface-field) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+:root[data-theme-style='ios-glass'] .setting-label {
+  color: var(--foreground) !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme-style='ios-glass'] .setting-select,
+:root[data-theme-style='ios-glass'] .setting-textarea,
+:root[data-theme-style='ios-glass'] .setting-input {
+  border: 1px solid var(--border-field) !important;
+  border-radius: var(--radius-button) !important;
+  background: var(--surface-field) !important;
+  color: var(--foreground) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+:root[data-theme-style='ios-glass'] .setting-select:focus,
+:root[data-theme-style='ios-glass'] .setting-textarea:focus,
+:root[data-theme-style='ios-glass'] .setting-input:focus {
+  border-color: var(--accent-cyan) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(90, 200, 250, 0.2) !important;
+}
+
+/* ========== 操作按钮 ========== */
+
+:root[data-theme-style='ios-glass'] .action-button {
+  border-radius: var(--radius-button) !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .action-button:hover {
+  transform: scale(1.02) !important;
+}
+
+:root[data-theme-style='ios-glass'] .action-strong {
+  background: var(--accent-cyan) !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme-style='ios-glass'] .action-strong:hover {
+  background: rgba(90, 200, 250, 0.8) !important;
+}
+
+:root[data-theme-style='ios-glass'] .action-outline {
+  border: 1px solid var(--border-action) !important;
+  background: var(--surface-control) !important;
+  color: var(--foreground) !important;
+}
+
+:root[data-theme-style='ios-glass'] .action-outline:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+:root[data-theme-style='ios-glass'] .action-ghost {
+  color: var(--muted) !important;
+}
+
+:root[data-theme-style='ios-glass'] .action-ghost:hover {
+  color: var(--foreground) !important;
+  background: var(--surface-control) !important;
+}
+
+:root[data-theme-style='ios-glass'] .status-message {
+  color: var(--muted) !important;
+}
+
+/* ========== 游戏屏幕 ========== */
+
+:root[data-theme-style='ios-glass'] .game-screen {
+  border: none !important;
+  border-radius: 0 !important;
+  background: var(--background) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .game-screen::before,
+:root[data-theme-style='ios-glass'] .game-screen::after {
+  opacity: 0 !important;
+  background: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .game-bg-word {
+  color: rgba(175, 82, 222, 0.1) !important;
+  opacity: 0.15 !important;
+}
+
+:root[data-theme-style='ios-glass'] .game-topbar .back-button {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-button) !important;
+  color: var(--foreground) !important;
+  background: var(--surface-control) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: var(--shadow-field) !important;
+}
+
+:root[data-theme-style='ios-glass'] .hud-chip {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: 9999px !important;
+  color: var(--foreground) !important;
+  background: var(--surface-status) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: var(--shadow-field) !important;
+}
+
+:root[data-theme-style='ios-glass'] .scene-stage {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+:root[data-theme-style='ios-glass'] .scene-gradient {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 45, 85, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 30%, rgba(90, 200, 250, 0.08) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 1) 100%) !important;
+}
+
+:root[data-theme-style='ios-glass'] .scene-window {
+  opacity: 0.05 !important;
+}
+
+:root[data-theme-style='ios-glass'] .scene-floor {
+  opacity: 0.2 !important;
+}
+
+/* ========== 对话框 ========== */
+
+:root[data-theme-style='ios-glass'] .dialog-overlay {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+}
+
+:root[data-theme-style='ios-glass'] .dialog-content {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-screen) !important;
+}
+
+/* ========== 卡片 ========== */
+
+:root[data-theme-style='ios-glass'] .card {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+/* ========== 分割线 ========== */
+
+:root[data-theme-style='ios-glass'] .divider {
+  border-color: var(--border-panel) !important;
+}
+
+/* ========== 滚动条 ========== */
+
+:root[data-theme-style='ios-glass'] ::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+:root[data-theme-style='ios-glass'] ::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+:root[data-theme-style='ios-glass'] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 4px !important;
+}
+
+:root[data-theme-style='ios-glass'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* ========== 选择框 ========== */
+
+:root[data-theme-style='ios-glass'] ::selection {
+  background: rgba(90, 200, 250, 0.3) !important;
+  color: var(--foreground) !important;
+}
+
+/* ========== Worldbook 编辑器 ========== */
+
+:root[data-theme-style='ios-glass'] .worldbook-editor-tab {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-button) !important;
+  background: var(--surface-field) !important;
+  color: var(--muted) !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-editor-tab:hover {
+  background: var(--surface-control) !important;
+  color: var(--foreground) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-editor-tab.active {
+  border-color: var(--border-action) !important;
+  color: var(--foreground) !important;
+  background: var(--surface-control) !important;
+  box-shadow: var(--shadow-status) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-shelf-zone {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-shelf::before {
+  opacity: 0 !important;
+  background: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-shelf-title {
+  color: var(--foreground) !important;
+  text-shadow: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-add-button {
+  border: 1px solid var(--border-action) !important;
+  border-radius: var(--radius-button) !important;
+  color: #ffffff !important;
+  background: var(--accent-cyan) !important;
+  box-shadow: var(--shadow-button) !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-add-button:hover {
+  transform: scale(1.05) !important;
+  box-shadow: 0 8px 24px rgba(90, 200, 250, 0.3) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-book-spine {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-button) !important;
+  color: var(--foreground) !important;
+  background: var(--surface-field) !important;
+  box-shadow: var(--shadow-field) !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-book-spine:hover {
+  transform: scale(1.02) !important;
+  background: var(--surface-control) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-book-spine.active {
+  border-color: var(--border-action) !important;
+  background: var(--surface-control) !important;
+  box-shadow: var(--shadow-status) !important;
+}
+
+:root[data-theme-style='ios-glass'] .spine-title {
+  text-shadow: none !important;
+}
+
+:root[data-theme-style='ios-glass'] .spine-badge {
+  border: 1px solid var(--border-panel) !important;
+  background: var(--surface-field) !important;
+  color: var(--foreground) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-entry-nav {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-entry-item {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-button) !important;
+  background: var(--surface-field) !important;
+  color: var(--muted) !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-entry-item:hover {
+  background: var(--surface-control) !important;
+  color: var(--foreground) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-entry-item.active {
+  border-color: var(--border-action) !important;
+  color: var(--foreground) !important;
+  background: var(--surface-control) !important;
+  box-shadow: var(--shadow-status) !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-add-char-btn {
+  color: var(--muted) !important;
+  border: 1px solid var(--border-panel) !important;
+  background: var(--surface-field) !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .worldbook-add-char-btn:hover {
+  color: var(--foreground) !important;
+  background: var(--surface-control) !important;
+}
+
+:root[data-theme-style='ios-glass'] .char-note {
+  color: var(--muted) !important;
+}
+
+/* ========== 关系卡片 ========== */
+
+:root[data-theme-style='ios-glass'] .relationship-card {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+/* ========== 卡片集合 ========== */
+
+:root[data-theme-style='ios-glass'] .card-collection {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+}
+
+/* ========== 插件管理器 ========== */
+
+:root[data-theme-style='ios-glass'] .plugin-card {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+:root[data-theme-style='ios-glass'] .plugin-card:hover {
+  transform: scale(1.02) !important;
+  box-shadow: var(--shadow-panel) !important;
+}
+
+/* ========== 肖像管理器 ========== */
+
+:root[data-theme-style='ios-glass'] .portrait-frame {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+/* ========== 导航栏 ========== */
+
+:root[data-theme-style='ios-glass'] .nav-bar {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-panel) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-panel) !important;
+}
+
+:root[data-theme-style='ios-glass'] .nav-item {
+  border-radius: var(--radius-button) !important;
+  transition: all 0.2s ease !important;
+}
+
+:root[data-theme-style='ios-glass'] .nav-item:hover {
+  background: var(--surface-control) !important;
+}
+
+:root[data-theme-style='ios-glass'] .nav-item.active {
+  background: var(--accent-cyan) !important;
+  color: #000000 !important;
+}
+
+/* ========== 开始菜单 ========== */
+
+:root[data-theme-style='ios-glass'] .start-menu {
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  box-shadow: var(--shadow-panel) !important;
+}
+
+/* ========== 面板标题和描述 ========== */
+
+:root[data-theme-style='ios-glass'] .panel-title,
+:root[data-theme-style='ios-glass'] .settings-title,
+:root[data-theme-style='ios-glass'] .hero-title-main,
+:root[data-theme-style='ios-glass'] .menu-button-text,
+:root[data-theme-style='ios-glass'] .nav-main,
+:root[data-theme-style='ios-glass'] .preview-title {
+  font-family: var(--font-heading) !important;
+  color: var(--foreground) !important;
+  text-shadow: none !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+}
+
+:root[data-theme-style='ios-glass'] .panel-description,
+:root[data-theme-style='ios-glass'] .hero-subtitle,
+:root[data-theme-style='ios-glass'] .nav-note {
+  color: var(--muted) !important;
+}
+
+/* ========== 通用过渡动画 ========== */
+
+:root[data-theme-style='ios-glass'] * {
+  transition-property: background-color, border-color, box-shadow, transform, backdrop-filter !important;
+  transition-duration: 0.2s !important;
+  transition-timing-function: ease !important;
+}
+
+/* ========== Android 竖屏适配 ========== */
+
+:root[data-theme-style='ios-glass'].platform-android.android-portrait .launch-screen {
+  width: 100vw !important;
+  min-height: 100vh !important;
+  height: 100vh !important;
+  padding: 16px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  background: var(--background) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+:root[data-theme-style='ios-glass'].platform-android.android-portrait .menu-panel {
+  flex: 1 !important;
+  padding: 12px !important;
+  border: 1px solid var(--border-panel) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--surface-panel) !important;
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+:root[data-theme-style='ios-glass'].platform-android.android-portrait .menu-grid {
+  flex: 1 !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+}
+
+:root[data-theme-style='ios-glass'].platform-android.android-portrait .menu-button {
+  min-height: 56px !important;
+  padding: 12px 16px !important;
+  border-width: 1px !important;
+  border-radius: var(--radius-button) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+}
+
+:root[data-theme-style='ios-glass'].platform-android.android-portrait .menu-button-icon {
+  font-size: 1.5rem !important;
+}
+
+:root[data-theme-style='ios-glass'].platform-android.android-portrait .menu-button-text {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme-style='ios-glass'].platform-android.android-portrait .menu-button-desc {
+  display: none !important;
+}

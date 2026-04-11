@@ -1,0 +1,29 @@
+{
+  "id": "adventure-game",
+  "name": "冒险游戏",
+  "description": "全屏RPG地下城冒险与装备抽卡。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "adventure-game",
+    "title": "冒险游戏",
+    "icon": "⚔",
+    "order": 90,
+    "variant": "tone-cyan border-solid tilt-left"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "adventure-game"
+  },
+  "storage": {
+    "namespace": "adventure-game"
+  },
+  "capabilities": [
+    "storage",
+    "llm",
+    "battle-system"
+  ],
+  "enabledByDefault": true
+}

@@ -41,6 +41,14 @@
                   <span class="xx-orbit-icon">⛺</span>
                   <span class="xx-orbit-label">帐篷</span>
                 </button>
+                <button class="xx-orbit-btn small-btn is-merchant" type="button" @click="openView('merchant')">
+                  <span class="xx-orbit-icon">💰</span>
+                  <span class="xx-orbit-label">商人</span>
+                </button>
+                <button class="xx-orbit-btn small-btn is-bedroom" type="button" @click="openView('bedroom')">
+                  <span class="xx-orbit-icon">🛏</span>
+                  <span class="xx-orbit-label">卧室</span>
+                </button>
 
                 <div class="xx-campfire-core" aria-hidden="true">
                   <span class="xx-campfire-flame is-back"></span>
@@ -141,15 +149,42 @@
                 </div>
                 <p class="xx-hp-text">HP {{ state.hp }}/{{ state.maxHp }}</p>
                 <p class="xx-banter">
-                  {{ hasDungeonMap ? dungeonMapStatusText : '点击“前进”可生成本层敌群（首领与小怪）。' }}
+                  {{ hasDungeonMap ? dungeonMapStatusText : '点击“前进”可生成本层地图与敌群。' }}
                 </p>
               </section>
 
-              <section class="xx-dungeon-map-card">
+              <section ref="dungeonMapCardRef" class="xx-dungeon-map-card">
                 <div class="xx-dungeon-map-head">
-                  <p class="xx-dungeon-map-title">{{ activeDungeonMap?.theme || '未生成敌群' }}</p>
+                  <p class="xx-dungeon-map-title">{{ activeDungeonMap?.theme || '未生成地图' }}</p>
                   <span class="xx-dungeon-map-meta">{{ dungeonMapStatusText }}</span>
                 </div>
+                <div v-if="hasDungeonMap" class="xx-dungeon-grid-wrap">
+                  <div class="xx-dungeon-grid" :style="dungeonMapGridStyle">
+                    <div
+                      v-for="cell in dungeonMapCells"
+                      :key="cell.renderKey"
+                      class="xx-dungeon-cell"
+                      :class="getDungeonCellClass(cell)"
+                      :title="getDungeonCellTitle(cell)"
+                    >
+                      <img class="xx-dungeon-cell-terrain" :src="getDungeonTerrainSpriteSrc(cell, cell.renderIndex)" alt="" />
+                      <img
+                        v-if="getDungeonObjectSpriteSrc(cell, cell.renderIndex)"
+                        class="xx-dungeon-cell-object"
+                        :src="getDungeonObjectSpriteSrc(cell, cell.renderIndex)"
+                        alt=""
+                      />
+                      <img
+                        v-if="cell.isPlayer && dungeonLeaderSpriteSrc"
+                        class="xx-dungeon-cell-player-sprite"
+                        :src="dungeonLeaderSpriteSrc"
+                        alt=""
+                      />
+                      <span v-if="getDungeonCellBadge(cell)" class="xx-dungeon-cell-badge">{{ getDungeonCellBadge(cell) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <p v-if="dungeonManualMoveEnabled" class="xx-dungeon-key-hint">PC：方向键 / WASD 移动队长，进入怪物格会自动战斗。</p>
                 <div v-if="hasDungeonMap && currentDungeonEnemy" class="xx-dungeon-current-enemy">
                   <div
                     class="xx-dungeon-enemy-card"
@@ -165,12 +200,24 @@
                   </div>
                 </div>
                 <p v-else-if="hasDungeonMap" class="xx-dungeon-empty-tip">本层敌群已清空，再次点击“前进”进入下一层。</p>
-                <p v-else class="xx-dungeon-empty-tip">点击下方“前进”后会生成本层首领与小怪列表。</p>
+                <p v-else class="xx-dungeon-empty-tip">点击下方“前进”后会生成本层地形与敌群配置。</p>
               </section>
 
               <section class="xx-action-grid xx-dungeon-actions">
-                <button class="xx-btn is-primary" type="button" :disabled="isBusy" @click="advanceDungeon">
+                <button class="xx-btn is-primary" type="button" :disabled="isBusy || state.hp <= 0 || dungeonManualMoveEnabled" @click="advanceDungeon">
                   {{ dungeonAdvanceButtonText }}
+                </button>
+                <button class="xx-btn" type="button" :disabled="isBusy" @click="healToFullDebug">
+                  Debug回血
+                </button>
+                <button
+                  class="xx-btn"
+                  :class="state.debugNoDamage ? 'is-primary' : 'is-ghost'"
+                  type="button"
+                  :disabled="isBusy"
+                  @click="toggleDebugNoDamage"
+                >
+                  Debug免伤 {{ state.debugNoDamage ? '开' : '关' }}
                 </button>
               </section>
 
@@ -297,40 +344,17 @@
           </template>
 
           <template v-else-if="currentView === 'tent'">
-            <section class="xx-equip-card">
-              <div class="xx-card-head">
-                <p>自动穿戴装备</p>
-                <span>保底 {{ state.equipmentPity }}/{{ EQUIPMENT_PITY_LIMIT - 1 }}</span>
-              </div>
-              <div class="xx-equip-grid">
-                <div class="xx-equip-item">
-                  <span class="xx-equip-slot">武器</span>
-                  <span class="xx-equip-name">{{ state.equipped.weapon?.name || '暂无' }}</span>
-                </div>
-                <div class="xx-equip-item">
-                  <span class="xx-equip-slot">护甲</span>
-                  <span class="xx-equip-name">{{ state.equipped.armor?.name || '暂无' }}</span>
-                </div>
-                <div class="xx-equip-item">
-                  <span class="xx-equip-slot">饰品</span>
-                  <span class="xx-equip-name">{{ state.equipped.relic?.name || '暂无' }}</span>
-                </div>
-              </div>
-              <p class="xx-equip-bonus">
-                加成：+{{ dungeonEquipBonuses.atk }} 攻 / +{{ dungeonEquipBonuses.def }} 防 / +{{ dungeonEquipBonuses.hp }} 生命
-              </p>
-            </section>
-
-            <section class="xx-roster-card">
+            <!-- 队伍选择区 -->
+            <section class="xx-roster-card xx-tent-party-section">
               <div class="xx-card-head">
                 <p>当前队伍</p>
-                <span>最多上阵 4 人</span>
+                <span>点击选择队员</span>
               </div>
-              <div class="xx-team-row">
+              <div class="xx-team-select-row">
                 <button
                   v-for="(member, slotIndex) in dungeonActivePartySlots"
                   :key="member ? member.id : `team-empty-tent-${slotIndex}`"
-                  class="xx-team-member-btn"
+                  class="xx-team-select-btn"
                   type="button"
                   :class="{
                     'is-active': member && selectedPartyMemberDetail && selectedPartyMemberDetail.member.id === member.id,
@@ -339,20 +363,172 @@
                   :disabled="!member"
                   @click="selectPartyMember(member)"
                 >
-                  {{ member ? member.name : '空位' }}
+                  <div v-if="member" class="xx-team-select-sprite">
+                    <img
+                      class="xx-team-select-sprite-img"
+                      :src="getTeammateSpriteSrc(member, slotIndex)"
+                      alt=""
+                    />
+                  </div>
+                  <div v-else class="xx-team-select-empty">
+                    <span>空</span>
+                  </div>
+                  <span class="xx-team-select-name">{{ member ? member.name : '空位' }}</span>
+                  <span
+                    v-if="member"
+                    class="xx-team-select-rarity"
+                    :class="`is-${member.rarity || 'R'}`"
+                  >{{ member.rarity || 'R' }}</span>
                 </button>
               </div>
-              <div v-if="selectedPartyMemberDetail" class="xx-team-detail">
-                <p class="xx-team-detail-name">{{ selectedPartyMemberDetail.member.name }}</p>
-                <p class="xx-team-detail-line">职业：{{ selectedPartyMemberDetail.member.role || '冒险者' }}</p>
-                <p class="xx-team-detail-line">
-                  等级：Lv.{{ selectedPartyMemberDetail.level }}　HP：{{ selectedPartyMemberDetail.hp }}/{{ selectedPartyMemberDetail.maxHp }}
-                </p>
-                <p class="xx-team-detail-line">战力：{{ selectedPartyMemberDetail.power }}</p>
+            </section>
+
+            <!-- 选中队员详情 -->
+            <section v-if="selectedPartyMemberDetail" class="xx-member-detail-card">
+              <div class="xx-member-detail-layout">
+                <!-- 左侧：像素小人 -->
+                <div class="xx-member-sprite-panel">
+                  <div class="xx-member-sprite-large">
+                    <img
+                      :src="getTeammateSpriteSrc(selectedPartyMemberDetail.member, selectedPartyMemberDetail.index)"
+                      alt=""
+                    />
+                  </div>
+                  <p class="xx-member-name-large">{{ selectedPartyMemberDetail.member.name }}</p>
+                  <p class="xx-member-role-large">{{ selectedPartyMemberDetail.member.role || '冒险者' }}</p>
+                  <div class="xx-member-hp-large">
+                    <span class="xx-member-hp-label">HP</span>
+                    <div class="xx-member-hp-bar-large">
+                      <div
+                        class="xx-member-hp-fill-large"
+                        :class="{
+                          'is-high': (selectedPartyMemberDetail.hp / selectedPartyMemberDetail.maxHp) > 0.6,
+                          'is-mid': (selectedPartyMemberDetail.hp / selectedPartyMemberDetail.maxHp) > 0.3 && (selectedPartyMemberDetail.hp / selectedPartyMemberDetail.maxHp) <= 0.6,
+                          'is-low': (selectedPartyMemberDetail.hp / selectedPartyMemberDetail.maxHp) <= 0.3,
+                        }"
+                        :style="{ width: `${Math.round((selectedPartyMemberDetail.hp / Math.max(1, selectedPartyMemberDetail.maxHp)) * 100)}%` }"
+                      ></div>
+                    </div>
+                    <span class="xx-member-hp-text">{{ selectedPartyMemberDetail.hp }}/{{ selectedPartyMemberDetail.maxHp }}</span>
+                  </div>
+                </div>
+
+                <!-- 右侧：属性和装备 -->
+                <div class="xx-member-info-panel">
+                  <!-- 属性 -->
+                  <div class="xx-member-stats-section">
+                    <p class="xx-section-title">角色属性</p>
+                    <div class="xx-member-stats-grid">
+                      <div class="xx-stat-item">
+                        <span class="xx-stat-label">等级</span>
+                        <span class="xx-stat-value">Lv.{{ selectedPartyMemberDetail.level }}</span>
+                      </div>
+                      <div class="xx-stat-item">
+                        <span class="xx-stat-label">战力</span>
+                        <span class="xx-stat-value">{{ selectedPartyMemberDetail.power }}</span>
+                      </div>
+                      <div class="xx-stat-item">
+                        <span class="xx-stat-label">攻击</span>
+                        <span class="xx-stat-value">+{{ selectedMemberEquipBonuses.atk }}</span>
+                      </div>
+                      <div class="xx-stat-item">
+                        <span class="xx-stat-label">防御</span>
+                        <span class="xx-stat-value">+{{ selectedMemberEquipBonuses.def }}</span>
+                      </div>
+                      <div class="xx-stat-item">
+                        <span class="xx-stat-label">生命</span>
+                        <span class="xx-stat-value">+{{ selectedMemberEquipBonuses.hp }}</span>
+                      </div>
+                    </div>
+                  </div>
+                
+                  <!-- 装备栏 -->
+                  <div class="xx-member-equip-section">
+                    <p class="xx-section-title">装备栏</p>
+                    <div class="xx-member-equip-grid">
+                      <div
+                        class="xx-member-equip-slot"
+                        :class="{ 'is-selected': selectedEquipSlot === 'weapon' }"
+                        @click="selectEquipSlot('weapon')"
+                      >
+                        <span class="xx-slot-label">武器</span>
+                        <span class="xx-slot-item">{{ selectedMemberEquipped.weapon?.name || '空' }}</span>
+                        <span v-if="selectedMemberEquipped.weapon" class="xx-slot-stats">
+                          +{{ selectedMemberEquipped.weapon.atk }}攻
+                        </span>
+                      </div>
+                      <div
+                        class="xx-member-equip-slot"
+                        :class="{ 'is-selected': selectedEquipSlot === 'armor' }"
+                        @click="selectEquipSlot('armor')"
+                      >
+                        <span class="xx-slot-label">护甲</span>
+                        <span class="xx-slot-item">{{ selectedMemberEquipped.armor?.name || '空' }}</span>
+                        <span v-if="selectedMemberEquipped.armor" class="xx-slot-stats">
+                          +{{ selectedMemberEquipped.armor.def }}防
+                        </span>
+                      </div>
+                      <div
+                        class="xx-member-equip-slot"
+                        :class="{ 'is-selected': selectedEquipSlot === 'relic' }"
+                        @click="selectEquipSlot('relic')"
+                      >
+                        <span class="xx-slot-label">饰品</span>
+                        <span class="xx-slot-item">{{ selectedMemberEquipped.relic?.name || '空' }}</span>
+                        <span v-if="selectedMemberEquipped.relic" class="xx-slot-stats">
+                          +{{ selectedMemberEquipped.relic.hp }}血
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <!-- 装备选择列表 -->
+                    <div v-if="selectedEquipSlot" class="xx-equip-select-list">
+                      <p class="xx-equip-select-title">选择装备</p>
+                      <div class="xx-equip-select-items">
+                        <button
+                          v-for="item in availableEquipmentsBySlot[selectedEquipSlot]"
+                          :key="item.id"
+                          class="xx-equip-select-btn"
+                          :class="{ 'is-selected': selectedEquipItem?.id === item.id }"
+                          type="button"
+                          @click="selectEquipItem(item)"
+                        >
+                          <span class="xx-equip-name">{{ item.name }}</span>
+                          <span class="xx-equip-rarity" :class="`is-${item.rarity}`">{{ item.rarity }}</span>
+                          <span class="xx-equip-stats">
+                            {{ item.atk > 0 ? `+${item.atk}攻` : '' }}
+                            {{ item.def > 0 ? `+${item.def}防` : '' }}
+                            {{ item.hp > 0 ? `+${item.hp}血` : '' }}
+                          </span>
+                        </button>
+                        <p v-if="availableEquipmentsBySlot[selectedEquipSlot].length === 0" class="xx-equip-empty">
+                          没有可用的{{ selectedEquipSlot === 'weapon' ? '武器' : selectedEquipSlot === 'armor' ? '护甲' : '饰品' }}
+                        </p>
+                      </div>
+                      <button
+                        v-if="selectedEquipItem"
+                        class="xx-equip-confirm-btn"
+                        type="button"
+                        @click="confirmEquipToMember"
+                      >
+                        装备 {{ selectedEquipItem.name }}
+                      </button>
+                      <button
+                        v-if="selectedMemberEquipped[selectedEquipSlot]"
+                        class="xx-equip-unequip-btn"
+                        type="button"
+                        @click="unequipFromMember(selectedPartyMemberId, selectedEquipSlot)"
+                      >
+                        卸下当前装备
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div v-else class="xx-team-detail is-empty">
-                队伍暂无角色，请先在世界书添加角色。
-              </div>
+            </section>
+
+            <section v-else class="xx-member-detail-card is-empty">
+              <p class="xx-member-empty-hint">请从上方队伍中选择一名队员查看详情</p>
             </section>
 
             <section class="xx-log-card">
@@ -370,9 +546,233 @@
             </section>
           </template>
 
+          <template v-else-if="currentView === 'merchant'">
+            <!-- 流浪商人 -->
+            <section class="xx-merchant-card">
+              <div class="xx-merchant-header">
+                <div class="xx-merchant-sprite">
+                  <img :src="merchantSpriteSrc" alt="流浪商人" />
+                </div>
+                <div class="xx-merchant-info">
+                  <h4 class="xx-merchant-name">流浪商人</h4>
+                  <p class="xx-merchant-desc">神秘的流浪商人，背着装满奇珍异宝的背包。点击商品可购买，刷新需花费金币。</p>
+                </div>
+              </div>
+              
+              <div class="xx-merchant-items">
+                <div class="xx-card-head">
+                  <p>商品栏</p>
+                  <span>{{ merchantItems.length }} 件</span>
+                </div>
+                <div class="xx-merchant-item-grid">
+                  <button
+                    v-for="(item, idx) in merchantItems"
+                    :key="item.id"
+                    class="xx-merchant-item-btn"
+                    type="button"
+                    :disabled="merchantLoading || state.coins < item.price"
+                    @click="buyMerchantItem(item)"
+                  >
+                    <div class="xx-merchant-item-sprite">
+                      <img :src="getMerchantItemSpriteSrc(item, idx)" alt="" />
+                    </div>
+                    <div class="xx-merchant-item-info">
+                      <span class="xx-merchant-item-name">{{ item.name }}</span>
+                      <span class="xx-merchant-item-rarity" :class="`is-${item.rarity}`">{{ item.rarity }}</span>
+                      <span class="xx-merchant-item-stats">
+                        {{ item.atk > 0 ? `+${item.atk}攻` : '' }}
+                        {{ item.def > 0 ? `+${item.def}防` : '' }}
+                        {{ item.hp > 0 ? `+${item.hp}血` : '' }}
+                      </span>
+                      <span class="xx-merchant-item-price">{{ item.price }} 金币</span>
+                    </div>
+                  </button>
+                  <div v-if="merchantItems.length === 0" class="xx-merchant-empty">
+                    <p>商人暂无商品，点击刷新获取新商品</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="xx-merchant-items xx-merchant-sell-section">
+                <div class="xx-card-head">
+                  <p>出售栏</p>
+                  <span>{{ merchantSellEquipments.length }} 件</span>
+                </div>
+                <div class="xx-merchant-item-grid">
+                  <button
+                    v-for="(item, idx) in merchantSellEquipments"
+                    :key="`sell-${item.id}`"
+                    class="xx-merchant-item-btn is-sell"
+                    type="button"
+                    :disabled="merchantLoading"
+                    @click="sellMerchantEquipment(item)"
+                  >
+                    <div class="xx-merchant-item-sprite">
+                      <img :src="getMerchantItemSpriteSrc(item, idx)" alt="" />
+                    </div>
+                    <div class="xx-merchant-item-info">
+                      <span class="xx-merchant-item-name">{{ item.name }}</span>
+                      <span class="xx-merchant-item-rarity" :class="`is-${item.rarity}`">{{ item.rarity }}</span>
+                      <span class="xx-merchant-item-stats">
+                        {{ item.atk > 0 ? `+${item.atk}攻` : '' }}
+                        {{ item.def > 0 ? `+${item.def}防` : '' }}
+                        {{ item.hp > 0 ? `+${item.hp}血` : '' }}
+                      </span>
+                      <span class="xx-merchant-item-price is-base">原价 {{ item.originalPrice }} 金币</span>
+                      <span class="xx-merchant-item-price is-sell">卖出 {{ item.sellPriceMin }}~{{ item.sellPriceMax }} 金币</span>
+                    </div>
+                  </button>
+                  <div v-if="merchantSellEquipments.length === 0" class="xx-merchant-empty">
+                    <p>暂无可出售装备，先去抽取或购买吧</p>
+                  </div>
+                </div>
+                <p class="xx-merchant-sell-tip">
+                  每次卖出随机折价 {{ MERCHANT_SELL_DISCOUNT_MIN }}% - {{ MERCHANT_SELL_DISCOUNT_MAX }}%
+                </p>
+              </div>
+              
+              <div class="xx-merchant-actions">
+                <button
+                  class="xx-btn is-secondary"
+                  type="button"
+                  :disabled="merchantLoading"
+                  @click="refreshMerchantItems"
+                >
+                  {{ merchantLoading ? '加载中...' : '刷新商品' }}
+                </button>
+                <button
+                  class="xx-btn is-primary"
+                  type="button"
+                  :disabled="merchantLoading || state.coins < MERCHANT_REFRESH_COST"
+                  @click="generateNewMerchantItems()"
+                >
+                  {{ merchantLoading ? '获取中...' : `获取新商品 (${MERCHANT_REFRESH_COST}金币)` }}
+                </button>
+              </div>
+            </section>
+
+            <section class="xx-log-card">
+              <div class="xx-card-head">
+                <p>交易记录</p>
+                <span>{{ state.logs.length }} 条</span>
+              </div>
+              <div ref="logListRef" class="xx-log-list">
+                <p v-for="(line, idx) in recentLogs" :key="`${idx}-${line}`" class="xx-log-line">{{ line }}</p>
+              </div>
+            </section>
+          </template>
+
+          <template v-else-if="currentView === 'bedroom'">
+            <section class="xx-bedroom-card">
+              <div class="xx-card-head">
+                <p>卧室布置</p>
+                <span>{{ bedroomFurnitureCount }} 件</span>
+              </div>
+
+              <div class="xx-bedroom-board-wrap">
+                <div ref="bedroomBoardRef" class="xx-bedroom-board" :style="bedroomGridStyle">
+                  <div class="xx-bedroom-grid" :style="bedroomGridStyle">
+                    <span
+                      v-for="cell in bedroomGridCells"
+                      :key="cell.key"
+                      class="xx-bedroom-grid-cell"
+                    ></span>
+                  </div>
+
+                  <button
+                    v-for="item in bedroomFurnitureRenderList"
+                    :key="item.id"
+                    class="xx-bedroom-item"
+                    type="button"
+                    :class="{
+                      'is-selected': selectedBedroomFurniture && selectedBedroomFurniture.id === item.id,
+                      'is-dragging': draggingBedroomFurnitureId === item.id,
+                      'is-floor': item.kind === 'floor',
+                    }"
+                    :style="getBedroomFurnitureInlineStyle(item, item.renderIndex)"
+                    :title="`${item.name}${item.desc ? ` · ${item.desc}` : ''}`"
+                    @click.stop="focusBedroomFurniture(item.id)"
+                    @pointerdown="startBedroomFurnitureDrag($event, item)"
+                  >
+                    <img :src="getBedroomFurnitureSpriteSrc(item, item.renderIndex)" :alt="item.name" />
+                    <span class="xx-bedroom-item-name">{{ item.name }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <p class="xx-bedroom-tip">拖动家具可摆放；点击家具会置顶，支持手动调 z 层。</p>
+
+              <div class="xx-bedroom-actions">
+                <button
+                  class="xx-btn is-primary"
+                  type="button"
+                  :disabled="bedroomLoading || isBusy"
+                  @click="generateNewBedroomFurniture"
+                >
+                  {{ bedroomLoading ? '生成中...' : '获取新家具' }}
+                </button>
+                <button
+                  class="xx-btn is-secondary"
+                  type="button"
+                  :disabled="bedroomLoading || isBusy || bedroomFurnitureCount < 1"
+                  @click="clearBedroomFurniture"
+                >
+                  清空布置
+                </button>
+              </div>
+
+              <div v-if="selectedBedroomFurniture" class="xx-bedroom-selected">
+                <p class="xx-bedroom-selected-title">
+                  已选中：{{ selectedBedroomFurniture.name }}（{{ selectedBedroomFurniture.kind }}，z={{ selectedBedroomFurniture.z }}）
+                </p>
+                <div class="xx-bedroom-z-actions">
+                  <button
+                    class="xx-btn"
+                    type="button"
+                    :disabled="bedroomLoading || isBusy"
+                    @click="adjustBedroomFurnitureZ(selectedBedroomFurniture.id, -1)"
+                  >
+                    下移一层
+                  </button>
+                  <button
+                    class="xx-btn"
+                    type="button"
+                    :disabled="bedroomLoading || isBusy"
+                    @click="adjustBedroomFurnitureZ(selectedBedroomFurniture.id, 1)"
+                  >
+                    上移一层
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section class="xx-log-card">
+              <div class="xx-card-head">
+                <p>卧室记录</p>
+                <span>{{ state.logs.length }} 条</span>
+              </div>
+              <div ref="logListRef" class="xx-log-list">
+                <p v-for="(line, idx) in recentLogs" :key="`${idx}-${line}`" class="xx-log-line">{{ line }}</p>
+              </div>
+            </section>
+          </template>
+
             <p v-if="errorText" class="xx-error">{{ errorText }}</p>
           </main>
         </template>
       </article>
     </Transition>
   </section>
+
+  <!-- 商人进货弹窗 - 使用Teleport确保渲染到body -->
+  <Teleport to="body">
+    <Transition name="xx-modal-fade">
+      <div v-if="merchantRestockModal" class="xx-modal-overlay" @click.self="closeMerchantRestockModal">
+        <div class="xx-modal-content xx-merchant-restock-modal">
+          <div class="xx-modal-spinner"></div>
+          <p class="xx-modal-text">商人正在进货中...</p>
+          <p class="xx-modal-subtext">请稍候，正在联系远方供应商</p>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>

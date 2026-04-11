@@ -454,6 +454,319 @@ export const generateStory = async (prompt, options = {}) => {
   })
 }
 
+const FACE_TO_FACE_JOINT_DIALOGUE_SYSTEM_PROMPT = `你是“角色关节点点击台词生成器”。
+你会收到世界书信息和一个角色设定，然后为人体关节点生成“被点击时说的话”。
+
+硬性要求：
+1) 只输出 JSON 对象，不要 markdown，不要解释。
+2) JSON 格式必须为：
+{"jointDialogues":{"nose":"...","left_shoulder":"..."}}
+3) key 必须使用传入的关节ID（snake_case），不能新增无关字段。
+4) 每句台词 6-36 字，中文口语化，不要出现“作为AI”等元话术。
+5) 语气必须贴合该角色的性格、身份、背景。`
+
+const FACE_TO_FACE_DEFAULT_JOINT_IDS = [
+  'nose',
+  'left_eye_inner',
+  'left_eye',
+  'left_eye_outer',
+  'right_eye_inner',
+  'right_eye',
+  'right_eye_outer',
+  'left_ear',
+  'right_ear',
+  'mouth_left',
+  'mouth_right',
+  'left_shoulder',
+  'right_shoulder',
+  'left_elbow',
+  'right_elbow',
+  'left_wrist',
+  'right_wrist',
+  'left_pinky',
+  'right_pinky',
+  'left_index',
+  'right_index',
+  'left_thumb',
+  'right_thumb',
+  'left_hip',
+  'right_hip',
+  'left_knee',
+  'right_knee',
+  'left_ankle',
+  'right_ankle',
+  'left_heel',
+  'right_heel',
+  'left_foot_index',
+  'right_foot_index',
+]
+
+const clampFaceToFaceMaxTokens = (value, fallback = 1400) => {
+  const parsed = Number.parseInt(String(value), 10)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(256, Math.min(200000, parsed))
+}
+
+const clampFaceToFaceLineLength = (value, fallback = 48) => {
+  const parsed = Number.parseInt(String(value), 10)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(16, Math.min(120, parsed))
+}
+
+const normalizeFaceToFaceJointKey = (value) => {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+}
+
+const createFaceToFaceJointAliasMap = (jointIds) => {
+  const aliasMap = new Map()
+  for (const jointId of jointIds) {
+    const normalized = normalizeFaceToFaceJointKey(jointId)
+    if (!normalized) continue
+    aliasMap.set(normalized, jointId)
+  }
+  return aliasMap
+}
+
+const normalizeFaceToFaceJointDialogues = (
+  rawObject,
+  jointIds = FACE_TO_FACE_DEFAULT_JOINT_IDS,
+  lineMaxLength = 48,
+) => {
+  if (!rawObject || typeof rawObject !== 'object') return null
+
+  const normalizedJointIds = Array.isArray(jointIds)
+    ? jointIds.map((id) => String(id || '').trim()).filter(Boolean)
+    : []
+  if (normalizedJointIds.length === 0) return null
+
+  const aliasMap = createFaceToFaceJointAliasMap(normalizedJointIds)
+  const dialogues = {}
+
+  const readLine = (value) => String(value || '').replace(/\s+/g, ' ').trim().slice(0, lineMaxLength)
+  const assignLine = (jointKey, lineValue) => {
+    const canonicalJoint = aliasMap.get(normalizeFaceToFaceJointKey(jointKey))
+    if (!canonicalJoint) return
+    if (dialogues[canonicalJoint]) return
+    const line = readLine(lineValue)
+    if (!line) return
+    dialogues[canonicalJoint] = line
+  }
+
+  let sourceObject = rawObject
+  if (rawObject?.jointDialogues && typeof rawObject.jointDialogues === 'object') {
+    sourceObject = rawObject.jointDialogues
+  } else if (rawObject?.dialogues && typeof rawObject.dialogues === 'object') {
+    sourceObject = rawObject.dialogues
+  } else if (rawObject?.lines && typeof rawObject.lines === 'object') {
+    sourceObject = rawObject.lines
+  }
+
+  if (sourceObject && typeof sourceObject === 'object' && !Array.isArray(sourceObject)) {
+    for (const [key, value] of Object.entries(sourceObject)) {
+      assignLine(key, value)
+    }
+  }
+
+  const arrayCandidates = []
+  if (Array.isArray(sourceObject)) {
+    arrayCandidates.push(sourceObject)
+  }
+  if (Array.isArray(rawObject?.jointDialogues)) {
+    arrayCandidates.push(rawObject.jointDialogues)
+  }
+  if (Array.isArray(rawObject?.dialogues)) {
+    arrayCandidates.push(rawObject.dialogues)
+  }
+  if (Array.isArray(rawObject?.lines)) {
+    arrayCandidates.push(rawObject.lines)
+  }
+
+  for (const items of arrayCandidates) {
+    for (const item of items) {
+      if (!item || typeof item !== 'object') continue
+      assignLine(
+        item.jointId || item.joint || item.id || item.name,
+        item.line || item.text || item.dialogue || item.content,
+      )
+    }
+  }
+
+  if (Object.keys(dialogues).length === 0) return null
+  return dialogues
+}
+
+const buildFaceToFaceCharacterSummary = (character = {}, fallbackName = '角色') => {
+  const personality = character?.personalityProfile && typeof character.personalityProfile === 'object'
+    ? character.personalityProfile
+    : {}
+  const dimensions = personality?.cognitiveDimensions && typeof personality.cognitiveDimensions === 'object'
+    ? personality.cognitiveDimensions
+    : {}
+  const behaviorTags = Array.isArray(personality?.behaviorTags)
+    ? personality.behaviorTags
+    : []
+
+  const dimensionText = Object.entries(dimensions)
+    .map(([key, value]) => `${key}:${Number.isFinite(Number(value)) ? Number(value) : value}`)
+    .filter((entry) => String(entry || '').trim())
+    .slice(0, 8)
+    .join(' | ')
+
+  return [
+    `姓名: ${String(character?.name || character?.nickname || fallbackName).trim() || fallbackName}`,
+    String(character?.nickname || '').trim() ? `昵称: ${String(character.nickname).trim()}` : '',
+    String(character?.identity || '').trim() ? `身份: ${String(character.identity).trim()}` : '',
+    String(character?.appearance || '').trim() ? `外表: ${String(character.appearance).trim()}` : '',
+    String(character?.background || '').trim() ? `背景: ${String(character.background).trim()}` : '',
+    String(character?.notes || '').trim() ? `备注: ${String(character.notes).trim()}` : '',
+    String(personality?.mbti || '').trim() ? `MBTI: ${String(personality.mbti).trim()}` : '',
+    behaviorTags.length > 0 ? `行为标签: ${behaviorTags.map((tag) => String(tag || '').trim()).filter(Boolean).slice(0, 10).join('、')}` : '',
+    dimensionText ? `认知维度: ${dimensionText}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+const buildFaceToFaceWorldSummary = (worldBook = {}) => {
+  const entries = worldBook?.entries && typeof worldBook.entries === 'object'
+    ? worldBook.entries
+    : {}
+  const entryMap = [
+    ['overview', '世界概述'],
+    ['era', '时代背景'],
+    ['regions', '地理区域'],
+    ['forces', '主要势力'],
+    ['rules', '世界规则'],
+    ['culture', '社会文化'],
+    ['conflict', '核心冲突'],
+    ['secrets', '秘密与禁忌'],
+  ]
+
+  const entryText = entryMap
+    .map(([key, label]) => {
+      const value = String(entries?.[key] || '').trim()
+      return value ? `${label}: ${value}` : ''
+    })
+    .filter(Boolean)
+    .join('\n')
+
+  return [
+    `世界书: ${String(worldBook?.title || '未命名世界书').trim() || '未命名世界书'}`,
+    String(worldBook?.summary || '').trim() ? `摘要: ${String(worldBook.summary).trim()}` : '',
+    entryText ? `条目:\n${entryText}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+export const generateFaceToFaceJointDialogues = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      jointDialogues: null,
+      data: null,
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object'
+    ? params.worldBook
+    : {}
+  const character = params.character && typeof params.character === 'object'
+    ? params.character
+    : null
+  if (!character) {
+    return {
+      success: false,
+      error: '角色信息缺失，无法生成关节台词',
+      jointDialogues: null,
+      data: null,
+    }
+  }
+
+  const requestedJointIds = Array.isArray(params.jointIds)
+    ? params.jointIds.map((item) => String(item || '').trim()).filter(Boolean)
+    : []
+  const jointIds = requestedJointIds.length > 0
+    ? requestedJointIds
+    : FACE_TO_FACE_DEFAULT_JOINT_IDS
+  const lineMaxLength = clampFaceToFaceLineLength(params.options?.lineMaxLength, 48)
+  const maxTokens = clampFaceToFaceMaxTokens(params.options?.maxTokens, 1400)
+  const temperature = Number.isFinite(Number(params.options?.temperature))
+    ? Number(params.options.temperature)
+    : 0.82
+  const characterName = String(
+    params.characterName ||
+    character?.name ||
+    character?.nickname ||
+    '角色',
+  ).trim() || '角色'
+
+  const worldSummary = buildFaceToFaceWorldSummary(worldBook)
+  const characterSummary = buildFaceToFaceCharacterSummary(character, characterName)
+  const jointTemplate = jointIds
+    .map((jointId) => `  "${jointId}": "${characterName}被点击该部位时说的话"`)
+    .join(',\n')
+  const requiredJointList = jointIds.join(', ')
+
+  const userPrompt = [
+    '【任务】请为“面对面互动”生成关节点点击台词映射。',
+    `【角色名】${characterName}`,
+    worldSummary ? `【世界书信息】\n${worldSummary}` : '',
+    `【角色信息】\n${characterSummary}`,
+    `【目标关节ID】${requiredJointList}`,
+    `【台词长度】每句建议 6-${Math.max(16, lineMaxLength)} 字`,
+    '要求：同一角色不同部位的台词要有差异，但整体语气统一。',
+    '请尽量覆盖全部关节；至少覆盖 12 个关节。',
+    '严格输出 JSON 对象，不要解释。',
+    `输出示例：\n{"jointDialogues":{\n${jointTemplate}\n}}`,
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: FACE_TO_FACE_JOINT_DIALOGUE_SYSTEM_PROMPT,
+    userPrompt,
+    temperature,
+    maxTokens,
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '关节点台词生成失败',
+      jointDialogues: null,
+      data: null,
+    }
+  }
+
+  const parsed = parseJsonObjectFromText(result.data)
+  const normalized = normalizeFaceToFaceJointDialogues(parsed, jointIds, lineMaxLength)
+  if (!normalized) {
+    return {
+      success: false,
+      error: '关节点台词解析失败',
+      jointDialogues: null,
+      data: result.data,
+      rawResponse: result.rawResponse,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    jointDialogues: normalized,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
 const CG_PROMPT_SYSTEM_PROMPT = `你是“AVG 场景生图提示词生成器”。
 你将读取世界书、角色外貌设定和近期剧情，然后输出可直接用于生图模型的提示词。
 

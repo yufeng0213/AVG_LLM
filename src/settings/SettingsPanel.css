@@ -1,0 +1,715 @@
+/* ========== 设置面板通用样式 - 扁平化设计 ========== */
+.settings-panel-content {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+  padding: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+}
+
+.panel-title {
+  margin: 0 !important;
+  font-family: var(--font-heading, 'Inter', system-ui, sans-serif) !important;
+  font-size: clamp(1.25rem, 3vw, 1.5rem) !important;
+  font-weight: 700 !important;
+  color: var(--foreground, #ffffff) !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+  text-shadow: none !important;
+  line-height: 1.2 !important;
+}
+
+.panel-description {
+  margin: 0 !important;
+  font-size: 0.9rem !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent) !important;
+  line-height: 1.5 !important;
+  max-width: none !important;
+}
+
+/* ========== 设置网格 - 改为列表式布局 ========== */
+.settings-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
+
+.single-column,
+.two-column,
+.three-column,
+.four-column {
+  grid-template-columns: none !important;
+}
+
+/* ========== 设置字段 - 扁平化列表项 ========== */
+.setting-field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 16px 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent) !important;
+}
+
+.setting-field:last-child {
+  border-bottom: none !important;
+}
+
+.setting-field:hover {
+  background: transparent !important;
+}
+
+/* ========== 设置标签 ========== */
+.setting-label {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+/* ========== 输入框 ========== */
+.setting-input,
+.setting-select {
+  width: 100% !important;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent) !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  font: 400 0.9rem/1.4 var(--font-body) !important;
+  color: var(--foreground, #ffffff) !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent) !important;
+  box-shadow: none !important;
+}
+
+.setting-input::placeholder {
+  color: color-mix(in srgb, var(--foreground, #ffffff) 35%, transparent) !important;
+}
+
+.setting-input:focus-visible,
+.setting-select:focus-visible {
+  outline: none !important;
+  border-color: var(--accent-cyan, #00d4ff) !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent) !important;
+}
+
+/* ========== 文本域 ========== */
+.setting-textarea {
+  width: 100% !important;
+  min-height: 120px !important;
+  resize: vertical !important;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent) !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  font: 400 0.9rem/1.5 'SF Mono', 'Fira Code', monospace !important;
+  color: var(--foreground, #ffffff) !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent) !important;
+  box-shadow: none !important;
+}
+
+.setting-textarea:focus-visible {
+  outline: none !important;
+  border-color: var(--accent-cyan, #00d4ff) !important;
+}
+
+/* ========== 范围滑块 ========== */
+.setting-range {
+  width: 100% !important;
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent) !important;
+  outline: none !important;
+  cursor: pointer !important;
+  accent-color: var(--accent-cyan, #00d4ff) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.setting-range::-webkit-slider-runnable-track {
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent) !important;
+}
+
+.setting-range::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: var(--accent-cyan, #00d4ff) !important;
+  cursor: pointer !important;
+  margin-top: -8px !important;
+}
+
+.setting-range::-moz-range-track {
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent) !important;
+  border: none !important;
+}
+
+.setting-range::-moz-range-thumb {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: var(--accent-cyan, #00d4ff) !important;
+  cursor: pointer !important;
+  border: none !important;
+}
+
+/* ========== 行内字段（模型名称 + 拉取按钮） ========== */
+.setting-field-row {
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 12px !important;
+}
+
+.setting-label-inline {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+  white-space: nowrap !important;
+  padding-bottom: 10px !important;
+}
+
+.setting-select-flex {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.action-button-fetch {
+  appearance: none !important;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 40%, transparent) !important;
+  border-radius: 8px !important;
+  padding: 10px 16px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 150ms ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 12%, transparent) !important;
+  color: var(--accent-cyan, #00d4ff) !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  height: 42px !important;
+  min-width: 60px !important;
+  box-sizing: border-box !important;
+}
+
+.action-button-fetch:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 20%, transparent) !important;
+  border-color: var(--accent-cyan, #00d4ff) !important;
+}
+
+.action-button-fetch:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+/* ========== 复选框行 ========== */
+.setting-checkbox-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 14px 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  font-weight: 500 !important;
+  color: var(--foreground, #ffffff) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent) !important;
+  cursor: pointer !important;
+}
+
+.setting-checkbox-row:last-child {
+  border-bottom: none !important;
+}
+
+.setting-checkbox {
+  width: 20px !important;
+  height: 20px !important;
+  accent-color: var(--accent-cyan, #00d4ff) !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+}
+
+/* ========== 状态芯片 ========== */
+.setting-status-chip {
+  margin: 0 !important;
+  align-self: start !important;
+  padding: 8px 14px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent) !important;
+  font-size: 0.85rem !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent) !important;
+  box-shadow: none !important;
+}
+
+/* ========== 主题摘要 ========== */
+.theme-summary {
+  margin: 0 !important;
+  font-size: 0.85rem !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent) !important;
+  line-height: 1.5 !important;
+}
+
+/* ========== 操作按钮区域 ========== */
+.setting-actions {
+  display: flex !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  padding: 16px 0 !important;
+}
+
+.action-button {
+  appearance: none !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 12px 20px !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 150ms ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent) !important;
+  color: var(--foreground, #ffffff) !important;
+  box-shadow: none !important;
+}
+
+.action-button:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+.action-button.action-strong {
+  background: var(--accent-cyan, #00d4ff) !important;
+  color: var(--background, #0a0a0a) !important;
+}
+
+.action-button.action-strong:hover:not(:disabled) {
+  filter: brightness(1.1) !important;
+}
+
+.action-button.action-outline {
+  background: transparent !important;
+  color: var(--foreground, #ffffff) !important;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent) !important;
+}
+
+.action-button.action-outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent) !important;
+}
+
+.action-button.action-ghost {
+  background: transparent !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent) !important;
+}
+
+.action-button.action-ghost:hover:not(:disabled) {
+  color: var(--foreground, #ffffff) !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent) !important;
+}
+
+/* ========== 状态消息 ========== */
+.status-message {
+  margin: 0 !important;
+  font-size: 0.85rem !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent) !important;
+  padding: 12px 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+/* ========== 折叠区域 ========== */
+.api-section {
+  margin: 12px 0 !important;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 3%, transparent) !important;
+  transition: all 200ms ease !important;
+}
+
+.api-section:hover {
+  border-color: color-mix(in srgb, var(--foreground, #ffffff) 18%, transparent) !important;
+}
+
+.api-section-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  padding: 14px 16px !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  transition: background 150ms ease !important;
+}
+
+.api-section-header:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 5%, transparent) !important;
+}
+
+.api-section-title {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: var(--foreground, #ffffff) !important;
+  letter-spacing: 0 !important;
+}
+
+.api-section-arrow {
+  font-size: 1.2rem !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent) !important;
+  transition: transform 200ms ease, color 150ms ease !important;
+  line-height: 1 !important;
+}
+
+.api-section-arrow.expanded {
+  transform: rotate(90deg) !important;
+  color: var(--accent-cyan, #00d4ff) !important;
+}
+
+.api-section-content {
+  padding: 0 16px 16px !important;
+  border-top: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent) !important;
+  background: color-mix(in srgb, var(--background, #0a0a0a) 20%, transparent) !important;
+}
+
+/* ========== 子面板 ========== */
+.settings-subpanel {
+  margin: 8px 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.subpanel-title {
+  margin: 0 0 12px !important;
+  padding: 12px 0 !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  background: transparent !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent) !important;
+}
+
+/* ========== 文件导入区域 ========== */
+.import-section {
+  margin-top: 8px !important;
+}
+
+.import-file-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  padding: 16px 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent) !important;
+}
+
+.import-file-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+.file-input-hidden {
+  display: none !important;
+}
+
+.import-file-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.import-icon {
+  font-size: 1.1rem !important;
+}
+
+.import-hint {
+  font-size: 0.8rem !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent) !important;
+}
+
+/* ========== Android 特有设置区域 ========== */
+.android-settings-section {
+  margin-bottom: 16px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.subsection-title {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  margin: 0 0 12px !important;
+  padding: 12px 0 !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent) !important;
+}
+
+.android-note {
+  font-size: 0.8rem !important;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent) !important;
+  margin: 8px 0 0 !important;
+  padding: 8px 0 !important;
+}
+
+/* ========== 分隔线 ========== */
+.setting-divider {
+  height: 1px !important;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent) !important;
+  margin: 8px 0 !important;
+}
+
+/* ========== 响应式设计 ========== */
+
+/* 平板横屏 */
+@media (min-width: 768px) {
+  .settings-panel-content {
+    max-width: 560px !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* 手机竖屏 */
+@media (max-width: 640px) {
+  .settings-panel-content {
+    gap: 16px !important;
+  }
+
+  .setting-actions {
+    flex-direction: column !important;
+  }
+
+  .action-button {
+    width: 100% !important;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 360px) {
+  .panel-title {
+    font-size: 1.1rem !important;
+  }
+
+  .panel-description {
+    font-size: 0.85rem !important;
+  }
+
+  .setting-input,
+  .setting-select,
+  .setting-textarea {
+    padding: 8px 12px !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* ========== Android 竖屏专用 ========== */
+.platform-android.android-portrait .settings-panel-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+.platform-android.android-portrait .panel-title {
+  font-size: 1.15rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  padding: 0 4px !important;
+}
+
+.platform-android.android-portrait .panel-description {
+  font-size: 0.85rem !important;
+  word-break: break-word !important;
+  padding: 0 4px !important;
+}
+
+.platform-android.android-portrait .setting-field {
+  padding: 14px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .setting-label {
+  font-size: 0.82rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.platform-android.android-portrait .setting-input,
+.platform-android.android-portrait .setting-select,
+.platform-android.android-portrait .setting-textarea {
+  min-height: 44px !important;
+  padding: 10px 12px !important;
+  font-size: 0.85rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .setting-range {
+  height: 6px !important;
+  min-height: 44px !important;
+  padding: 19px 0 !important;
+  background: transparent !important;
+}
+
+.platform-android.android-portrait .setting-range::-webkit-slider-runnable-track {
+  height: 4px !important;
+  border-radius: 2px !important;
+}
+
+.platform-android.android-portrait .setting-range::-webkit-slider-thumb {
+  width: 22px !important;
+  height: 22px !important;
+  margin-top: -9px !important;
+}
+
+.platform-android.android-portrait .setting-checkbox-row {
+  min-height: 48px !important;
+  padding: 12px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .setting-checkbox {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+}
+
+.platform-android.android-portrait .setting-actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 12px 0 !important;
+}
+
+.platform-android.android-portrait .action-button {
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 10px 12px !important;
+  font-size: 0.82rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.platform-android.android-portrait .status-message {
+  font-size: 0.8rem !important;
+  word-break: break-word !important;
+  padding: 10px 0 !important;
+}
+
+.platform-android.android-portrait .settings-subpanel {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .subpanel-title {
+  font-size: 0.8rem !important;
+  word-break: break-word !important;
+  padding: 12px 0 !important;
+}
+
+.platform-android.android-portrait .android-settings-section {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .subsection-title {
+  font-size: 0.8rem !important;
+  word-break: break-word !important;
+  padding: 12px 0 !important;
+}
+
+.platform-android.android-portrait .import-file-area {
+  padding: 14px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .import-file-row {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+}
+
+.platform-android.android-portrait .import-hint {
+  font-size: 0.78rem !important;
+  text-align: center !important;
+}
+
+.platform-android.android-portrait .setting-status-chip {
+  font-size: 0.8rem !important;
+  padding: 6px 12px !important;
+}
+
+/* ========== Android竖屏专用：模型名称行 ========== */
+.platform-android.android-portrait .setting-field-row {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .setting-label-inline {
+  padding-bottom: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.platform-android.android-portrait .setting-select-flex {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  min-height: 44px !important;
+  height: 44px !important;
+}
+
+.platform-android.android-portrait .action-button-fetch {
+  min-height: 44px !important;
+  height: 44px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  font-size: 0.85rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}

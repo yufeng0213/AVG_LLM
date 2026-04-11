@@ -79,6 +79,24 @@ export const isTouchDevice = () => {
 }
 
 /**
+ * 检测当前是否为竖屏模式
+ * @returns {boolean}
+ */
+export const isPortrait = () => {
+  if (typeof window === 'undefined') return false
+  return window.innerHeight > window.innerWidth
+}
+
+/**
+ * 检测当前是否为横屏模式
+ * @returns {boolean}
+ */
+export const isLandscape = () => {
+  if (typeof window === 'undefined') return false
+  return window.innerWidth > window.innerHeight
+}
+
+/**
  * 平台信息对象
  */
 export const platform = {
@@ -90,6 +108,8 @@ export const platform = {
   getPlatform,
   isMobileDevice,
   isTouchDevice,
+  isPortrait,
+  isLandscape,
 }
 
 export default platform
