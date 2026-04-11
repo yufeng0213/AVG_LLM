@@ -591,6 +591,292 @@ Android竖屏专用样式需要添加 `!important` 确保覆盖默认样式：
    ```css
    .debug * { outline: 1px solid red; }
    ```
+
+---
+
+## 十、已解决问题记录
+
+### 10.1 按钮变形/超出范围（通用方案）
+
+**问题**：Android端按钮变形、文字被挤压、按钮超出容器
+
+**最终解决方案**：
+1. **基础样式**：在组件CSS中先给按钮加基础约束（不依赖!important）
+   ```css
+   .close-btn {
+     display: inline-flex;
+     align-items: center;
+     justify-content: center;
+     min-width: 28px;
+     min-height: 28px;
+     border-radius: 50%;
+     padding: 4px 8px;
+   }
+   ```
+2. **Android竖屏专用覆盖**：使用 `!important` + 固定尺寸
+   ```css
+   .platform-android.android-portrait .close-btn {
+     width: 36px !important;
+     height: 36px !important;
+     min-width: 36px !important;
+     min-height: 36px !important;
+     font-size: 1.2rem !important;
+     padding: 0 !important;
+     flex-shrink: 0 !important;
+     box-sizing: border-box !important;
+     display: flex !important;
+     align-items: center !important;
+     justify-content: center !important;
+     border-radius: 50% !important;
+   }
+   ```
+
+**已适配的组件**：
+- `DiaryPanel.vue` — 日记面板关闭按钮
+- `BackpackPanel.vue` — 背包面板关闭按钮
+- `StatusPanel.vue` — 状态面板关闭按钮
+- `DriftBottlePanel.vue` — 漂流瓶面板关闭按钮
+- `TaskBoardModal.vue` — 任务板关闭按钮、筛选按钮、操作按钮
+- `TaskExecutionModal.vue` — 发送按钮、输入框、关闭按钮
+- `RedPacket.vue` — 红包关闭按钮
+- `DormitoryScreen.css` — 聊天发送按钮、商店按钮等
+
+### 10.2 筛选按钮按内容自适应
+
+**问题**：任务板顶部筛选按钮（全部/探索/收集等）固定高度导致过大占满
+
+**解决方案**：
+```css
+.platform-android.android-portrait .task-filter-btn {
+  min-height: 32px !important;
+  height: auto !important;
+  padding: 4px 10px !important;
+  width: auto !important;
+  flex: none !important;
+  display: inline-flex !important;
+}
+
+.platform-android.android-portrait .task-board-filters {
+  flex-wrap: wrap !important;
+}
+```
+
+**关键**：`height: auto` + `width: auto` + `flex: none` 让按钮按内容自适应
+
+### 10.3 下拉菜单被z-index遮挡
+
+**问题**：聊天框"+"按钮的下拉菜单在Android上被面板遮挡
+
+**原因**：下拉菜单是 `.dorm-chat-overlay`（z-index: 6）的子元素，被 `.dorm-overlay-panel`（z-index: 8）遮挡，即使下拉菜单本身 z-index: 9999 也无法突破父级 stacking context
+
+**解决方案**：下拉菜单改用 `position: fixed` 脱离所有 stacking context
+```javascript
+// 动态计算按钮位置
+const btn = taskInviteBtnRef.value
+const rect = btn.getBoundingClientRect()
+const viewportH = window.innerHeight
+taskDropdownRect.value = {
+  bottom: viewportH - rect.top,
+  left: rect.left,
+  width: Math.max(rect.width, 200)
+}
+```
+```css
+.dorm-chat-task-dropdown-body {
+  position: fixed;
+  z-index: 10000;
+  /* top/left 由 :style 动态绑定 */
+}
+```
+
+### 10.4 事件处理函数名不一致
+
+**问题**：面板组件的 `@close` 事件绑定的函数名 `handleCloseOverlayPanel` 不存在，实际函数名是 `handleCollapseDormOverlayPanel`
+
+**修复**：统一使用 `handleCollapseDormOverlayPanel`
+
+### 10.5 onMounted时activeBook未加载
+
+**问题**：`onMounted` 执行时 `activeBook` 是 null（世界书异步加载），导致 `taskBoardTasks` 加载为空
+
+**解决方案**：使用 `watch(activeBook, ..., { immediate: true })` 代替 `onMounted` 中的加载
+```javascript
+watch(
+  activeBook,
+  (book) => {
+    const bookId = String(book?.id || '').trim()
+    if (!bookId) return
+    const board = loadTaskBoardForActiveBook()
+    taskBoardTasks.value = board.tasks || []
+  },
+  { immediate: true },
+)
+```
+
+### 10.7 任务执行面板发送按钮过大/挤压输入框
+
+**问题**：Android端任务执行面板发送按钮特别大，挤压了文本输入框
+
+**原因**：
+1. 只设置了固定高度（44px）但没限制 `max-height`，padding 和 line-height 又把按钮撑大
+2. `flex-shrink: 0` + `flex-grow: 0` + `flex-basis: auto` 分离写法在 Android WebView 中可能不生效
+3. 缺少 `flex: 1 1 0` 让输入框占满剩余空间
+
+**解决方案**：
+```css
+.platform-android.android-portrait .task-exec-send-btn {
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 8px !important;
+  font-size: 0.8rem !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+}
+
+.platform-android.android-portrait .task-exec-input {
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 10px !important;
+  font-size: 0.85rem !important;
+  line-height: 1.2 !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  flex: 1 1 0 !important;
+}
+```
+
+**关键**：
+- 用 `flex: 0 0 auto` 简写代替分离属性（`flex-shrink`/`flex-grow`/`flex-basis`），Android WebView 更可靠
+- 同时设置 `height` + `min-height` + `max-height` 三者一致，彻底锁死高度
+- `line-height: 1` 防止文字行高撑开按钮
+- 输入框用 `flex: 1 1 0`（基准宽度 0）确保占满剩余空间
+
+### 10.8 任务执行面板输入行溢出
+
+**问题**：输入框和发送按钮整体超出容器宽度
+
+**解决方案**：从外到内三层容器逐级约束
+```css
+/* 第一层：输入区域容器 */
+.platform-android.android-portrait .task-exec-input-area {
+  padding: 8px 10px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* 第二层：按钮+输入框行 */
+.platform-android.android-portrait .task-exec-input-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  overflow: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* 第三层：输入框和按钮 */
+/* 见 10.7 的发送按钮和输入框样式 */
+```
+
+**关键**：每层都要有 `overflow: hidden` + `width: 100%` + `box-sizing: border-box`，不能只约束最内层
+
+### 10.9 任务执行面板标题和关闭按钮重叠
+
+**问题**：任务名称过长时和右上角关闭按钮重叠
+
+**解决方案**：
+```css
+.platform-android.android-portrait .task-exec-title-group {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  padding-right: 40px !important; /* 给关闭按钮留空间 */
+  overflow: hidden !important;
+}
+
+.platform-android.android-portrait .task-exec-title {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
+}
+
+.platform-android.android-portrait .task-exec-task-name {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: calc(100% - 40px) !important;
+}
+```
+
+### 10.6 触摸事件处理
+
+**问题**：Android端点击"+"按钮只显示一下（闪退）
+
+**原因**：`click` 和 `touchend` 事件冲突，touchend 触发后 click 又触发了第二次切换
+
+**解决方案**：使用 `@touchend.stop.prevent` 阻止默认行为和冒泡
+```vue
+<button @click.stop="toggleTaskInviteDropdown"
+        @touchend.stop.prevent="toggleTaskInviteDropdown">+</button>
+```
+
+### 10.10 任务板 task-delete-btn（X 按钮）超出显示范围
+
+**问题**：任务板的 X 删除按钮超出卡片显示范围
+
+**原因**：
+1. `.task-action-btn` 的 Android 覆写用了 `height: auto`，导致高度被文字内容撑开
+2. 只设置了 `width: 36px` 但没限制 `max-width` 和 `flex` 简写，Android WebView 忽略分离属性
+3. ✕ 字符的 `line-height` 没约束，垂直方向撑开
+4. 尝试在父容器 `.task-card-actions` 上加 `overflow: hidden` 会导致按钮完全被裁剪（不可见）
+
+**解决方案**：不依赖父容器约束，直接在按钮上强制所有尺寸
+```css
+.platform-android.android-portrait .task-delete-btn {
+  width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  flex: 0 0 36px !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  border-radius: 8px !important;
+}
+```
+
+同时让旁边的领取/提交按钮允许收缩：
+```css
+.platform-android.android-portrait .task-accept-btn,
+.platform-android.android-portrait .task-submit-toggle-btn,
+.platform-android.android-portrait .task-complete-btn {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+}
+```
+
+**关键**：
+- **不要**在父容器 `.task-card-actions` 上加 `overflow: hidden`，会把固定尺寸的子按钮完全裁剪掉（变成不可见）
+- 用 `flex: 0 0 36px` 简写（不是分离的 `flex-shrink`/`flex-grow`/`flex-basis`），Android WebView 更可靠
+- `width/height/min/max` 全设为同一值 `36px`，彻底锁死尺寸
+- `line-height: 1` + `padding: 0` 防止 ✕ 字符的行高和 padding 撑开按钮
+- 相邻的 `flex: 1` 按钮必须加 `min-width: 0` 允许收缩，否则会挤压固定尺寸按钮
 第一步：PWA 验证（1天）
     ↓
 验证核心功能可用

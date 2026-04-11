@@ -1913,3 +1913,659 @@ export const generatePhoneShopItems = async (params = {}) => {
   }
 }
 
+// 世界书商店商品生成
+const DORM_SHOP_SYSTEM_PROMPT = `你是"世界书商店商品生成器"。
+你要根据世界书的背景设定，生成符合世界观的可购买的商品列表。
+
+硬性要求：
+1) 只输出 JSON，不要 markdown，不要解释。
+2) JSON 格式必须是：
+{"items":[{"name":"商品名","description":"商品描述","category":"分类","price":50,"icon":"图标emoji"}]}
+3) items 数量 6 条。
+4) 每个商品必须包含 name/description/category/price/icon 字段。
+5) price 必须是整数，范围 10-200。
+6) icon 必须是相关的 emoji 图标。
+7) category 必须是以下之一：misc(杂物)、gift(礼品)、clothes(衣服)、plant(花草)、food(食物)、decoration(装饰)。
+8) 商品需要贴合世界书的世界观和背景设定，不要脱离设定。
+9) 商品描述要简洁但有吸引力，符合世界书的风格。`
+
+const tryParseDormShopItems = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return []
+
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  const parseJson = (text) => {
+    try {
+      return JSON.parse(text)
+    } catch {
+      return null
+    }
+  }
+
+  const extractItems = (value) => {
+    if (Array.isArray(value)) return value
+    if (!value || typeof value !== 'object') return []
+    if (Array.isArray(value.items)) return value.items
+    if (Array.isArray(value.products)) return value.products
+    if (Array.isArray(value.list)) return value.list
+    return []
+  }
+
+  let parsedItems = extractItems(parseJson(candidate))
+  if (parsedItems.length === 0) {
+    const objStart = candidate.indexOf('{')
+    const objEnd = candidate.lastIndexOf('}')
+    if (objStart >= 0 && objEnd > objStart) {
+      parsedItems = extractItems(parseJson(candidate.slice(objStart, objEnd + 1)))
+    }
+  }
+
+  if (parsedItems.length === 0) {
+    const arrStart = candidate.indexOf('[')
+    const arrEnd = candidate.lastIndexOf(']')
+    if (arrStart >= 0 && arrEnd > arrStart) {
+      const maybeArr = parseJson(candidate.slice(arrStart, arrEnd + 1))
+      parsedItems = Array.isArray(maybeArr) ? maybeArr : []
+    }
+  }
+
+  const validCategories = ['misc', 'gift', 'clothes', 'plant', 'food', 'decoration']
+  const defaultIcons = { misc: '📦', gift: '🎁', clothes: '👔', plant: '🌿', food: '🍔', decoration: '✨' }
+
+  return parsedItems
+    .map((item, index) => {
+      const name = String(item?.name || item?.title || '').trim()
+      if (!name) return null
+
+      const description = String(item?.description || item?.summary || item?.detail || '').trim()
+      let category = String(item?.category || 'misc').trim().toLowerCase()
+      if (!validCategories.includes(category)) category = 'misc'
+      
+      const priceRaw = Number(item?.price ?? item?.amount ?? item?.cost ?? 50)
+      const price = Math.max(10, Math.min(200, Math.floor(priceRaw) || 50))
+      
+      const icon = String(item?.icon || defaultIcons[category] || '📦').trim()
+
+      return {
+        id: `dorm_shop_${Date.now()}_${index}`,
+        name,
+        description,
+        category,
+        price,
+        icon,
+      }
+    })
+    .filter(Boolean)
+    .slice(0, 12)
+}
+
+/**
+ * 生成世界书商店商品
+ * @param {Object} params
+ * @param {Object} params.worldBook - 世界书对象
+ * @param {number} [params.resultCount=6] - 生成商品数量
+ * @returns {Promise<{success: boolean, error: string|null, items: Array}>}
+ */
+export const generateDormShopItems = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      items: [],
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const resultCountRaw = Number(params.resultCount)
+  const resultCount = Number.isFinite(resultCountRaw)
+    ? Math.max(4, Math.min(12, Math.floor(resultCountRaw)))
+    : 6
+
+  const worldTitle = String(worldBook?.title || '默认世界书').trim()
+  const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
+  const worldEntries = worldBook?.entries && typeof worldBook.entries === 'object'
+    ? Object.entries(worldBook.entries)
+        .filter(([key]) => key !== 'overview')
+        .map(([key, value]) => `【${key}】${String(value || '').trim()}`)
+        .filter(Boolean)
+        .join('\n')
+    : ''
+
+  const userPrompt = [
+    `【任务】请生成世界书商店商品，共 ${resultCount} 条左右。`,
+    `【世界书标题】${worldTitle || '默认世界书'}`,
+    worldSummary ? `【世界背景】${worldSummary}` : '',
+    worldEntries ? `【世界设定详情】\n${worldEntries}` : '',
+    '请输出 JSON：{"items":[...]}，每条都包含 name/description/category/price/icon。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: DORM_SHOP_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.85,
+    maxTokens: params.options?.maxTokens ?? Math.min(2500, 500 + resultCount * 150),
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '世界书商店商品生成失败',
+      items: [],
+    }
+  }
+
+  const items = tryParseDormShopItems(result.data)
+  if (items.length === 0) {
+    return {
+      success: false,
+      error: '商品解析失败',
+      items: [],
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    items,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+const TASK_BOARD_SYSTEM_PROMPT = `你是"世界书任务板生成器"。
+你的任务是根据世界书的背景设定，生成符合世界观的任务列表。
+
+硬性要求：
+1) 只输出 JSON，不要 markdown，不要解释。
+2) JSON 格式必须是：
+{"tasks":[{"name":"任务名","description":"任务描述","type":"任务类型","difficulty":难度等级,"rewardType":"奖励类型","rewardAmount":奖励数量}]}
+3) tasks 数量 5 条。
+4) type 必须是以下之一：explore(探索)、collect(收集)、social(社交)、combat(战斗)、daily(日常)。
+5) difficulty 必须是 1-5 的整数。
+6) rewardType 必须是以下之一：coins(金币)、crystals(晶石)、item(物品)。
+7) rewardAmount 必须是整数，coins 范围 20-200，crystals 范围 1-5，item 时为 0。
+8) 任务描述要具体可执行，包含目标、地点、涉及角色或物品等细节。
+9) 任务要贴合世界书的世界观和背景设定。`
+
+const tryParseTaskBoardTasks = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return []
+
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  const parseJson = (text) => {
+    try {
+      return JSON.parse(text)
+    } catch {
+      return null
+    }
+  }
+
+  const extractTasks = (value) => {
+    if (Array.isArray(value)) return value
+    if (!value || typeof value !== 'object') return []
+    if (Array.isArray(value.tasks)) return value.tasks
+    if (Array.isArray(value.missions)) return value.missions
+    if (Array.isArray(value.quests)) return value.quests
+    return []
+  }
+
+  let parsedTasks = extractTasks(parseJson(candidate))
+  if (parsedTasks.length === 0) {
+    const objStart = candidate.indexOf('{')
+    const objEnd = candidate.lastIndexOf('}')
+    if (objStart >= 0 && objEnd > objStart) {
+      parsedTasks = extractTasks(parseJson(candidate.slice(objStart, objEnd + 1)))
+    }
+  }
+
+  if (parsedTasks.length === 0) {
+    const arrStart = candidate.indexOf('[')
+    const arrEnd = candidate.lastIndexOf(']')
+    if (arrStart >= 0 && arrEnd > arrStart) {
+      const maybeArr = parseJson(candidate.slice(arrStart, arrEnd + 1))
+      if (maybeArr) parsedTasks = extractTasks(maybeArr)
+    }
+  }
+
+  if (!Array.isArray(parsedTasks)) return []
+
+  const validTypes = ['explore', 'collect', 'social', 'combat', 'daily']
+  const validRewardTypes = ['coins', 'crystals', 'item']
+
+  return parsedTasks
+    .filter((t) => t && typeof t === 'object' && t.name && t.description && t.type)
+    .map((t) => ({
+      name: String(t.name || '').trim().slice(0, 50),
+      description: String(t.description || '').trim().slice(0, 500),
+      type: validTypes.includes(t.type) ? t.type : 'daily',
+      difficulty: Math.max(1, Math.min(5, Number(t.difficulty) || 1)),
+      rewardType: validRewardTypes.includes(t.rewardType) ? t.rewardType : 'coins',
+      rewardAmount: Math.max(1, Math.min(200, Number(t.rewardAmount) || 20)),
+    }))
+}
+
+/**
+ * 调用LLM生成任务板任务
+ * @param {Object} params
+ * @param {Object} params.worldBook - 世界书对象
+ * @param {number} params.count - 任务数量，默认 5
+ * @returns {Promise<{success: boolean, error: string|null, tasks: Array}>}
+ */
+export const generateTaskBoardTasks = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      tasks: [],
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const count = Math.max(3, Math.min(10, Number(params.count) || 5))
+
+  const worldTitle = String(worldBook?.title || '默认世界书').trim()
+  const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
+  const worldEntries = worldBook?.entries && typeof worldBook.entries === 'object'
+    ? Object.entries(worldBook.entries)
+        .filter(([key]) => key !== 'overview')
+        .map(([key, value]) => `【${key}】${String(value || '').trim()}`)
+        .filter(Boolean)
+        .join('\n')
+    : ''
+
+  const userPrompt = [
+    `【任务】请生成 ${count} 条任务板任务。`,
+    `【世界书标题】${worldTitle || '默认世界书'}`,
+    worldSummary ? `【世界背景】${worldSummary}` : '',
+    worldEntries ? `【世界设定详情】\n${worldEntries}` : '',
+    '请输出 JSON：{"tasks":[...]}，每条包含 name/description/type/difficulty/rewardType/rewardAmount。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: TASK_BOARD_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: 0.9,
+    maxTokens: 1500,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '任务生成失败',
+      tasks: [],
+    }
+  }
+
+  const tasks = tryParseTaskBoardTasks(result.data)
+  if (tasks.length === 0) {
+    return {
+      success: false,
+      error: '任务解析失败',
+      tasks: [],
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    tasks,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+const DORM_ITEM_GIFT_SYSTEM_PROMPT = `你是"寝室物品赠送剧情生成器"。
+你的任务是根据物品信息、角色信息和当前关系，生成"角色收到礼物后的对话回复和剧情反馈"。
+
+硬性要求：
+1) 只输出 JSON 对象，不要 markdown，不要解释。
+2) JSON 格式优先：
+{"replyText":"...", "journalText":"...", "mood":"...", "affectionDelta":0}
+3) 字段约束：
+- replyText: 必填，中文 10-80 字，角色收到礼物后的直接对话回复，口语化、自然。
+- journalText: 必填，中文 20-100 字，描述整个送礼过程的剧情记录，用于写入角色日记。
+- mood: 必填，中文 2-8 字，角色的心情，如"开心"、"惊喜"、"感动"等。
+- affectionDelta: 必填，整数，范围 3-15，表示好感度变化。
+4) 回复必须符合角色性格和世界观设定，不要跳戏。
+5) 不要写"作为AI""我无法"等元话术。`
+
+const tryParseDormItemGiftReply = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return null
+
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  const parseJson = (text) => {
+    try {
+      return JSON.parse(text)
+    } catch {
+      return null
+    }
+  }
+
+  let parsed = parseJson(candidate)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    const start = candidate.indexOf('{')
+    const end = candidate.lastIndexOf('}')
+    if (start >= 0 && end > start) {
+      parsed = parseJson(candidate.slice(start, end + 1))
+    }
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null
+  }
+
+  const replyText = String(
+    parsed?.replyText ||
+    parsed?.reply ||
+    parsed?.text ||
+    '',
+  ).trim()
+
+  const journalText = String(
+    parsed?.journalText ||
+    parsed?.journal ||
+    parsed?.diary ||
+    parsed?.story ||
+    '',
+  ).trim()
+
+  if (!replyText || !journalText) return null
+
+  const mood = String(parsed?.mood || parsed?.emotion || '开心').trim() || '开心'
+
+  const normalizeInt = (value, fallback = 0, min = 3, max = 15) => {
+    const parsedInt = Number.parseInt(String(value), 10)
+    if (!Number.isFinite(parsedInt)) return fallback
+    return Math.max(min, Math.min(max, parsedInt))
+  }
+
+  const affectionDelta = normalizeInt(parsed?.affectionDelta ?? parsed?.delta ?? parsed?.affection, 5, 3, 15)
+
+  return {
+    replyText,
+    journalText,
+    mood,
+    affectionDelta,
+  }
+}
+
+/**
+ * 生成寝室物品赠送后的剧情回复
+ * @param {Object} params
+ * @param {Object} params.worldBook - 世界书对象
+ * @param {Object} params.character - 角色对象
+ * @param {Object} params.item - 物品对象
+ * @param {number} params.currentAffection - 当前好感度
+ * @param {string} params.relationshipStage - 当前关系阶段
+ * @returns {Promise<{success: boolean, error: string|null, reply: Object|null}>}
+ */
+export const generateDormItemGiftReply = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      reply: null,
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const character = params.character && typeof params.character === 'object' ? params.character : null
+  const item = params.item && typeof params.item === 'object' ? params.item : null
+
+  const characterName = String(character?.name || character?.label || '角色').trim()
+  const itemName = String(item?.name || '').trim()
+
+  if (!characterName || !itemName) {
+    return {
+      success: false,
+      error: '参数不完整：需要角色和物品信息',
+      reply: null,
+    }
+  }
+
+  const itemDescription = String(item?.description || item?.detail || '').trim()
+  const itemCategory = String(item?.category || item?.categoryLabel || item?.type || '').trim()
+  const itemIcon = String(item?.icon || '').trim()
+  const currentAffection = Math.max(0, Math.min(100, Number(params.currentAffection) || 0))
+  const relationshipStage = String(params.relationshipStage || '').trim()
+
+  const characterIdentity = String(character?.identity || character?.subtitle || character?.background || '').trim()
+  const characterTags = Array.isArray(character?.tags)
+    ? character.tags
+        .map((tag) => String(tag || '').trim())
+        .filter(Boolean)
+        .slice(0, 8)
+    : []
+
+  const worldTitle = String(worldBook?.title || '默认世界书').trim()
+  const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
+
+  const userPrompt = [
+    `【任务】玩家把背包里的物品送给了寝室角色，请生成角色收到礼物后的回复和剧情。`,
+    `【世界书标题】${worldTitle}`,
+    worldSummary ? `【世界背景】${worldSummary}` : '',
+    `【角色名】${characterName}`,
+    characterIdentity ? `【角色身份】${characterIdentity}` : '',
+    characterTags.length > 0 ? `【角色标签】${characterTags.join('、')}` : '',
+    relationshipStage ? `【关系阶段】${relationshipStage}` : '',
+    `【当前好感度】${currentAffection}/100`,
+    `【物品名】${itemIcon ? itemIcon + ' ' : ''}${itemName}`,
+    itemCategory ? `【物品分类】${itemCategory}` : '',
+    itemDescription ? `【物品说明】${itemDescription}` : '',
+    '请返回 JSON，包含 replyText（角色的直接对话回复）、journalText（写入日记的剧情记录）、mood（心情）、affectionDelta（好感度变化）。',
+    'replyText 应该是角色收到礼物后说的第一句话，要自然、符合性格。',
+    'journalText 应该描述整个送礼过程的剧情，用"你"和角色名来叙述。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: DORM_ITEM_GIFT_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.82,
+    maxTokens: params.options?.maxTokens ?? 600,
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '物品赠送剧情生成失败',
+      reply: null,
+    }
+  }
+
+  const parsed = tryParseDormItemGiftReply(result.data)
+  if (!parsed) {
+    return {
+      success: false,
+      error: '物品赠送剧情解析失败',
+      reply: null,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    reply: parsed,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+/**
+ * 生成CHAR的日记
+ * @param {Object} params - 参数
+ * @param {Object} params.character - 角色信息 {name, personality, traits}
+ * @param {Object} params.worldBook - 世界书信息
+ * @param {Array} params.recentEvents - 最近发生的事件列表
+ * @param {string} params.currentDate - 当前日期
+ * @param {Object} params.options - 额外选项
+ * @returns {Promise<Object>} 生成的日记
+ */
+export const generateCharacterDiary = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      diary: null,
+    }
+  }
+
+  const character = params.character && typeof params.character === 'object' ? params.character : {}
+  const charName = String(character.name || character.label || '角色').trim()
+  const charPersonality = String(character.personality || character.traits || character.description || '').trim()
+  
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const worldTitle = String(worldBook?.title || '默认世界书').trim()
+  const worldSummary = String(worldBook?.summary || '').trim()
+  
+  const recentEvents = Array.isArray(params.recentEvents) ? params.recentEvents : []
+  const eventsText = recentEvents
+    .slice(0, 10)
+    .map((e, i) => `${i + 1}. ${String(e.text || e.content || e.title || '').trim()}`)
+    .join('\n') || '暂无特别事件'
+  
+  const currentDate = String(params.currentDate || new Date().toISOString().split('T')[0]).trim()
+
+  // 根据角色性格决定日记长度
+  const isVerbose = charPersonality.includes('话多') ||
+                    charPersonality.includes('详细') ||
+                    charPersonality.includes('感性') ||
+                    charPersonality.includes('文艺')
+  const minWords = isVerbose ? 300 : 100
+  const maxWords = isVerbose ? 1000 : 500
+
+  const userPrompt = [
+    `【任务】请以${charName}的身份写一篇今天的日记。`,
+    `【日期】${currentDate}`,
+    `【角色名】${charName}`,
+    charPersonality ? `【角色性格】${charPersonality}` : '',
+    `【世界背景】${worldTitle}${worldSummary ? ' - ' + worldSummary : ''}`,
+    `【最近发生的事】\n${eventsText}`,
+    '',
+    `【要求】`,
+    `1. 以第一人称"${charName}"的视角写日记`,
+    `2. 字数在${minWords}-${maxWords}字之间`,
+    `3. 必须符合${charName}的性格特点`,
+    `4. 记录今天发生的事情和感受`,
+    `5. 给日记起一个标题`,
+    `6. 用口语化但略带文学性的语言`,
+    `7. 不要出现"作为AI"等元话术`,
+    '',
+    `请输出 JSON 格式：`,
+    `{"title":"日记标题","content":"日记正文","mood":"心情","wordCount":字数}`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: DIARY_GENERATION_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.85,
+    maxTokens: params.options?.maxTokens ?? maxWords + 200,
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '日记生成失败',
+      diary: null,
+    }
+  }
+
+  const diary = tryParseDiary(result.data)
+  if (!diary) {
+    return {
+      success: false,
+      error: '日记解析失败',
+      diary: null,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    diary,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+const DIARY_GENERATION_SYSTEM_PROMPT = `你是"角色日记生成器"。
+你的任务是根据角色信息、世界背景和最近发生的事件，以角色的第一人称视角写一篇日记。
+
+硬性要求：
+1) 只输出 JSON 对象，不要 markdown，不要解释。
+2) JSON 格式：
+{"title":"日记标题","content":"日记正文","mood":"心情","wordCount":字数}
+3) 字段约束：
+- title: 必填，日记标题，5-20字
+- content: 必填，日记正文，100-1000字，根据角色性格决定长度
+- mood: 必填，角色当天的心情，2-8字
+- wordCount: 必填，正文字数
+4) 必须以角色第一人称"我"来写
+5) 内容必须符合角色性格和世界观设定
+6) 不要写"作为AI""我无法"等元话术
+7) 日记内容要自然流畅，像真人写的`
+
+const tryParseDiary = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return null
+
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  const parseJson = (text) => {
+    try {
+      return JSON.parse(text)
+    } catch {
+      return null
+    }
+  }
+
+  let parsed = parseJson(candidate)
+  if (!parsed) {
+    const jsonMatch = candidate.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      parsed = parseJson(jsonMatch[0])
+    }
+  }
+
+  if (!parsed || typeof parsed !== 'object') return null
+
+  const title = String(parsed.title || '').trim()
+  const content = String(parsed.content || '').trim()
+  const mood = String(parsed.mood || '').trim()
+  const wordCount = Number(parsed.wordCount) || content.length
+
+  if (!content) return null
+
+  return {
+    title: title || '无题',
+    content,
+    mood: mood || '平静',
+    wordCount,
+  }
+}

@@ -1,14 +1,70 @@
 
 <script setup>
+import './DormitoryScreen.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   getActiveWorldBookId,
   loadWorldBooks,
   setActiveWorldBookId,
 } from '../../../src/worldbook/worldBookStore.js'
-import { generatePhoneSmsReply } from '../../../src/llm'
+import { generatePhoneSmsReply, generateDormShopItems, generateTaskBoardTasks, generateDormItemGiftReply, generateCharacterDiary } from '../../../src/llm'
+import { getValidatedActiveConfig, callChatCompletion } from '../../../src/llm/llmService.core.js'
+import {
+  loadTRPGSession,
+  saveTRPGSession,
+  clearTRPGSession,
+  createDefaultTRPGSession,
+  generateRandomTopic,
+  getWorldBookCharacters,
+  assignCharacterRoles,
+  generateOpening,
+  processPlayerAction,
+  generateRandomTopicByLLM,
+} from '../../feature-trpg/src/trpgService.js'
 import { isAndroid } from '../../../src/utils/platform.js'
 import PolaroidCameraScreen from './PolaroidCameraScreen.vue'
+import RedPacket from './components/RedPacket.vue'
+import {
+  generateCharacterRedPacket,
+  sendUserRedPacket,
+  openRedPacket,
+  getRedPacketTypeLabel,
+  getRedPacketTypeIcon,
+  createRedPacket,
+  addRedPacket,
+  recordSentRedPacket,
+} from './redPacketService.js'
+import {
+  loadTaskBoard,
+  saveTaskBoard,
+  acceptTask,
+  submitTask,
+  completeTask,
+  deleteTask,
+  mergeTasks,
+  generateTaskId,
+  cleanupCompletedTasks,
+  startTaskExecution,
+  markTaskCompletable,
+  loadTaskExecutionSession,
+  loadTaskExecutionHistory,
+} from './taskBoardService.js'
+
+// 子组件导入
+import WorldBookCardView from './components/WorldBookCardView.vue'
+import CharacterGridView from './components/CharacterGridView.vue'
+import CharacterRoomView from './components/CharacterRoomView.vue'
+import DailyCyclePanel from './components/DailyCyclePanel.vue'
+import EventChainPanel from './components/EventChainPanel.vue'
+import DriftBottlePanel from './components/DriftBottlePanel.vue'
+import StatusPanel from './components/StatusPanel.vue'
+import BackpackPanel from './components/BackpackPanel.vue'
+import DiaryPanel from './components/DiaryPanel.vue'
+import WorldBookShopModal from './components/WorldBookShopModal.vue'
+import GiftItemConfirmModal from './components/GiftItemConfirmModal.vue'
+import DiaryGeneratingModal from './components/DiaryGeneratingModal.vue'
+import TaskBoardModal from './components/TaskBoardModal.vue'
+import TaskExecutionModal from './components/TaskExecutionModal.vue'
 
 const emit = defineEmits(['back'])
 
@@ -19,6 +75,8 @@ const VIEW_CHARACTER_ROOM = 'character-room'
 const DEFAULT_PORTRAIT_PATH = './data/lihui/default.png'
 const DORM_RUNTIME_STORAGE_KEY = 'avg_llm_dormitory_runtime_v1'
 const DORM_DRIFT_BOTTLE_POOL_STORAGE_KEY = 'avg_llm_dormitory_drift_bottle_pool_v1'
+const DORM_WORLD_BOOK_ECONOMY_STORAGE_KEY = 'avg_llm_dormitory_world_book_economy_v1'
+const DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY = 'avg_llm_dormitory_world_book_inventory_v1'
 const DORM_AFFECTION_MIN = 0
 const DORM_AFFECTION_MAX = 100
 const DORM_ENERGY_MIN = 0
@@ -34,9 +92,6 @@ const DORM_TIME_SLOT_LABELS = ['早晨', '午后', '夜晚']
 const DORM_TIME_SLOT_IDS = ['morning', 'afternoon', 'night']
 const DORM_TIME_SLOT_COUNT = DORM_TIME_SLOT_LABELS.length
 const DORM_DAILY_WISH_COUNT = 2
-const DORM_WARDROBE_MAX_COINS = 9999
-const DORM_WARDROBE_START_COINS = 180
-const DORM_WARDROBE_DAILY_COINS = 35
 const DORM_DRIFT_BOTTLE_POOL_LIMIT = 200
 const DORM_DRIFT_BOTTLE_INBOX_LIMIT = 24
 const DORM_DRIFT_BOTTLE_SEEN_LIMIT = 360
@@ -888,13 +943,13 @@ const DORM_QUICK_ACTION_LABEL_MAP = DORM_QUICK_ACTION_OPTIONS.reduce((accumulato
 const DORM_OVERLAY_PANEL_OPTIONS = [
   { id: 'interaction', label: '互动' },
   { id: 'drift', label: '漂流瓶' },
-  { id: 'wardrobe', label: '衣橱' },
-  { id: 'shop', label: '商店' },
+  { id: 'backpack', label: '背包' },
   { id: 'scene', label: '场景' },
   { id: 'schedule', label: '日程' },
   { id: 'chain', label: '事件链' },
   { id: 'status', label: '状态' },
   { id: 'journal', label: '记录' },
+  { id: 'diary', label: '日记' },
 ]
 
 const DORM_OVERLAY_PANEL_LABEL_MAP = DORM_OVERLAY_PANEL_OPTIONS.reduce((accumulator, panel) => {
@@ -914,6 +969,8 @@ const defaultPortraitUrl = ref(DEFAULT_PORTRAIT_PATH)
 const isLoadingBooks = ref(false)
 const isLoadingCharacters = ref(false)
 const dormRuntimeMap = ref({})
+const worldBookEconomyMap = ref({})
+const worldBookInventoryMap = ref({})
 const actionFeedback = ref('')
 const activeDormEvent = ref(null)
 const selectedSubSceneId = ref('')
@@ -930,12 +987,158 @@ const isDormChatSending = ref(false)
 const dormChatError = ref('')
 const dormChatHistoryRef = ref(null)
 const driftBottlePool = ref([])
+
+// 对话框拖动调整高度
+const dormChatOverlayHeight = ref(300) // 默认高度300px
+const DORM_CHAT_OVERLAY_MIN_HEIGHT = 150 // 最小高度
+const DORM_CHAT_OVERLAY_MAX_HEIGHT = 9999 // 最大高度（不限制）
+let isDraggingResize = false
+let dragStartY = 0
+let dragStartHeight = 0
+
+const startDragResize = (event) => {
+  event.preventDefault()
+  isDraggingResize = true
+  dragStartY = event.clientY
+  dragStartHeight = dormChatOverlayHeight.value
+  document.addEventListener('mousemove', handleDragResize)
+  document.addEventListener('mouseup', stopDragResize)
+}
+
+const startDragResizeTouch = (event) => {
+  const touch = event.touches?.[0]
+  if (!touch) return
+  event.preventDefault()
+  isDraggingResize = true
+  dragStartY = touch.clientY
+  dragStartHeight = dormChatOverlayHeight.value
+  document.addEventListener('touchmove', handleDragResizeTouch, { passive: false })
+  document.addEventListener('touchend', stopDragResizeTouch)
+}
+
+const handleDragResize = (event) => {
+  if (!isDraggingResize) return
+  const deltaY = dragStartY - event.clientY
+  const newHeight = Math.max(DORM_CHAT_OVERLAY_MIN_HEIGHT, Math.min(DORM_CHAT_OVERLAY_MAX_HEIGHT, dragStartHeight + deltaY))
+  dormChatOverlayHeight.value = newHeight
+}
+
+const handleDragResizeTouch = (event) => {
+  if (!isDraggingResize) return
+  event.preventDefault()
+  const touch = event.touches?.[0]
+  if (!touch) return
+  const deltaY = dragStartY - touch.clientY
+  const newHeight = Math.max(DORM_CHAT_OVERLAY_MIN_HEIGHT, Math.min(DORM_CHAT_OVERLAY_MAX_HEIGHT, dragStartHeight + deltaY))
+  dormChatOverlayHeight.value = newHeight
+}
+
+const stopDragResize = () => {
+  if (!isDraggingResize) return
+  isDraggingResize = false
+  document.removeEventListener('mousemove', handleDragResize)
+  document.removeEventListener('mouseup', stopDragResize)
+}
+
+const stopDragResizeTouch = () => {
+  if (!isDraggingResize) return
+  isDraggingResize = false
+  document.removeEventListener('touchmove', handleDragResizeTouch)
+  document.removeEventListener('touchend', stopDragResizeTouch)
+}
 const driftBottleDraft = ref('')
 const isDormDriftPicking = ref(false)
 const driftFollowupPendingEntryId = ref('')
-const isWardrobeOutfitCommentGenerating = ref(false)
-const wardrobeOutfitComment = ref('')
-const wardrobeOutfitCommentError = ref('')
+
+// 商店相关状态
+const shopSelectedCategory = ref('all')
+const shopItems = ref([])
+const isShopRefreshing = ref(false)
+const shopPurchaseFeedback = ref('')
+const isWorldBookShopOpen = ref(false)
+
+// 背包相关状态
+const isBackpackOpen = ref(false)
+const backpackPurchaseFeedback = ref('')
+
+// 物品赠送相关状态
+const isGiftItemProcessing = ref(false)
+let dormItemGiftRequestToken = 0
+
+// 物品赠送确认弹窗状态
+const showGiftItemConfirm = ref(false)
+const pendingGiftItem = ref(null)
+
+// 日记相关状态
+const showDiaryModal = ref(false)
+const selectedDiary = ref(null)
+const isGeneratingDiary = ref(false)
+const lastGeneratedDiaryDate = ref(null)
+const showDiaryGeneratingModal = ref(false)
+const diaryGeneratingMessage = ref('')
+
+// 红包相关状态
+const showRedPacketModal = ref(false)
+const selectedRedPacket = ref(null)
+const redPacketOpenedAmount = ref(0)
+
+// 跑团相关状态
+const isTRPGOpen = ref(false)
+const isTRPGLoading = ref(false)
+const isTRPGRolesLoading = ref(false)
+const isTRPGGeneratingOpening = ref(false)
+const isTRPGProcessingAction = ref(false)
+const isTRPGGeneratingTopic = ref(false)
+const trpgTopicInput = ref('')
+const trpgCharacters = ref([])
+const trpgCharacterRoles = ref([])
+const trpgMessages = ref([])
+const isTRPGRunning = ref(false)
+const trpgPlayerActionInput = ref('')
+const trpgSelectedCharacterId = ref('user_player')
+const trpgError = ref('')
+const trpgMessageContainerRef = ref(null)
+
+// 任务板状态
+const isTaskBoardOpen = ref(false)
+const taskBoardTasks = ref([])
+const taskBoardLoading = ref(false)
+const taskBoardGenerating = ref(false)
+const taskBoardFeedback = ref('')
+
+// 任务执行状态
+const isTaskExecutionOpen = ref(false)
+const currentExecutionTask = ref(null)
+const showTaskInviteDropdown = ref(false)
+const taskInviteBtnRef = ref(null)
+const taskDropdownRect = ref({ top: 0, left: 0, width: 0 })
+
+function toggleTaskInviteDropdown() {
+  console.log('[Dormitory] toggleTaskInviteDropdown, showTaskInviteDropdown:', showTaskInviteDropdown.value)
+  console.log('[Dormitory] toggleTaskInviteDropdown, taskBoardTasks:', taskBoardTasks.value.length, taskBoardTasks.value.map(t => ({ id: t.id, status: t.status })))
+  const accepted = taskBoardTasks.value.filter((t) =>
+    t.status === 'accepted' || t.status === 'in_progress' || t.status === 'completable'
+  )
+  console.log('[Dormitory] toggleTaskInviteDropdown, accepted:', accepted.length, accepted.map(t => ({ id: t.id, name: t.name, status: t.status })))
+  if (!showTaskInviteDropdown.value) {
+    const btn = taskInviteBtnRef.value
+    if (btn) {
+      const rect = btn.getBoundingClientRect()
+      const viewportH = window.innerHeight
+      taskDropdownRect.value = {
+        bottom: viewportH - rect.top,
+        left: rect.left,
+        width: Math.max(rect.width, 200)
+      }
+    }
+  }
+  showTaskInviteDropdown.value = !showTaskInviteDropdown.value
+}
+
+// 红包金额输入对话框状态
+const showRedPacketAmountDialog = ref(false)
+const redPacketAmountInput = ref('')
+const redPacketBlessingInput = ref('')
 
 const portraitImageCache = ref(new Map())
 let characterPreloadToken = 0
@@ -1764,13 +1967,26 @@ const createDormChatMessage = (role, text) => ({
 const normalizeDormChatHistory = (rawValue) => {
   if (!Array.isArray(rawValue)) return []
   return rawValue
-    .map((item) => ({
-      id: String(item?.id || `chat_${Date.now()}`),
-      role: normalizeDormChatRole(item?.role),
-      text: String(item?.text || '').replace(/\s+/g, ' ').trim().slice(0, 280),
-      time: String(item?.time || new Date().toISOString()),
-    }))
-    .filter((item) => item.text)
+    .map((item) => {
+      const isRedPacket = item?.type === 'redPacket'
+      const isTaskInvite = item?.type === 'taskInvite'
+      return {
+        id: String(item?.id || `chat_${Date.now()}`),
+        role: normalizeDormChatRole(item?.role),
+        text: String(item?.text || '').replace(/\s+/g, ' ').trim().slice(0, 280),
+        time: String(item?.time || new Date().toISOString()),
+        // 保留红包相关字段
+        type: isRedPacket ? 'redPacket' : isTaskInvite ? 'taskInvite' : undefined,
+        redPacket: isRedPacket ? item?.redPacket : undefined,
+        // 保留任务邀请相关字段
+        taskId: isTaskInvite ? item?.taskId : undefined,
+        taskName: isTaskInvite ? item?.taskName : undefined,
+        taskType: isTaskInvite ? item?.taskType : undefined,
+        targetCharacterId: isTaskInvite ? item?.targetCharacterId : undefined,
+        targetCharacterName: isTaskInvite ? item?.targetCharacterName : undefined,
+      }
+    })
+    .filter((item) => item.text || item.type === 'redPacket' || item.type === 'taskInvite')
     .slice(-DORM_CHAT_HISTORY_LIMIT)
 }
 
@@ -1913,6 +2129,25 @@ const normalizeDormDriftBottleInbox = (rawValue) => {
     .slice(0, DORM_DRIFT_BOTTLE_INBOX_LIMIT)
 }
 
+const normalizeDiaries = (rawValue) => {
+  if (!Array.isArray(rawValue)) return []
+  return rawValue
+    .map((item) => ({
+      id: String(item?.id || `diary_${Date.now()}`).trim(),
+      date: String(item?.date || '').trim(),
+      title: String(item?.title || '无题').trim(),
+      content: String(item?.content || item?.text || '').trim(),
+      mood: String(item?.mood || '平静').trim(),
+      wordCount: Number(item?.wordCount || item?.content?.length || 0) || 0,
+    }))
+    .filter((item) => item.id && item.date)
+    .sort((a, b) => {
+      const dateA = a.date || ''
+      const dateB = b.date || ''
+      return dateB.localeCompare(dateA) // 最新的在前
+    })
+}
+
 const getCharacterDisplayName = (character, index = 0) => {
   const fallback = `角色 ${index + 1}`
   return String(character?.name || '').trim() || fallback
@@ -1950,9 +2185,6 @@ const normalizeDormOutfitIds = (rawValue) => {
   return [...set]
 }
 
-const normalizeDormCoinValue = (value, fallback = DORM_WARDROBE_START_COINS) => {
-  return clampInt(value, 0, DORM_WARDROBE_MAX_COINS, fallback)
-}
 
 const createDefaultDormState = (character = null, label = '') => {
   const favor = Number.parseFloat(String(character?.relationshipBase?.favor ?? 0))
@@ -1970,7 +2202,6 @@ const createDefaultDormState = (character = null, label = '') => {
   return {
     affection: baseAffinity,
     energy: baseEnergy,
-    dormCoins: DORM_WARDROBE_START_COINS,
     relationshipStage,
     mood: '平静',
     dayIndex,
@@ -1988,6 +2219,7 @@ const createDefaultDormState = (character = null, label = '') => {
     sceneFacilityLevels: {},
     driftBottleSeenIds: [],
     driftBottleInbox: [],
+    diaries: [],
     ownedOutfitIds: [defaultOutfitId],
     equippedOutfitId: defaultOutfitId,
     activeEvent: null,
@@ -2006,6 +2238,7 @@ const normalizeDormState = (rawValue, fallbackCharacter = null, fallbackLabel = 
   const chatHistory = normalizeDormChatHistory(source.chatHistory)
   const driftBottleSeenIds = normalizeDormDriftBottleSeenIds(source.driftBottleSeenIds)
   const driftBottleInbox = normalizeDormDriftBottleInbox(source.driftBottleInbox)
+  const diaries = normalizeDiaries(source.diaries)
   const ownedOutfitIds = normalizeDormOutfitIds(source.ownedOutfitIds)
   const equippedOutfitCandidate = String(source.equippedOutfitId || '').trim()
   const equippedOutfitId = ownedOutfitIds.includes(equippedOutfitCandidate)
@@ -2024,7 +2257,6 @@ const normalizeDormState = (rawValue, fallbackCharacter = null, fallbackLabel = 
   return {
     affection: clampInt(source.affection, DORM_AFFECTION_MIN, DORM_AFFECTION_MAX, fallback.affection),
     energy: clampInt(source.energy, DORM_ENERGY_MIN, DORM_ENERGY_MAX, fallback.energy),
-    dormCoins: normalizeDormCoinValue(source.dormCoins, fallback.dormCoins),
     relationshipStage: normalizeDormRelationshipStage(
       source.relationshipStage,
       clampInt(source.affection, DORM_AFFECTION_MIN, DORM_AFFECTION_MAX, fallback.affection),
@@ -2045,6 +2277,7 @@ const normalizeDormState = (rawValue, fallbackCharacter = null, fallbackLabel = 
     sceneFacilityLevels: normalizeFacilityLevelMap(source.sceneFacilityLevels, 32),
     driftBottleSeenIds,
     driftBottleInbox,
+    diaries,
     ownedOutfitIds,
     equippedOutfitId,
     activeEvent: normalizeActiveDormEventState(source.activeEvent),
@@ -2108,6 +2341,124 @@ const persistDormDriftBottlePool = (nextPool) => {
   }
 }
 
+// 世界书级别经济系统
+const DORM_WORLD_BOOK_ECONOMY_DEFAULTS = {
+  coins: 180,
+  crystals: 0,
+}
+
+const normalizeWorldBookEconomy = (value) => {
+  if (!value || typeof value !== 'object') return { ...DORM_WORLD_BOOK_ECONOMY_DEFAULTS }
+  return {
+    coins: clampInt(value.coins, 0, 9999, DORM_WORLD_BOOK_ECONOMY_DEFAULTS.coins),
+    crystals: clampInt(value.crystals, 0, 9999, DORM_WORLD_BOOK_ECONOMY_DEFAULTS.crystals),
+  }
+}
+
+const readWorldBookEconomy = (bookId) => {
+  if (typeof window === 'undefined' || !window.localStorage) return { ...DORM_WORLD_BOOK_ECONOMY_DEFAULTS }
+  try {
+    const raw = window.localStorage.getItem(DORM_WORLD_BOOK_ECONOMY_STORAGE_KEY)
+    if (!raw) return { ...DORM_WORLD_BOOK_ECONOMY_DEFAULTS }
+    const allEconomies = JSON.parse(raw)
+    const bookEconomy = allEconomies[bookId]
+    return normalizeWorldBookEconomy(bookEconomy)
+  } catch {
+    return { ...DORM_WORLD_BOOK_ECONOMY_DEFAULTS }
+  }
+}
+
+const persistWorldBookEconomy = (bookId, economy) => {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    const raw = window.localStorage.getItem(DORM_WORLD_BOOK_ECONOMY_STORAGE_KEY)
+    const allEconomies = raw ? JSON.parse(raw) : {}
+    allEconomies[bookId] = normalizeWorldBookEconomy(economy)
+    window.localStorage.setItem(DORM_WORLD_BOOK_ECONOMY_STORAGE_KEY, JSON.stringify(allEconomies))
+  } catch {
+    // ignore
+  }
+}
+
+const updateWorldBookEconomy = (bookId, updater) => {
+  const current = readWorldBookEconomy(bookId)
+  const updated = typeof updater === 'function' ? updater({ ...current }) : current
+  persistWorldBookEconomy(bookId, updated)
+  // 更新响应式 ref 以触发 UI 更新
+  worldBookEconomyMap.value[bookId] = normalizeWorldBookEconomy(updated)
+  worldBookEconomyMap.value = { ...worldBookEconomyMap.value }
+  return updated
+}
+
+// 世界书级别背包系统
+const readWorldBookInventory = (bookId) => {
+  if (typeof window === 'undefined' || !window.localStorage) return []
+  try {
+    const raw = window.localStorage.getItem(DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY)
+    if (!raw) return []
+    const allInventories = JSON.parse(raw)
+    const bookInventory = allInventories[bookId]
+    return Array.isArray(bookInventory) ? bookInventory : []
+  } catch {
+    return []
+  }
+}
+
+const persistWorldBookInventory = (bookId, items) => {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    const raw = window.localStorage.getItem(DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY)
+    const allInventories = raw ? JSON.parse(raw) : {}
+    allInventories[bookId] = Array.isArray(items) ? items : []
+    window.localStorage.setItem(DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY, JSON.stringify(allInventories))
+  } catch {
+    // ignore
+  }
+}
+
+const addToWorldBookInventory = (bookId, item) => {
+  if (!bookId || !item) return
+  const current = readWorldBookInventory(bookId)
+  const newItem = {
+    ...item,
+    purchasedAt: Date.now(),
+    quantity: (item.quantity || 0) + 1,
+  }
+  // 检查是否已存在相同物品
+  const existingIndex = current.findIndex(i => i.id === item.id)
+  if (existingIndex >= 0) {
+    current[existingIndex].quantity = (current[existingIndex].quantity || 0) + 1
+  } else {
+    current.push(newItem)
+  }
+  persistWorldBookInventory(bookId, current)
+  // 更新响应式 ref 以触发 UI 更新
+  worldBookInventoryMap.value[bookId] = [...current]
+  worldBookInventoryMap.value = { ...worldBookInventoryMap.value }
+  return current
+}
+
+const removeFromWorldBookInventory = (bookId, itemId) => {
+  if (!bookId || !itemId) return
+  const current = readWorldBookInventory(bookId)
+  const filtered = current.filter(i => i.id !== itemId)
+  persistWorldBookInventory(bookId, filtered)
+  // 更新响应式 ref 以触发 UI 更新
+  worldBookInventoryMap.value[bookId] = [...filtered]
+  worldBookInventoryMap.value = { ...worldBookInventoryMap.value }
+  return filtered
+}
+
+// 当前世界书背包物品 computed
+const activeBookInventory = computed(() => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) return []
+  // 优先从响应式 ref 读取
+  const fromRef = worldBookInventoryMap.value[bookId]
+  if (fromRef && Array.isArray(fromRef)) return fromRef
+  return readWorldBookInventory(bookId)
+})
+
 const isAndroidPlatform = computed(() => isAndroid())
 
 const activeBook = computed(() => {
@@ -2116,6 +2467,24 @@ const activeBook = computed(() => {
   const nextIndex = Math.max(0, Math.min(activeCardIndex.value, maxIndex))
   if (nextIndex !== activeCardIndex.value) activeCardIndex.value = nextIndex
   return worldBooks.value[nextIndex] || null
+})
+
+// 世界书级别经济系统 computed
+const activeBookEconomy = computed(() => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) return { ...DORM_WORLD_BOOK_ECONOMY_DEFAULTS }
+  // 优先从响应式 ref 读取
+  const fromRef = worldBookEconomyMap.value[bookId]
+  if (fromRef && typeof fromRef === 'object') return normalizeWorldBookEconomy(fromRef)
+  return readWorldBookEconomy(bookId)
+})
+
+const activeBookEconomyCoins = computed(() => {
+  return activeBookEconomy.value.coins
+})
+
+const activeBookEconomyCrystals = computed(() => {
+  return activeBookEconomy.value.crystals
 })
 
 const characterCards = computed(() => {
@@ -2341,6 +2710,7 @@ const selectedDormAffectionStyle = computed(() => ({ width: `${selectedDormState
 const selectedDormEnergyStyle = computed(() => ({ width: `${selectedDormState.value.energy}%` }))
 const activeDormOverlayPanelLabel = computed(() => {
   const key = String(activeDormOverlayPanelId.value || '').trim()
+  if (key === 'diary-detail') return '日记详情'
   return DORM_OVERLAY_PANEL_LABEL_MAP[key] || DORM_OVERLAY_PANEL_LABEL_MAP.interaction
 })
 const selectedDormChatHistory = computed(() => {
@@ -2359,26 +2729,18 @@ const selectedDormOwnedOutfitIdSet = computed(() => {
   return new Set(selectedDormOwnedOutfitIds.value)
 })
 
-const selectedDormOwnedOutfits = computed(() => {
-  return selectedDormOwnedOutfitIds.value
-    .map((outfitId) => getDormOutfitById(outfitId))
-    .filter((item) => Boolean(item))
+
+// 商店相关计算属性
+const shopFilteredItems = computed(() => {
+  if (shopSelectedCategory.value === 'all') {
+    return shopItems.value
+  }
+  return shopItems.value.filter(item => item.category === shopSelectedCategory.value)
 })
 
-const selectedDormEquippedOutfit = computed(() => {
-  const equippedId = String(selectedDormState.value.equippedOutfitId || '').trim()
-  const matched = getDormOutfitById(equippedId)
-  if (matched && selectedDormOwnedOutfitIdSet.value.has(matched.id)) return matched
-  return selectedDormOwnedOutfits.value[0] || DORM_OUTFIT_LIBRARY[0] || null
-})
-
-const dormOutfitShopList = computed(() => {
-  return DORM_OUTFIT_LIBRARY.map((outfit) => ({
-    ...outfit,
-    owned: selectedDormOwnedOutfitIdSet.value.has(outfit.id),
-    affordable: selectedDormState.value.dormCoins >= outfit.price,
-  }))
-})
+const canAffordShopItem = (item) => {
+  return activeBookEconomyCoins.value >= item.price
+}
 
 const selectedDormDriftAuthorBookId = computed(() => {
   return String(activeBook.value?.id || '').trim()
@@ -2481,6 +2843,30 @@ const characterGridColumns = computed(() => {
 const characterGridStyle = computed(() => ({
   '--dorm-grid-columns': String(characterGridColumns.value),
 }))
+
+// 日记相关计算属性
+const diaryList = computed(() => {
+  const key = String(selectedDormRuntimeKey.value || '').trim()
+  if (!key) return []
+  const raw = dormRuntimeMap.value[key]
+  if (!raw || !raw.diaries) return []
+  return Array.isArray(raw.diaries) ? raw.diaries : []
+})
+
+// 格式化日记日期显示（年月日）
+const formatDateForDiary = (dateStr) => {
+  if (!dateStr) return ''
+  try {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return dateStr
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}年${month}月${day}日`
+  } catch {
+    return dateStr
+  }
+}
 
 const selectedCharacterPortraitUrl = computed(() => {
   const key = String(selectedCharacter.value?.id || '').trim()
@@ -2893,7 +3279,6 @@ const applyDormAction = ({
 const handleAdvanceDormDay = () => {
   const nextDay = clampInt(selectedDormState.value.dayIndex + 1, 1, 9999, selectedDormState.value.dayIndex + 1)
   const charName = selectedCharacter.value?.label || '角色'
-  const bonusCoins = DORM_WARDROBE_DAILY_COINS
 
   updateSelectedDormState((previous) => ({
     ...previous,
@@ -2901,20 +3286,16 @@ const handleAdvanceDormDay = () => {
     timeSlotIndex: 0,
     driftBottleThrowCount: 0,
     driftBottlePickCount: 0,
-    dormCoins: normalizeDormCoinValue(
-      normalizeDormCoinValue(previous.dormCoins, DORM_WARDROBE_START_COINS) + bonusCoins,
-      DORM_WARDROBE_START_COINS,
-    ),
     mood: '平静',
     todayWishes: createDailyWishesForCharacter(selectedCharacter.value?.raw, charName, nextDay),
     journal: appendJournal(
       previous.journal,
-      renderTemplate(`第${nextDay}天开始，今日心愿已刷新，并获得 ${bonusCoins} 寝室币。`, charName),
+      renderTemplate(`第${nextDay}天开始，今日心愿已刷新。`, charName),
       'system',
     ),
   }))
 
-  actionFeedback.value = `已进入第 ${nextDay} 天，新的时段与心愿已刷新，并获得 ${bonusCoins} 寝室币。`
+  actionFeedback.value = `已进入第 ${nextDay} 天，新的时段与心愿已刷新。`
 }
 
 const handleThrowDormDriftBottle = () => {
@@ -3202,72 +3583,92 @@ const handleAskDormDriftBottleFollowUp = async (entryId) => {
   }
 }
 
-const handleEquipDormOutfit = async (outfitId) => {
-  const outfit = getDormOutfitById(outfitId)
-  if (!outfit) return
 
-  const charName = selectedCharacter.value?.label || '角色'
-  const currentEquippedId = String(selectedDormState.value.equippedOutfitId || '').trim()
-  if (currentEquippedId === outfit.id) {
-    actionFeedback.value = `${charName}当前已穿着「${outfit.name}」。`
-    return
+// 商店相关方法
+const handleRefreshShopItems = async () => {
+  isShopRefreshing.value = true
+  shopPurchaseFeedback.value = ''
+  
+  try {
+    const result = await generateDormShopItems({
+      worldBook: activeBook.value,
+      resultCount: 6,
+    })
+    
+    if (result.success && result.items && result.items.length > 0) {
+      // 如果选择了特定类别，过滤结果
+      if (shopSelectedCategory.value !== 'all') {
+        const categoryMap = {
+          'misc': 'misc',
+          'gift': 'gift',
+          'clothes': 'clothes',
+          'plant': 'plant',
+          'food': 'food',
+          'decoration': 'decoration',
+        }
+        const targetCategory = categoryMap[shopSelectedCategory.value]
+        const filtered = result.items.filter(item => item.category === targetCategory)
+        shopItems.value = filtered.length > 0 ? filtered : result.items
+      } else {
+        shopItems.value = result.items
+      }
+      shopPurchaseFeedback.value = '商店商品已刷新！'
+    } else {
+      shopPurchaseFeedback.value = result.error || '刷新失败，使用本地商品'
+      // 回退到本地生成
+      shopItems.value = generateShopItems(shopSelectedCategory.value, 6)
+    }
+  } catch (error) {
+    console.error('LLM商店商品刷新失败:', error)
+    shopPurchaseFeedback.value = '刷新失败，使用本地商品'
+    shopItems.value = generateShopItems(shopSelectedCategory.value, 6)
+  } finally {
+    isShopRefreshing.value = false
   }
-  if (!selectedDormOwnedOutfitIdSet.value.has(outfit.id)) {
-    actionFeedback.value = `尚未拥有「${outfit.name}」，请先购买。`
-    return
-  }
-
-  updateSelectedDormState((previous) => ({
-    ...previous,
-    equippedOutfitId: outfit.id,
-    journal: appendJournal(
-      previous.journal,
-      renderTemplate(`你帮{char}换上了「${outfit.name}」。`, charName),
-      'wardrobe',
-    ),
-  }))
-
-  actionFeedback.value = `已为${charName}换上「${outfit.name}」。`
-
-  // 触发LLM剧情：CHAR对衣服的看法
-  await generateWardrobeOutfitComment(outfit)
 }
 
-const handleBuyDormOutfit = (outfitId) => {
-  const outfit = getDormOutfitById(outfitId)
-  if (!outfit) return
+const handleSelectShopCategory = (categoryId) => {
+  shopSelectedCategory.value = categoryId
+  shopPurchaseFeedback.value = ''
+  // 不自动刷新商品，等待用户手动点击刷新按钮
+}
 
-  const charName = selectedCharacter.value?.label || '角色'
-  if (selectedDormOwnedOutfitIdSet.value.has(outfit.id)) {
-    actionFeedback.value = `「${outfit.name}」已在衣柜中。`
+const handleBuyShopItem = (item) => {
+  if (!item) return
+  
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) {
+    shopPurchaseFeedback.value = '请先选择世界书。'
     return
   }
-
-  const currentCoins = normalizeDormCoinValue(selectedDormState.value.dormCoins, DORM_WARDROBE_START_COINS)
-  if (currentCoins < outfit.price) {
-    actionFeedback.value = `寝室币不足，购买「${outfit.name}」需要 ${outfit.price}。`
+  
+  if (!canAffordShopItem(item)) {
+    shopPurchaseFeedback.value = `金币不足，购买「${item.name}」需要 ${item.price} 金币。`
     return
   }
+  
+  updateWorldBookEconomy(bookId, (previous) => ({
+    ...previous,
+    coins: clampInt(previous.coins - item.price, 0, 9999, previous.coins),
+  }))
+  
+  // 将购买的物品添加到背包
+  addToWorldBookInventory(bookId, item)
+  
+  shopPurchaseFeedback.value = `购买成功：${item.icon} ${item.name}（-${item.price} 金币），已放入背包。`
+}
 
-  updateSelectedDormState((previous) => {
-    const ownedOutfitIds = normalizeDormOutfitIds(previous.ownedOutfitIds)
-    if (ownedOutfitIds.includes(outfit.id)) return previous
+// 世界书商店相关方法
+const openWorldBookShop = () => {
+  isWorldBookShopOpen.value = true
+  shopPurchaseFeedback.value = ''
+  // 使用本地商品作为默认，不自动触发 LLM 刷新
+  shopItems.value = generateShopItems('all', 6)
+}
 
-    const previousCoins = normalizeDormCoinValue(previous.dormCoins, DORM_WARDROBE_START_COINS)
-    return {
-      ...previous,
-      dormCoins: normalizeDormCoinValue(previousCoins - outfit.price, previousCoins),
-      ownedOutfitIds: [...ownedOutfitIds, outfit.id],
-      equippedOutfitId: outfit.id,
-      journal: appendJournal(
-        previous.journal,
-        renderTemplate(`你为{char}购买了「${outfit.name}」，并立刻换上。`, charName),
-        'wardrobe',
-      ),
-    }
-  })
-
-  actionFeedback.value = `购买成功：${outfit.name}（-${outfit.price} 寝室币）。`
+const closeWorldBookShop = () => {
+  isWorldBookShopOpen.value = false
+  shopPurchaseFeedback.value = ''
 }
 
 const buildDormChatContact = (characterCard = selectedCharacter.value) => {
@@ -3304,68 +3705,6 @@ const buildDormChatContact = (characterCard = selectedCharacter.value) => {
   }
 }
 
-const generateWardrobeOutfitComment = async (outfit) => {
-  if (!outfit || !selectedCharacter.value) return
-
-  const charName = selectedCharacter.value?.label || '角色'
-  const outfitName = outfit.name || '这件衣服'
-  const outfitStyle = outfit.style || '日常'
-  const outfitDescription = outfit.description || ''
-
-  isWardrobeOutfitCommentGenerating.value = true
-  wardrobeOutfitComment.value = ''
-  wardrobeOutfitCommentError.value = ''
-
-  try {
-    const smsResult = await generatePhoneSmsReply({
-      worldBook: activeBook.value,
-      contact: buildDormChatContact(),
-      userMessage: `对方让你穿上「${outfitName}」。这是一套${outfitStyle}风格的服装，${outfitDescription}。请以你当前角色的身份，对对方让你穿这件衣服这件事发表反应和看法，分成2-4条连续短信，每条8-40字，自然口语化，像平时聊天一样。可以表达对这件衣服的感受、态度，或者对让你穿这件衣服的人的反应。`,
-      history: selectedDormChatHistory.value.slice(-4).map((item) => ({
-        role: item.role === 'assistant' ? 'assistant' : 'user',
-        text: String(item?.text || '').trim(),
-      })).filter((item) => item.text),
-      options: {
-        historyLimit: 4,
-        dialogueLimit: 0,
-        maxTokens: 220,
-      },
-    })
-
-    if (smsResult.success && smsResult.replies && smsResult.replies.length > 0) {
-      const commentText = smsResult.replies.join(' ')
-      wardrobeOutfitComment.value = commentText
-
-      updateSelectedDormState((previous) => {
-        let nextChatHistory = previous.chatHistory
-        let nextJournal = previous.journal || []
-
-        smsResult.replies.forEach((reply) => {
-          nextChatHistory = appendDormChatMessage(nextChatHistory, 'assistant', reply)
-          nextJournal = appendJournal(nextJournal, `你让{char}穿上「${outfitName}」，${charName}说：${reply}`, 'chat')
-        })
-
-        return {
-          ...previous,
-          chatHistory: nextChatHistory,
-          journal: nextJournal,
-        }
-      })
-
-      await nextTick()
-      const container = dormChatHistoryRef.value
-      if (container) {
-        container.scrollTop = container.scrollHeight
-      }
-    } else {
-      wardrobeOutfitCommentError.value = smsResult.error || '生成失败'
-    }
-  } catch (error) {
-    wardrobeOutfitCommentError.value = `生成出错：${error.message}`
-  } finally {
-    isWardrobeOutfitCommentGenerating.value = false
-  }
-}
 
 const handleSendDormChat = async () => {
   if (isDormChatSending.value) return
@@ -3442,10 +3781,350 @@ const handleSendDormChat = async () => {
     })
 
     actionFeedback.value = `${characterLabel}回复了你。`
+    
+    // 聊天过程中随机生成日记
+    generateRandomDiaryDuringChat()
+    
+    // 聊天过程中角色发送红包（测试模式：每次都触发，金额由LLM决定）
+    tryCharacterSendRedPacket(userMessage)
   } finally {
     if (requestToken === dormChatRequestToken) {
       isDormChatSending.value = false
     }
+  }
+}
+
+// 红包相关函数
+// 创建红包消息
+const createRedPacketChatMessage = (redPacket) => ({
+  id: `rp_msg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+  role: redPacket.senderId === 'user' ? 'user' : 'assistant',
+  type: 'redPacket',
+  redPacket: {
+    id: redPacket.id,
+    senderId: redPacket.senderId,
+    senderName: redPacket.senderName,
+    amount: redPacket.amount,
+    type: redPacket.type,
+    blessing: redPacket.blessing,
+    createdAt: redPacket.createdAt,
+    isOpened: false,
+    openedAt: null,
+  },
+  time: new Date().toISOString(),
+})
+
+// 用户发送红包 - 先弹出金额输入对话框
+const handleSendRedPacket = async () => {
+  console.log('[红包] 点击发送红包按钮')
+  
+  if (isDormChatSending.value) {
+    console.log('[红包] 正在聊天中，请稍后')
+    return
+  }
+  
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) {
+    dormChatError.value = '请先选择世界书'
+    return
+  }
+  
+  // 检查金币余额
+  if (activeBookEconomyCoins.value <= 0) {
+    dormChatError.value = '金币不足，无法发送红包'
+    return
+  }
+  
+  // 显示金额输入对话框
+  const characterLabel = selectedCharacter.value?.label || '角色'
+  redPacketAmountInput.value = ''
+  redPacketBlessingInput.value = `${characterLabel}，给你发个红包！`
+  showRedPacketAmountDialog.value = true
+}
+
+// 确认发送红包
+const confirmSendRedPacket = async () => {
+  const amount = Number(redPacketAmountInput.value)
+  if (!amount || amount <= 0) {
+    dormChatError.value = '请输入有效的红包金额'
+    return
+  }
+  
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) {
+    dormChatError.value = '请先选择世界书'
+    return
+  }
+  
+  // 检查金币余额
+  if (activeBookEconomyCoins.value < amount) {
+    dormChatError.value = `金币不足，需要 ${amount} 金币`
+    return
+  }
+  
+  const characterLabel = selectedCharacter.value?.label || '角色'
+  
+  // 扣除金币
+  updateWorldBookEconomy(bookId, (previous) => ({
+    ...previous,
+    coins: clampInt(previous.coins - amount, 0, 9999, previous.coins),
+  }))
+  
+  // 生成用户红包（使用指定金额）
+  const packet = sendUserRedPacket({
+    amount,
+    type: 'normal',
+    blessing: redPacketBlessingInput.value || `${characterLabel}，给你发个红包！`,
+  })
+  
+  if (!packet) {
+    dormChatError.value = '红包生成失败'
+    return
+  }
+  
+  // 创建红包消息
+  const redPacketMessage = createRedPacketChatMessage(packet)
+  
+  // 添加到聊天历史
+  const currentState = selectedDormState.value
+  if (!currentState) {
+    dormChatError.value = '请先选择一个角色'
+    return
+  }
+  
+  const newChatHistory = [...normalizeDormChatHistory(currentState.chatHistory), redPacketMessage].slice(-DORM_CHAT_HISTORY_LIMIT)
+  
+  if (selectedDormRuntimeKey.value) {
+    updateSelectedDormState((previous) => ({
+      ...previous,
+      chatHistory: newChatHistory,
+      journal: appendJournal(previous.journal, `你给${characterLabel}发了一个红包（${amount}金币）`, 'redPacket'),
+    }))
+  } else {
+    const defaultState = createDefaultDormState(selectedCharacter.value?.raw, selectedCharacter.value?.label)
+    defaultState.chatHistory = newChatHistory
+    defaultState.journal = appendJournal(defaultState.journal, `你给${characterLabel}发了一个红包（${amount}金币）`, 'redPacket')
+    
+    const tempKey = `temp_${Date.now()}`
+    dormRuntimeMap.value[tempKey] = defaultState
+  }
+  
+  // 关闭对话框
+  showRedPacketAmountDialog.value = false
+  
+  actionFeedback.value = `你发送了一个红包（-${amount} 金币）`
+  
+  // 滚动到底部
+  scrollDormChatToBottom()
+}
+
+// 取消发送红包
+const cancelSendRedPacket = () => {
+  showRedPacketAmountDialog.value = false
+  redPacketAmountInput.value = ''
+  redPacketBlessingInput.value = ''
+}
+
+// 通过LLM生成红包金额（测试模式：每次聊天都触发）
+const generateRedPacketAmountByLLM = async (characterName, userMessage, chatHistory) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    console.warn('[红包LLM] API配置不可用，使用默认金额 10')
+    return 10
+  }
+
+  const recentChat = chatHistory.slice(-6).map(msg => {
+    const role = msg.role === 'assistant' ? characterName : '玩家'
+    return `${role}: ${msg.text || ''}`
+  }).join('\n')
+
+  const systemPrompt = `你是"红包金额生成器"。
+你需要根据聊天内容，决定角色要发给玩家的红包金额。
+
+硬性要求：
+1) 只输出 JSON 对象，不要 markdown，不要解释。
+2) JSON 格式必须是：{"amount": 数字}
+3) amount 必须是 1-100 之间的整数。
+4) 根据聊天内容和角色态度，给出合理的金额。
+5) 测试模式：请每次都返回一个正数金额。`
+
+  const userPrompt = [
+    `【角色名】${characterName}`,
+    `【最近聊天】\n${recentChat}`,
+    `【玩家刚发送】${userMessage}`,
+    '请根据上下文，决定一个合适的红包金额（1-100金币）。',
+    '请只返回 JSON：{"amount": 数字}',
+  ].join('\n\n')
+
+  try {
+    const result = await callChatCompletion({
+      config: validated.config,
+      systemPrompt,
+      userPrompt,
+      temperature: 0.9,
+      maxTokens: 64,
+    })
+
+    if (!result.success) {
+      console.warn('[红包LLM] 调用失败:', result.error)
+      return Math.floor(Math.random() * 50) + 1 // 随机 1-50
+    }
+
+    const content = String(result.data || '').trim()
+    // 尝试解析 JSON
+    const jsonMatch = content.match(/\{[\s\S]*"amount"[\s\S]*:\s*(\d+)[\s\S]*\}/)
+    if (jsonMatch) {
+      const amount = parseInt(jsonMatch[1], 10)
+      if (amount >= 1 && amount <= 100) {
+        console.log('[红包LLM] 生成金额:', amount)
+        return amount
+      }
+    }
+
+    // 尝试直接解析
+    try {
+      const parsed = JSON.parse(content)
+      if (parsed.amount && parsed.amount >= 1 && parsed.amount <= 100) {
+        console.log('[红包LLM] 生成金额:', parsed.amount)
+        return parsed.amount
+      }
+    } catch {
+      // 忽略
+    }
+
+    console.warn('[红包LLM] 解析失败，使用随机金额')
+    return Math.floor(Math.random() * 50) + 1
+  } catch (err) {
+    console.error('[红包LLM] 错误:', err)
+    return Math.floor(Math.random() * 50) + 1
+  }
+}
+
+// 角色发送红包（测试模式：每次聊天都触发，金额由LLM决定）
+const tryCharacterSendRedPacket = async (userMessage) => {
+  if (!selectedCharacter.value) return null
+  if (!selectedDormRuntimeKey.value) return null
+  
+  // 使用 selectedCharacterId 作为 characterId，label 作为名称
+  const characterId = String(selectedCharacterId.value || '').trim()
+  const characterName = selectedCharacter.value.label || '角色'
+  
+  console.log('[红包] 尝试角色发送红包（测试模式）:', characterId, characterName)
+  
+  // 通过LLM生成红包金额
+  const amount = await generateRedPacketAmountByLLM(
+    characterName,
+    userMessage,
+    selectedDormChatHistory.value
+  )
+  
+  console.log('[红包] LLM生成的金额:', amount)
+  
+  // 随机祝福语
+  const blessings = [
+    '今天也要开心哦~',
+    '祝你有个美好的一天！',
+    '小小意思，不成敬意~',
+    '拿去喝杯奶茶吧！',
+    '今天运气不错呢！',
+    '加油！',
+    '开心每一天！',
+    '给你一个小惊喜~',
+  ]
+  
+  // 创建红包（使用LLM生成的金额）
+  const packet = generateCharacterRedPacketWithAmount(characterId, characterName, amount, blessings[Math.floor(Math.random() * blessings.length)])
+  
+  if (!packet) {
+    console.log('[红包] 红包生成失败')
+    return null
+  }
+  
+  console.log('[红包] 角色发送红包成功:', packet)
+  
+  // 创建红包消息
+  const redPacketMessage = createRedPacketChatMessage(packet)
+  
+  // 添加到聊天历史
+  updateSelectedDormState((previous) => ({
+    ...previous,
+    chatHistory: [...normalizeDormChatHistory(previous.chatHistory), redPacketMessage].slice(-DORM_CHAT_HISTORY_LIMIT),
+    journal: appendJournal(previous.journal, `${characterName}给你发了一个红包`, 'redPacket'),
+  }))
+  
+  actionFeedback.value = `${characterName}给你发了一个红包！🧧`
+  
+  // 滚动到底部
+  scrollDormChatToBottom()
+  
+  return packet
+}
+
+// 使用指定金额生成角色红包
+const generateCharacterRedPacketWithAmount = (characterId, characterName, amount, blessing) => {
+  const packet = createRedPacket({
+    senderId: `char_${characterId}`,
+    senderName: characterName,
+    amount,
+    type: 'normal',
+    blessing,
+    characterId,
+  })
+  
+  if (!packet) return null
+  
+  addRedPacket(packet)
+  recordSentRedPacket(packet)
+  
+  return packet
+}
+
+// 红包开启处理
+const handleRedPacketOpened = (packet) => {
+  const result = openRedPacket(packet.id)
+  
+  if (result.success) {
+    redPacketOpenedAmount.value = result.amount
+    
+    // 更新聊天消息中的红包状态
+    updateSelectedDormState((previous) => {
+      const updatedHistory = normalizeDormChatHistory(previous.chatHistory).map(msg => {
+        if (msg.type === 'redPacket' && msg.redPacket && msg.redPacket.id === packet.id) {
+          return {
+            ...msg,
+            redPacket: {
+              ...msg.redPacket,
+              isOpened: true,
+              openedAt: new Date().toISOString(),
+            },
+          }
+        }
+        return msg
+      })
+      
+      return {
+        ...previous,
+        chatHistory: updatedHistory,
+      }
+    })
+    
+    // 关联经济系统：领取红包增加金币
+    const bookId = String(activeBook.value?.id || '').trim()
+    if (bookId) {
+      const coinAmount = Math.round(result.amount) // 红包金额转为整数金币
+      updateWorldBookEconomy(bookId, (previous) => ({
+        ...previous,
+        coins: clampInt(previous.coins + coinAmount, 0, 9999, previous.coins),
+      }))
+      actionFeedback.value = `你领取了红包，获得 +${coinAmount} 金币`
+    } else {
+      actionFeedback.value = `你领取了 ¥${result.amount.toFixed(2)}`
+    }
+  } else if (result.error === '红包已被开启') {
+    redPacketOpenedAmount.value = result.amount || 0
+    actionFeedback.value = `红包已领取，金额：¥${(result.amount || 0).toFixed(2)}`
+  } else {
+    actionFeedback.value = result.error || '开启失败'
   }
 }
 
@@ -3571,6 +4250,201 @@ const handlePolaroidComplete = (photoData) => {
   })
 }
 
+// 日记相关函数
+const openDiaryDetail = (diary) => {
+  if (!diary) return
+  selectedDiary.value = diary
+  activeDormOverlayPanelId.value = 'diary-detail'
+  isDormOverlayPanelExpanded.value = true
+}
+
+const closeDiaryDetail = () => {
+  activeDormOverlayPanelId.value = 'diary'
+  selectedDiary.value = null
+}
+
+function formatDiaryDetailDate(dateStr) {
+  if (!dateStr) return '未知日期'
+  try {
+    return new Date(dateStr).toLocaleDateString('zh-CN')
+  } catch {
+    return dateStr
+  }
+}
+
+const closeDiaryModal = () => {
+  showDiaryModal.value = false
+  selectedDiary.value = null
+}
+
+// 获取今天的日期字符串（YYYY-MM-DD）
+const getTodayDateString = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// 检查是否已有当天的日记
+const hasDiaryForDate = (dateStr) => {
+  const key = String(selectedDormRuntimeKey.value || '').trim()
+  if (!key) return false
+  const raw = dormRuntimeMap.value[key]
+  if (!raw || !raw.diaries || !Array.isArray(raw.diaries)) return false
+  return raw.diaries.some(d => d.date && d.date.startsWith(dateStr))
+}
+
+// 保存日记到dormRuntimeMap
+const saveDiaryToDorm = (diaryData) => {
+  const key = String(selectedDormRuntimeKey.value || '').trim()
+  if (!key) return
+  
+  const raw = dormRuntimeMap.value[key]
+  if (!raw) return
+  
+  const diaries = Array.isArray(raw.diaries) ? [...raw.diaries] : []
+  
+  // 检查是否已存在同日期日记，如果存在则更新
+  const existingIndex = diaries.findIndex(d => d.date && d.date === diaryData.date)
+  if (existingIndex >= 0) {
+    diaries[existingIndex] = { ...diaries[existingIndex], ...diaryData }
+  } else {
+    diaries.push(diaryData)
+  }
+  
+  // 按日期排序
+  diaries.sort((a, b) => {
+    const dateA = a.date || ''
+    const dateB = b.date || ''
+    return dateB.localeCompare(dateA) // 最新的在前
+  })
+  
+  updateSelectedDormState((state) => ({
+    ...state,
+    diaries,
+  }))
+}
+
+// 生成角色日记
+const generateCharacterDiaryEntry = async (params = {}) => {
+  if (isGeneratingDiary.value) return null
+  
+  const character = params.character || selectedCharacter.value
+  if (!character) {
+    console.warn('[日记生成] 没有可用角色')
+    return null
+  }
+  
+  const charName = String(character.name || character.label || '角色').trim()
+  const charPersonality = String(character.personality || character.traits || character.description || '').trim()
+  
+  // 获取世界书信息
+  const worldBookId = getActiveWorldBookId.value
+  const worldBook = worldBookId ? null : null // 可以从worldBookStore获取详细信息
+  
+  // 获取最近的事件（从journal中获取）
+  const key = String(selectedDormRuntimeKey.value || '').trim()
+  const raw = dormRuntimeMap.value[key]
+  const recentEvents = (raw && Array.isArray(raw.journal))
+    ? raw.journal.slice(-10).map(j => ({ text: j.text || j.journalText || '' }))
+    : []
+  
+  const currentDate = params.currentDate || getTodayDateString()
+  
+  isGeneratingDiary.value = true
+  showDiaryGeneratingModal.value = true
+  diaryGeneratingMessage.value = `正在为${charName}生成今天的日记，请稍候...`
+  
+  try {
+    const result = await generateCharacterDiary({
+      character: {
+        name: charName,
+        personality: charPersonality,
+      },
+      worldBook: worldBook,
+      recentEvents,
+      currentDate,
+      options: {
+        temperature: 0.85,
+      },
+    })
+    
+    if (!result.success || !result.diary) {
+      console.warn('[日记生成] 日记生成失败:', result.error)
+      actionFeedback.value = `日记生成失败：${result.error || '未知错误'}`
+      return null
+    }
+    
+    const diaryData = {
+      id: `diary_${Date.now()}`,
+      date: currentDate,
+      title: result.diary.title || '无题',
+      content: result.diary.content || '',
+      mood: result.diary.mood || '平静',
+      wordCount: result.diary.wordCount || result.diary.content?.length || 0,
+    }
+    
+    saveDiaryToDorm(diaryData)
+    lastGeneratedDiaryDate.value = currentDate
+    actionFeedback.value = `${charName}的日记已生成：「${diaryData.title}」`
+    
+    // 关闭生成模态框
+    showDiaryGeneratingModal.value = false
+    
+    return diaryData
+  } catch (error) {
+    console.error('[日记生成] 发生错误:', error)
+    actionFeedback.value = `日记生成出错：${error.message || '未知错误'}`
+    
+    // 关闭生成模态框
+    showDiaryGeneratingModal.value = false
+    
+    return null
+  } finally {
+    isGeneratingDiary.value = false
+  }
+}
+
+// 检查并生成当天的日记（每天首次打开时调用）
+const checkAndGenerateDailyDiary = async () => {
+  // 确保有选中的角色
+  if (!selectedCharacter.value) {
+    console.warn('[日记生成] 没有可用角色，跳过生成')
+    return
+  }
+  
+  const today = getTodayDateString()
+  
+  // 如果今天已经生成过日记，跳过
+  if (lastGeneratedDiaryDate.value === today) return
+  
+  // 如果今天已经有日记了，跳过
+  if (hasDiaryForDate(today)) {
+    lastGeneratedDiaryDate.value = today
+    return
+  }
+  
+  // 生成今天的日记
+  await generateCharacterDiaryEntry({ currentDate: today })
+}
+
+// 聊天过程中随机生成日记
+const generateRandomDiaryDuringChat = async () => {
+  // 20%的概率触发
+  if (Math.random() > 0.2) return
+  
+  const today = getTodayDateString()
+  
+  // 如果今天已经有日记了，不重复生成
+  if (hasDiaryForDate(today)) return
+  
+  // 如果正在生成中，跳过
+  if (isGeneratingDiary.value) return
+  
+  await generateCharacterDiaryEntry({ currentDate: today })
+}
+
 const handleRestAction = () => {
   if (!ensureActionTimeAvailable('休息')) return
   const boosted = buildFacilityBoostedAction(
@@ -3592,6 +4466,159 @@ const handleRestAction = () => {
     consumeTimeSlot: true,
     wishType: 'rest',
   })
+}
+
+/**
+ * 显示物品赠送确认弹窗
+ * @param {Object} item - 背包物品对象
+ */
+const handleGiftDormItem = (item) => {
+  if (!item) return
+  if (isGiftItemProcessing.value) return
+  if (!selectedCharacter.value) {
+    actionFeedback.value = '请先选择一个角色'
+    return
+  }
+  if (!activeBook.value) {
+    actionFeedback.value = '未找到当前世界书'
+    return
+  }
+  // 显示确认弹窗
+  pendingGiftItem.value = item
+  showGiftItemConfirm.value = true
+}
+
+/**
+ * 关闭物品赠送确认弹窗
+ */
+const closeGiftItemConfirm = () => {
+  showGiftItemConfirm.value = false
+  pendingGiftItem.value = null
+}
+
+/**
+ * 确认赠送物品给当前CHAR
+ */
+const confirmGiftItem = async () => {
+  const item = pendingGiftItem.value
+  if (!item) {
+    closeGiftItemConfirm()
+    return
+  }
+
+  if (isGiftItemProcessing.value) return
+
+  closeGiftItemConfirm()
+
+  const requestToken = ++dormItemGiftRequestToken
+  isGiftItemProcessing.value = true
+
+  const charName = selectedCharacter.value.label
+  const itemName = String(item.name || '').trim()
+
+  try {
+    // 调用LLM生成CHAR收到物品后的回复和剧情
+    const result = await generateDormItemGiftReply({
+      worldBook: activeBook.value,
+      character: {
+        name: charName,
+        identity: selectedCharacter.value.raw?.identity || '',
+        subtitle: selectedCharacter.value.raw?.subtitle || '',
+        background: selectedCharacter.value.raw?.background || '',
+        tags: Array.isArray(selectedCharacter.value.raw?.tags) ? selectedCharacter.value.raw.tags : [],
+      },
+      item: {
+        name: item.name,
+        description: item.description || '',
+        category: item.category || '',
+        categoryLabel: item.categoryLabel || '',
+        icon: item.icon || '',
+      },
+      currentAffection: selectedDormState.value.affection,
+      relationshipStage: selectedDormRelationshipStageLabel.value,
+    })
+
+    if (requestToken !== dormItemGiftRequestToken) return
+
+    if (!result.success || !result.reply) {
+      actionFeedback.value = result.error || '生成回复失败'
+      return
+    }
+
+    const { replyText, journalText, mood, affectionDelta } = result.reply
+
+    // 从背包中移除物品（减少数量）
+    const bookId = String(activeBook.value?.id || '').trim()
+    if (bookId && item.id) {
+      const currentInventory = readWorldBookInventory(bookId)
+      const updatedInventory = currentInventory
+        .map((invItem) => {
+          if (invItem.id === item.id) {
+            return { ...invItem, quantity: Math.max(0, (invItem.quantity || 1) - 1) }
+          }
+          return invItem
+        })
+        .filter((invItem) => (invItem.quantity || 0) > 0)
+      persistWorldBookInventory(bookId, updatedInventory)
+      worldBookInventoryMap.value[bookId] = [...updatedInventory]
+      worldBookInventoryMap.value = { ...worldBookInventoryMap.value }
+    }
+
+    // 更新寝室状态：好感度、日记
+    updateSelectedDormState((previous) => {
+      const nextAffection = clampInt(
+        previous.affection + affectionDelta,
+        DORM_AFFECTION_MIN,
+        DORM_AFFECTION_MAX,
+        previous.affection
+      )
+
+      // 检查关系阶段是否提升
+      const previousStage = normalizeDormRelationshipStage(previous.relationshipStage, previous.affection)
+      const nextStage = normalizeDormRelationshipStage(previous.relationshipStage, nextAffection)
+      const stageChanged = previousStage !== nextStage
+
+      let nextJournal = appendJournal(
+        previous.journal,
+        renderTemplate(`你把${itemName}送给了{char}。${journalText}`, charName),
+        'gift'
+      )
+
+      // 如果关系阶段提升，添加额外记录
+      if (stageChanged) {
+        const stageLabel = getDormRelationshipStageLabel(nextStage)
+        nextJournal = appendJournal(
+          nextJournal,
+          renderTemplate(`因为这份心意，你和{char}的关系进入了「${stageLabel}」阶段。`, charName),
+          'stage'
+        )
+      }
+
+      return {
+        ...previous,
+        affection: nextAffection,
+        mood: String(mood || '开心').trim() || previous.mood,
+        journal: nextJournal,
+        giftCount: (previous.giftCount || 0) + 1,
+        chatHistory: appendDormChatMessage(previous.chatHistory, 'assistant', `${charName}：${replyText}`),
+      }
+    })
+
+    // 滚动到最新消息
+    nextTick(() => {
+      scrollDormChatToBottom()
+    })
+
+    // 设置反馈
+    actionFeedback.value = `${charName}收下了${itemName}，看起来${mood || '很开心'}。`
+  } catch (err) {
+    if (requestToken !== dormItemGiftRequestToken) return
+    actionFeedback.value = '赠送物品时出错，请稍后再试'
+  } finally {
+    if (requestToken === dormItemGiftRequestToken) {
+      isGiftItemProcessing.value = false
+    }
+  }
 }
 
 const triggerDormEvent = () => {
@@ -3980,6 +5007,11 @@ const handleSelectDormOverlayPanel = (panelId) => {
   }
   activeDormOverlayPanelId.value = safeId
   isDormOverlayPanelExpanded.value = true
+  
+  // 如果切换到日记面板，检查并生成当天日记
+  if (safeId === 'diary') {
+    checkAndGenerateDailyDiary()
+  }
 }
 
 const handleCollapseDormOverlayPanel = () => {
@@ -4058,6 +5090,7 @@ watch(
   activeDormOverlayPanelId,
   (value) => {
     const key = String(value || '').trim()
+    if (key === 'diary-detail') return
     const exists = DORM_OVERLAY_PANEL_OPTIONS.some((panel) => panel.id === key)
     if (exists) return
     activeDormOverlayPanelId.value = 'interaction'
@@ -4131,6 +5164,20 @@ watch(
     if (!expanded || panelId !== 'interaction') return
     void scrollDormChatToBottom()
   },
+)
+
+// 当 activeBook 加载后，初始化任务板数据
+watch(
+  activeBook,
+  (book) => {
+    const bookId = String(book?.id || '').trim()
+    if (!bookId) return
+    console.log('[Dormitory] watch activeBook, bookId:', bookId)
+    const board = loadTaskBoardForActiveBook()
+    taskBoardTasks.value = board.tasks || []
+    console.log('[Dormitory] watch activeBook, loaded taskBoardTasks:', taskBoardTasks.value.length, taskBoardTasks.value.map(t => ({ id: t.id, status: t.status })))
+  },
+  { immediate: true },
 )
 
 const refreshWorldBooks = async () => {
@@ -4210,6 +5257,546 @@ const handleCardTouchEnd = async (event) => {
   }
   await goToPrevWorldBook()
 }
+
+const handleLaunchTRPG = () => {
+  // 打开跑团界面
+  isTRPGOpen.value = true
+  trpgError.value = ''
+  
+  // 加载当前世界书的角色
+  if (activeBook.value) {
+    trpgCharacters.value = getWorldBookCharacters(activeBook.value)
+  }
+  
+  // 尝试加载已保存的会话
+  const savedSession = loadTRPGSession()
+  if (savedSession && savedSession.isRunning) {
+    trpgTopicInput.value = savedSession.topic || ''
+    trpgCharacterRoles.value = savedSession.characterRoles || []
+    trpgMessages.value = savedSession.messages || []
+    isTRPGRunning.value = true
+    trpgCharacters.value = savedSession.characters || trpgCharacters.value
+  }
+}
+
+// 跑团相关函数
+const handleTRPGRandomTopic = () => {
+  trpgTopicInput.value = generateRandomTopic()
+}
+
+const handleTRPGGenerateTopicByLLM = async () => {
+  if (isTRPGGeneratingTopic.value) return
+  isTRPGGeneratingTopic.value = true
+  trpgError.value = ''
+  try {
+    trpgTopicInput.value = await generateRandomTopicByLLM()
+  } catch (e) {
+    trpgError.value = '生成主题失败'
+  } finally {
+    isTRPGGeneratingTopic.value = false
+  }
+}
+
+const handleStartTRPG = async () => {
+  if (!canStartTRPG.value || isTRPGRolesLoading.value) return
+  
+  isTRPGRolesLoading.value = true
+  trpgError.value = ''
+  
+  try {
+    const topic = trpgTopicInput.value.trim() || generateRandomTopic()
+    trpgTopicInput.value = topic
+    
+    // 分配角色身份
+    trpgCharacterRoles.value = await assignCharacterRoles(trpgCharacters.value, topic)
+    
+    // 生成开场
+    isTRPGGeneratingOpening.value = true
+    const opening = await generateOpening(topic, trpgCharacterRoles.value)
+    
+    // 初始化会话
+    const session = createDefaultTRPGSession()
+    session.topic = topic
+    session.characters = trpgCharacters.value
+    session.characterRoles = trpgCharacterRoles.value
+    session.messages = [
+      {
+        id: 'opening',
+        role: 'gm',
+        content: opening,
+        timestamp: Date.now(),
+      }
+    ]
+    session.isRunning = true
+    session.createdAt = Date.now()
+    
+    trpgMessages.value = session.messages
+    isTRPGRunning.value = true
+    
+    saveTRPGSession(session)
+  } catch (e) {
+    trpgError.value = e.message || '启动跑团失败'
+  } finally {
+    isTRPGRolesLoading.value = false
+    isTRPGGeneratingOpening.value = false
+  }
+}
+
+const handleTRPGSendAction = async () => {
+  if (!canTRPGSendAction.value) return
+
+  const action = trpgPlayerActionInput.value.trim()
+  const isUserSelected = trpgSelectedCharacterId.value === 'user_player'
+
+  isTRPGProcessingAction.value = true
+  trpgError.value = ''
+
+  if (isUserSelected) {
+    // User模式：描述自己的行动
+    trpgPlayerActionInput.value = ''
+    const playerMessage = {
+      id: `player_${Date.now()}`,
+      role: 'player',
+      characterId: 'user_player',
+      characterName: 'User',
+      content: action,
+      timestamp: Date.now(),
+    }
+    trpgMessages.value.push(playerMessage)
+
+    try {
+      const response = await processPlayerAction(
+        currentTRPGTopic.value,
+        trpgCharacterRoles.value,
+        trpgMessages.value,
+        action,
+        'user_player'
+      )
+      trpgMessages.value.push({
+        id: `gm_${Date.now()}`,
+        role: 'gm',
+        content: response,
+        timestamp: Date.now(),
+      })
+    } catch (e) {
+      trpgError.value = e.message || '处理行动失败'
+    }
+  } else {
+    // 世界书角色模式：LLM生成该角色的剧情，以角色气泡发出
+    const selectedRole = trpgCharacterRoles.value.find((r) => r.characterId === trpgSelectedCharacterId.value)
+    const characterName = selectedRole ? selectedRole.characterName : '未知角色'
+
+    try {
+      const direction = action || `请根据${characterName}的性格和背景，生成一段合理的剧情发展。`
+      const response = await processPlayerAction(
+        currentTRPGTopic.value,
+        trpgCharacterRoles.value,
+        trpgMessages.value,
+        direction,
+        trpgSelectedCharacterId.value
+      )
+      trpgMessages.value.push({
+        id: `story_${Date.now()}`,
+        role: 'character',
+        characterId: trpgSelectedCharacterId.value,
+        characterName: characterName,
+        content: response,
+        timestamp: Date.now(),
+      })
+    } catch (e) {
+      trpgError.value = e.message || '生成剧情失败'
+    }
+  }
+
+  // 保存会话
+  saveTRPGSession({
+    topic: currentTRPGTopic.value,
+    characters: trpgCharacters.value,
+    characterRoles: trpgCharacterRoles.value,
+    messages: trpgMessages.value,
+    isRunning: isTRPGRunning.value,
+    createdAt: trpgMessages.value[0]?.timestamp || Date.now(),
+  })
+
+  await nextTick()
+  scrollToTRPGBottom()
+
+  isTRPGProcessingAction.value = false
+}
+
+const handleEndTRPG = () => {
+  isTRPGRunning.value = false
+  clearTRPGSession()
+  
+  trpgMessages.value.push({
+    id: `end_${Date.now()}`,
+    role: 'gm',
+    content: '🎲 本次跑团已结束。感谢参与！',
+    timestamp: Date.now(),
+  })
+}
+
+const handleNewTRPG = () => {
+  clearTRPGSession()
+  trpgTopicInput.value = ''
+  trpgCharacterRoles.value = []
+  trpgMessages.value = []
+  isTRPGRunning.value = false
+  trpgSelectedCharacterId.value = 'user_player'
+  trpgPlayerActionInput.value = ''
+  trpgError.value = ''
+}
+
+const handleCloseTRPG = () => {
+  // 保存当前状态
+  if (isTRPGRunning.value && trpgMessages.value.length > 0) {
+    saveTRPGSession({
+      topic: currentTRPGTopic.value,
+      characters: trpgCharacters.value,
+      characterRoles: trpgCharacterRoles.value,
+      messages: trpgMessages.value,
+      isRunning: isTRPGRunning.value,
+      createdAt: trpgMessages.value[0]?.timestamp || Date.now(),
+    })
+  }
+  isTRPGOpen.value = false
+}
+
+const getTRPGCharacterNameById = (id) => {
+  const role = trpgCharacterRoles.value.find((r) => r.characterId === id)
+  if (role) return role.characterName
+  const char = trpgCharacters.value.find((c) => c.id === id)
+  return char?.label || null
+}
+
+const getTRPGCharacterRoleById = (id) => {
+  return trpgCharacterRoles.value.find((r) => r.characterId === id)?.trpgRole || ''
+}
+
+const scrollToTRPGBottom = () => {
+  if (trpgMessageContainerRef.value) {
+    trpgMessageContainerRef.value.scrollTop = trpgMessageContainerRef.value.scrollHeight
+  }
+}
+
+const formatTRPGTime = (timestamp) => {
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+// ==================== 任务板相关函数 ====================
+
+const getActiveBookId = () => {
+  return String(activeBook.value?.id || '').trim()
+}
+
+const loadTaskBoardForActiveBook = () => {
+  const bookId = getActiveBookId()
+  if (!bookId) return { tasks: [], lastGenerated: 0 }
+  return loadTaskBoard(bookId)
+}
+
+const saveTaskBoardForActiveBook = (board) => {
+  const bookId = getActiveBookId()
+  if (!bookId) return
+  saveTaskBoard(bookId, board)
+}
+
+const handleOpenTaskBoard = () => {
+  const board = loadTaskBoardForActiveBook()
+  console.log('[Dormitory] handleOpenTaskBoard, loaded board:', board)
+  taskBoardTasks.value = board.tasks || []
+  console.log('[Dormitory] handleOpenTaskBoard, taskBoardTasks set to:', taskBoardTasks.value.length, taskBoardTasks.value.map(t => ({ id: t.id, status: t.status })))
+  taskBoardFeedback.value = ''
+  isTaskBoardOpen.value = true
+}
+
+const handleCloseTaskBoard = () => {
+  // 清理已完成的任务
+  const cleaned = cleanupCompletedTasks({ tasks: taskBoardTasks.value })
+  taskBoardTasks.value = cleaned.tasks
+  // 保存
+  saveTaskBoardForActiveBook({ tasks: taskBoardTasks.value, lastGenerated: Date.now() })
+  isTaskBoardOpen.value = false
+}
+
+const handleGenerateTaskBoardTasks = async () => {
+  if (taskBoardGenerating.value) return
+  taskBoardGenerating.value = true
+  taskBoardFeedback.value = ''
+
+  try {
+    const result = await generateTaskBoardTasks({
+      worldBook: activeBook.value,
+      count: 5,
+    })
+
+    if (!result.success || result.tasks.length === 0) {
+      taskBoardFeedback.value = '任务生成失败：' + (result.error || '未知错误')
+      return
+    }
+
+    // 为新任务添加 ID 和状态
+    const newTasks = result.tasks.map((t) => ({
+      ...t,
+      id: generateTaskId(),
+      status: 'available',
+      createdAt: Date.now(),
+    }))
+
+    // 清理旧的可完成任务
+    const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+    const cleaned = cleanupCompletedTasks(board)
+    const merged = mergeTasks(cleaned, newTasks)
+    taskBoardTasks.value = merged.tasks
+    saveTaskBoardForActiveBook(merged)
+    taskBoardFeedback.value = `已生成 ${newTasks.length} 个新任务！`
+  } catch (e) {
+    taskBoardFeedback.value = '任务生成异常：' + (e.message || '未知错误')
+  } finally {
+    taskBoardGenerating.value = false
+  }
+}
+
+const handleAcceptTaskBoardTask = (taskId) => {
+  const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+  console.log('[Dormitory] handleAcceptTaskBoardTask, before:', taskBoardTasks.value.length, 'tasks:', taskBoardTasks.value.map(t => ({ id: t.id, status: t.status })))
+  const updated = acceptTask(board, taskId)
+  taskBoardTasks.value = updated.tasks
+  saveTaskBoardForActiveBook(updated)
+  console.log('[Dormitory] handleAcceptTaskBoardTask, after:', taskBoardTasks.value.length, 'tasks:', taskBoardTasks.value.map(t => ({ id: t.id, status: t.status })))
+}
+
+const handleSubmitTaskBoardTask = (taskId, description) => {
+  const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+  const updated = submitTask(board, taskId, description)
+  taskBoardTasks.value = updated.tasks
+  saveTaskBoardForActiveBook(updated)
+}
+
+const handleCompleteTaskBoardTask = (taskId) => {
+  const bookId = getActiveBookId()
+  if (!bookId) return
+
+  const task = taskBoardTasks.value.find((t) => t.id === taskId)
+  if (!task || task.status !== 'submitted') return
+
+  // 发放奖励
+  if (task.rewardType === 'coins') {
+    const amount = Math.floor(task.rewardAmount)
+    updateWorldBookEconomy(bookId, (prev) => ({
+      ...prev,
+      coins: Math.min(9999, (prev.coins || 0) + amount),
+    }))
+    taskBoardFeedback.value = `任务完成！获得 💰 ${amount} 金币`
+  } else if (task.rewardType === 'crystals') {
+    const amount = Math.floor(task.rewardAmount)
+    updateWorldBookEconomy(bookId, (prev) => ({
+      ...prev,
+      crystals: Math.max(0, (prev.crystals || 0) + amount),
+    }))
+    taskBoardFeedback.value = `任务完成！获得 💎 ${amount} 晶石`
+  } else if (task.rewardType === 'item') {
+    // 添加物品到背包
+    addToWorldBookInventory(bookId, {
+      id: `task_item_${Date.now()}`,
+      name: task.name + ' 奖励',
+      description: `完成任务「${task.name}」获得的物品`,
+      icon: '🎁',
+      category: 'misc',
+      price: task.rewardAmount || 30,
+    })
+    taskBoardFeedback.value = `任务完成！获得 🎁 ${task.name}`
+  }
+
+  // 标记完成
+  const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+  const updated = completeTask(board, taskId)
+  taskBoardTasks.value = updated.tasks
+  saveTaskBoardForActiveBook(updated)
+}
+
+const handleDeleteTaskBoardTask = (taskId) => {
+  const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+  const updated = deleteTask(board, taskId)
+  taskBoardTasks.value = updated.tasks
+  saveTaskBoardForActiveBook(updated)
+}
+
+// ==================== 任务执行相关函数 ====================
+
+const getAcceptedTasksForInvite = computed(() => {
+  return taskBoardTasks.value.filter((t) =>
+    t.status === 'accepted' || t.status === 'in_progress' || t.status === 'completable'
+  )
+})
+
+const handleSendTaskInvite = async (task) => {
+  showTaskInviteDropdown.value = false
+
+  // 获取当前选中的目标角色信息
+  const targetCharId = selectedCharacterId.value || ''
+  const targetCharName = selectedCharacter.value?.label || ''
+
+  // 发送任务邀请消息到聊天
+  const inviteMessage = {
+    id: `task_invite_${Date.now()}`,
+    role: 'user',
+    type: 'taskInvite',
+    taskId: task.id,
+    taskName: task.name,
+    taskType: task.type,
+    targetCharacterId: targetCharId,
+    targetCharacterName: targetCharName,
+    time: new Date().toISOString(),
+  }
+
+  // 更新聊天历史
+  if (selectedCharacterId.value) {
+    updateSelectedDormState((prev) => {
+      const history = normalizeDormChatHistory(prev.chatHistory)
+      return {
+        ...prev,
+        chatHistory: [...history, inviteMessage].slice(-DORM_CHAT_HISTORY_LIMIT),
+      }
+    })
+  }
+
+  // 更新任务状态为 in_progress，并记录目标角色
+  const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+  const updated = startTaskExecution(board, task.id)
+  // 在任务上记录目标角色信息
+  const taskRef = updated.tasks.find((t) => t.id === task.id)
+  if (taskRef) {
+    taskRef.targetCharacterId = targetCharId
+    taskRef.targetCharacterName = targetCharName
+  }
+  taskBoardTasks.value = updated.tasks
+  saveTaskBoardForActiveBook(updated)
+
+  // 打开执行界面
+  currentExecutionTask.value = task
+  isTaskExecutionOpen.value = true
+}
+
+const handleTaskInviteClick = (taskId) => {
+  console.log('[Dormitory] handleTaskInviteClick, taskId:', taskId)
+  let task = taskBoardTasks.value.find((t) => t.id === taskId)
+  console.log('[Dormitory] 任务板找到任务:', task ? task.id : 'null', task ? task.status : 'null')
+
+  if (!task) {
+    // 任务板中没有，尝试从 localStorage 的 session 中恢复
+    const session = loadTaskExecutionSession(taskId)
+    if (session) {
+      console.log('[Dormitory] 从 session 恢复, taskName:', session.taskName)
+      task = {
+        id: taskId,
+        name: session.taskName || '未知任务',
+        type: 'daily',
+        targetCharacterId: session.targetCharacterId || '',
+        targetCharacterName: session.targetCharacterName || '',
+      }
+    }
+  }
+
+  if (!task) {
+    console.log('[Dormitory] 找不到任务和 session, taskId:', taskId)
+    return
+  }
+
+  // 尝试从聊天历史中找回目标角色信息
+  let targetCharId = task.targetCharacterId || ''
+  let targetCharName = task.targetCharacterName || ''
+
+  if (!targetCharId) {
+    const history = selectedDormChatHistory.value
+    const inviteMsg = history.find((m) => m.type === 'taskInvite' && m.taskId === taskId)
+    if (inviteMsg) {
+      targetCharId = inviteMsg.targetCharacterId || ''
+      targetCharName = inviteMsg.targetCharacterName || ''
+    }
+  }
+
+  currentExecutionTask.value = {
+    ...task,
+    targetCharacterId: targetCharId,
+    targetCharacterName: targetCharName,
+  }
+  console.log('[Dormitory] 设置 currentExecutionTask:', currentExecutionTask.value.id, 'target:', targetCharId)
+  isTaskExecutionOpen.value = true
+  console.log('[Dormitory] 设置 isTaskExecutionOpen: true')
+}
+
+const handleTaskExecutionComplete = (taskId, evidence) => {
+  const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+  const updated = markTaskCompletable(board, taskId, evidence)
+  taskBoardTasks.value = updated.tasks
+  saveTaskBoardForActiveBook(updated)
+
+  // 发送完成消息到聊天
+  const completionMsg = {
+    id: `task_complete_${Date.now()}`,
+    role: 'assistant',
+    text: `✅ 任务「${evidence.summary || '任务'}」执行完成！可以在任务板提交领取奖励。`,
+    time: new Date().toISOString(),
+  }
+
+  if (selectedCharacterId.value) {
+    updateSelectedDormState((prev) => {
+      const history = normalizeDormChatHistory(prev.chatHistory)
+      return {
+        ...prev,
+        chatHistory: [...history, completionMsg].slice(-DORM_CHAT_HISTORY_LIMIT),
+      }
+    })
+  }
+
+  isTaskExecutionOpen.value = false
+  currentExecutionTask.value = null
+}
+
+const handleTaskExecutionClose = () => {
+  isTaskExecutionOpen.value = false
+  currentExecutionTask.value = null
+}
+
+// 任务类型标签（用于聊天邀请下拉框）
+const TASK_TYPE_LABELS_TASK = {
+  explore: '探索',
+  collect: '收集',
+  social: '社交',
+  combat: '战斗',
+  daily: '日常',
+}
+
+// 跑团计算属性
+const canStartTRPG = computed(() => {
+  return trpgCharacters.value.length > 0 && (trpgTopicInput.value.trim() || trpgCharacterRoles.value.length > 0)
+})
+
+const canTRPGSendAction = computed(() => {
+  if (!isTRPGRunning.value || isTRPGProcessingAction.value) return false
+  const isUserSelected = trpgSelectedCharacterId.value === 'user_player'
+  if (isUserSelected) {
+    return !!trpgPlayerActionInput.value.trim()
+  }
+  return true
+})
+
+const trpgInputPlaceholder = computed(() => {
+  if (trpgSelectedCharacterId.value === 'user_player') return '描述你的行动...'
+  return '可选：给个方向提示...'
+})
+
+const trpgButtonLabel = computed(() => {
+  if (isTRPGProcessingAction.value) return '处理中...'
+  if (trpgSelectedCharacterId.value === 'user_player') return '发送'
+  return '生成剧情'
+})
+
+const currentTRPGTopic = computed(() => {
+  return trpgTopicInput.value.trim() || '未知冒险'
+})
 
 const enterCharacterGrid = async () => {
   if (!activeBook.value) return
@@ -4332,16 +5919,6 @@ const enterCharacterRoom = (characterId) => {
   dormDriftFollowupRequestToken += 1
   clearStageUpgradeToast()
   setActiveDormEvent(dormRuntimeMap.value[selectedDormRuntimeKey.value]?.activeEvent, { persist: false })
-
-  applyDormAction({
-    affectionDelta: 0,
-    energyDelta: 0,
-    mood: selectedDormState.value.mood,
-    journalText: '你进入了{char}的寝室。',
-    feedbackText: '已进入角色寝室。',
-    countKey: 'visitCount',
-    type: 'visit',
-  })
 }
 
 const backToCharacterGrid = () => {
@@ -4373,8 +5950,27 @@ const formatJournalTime = (value) => {
 onMounted(async () => {
   dormRuntimeMap.value = readDormRuntimeMap()
   driftBottlePool.value = readDormDriftBottlePool()
+  // 初始化世界书经济和背包的响应式 ref
+  try {
+    const economyRaw = window.localStorage.getItem(DORM_WORLD_BOOK_ECONOMY_STORAGE_KEY)
+    if (economyRaw) {
+      worldBookEconomyMap.value = JSON.parse(economyRaw)
+    }
+    const inventoryRaw = window.localStorage.getItem(DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY)
+    if (inventoryRaw) {
+      worldBookInventoryMap.value = JSON.parse(inventoryRaw)
+    }
+  } catch {
+    // ignore
+  }
   defaultPortraitUrl.value = await getDefaultPortraitUrl()
   await refreshWorldBooks()
+  
+  // 初始化商店商品
+  shopItems.value = generateShopItems('all', 6)
+  
+  // 检查并生成当天的日记
+  checkAndGenerateDailyDiary()
 })
 
 onBeforeUnmount(() => {
@@ -4382,6 +5978,9 @@ onBeforeUnmount(() => {
   characterPreloadToken += 1
   dormDriftPickRequestToken += 1
   dormDriftFollowupRequestToken += 1
+  // 清理拖动调整高度的事件监听器
+  stopDragResize()
+  stopDragResizeTouch()
 })
 </script>
 
@@ -4438,6 +6037,21 @@ onBeforeUnmount(() => {
           @touchcancel="handleCharacterTouchCancel"
           @touchend="handleCharacterTouchEnd"
         >
+          <!-- 世界书级别货币显示 -->
+          <div class="worldbook-economy-bar">
+            <span class="economy-item">
+              <span class="economy-icon">💰</span>
+              <span class="economy-value">{{ activeBookEconomyCoins }}</span>
+            </span>
+            <span class="economy-item">
+              <span class="economy-icon">💎</span>
+              <span class="economy-value">{{ activeBookEconomyCrystals }}</span>
+            </span>
+            <button type="button" class="economy-shop-btn" @click="openWorldBookShop">
+              🏪 商店
+            </button>
+          </div>
+          
           <div v-if="isLoadingCharacters" class="dorm-state-box">正在加载角色立绘...</div>
           <div v-else-if="characterCards.length === 0" class="dorm-state-box">当前世界书暂无 CHAR。</div>
           <div v-else class="character-carousel">
@@ -4461,6 +6075,14 @@ onBeforeUnmount(() => {
                   :src="portraitUrlMap[character.id] || defaultPortraitUrl"
                   :alt="character.label"
                 />
+              </button>
+            </div>
+            <div class="character-grid-footer">
+              <button type="button" class="task-board-btn" @click="handleOpenTaskBoard">
+                📋 任务板
+              </button>
+              <button type="button" class="trpg-launch-btn" @click="handleLaunchTRPG">
+                🎲 跑团冒险
               </button>
             </div>
           </div>
@@ -4566,190 +6188,46 @@ onBeforeUnmount(() => {
                 </template>
               </section>
 
-              <section v-if="activeDormOverlayPanelId === 'schedule'" class="daily-cycle-panel">
-                <div class="daily-cycle-head">
-                  <p class="daily-cycle-title">日程循环</p>
-                  <p class="daily-cycle-meta">
-                    第 {{ selectedDormState.dayIndex }} 天 · 当前时段：{{ currentDormTimeSlotLabel }} · 剩余行动 {{ remainingDormActionSlots }}
-                  </p>
-                </div>
+              <DailyCyclePanel
+                v-if="activeDormOverlayPanelId === 'schedule'"
+                :day-index="selectedDormState.dayIndex"
+                :current-time-slot-label="currentDormTimeSlotLabel"
+                :remaining-dorm-action-slots="remainingDormActionSlots"
+                :completed-today-wish-count="completedTodayWishCount"
+                :total-today-wish-count="totalTodayWishCount"
+                :today-wishes="selectedDormState.todayWishes"
+                :is-dorm-day-action-closed="isDormDayActionClosed"
+                @advance-day="handleAdvanceDormDay"
+              />
 
-                <div class="daily-cycle-toolbar">
-                  <p class="daily-cycle-progress">今日心愿 {{ completedTodayWishCount }} / {{ totalTodayWishCount }}</p>
-                  <button type="button" class="daily-next-day-btn" @click="handleAdvanceDormDay">
-                    {{ isDormDayActionClosed ? '进入下一天' : '提前结束今日' }}
-                  </button>
-                </div>
+              <EventChainPanel
+                v-if="activeDormOverlayPanelId === 'chain'"
+                :event-chain-preview-list="selectedDormEventChainPreviewList"
+                :selected-event-chain-detail="selectedDormEventChainDetail"
+                :selected-event-chain-preview-id="selectedDormEventChainDetail?.id || ''"
+                @select-chain="handleSelectDormEventChainPreview"
+              />
 
-                <ul class="daily-wish-list">
-                  <li v-for="wish in selectedDormState.todayWishes" :key="wish.id" class="daily-wish-item" :class="{ completed: wish.completed }">
-                    <span class="daily-wish-main">
-                      {{ wish.label }}
-                      <span class="daily-wish-type">[{{ formatDailyWishTypeLabel(wish.type) }}]</span>
-                    </span>
-                    <span class="daily-wish-progress">
-                      {{ wish.progress }} / {{ wish.target }} · 奖励 好感+{{ wish.rewardAffection }} 体力+{{ wish.rewardEnergy }}
-                    </span>
-                  </li>
-                </ul>
-              </section>
+              <StatusPanel
+                v-if="activeDormOverlayPanelId === 'status'"
+                :character-data="selectedCharacter"
+                :status-data="{
+                  affection: selectedDormState.affection,
+                  energy: selectedDormState.energy,
+                  mood: selectedDormState.mood,
+                }"
+                @close="handleCollapseDormOverlayPanel"
+              />
 
-              <section v-if="activeDormOverlayPanelId === 'chain'" class="event-chain-preview-panel">
-                <div class="event-chain-preview-head">
-                  <p class="event-chain-preview-title">事件链预览</p>
-                  <p class="event-chain-preview-meta">当前关系阶段：{{ selectedDormRelationshipStageLabel }}</p>
-                </div>
-                <ul class="event-chain-preview-list">
-                  <li
-                    v-for="chain in selectedDormEventChainPreviewList"
-                    :key="chain.id"
-                    class="event-chain-preview-item"
-                    :class="{
-                      unlocked: chain.unlocked,
-                      locked: !chain.unlocked,
-                      selected: chain.id === selectedDormEventChainDetail?.id,
-                    }"
-                    role="button"
-                    tabindex="0"
-                    @click="handleSelectDormEventChainPreview(chain.id)"
-                    @keydown.enter.prevent="handleSelectDormEventChainPreview(chain.id)"
-                    @keydown.space.prevent="handleSelectDormEventChainPreview(chain.id)"
-                  >
-                    <div class="event-chain-preview-text">
-                      <p class="event-chain-preview-main">{{ chain.title }} · {{ chain.stepCount }} 阶段</p>
-                      <p class="event-chain-preview-sub">
-                        {{ chain.unlocked ? '已解锁，可在触发事件时进入该事件链。' : `未解锁，需关系阶段达到「${chain.requiredStageLabel}」。` }}
-                      </p>
-                    </div>
-                    <span class="event-chain-preview-badge" :class="{ unlocked: chain.unlocked, locked: !chain.unlocked }">
-                      {{ chain.unlocked ? '已解锁' : `需 ${chain.requiredStageLabel}` }}
-                    </span>
-                  </li>
-                </ul>
 
-                <section v-if="selectedDormEventChainDetail" class="event-chain-detail-panel" :class="{ unlocked: selectedDormEventChainDetail.unlocked, locked: !selectedDormEventChainDetail.unlocked }">
-                  <div class="event-chain-detail-head">
-                    <p class="event-chain-detail-title">{{ selectedDormEventChainDetail.title }}</p>
-                    <span class="event-chain-detail-status" :class="{ unlocked: selectedDormEventChainDetail.unlocked, locked: !selectedDormEventChainDetail.unlocked }">
-                      {{ selectedDormEventChainDetail.unlocked ? '可触发' : `需 ${selectedDormEventChainDetail.requiredStageLabel}` }}
-                    </span>
-                  </div>
+              <!-- 背包面板 -->
+              <BackpackPanel
+                v-if="activeDormOverlayPanelId === 'backpack'"
+                :backpack-items="activeBookInventory"
+                @close="handleCollapseDormOverlayPanel"
+                @give-item="handleGiftDormItem"
+              />
 
-                  <p class="event-chain-detail-summary">{{ selectedDormEventChainDetail.summary }}</p>
-                  <p class="event-chain-detail-meta">
-                    总阶段数 {{ selectedDormEventChainDetail.stepCount }} · 起始阶段：{{ selectedDormEventChainDetail.firstStepTitle }}
-                  </p>
-                  <p class="event-chain-detail-meta">
-                    {{
-                      selectedDormEventChainDetail.unlocked
-                        ? '当前关系阶段已满足触发条件，触发事件时有概率进入该事件链。'
-                        : `解锁条件：关系阶段达到「${selectedDormEventChainDetail.requiredStageLabel}」。`
-                    }}
-                  </p>
-                  <p v-if="selectedDormEventChainDetail.firstStepDescription" class="event-chain-detail-meta">
-                    起始剧情：{{ selectedDormEventChainDetail.firstStepDescription }}
-                  </p>
-
-                  <div class="event-chain-detail-endings">
-                    <p class="event-chain-detail-endings-title">可能结局</p>
-                    <div v-if="selectedDormEventChainDetail.endingTags.length > 0" class="event-chain-detail-tag-list">
-                      <span v-for="tag in selectedDormEventChainDetail.endingTags" :key="tag" class="event-chain-detail-tag">{{ tag }}</span>
-                    </div>
-                    <p v-else class="event-chain-detail-endings-empty">推进过程中会根据选项生成不同结局。</p>
-                  </div>
-                </section>
-              </section>
-
-              <div v-if="activeDormOverlayPanelId === 'status'" class="dorm-stat-grid">
-                <div class="dorm-stat-card">
-                  <p class="dorm-stat-label">好感度</p>
-                  <p class="dorm-stat-value">{{ selectedDormState.affection }}</p>
-                  <div class="dorm-stat-bar"><span class="dorm-stat-bar-fill is-affection" :style="selectedDormAffectionStyle"></span></div>
-                </div>
-                <div class="dorm-stat-card">
-                  <p class="dorm-stat-label">体力</p>
-                  <p class="dorm-stat-value">{{ selectedDormState.energy }}</p>
-                  <div class="dorm-stat-bar"><span class="dorm-stat-bar-fill is-energy" :style="selectedDormEnergyStyle"></span></div>
-                </div>
-                <div class="dorm-stat-card mini">
-                  <p class="dorm-stat-label">心情 / 关系阶段</p>
-                  <p class="dorm-stat-value compact">{{ selectedDormState.mood }} · {{ selectedDormRelationshipStageLabel }}</p>
-                  <p class="dorm-stat-tip">{{ selectedDormRelationshipProgressHint }}</p>
-                </div>
-                <div class="dorm-stat-card mini">
-                  <p class="dorm-stat-label">事件链解锁</p>
-                  <p class="dorm-stat-value compact">{{ selectedDormUnlockedEventChainCount }} / {{ DORM_EVENT_CHAIN_LIBRARY.length }}</p>
-                  <p class="dorm-stat-tip">{{ selectedDormUnlockedEventChainHint }}</p>
-                </div>
-                <div class="dorm-stat-card mini">
-                  <p class="dorm-stat-label">访问 / 聊天 / 送礼 / 事件 / 场景 / 升级</p>
-                  <p class="dorm-stat-value compact">{{ selectedDormState.visitCount }} / {{ selectedDormState.chatCount }} / {{ selectedDormState.giftCount }} / {{ selectedDormState.eventCount }} / {{ selectedDormState.sceneCount }} / {{ selectedDormState.facilityUpgradeCount }}</p>
-                </div>
-              </div>
-
-              <section v-if="activeDormOverlayPanelId === 'wardrobe'" class="dorm-wardrobe-panel">
-                <div class="dorm-wardrobe-head">
-                  <p class="dorm-wardrobe-title">角色衣橱</p>
-                  <p class="dorm-wardrobe-coin">寝室币 {{ selectedDormState.dormCoins }}</p>
-                </div>
-
-                <article class="dorm-wardrobe-equipped">
-                  <p class="dorm-wardrobe-section-label">当前穿搭</p>
-                  <p class="dorm-wardrobe-equipped-main">{{ selectedDormEquippedOutfit?.name || '校园便服' }}</p>
-                  <p class="dorm-wardrobe-equipped-sub">
-                    {{ selectedDormEquippedOutfit?.style || '日常' }} · {{ selectedDormEquippedOutfit?.description || '默认穿搭。' }}
-                  </p>
-                </article>
-
-                <section class="dorm-wardrobe-group">
-                  <p class="dorm-wardrobe-section-label">我的衣柜（{{ selectedDormOwnedOutfits.length }}）</p>
-                  <div class="dorm-wardrobe-list">
-                    <article
-                      v-for="outfit in selectedDormOwnedOutfits"
-                      :key="`owned_${outfit.id}`"
-                      class="dorm-wardrobe-item"
-                    >
-                      <div class="dorm-wardrobe-item-main">
-                        <p class="dorm-wardrobe-item-name">{{ outfit.name }}</p>
-                        <p class="dorm-wardrobe-item-meta">{{ outfit.style }} · {{ outfit.description }}</p>
-                      </div>
-                      <button
-                        type="button"
-                        class="dorm-wardrobe-action-btn"
-                        :disabled="selectedDormEquippedOutfit?.id === outfit.id"
-                        @click="handleEquipDormOutfit(outfit.id)"
-                      >
-                        {{ selectedDormEquippedOutfit?.id === outfit.id ? '已穿戴' : '穿上' }}
-                      </button>
-                    </article>
-                  </div>
-                </section>
-
-                <section class="dorm-wardrobe-group">
-                  <p class="dorm-wardrobe-section-label">服装商店</p>
-                  <div class="dorm-wardrobe-list">
-                    <article
-                      v-for="outfit in dormOutfitShopList"
-                      :key="`shop_${outfit.id}`"
-                      class="dorm-wardrobe-item"
-                      :class="{ owned: outfit.owned }"
-                    >
-                      <div class="dorm-wardrobe-item-main">
-                        <p class="dorm-wardrobe-item-name">{{ outfit.name }}</p>
-                        <p class="dorm-wardrobe-item-meta">{{ outfit.style }} · {{ outfit.description }}</p>
-                      </div>
-                      <button
-                        type="button"
-                        class="dorm-wardrobe-buy-btn"
-                        :disabled="outfit.owned || !outfit.affordable"
-                        @click="handleBuyDormOutfit(outfit.id)"
-                      >
-                        {{ outfit.owned ? '已拥有' : outfit.affordable ? `购买 ${outfit.price}` : `需 ${outfit.price}` }}
-                      </button>
-                    </article>
-                  </div>
-                </section>
-              </section>
 
               <section v-if="activeDormOverlayPanelId === 'drift'" class="dorm-drift-panel">
                 <div class="dorm-drift-head">
@@ -4936,11 +6414,36 @@ onBeforeUnmount(() => {
                   </li>
                 </ul>
               </section>
+
+              <!-- 日记面板 -->
+              <DiaryPanel
+                v-if="activeDormOverlayPanelId === 'diary'"
+                :diary-entries="diaryList"
+                :selected-diary-id="null"
+                @close="handleCollapseDormOverlayPanel"
+                @view-diary="openDiaryDetail"
+              />
+
+              <!-- 日记详情 -->
+              <section v-if="activeDormOverlayPanelId === 'diary-detail'" class="diary-detail-panel">
+                <div v-if="selectedDiary" class="diary-detail-content">
+                  <div class="diary-detail-header">
+                    <time class="diary-detail-date">{{ formatDiaryDetailDate(selectedDiary.date) }}</time>
+                    <h3 class="diary-detail-title">{{ selectedDiary.title || '无题' }}</h3>
+                  </div>
+                  <div class="diary-detail-body">
+                    <p class="diary-detail-text">{{ selectedDiary.content || selectedDiary.text || '暂无内容' }}</p>
+                  </div>
+                </div>
+              </section>
               </div>
             </section>
 
-            <section class="dorm-chat-overlay" aria-label="寝室聊天内容">
+            <section class="dorm-chat-overlay" :style="{ height: dormChatOverlayHeight + 'px', maxHeight: dormChatOverlayHeight + 'px' }" aria-label="寝室聊天内容" @click="showTaskInviteDropdown = false">
               <div class="dorm-chat-head">
+                <div class="dorm-chat-drag-handle" @mousedown="startDragResize" @touchstart="startDragResizeTouch">
+                  <span class="drag-handle-icon">≡</span>
+                </div>
                 <p class="dorm-chat-title">和 {{ selectedCharacter?.label || '角色' }} 聊天</p>
                 <div class="dorm-chat-menu-wrap">
                   <button
@@ -4975,11 +6478,57 @@ onBeforeUnmount(() => {
                   class="dorm-chat-message"
                   :class="{ user: message.role === 'user', assistant: message.role === 'assistant' }"
                 >
-                  <p class="dorm-chat-text">{{ message.text }}</p>
+                  <!-- 红包消息渲染 -->
+                  <RedPacket
+                    v-if="message.type === 'redPacket' && message.redPacket"
+                    :packet="message.redPacket"
+                    @opened="handleRedPacketOpened"
+                  />
+                  <!-- 任务邀请卡片渲染 -->
+                  <div
+                    v-else-if="message.type === 'taskInvite'"
+                    class="dorm-chat-task-invite-card"
+                    @click="handleTaskInviteClick(message.taskId)"
+                  >
+                    <span class="task-card-icon">📋</span>
+                    <span class="task-card-name">{{ message.taskName }}</span>
+                    <span class="task-card-hint" v-if="message.targetCharacterName">→ {{ message.targetCharacterName }}</span>
+                    <span class="task-card-hint" v-else>点击执行任务</span>
+                  </div>
+                  <!-- 普通文本消息渲染 -->
+                  <p v-else class="dorm-chat-text">{{ message.text }}</p>
                 </article>
               </div>
 
               <div class="dorm-chat-input-row">
+                <!-- 任务邀请 "+" 按钮 -->
+                <div class="dorm-chat-task-invite-wrap">
+                  <button
+                    ref="taskInviteBtnRef"
+                    type="button"
+                    class="dorm-chat-task-invite-btn"
+                    :disabled="isDormChatSending"
+                    @click.stop="toggleTaskInviteDropdown"
+                    @touchend.stop.prevent="toggleTaskInviteDropdown"
+                    title="执行任务"
+                  >+</button>
+                  <div v-if="showTaskInviteDropdown" class="dorm-chat-task-dropdown-body" :style="{ bottom: taskDropdownRect.bottom + 'px', left: taskDropdownRect.left + 'px', minWidth: taskDropdownRect.width + 'px' }" @click.stop>
+                    <div v-if="getAcceptedTasksForInvite.length === 0" class="dorm-chat-task-empty-dropdown">
+                      暂无可执行的任务
+                    </div>
+                    <button
+                      v-for="task in getAcceptedTasksForInvite"
+                      :key="task.id"
+                      type="button"
+                      class="dorm-chat-task-dropdown-item"
+                      @click.stop="handleSendTaskInvite(task)"
+                    >
+                      <span class="task-invite-type">{{ TASK_TYPE_LABELS_TASK[task.type] || task.type }}</span>
+                      <span class="task-invite-name">{{ task.name }}</span>
+                    </button>
+                  </div>
+                </div>
+
                 <input
                   v-model="dormChatDraft"
                   type="text"
@@ -4991,6 +6540,15 @@ onBeforeUnmount(() => {
                 >
                 <button
                   type="button"
+                  class="dorm-chat-red-packet-btn"
+                  :disabled="isDormChatSending"
+                  @click="handleSendRedPacket"
+                  title="发送红包"
+                >
+                  🧧
+                </button>
+                <button
+                  type="button"
                   class="dorm-chat-send-btn"
                   :disabled="!canSendDormChat"
                   @click="handleSendDormChat"
@@ -5000,11 +6558,58 @@ onBeforeUnmount(() => {
               </div>
               <p v-if="dormChatError" class="dorm-chat-error">{{ dormChatError }}</p>
             </section>
+
           </article>
         </section>
       </template>
     </section>
   </main>
+
+  <!-- 世界书商店面板 -->
+  <WorldBookShopModal
+    :is-open="isWorldBookShopOpen"
+    :active-book-economy-coins="activeBookEconomyCoins"
+    :active-book-economy-crystals="activeBookEconomyCrystals"
+    :shop-items="shopFilteredItems"
+    :selected-category="shopSelectedCategory"
+    :categories="DORM_SHOP_CATEGORIES"
+    :is-refreshing="isShopRefreshing"
+    :purchase-feedback="shopPurchaseFeedback"
+    @close="closeWorldBookShop"
+    @select-category="handleSelectShopCategory"
+    @refresh-items="handleRefreshShopItems"
+    @buy-item="handleBuyShopItem"
+  />
+
+  <!-- 任务板面板 -->
+  <TaskBoardModal
+    :is-open="isTaskBoardOpen"
+    :tasks="taskBoardTasks"
+    :is-loading="taskBoardGenerating"
+    :feedback="taskBoardFeedback"
+    :coins="activeBookEconomyCoins"
+    :crystals="activeBookEconomyCrystals"
+    @close="handleCloseTaskBoard"
+    @generate-tasks="handleGenerateTaskBoardTasks"
+    @accept-task="handleAcceptTaskBoardTask"
+    @submit-task="handleSubmitTaskBoardTask"
+    @complete-task="handleCompleteTaskBoardTask"
+    @delete-task="handleDeleteTaskBoardTask"
+  />
+
+  <!-- 任务执行界面 -->
+  <TaskExecutionModal
+    v-if="isTaskExecutionOpen && currentExecutionTask"
+    :key="'task_exec_' + (currentExecutionTask.id || 'none')"
+    :is-open="isTaskExecutionOpen"
+    :task="currentExecutionTask"
+    :character-roles="trpgCharacterRoles.length > 0 ? trpgCharacterRoles : []"
+    :world-book="activeBook"
+    :target-character-id="currentExecutionTask.targetCharacterId || ''"
+    :target-character-name="currentExecutionTask.targetCharacterName || ''"
+    @close="handleTaskExecutionClose"
+    @complete="handleTaskExecutionComplete"
+  />
 
   <!-- 拍立得相机界面 -->
   <PolaroidCameraScreen
@@ -5013,6 +6618,220 @@ onBeforeUnmount(() => {
     @back="handlePolaroidBack"
     @complete="handlePolaroidComplete"
   />
+
+  <!-- 物品赠送确认弹窗 -->
+  <GiftItemConfirmModal
+    :is-open="showGiftItemConfirm"
+    :gift-item="pendingGiftItem"
+    :character-name="selectedCharacter?.label || '角色'"
+    :is-processing="isGiftItemProcessing"
+    @close="closeGiftItemConfirm"
+    @confirm="confirmGiftItem"
+  />
+
+  <!-- 日记生成中模态框 -->
+  <DiaryGeneratingModal
+    :is-open="showDiaryGeneratingModal"
+    :character-name="selectedCharacter?.label || '角色'"
+    :message="diaryGeneratingMessage"
+    @close="showDiaryGeneratingModal = false"
+  />
+
+  <!-- 红包金额输入对话框 -->
+  <Teleport to="body">
+    <div v-if="showRedPacketAmountDialog" class="red-packet-amount-overlay" @click.self="cancelSendRedPacket">
+      <div class="red-packet-amount-dialog">
+        <header class="red-packet-amount-head">
+          <h3 class="red-packet-amount-title">🧧 发送红包</h3>
+          <button type="button" class="red-packet-amount-close" @click="cancelSendRedPacket">×</button>
+        </header>
+        <div class="red-packet-amount-body">
+          <div class="red-packet-amount-current">
+            <span class="current-coins-icon">💰</span>
+            <span class="current-coins-label">当前金币：</span>
+            <span class="current-coins-value">{{ activeBookEconomyCoins }}</span>
+          </div>
+          <label class="red-packet-amount-field">
+            <span class="field-label">红包金额（金币）</span>
+            <input
+              v-model="redPacketAmountInput"
+              type="number"
+              class="field-input"
+              placeholder="请输入金额"
+              min="1"
+              :max="activeBookEconomyCoins"
+              step="1"
+              @keydown.enter="confirmSendRedPacket"
+            />
+          </label>
+          <label class="red-packet-amount-field">
+            <span class="field-label">祝福语（可选）</span>
+            <input
+              v-model="redPacketBlessingInput"
+              type="text"
+              class="field-input"
+              placeholder="输入祝福语"
+              maxlength="50"
+            />
+          </label>
+          <p class="red-packet-amount-hint">
+            发送红包将扣除相应金币，领取者将获得等额金币奖励。
+          </p>
+        </div>
+        <footer class="red-packet-amount-footer">
+          <button type="button" class="red-packet-amount-btn cancel" @click="cancelSendRedPacket">取消</button>
+          <button
+            type="button"
+            class="red-packet-amount-btn confirm"
+            :disabled="!redPacketAmountInput || Number(redPacketAmountInput) <= 0 || Number(redPacketAmountInput) > activeBookEconomyCoins"
+            @click="confirmSendRedPacket"
+          >
+            确认发送
+          </button>
+        </footer>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- 跑团界面 -->
+  <Teleport to="body">
+    <div v-if="isTRPGOpen" class="trpg-overlay" @click.self="handleCloseTRPG">
+      <div class="trpg-container">
+        <header class="trpg-header">
+          <div class="trpg-title-group">
+            <h1 class="trpg-title">🎲 TRPG 跑团</h1>
+            <p v-if="currentTRPGTopic" class="trpg-subtitle">{{ currentTRPGTopic }}</p>
+          </div>
+          <div class="trpg-header-actions">
+            <button v-if="isTRPGRunning" type="button" class="trpg-end-btn" @click="handleEndTRPG">结束跑团</button>
+            <button v-if="!isTRPGRunning && trpgMessages.length > 0" type="button" class="trpg-new-btn" @click="handleNewTRPG">新跑团</button>
+            <button type="button" class="trpg-close-btn" @click="handleCloseTRPG">×</button>
+          </div>
+        </header>
+
+        <div v-if="trpgError" class="trpg-error-box">
+          <p>{{ trpgError }}</p>
+          <button type="button" class="error-dismiss" @click="trpgError = ''">关闭</button>
+        </div>
+
+        <section class="trpg-body">
+          <!-- 设置阶段 -->
+          <div v-if="!isTRPGRunning" class="trpg-setup-panel">
+            <div class="setup-section">
+              <h2 class="setup-section-title">📖 跑团主题</h2>
+              <div class="topic-input-group">
+                <input
+                  v-model="trpgTopicInput"
+                  type="text"
+                  class="topic-input"
+                  placeholder="输入跑团主题，或点击下方按钮生成..."
+                  maxlength="50"
+                />
+                <div class="topic-actions">
+                  <button type="button" class="topic-btn" @click="handleTRPGRandomTopic">🎲 随机主题</button>
+                  <button type="button" class="topic-btn topic-btn-llm" :disabled="isTRPGGeneratingTopic" @click="handleTRPGGenerateTopicByLLM">
+                    {{ isTRPGGeneratingTopic ? '生成中...' : '✨ LLM生成' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setup-section">
+              <h2 class="setup-section-title">👥 参与角色</h2>
+              <p v-if="trpgCharacters.length === 0" class="no-characters-hint">
+                当前世界书暂无角色，请先在世界书中创建角色。
+              </p>
+              <div v-else class="character-list">
+                <div v-for="char in trpgCharacters" :key="char.id" class="character-item">
+                  <span class="character-name">{{ char.label }}</span>
+                  <span v-if="char.description" class="character-desc">{{ char.description }}</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="start-trpg-btn"
+              :disabled="!canStartTRPG || isTRPGRolesLoading"
+              @click="handleStartTRPG"
+            >
+              {{ isTRPGRolesLoading ? '分配角色中...' : '🎲 开始跑团！' }}
+            </button>
+          </div>
+
+          <!-- 跑团进行中 -->
+          <div v-else class="trpg-game-panel">
+            <!-- 角色信息栏 -->
+            <div class="trpg-character-info">
+              <div class="char-info-scroll">
+                <button
+                  v-for="role in trpgCharacterRoles"
+                  :key="role.characterId"
+                  type="button"
+                  class="char-info-card"
+                  :class="{ active: trpgSelectedCharacterId === role.characterId, 'is-user': role.characterId === 'user_player' }"
+                  @click="trpgSelectedCharacterId = role.characterId"
+                >
+                  <span class="char-info-name">{{ role.characterId === 'user_player' ? '👤 ' : '' }}{{ role.characterName }}</span>
+                  <span class="char-info-role">{{ role.trpgRole }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 消息区域 -->
+            <div ref="trpgMessageContainerRef" class="trpg-messages">
+              <div v-if="trpgMessages.length === 0" class="no-messages">暂无消息</div>
+              <template v-else>
+                <div v-for="msg in trpgMessages" :key="msg.id" class="message-item" :class="msg.role">
+                  <div class="message-header">
+                    <span v-if="msg.role === 'gm'" class="message-sender gm-sender">🎲 GM（主持人）</span>
+                    <span v-else class="message-sender player-sender">
+                      {{ msg.characterName }}
+                      <span v-if="getTRPGCharacterRoleById(msg.characterId)" class="sender-role">（{{ getTRPGCharacterRoleById(msg.characterId) }}）</span>
+                    </span>
+                    <span class="message-time">{{ formatTRPGTime(msg.timestamp) }}</span>
+                  </div>
+                  <div class="message-content">
+                    <p class="message-text">{{ msg.content }}</p>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="trpg-input-area">
+              <div class="input-character-select">
+                <select v-model="trpgSelectedCharacterId" class="input-character-dropdown">
+                  <option v-for="role in trpgCharacterRoles" :key="role.characterId" :value="role.characterId">
+                    {{ role.characterName }}（{{ role.trpgRole }}）
+                  </option>
+                </select>
+              </div>
+              <div class="input-row">
+                <input
+                  v-model="trpgPlayerActionInput"
+                  type="text"
+                  class="action-input"
+                  :placeholder="trpgInputPlaceholder"
+                  maxlength="500"
+                  :disabled="isTRPGProcessingAction"
+                  @keydown.enter="handleTRPGSendAction"
+                />
+                <button
+                  type="button"
+                  class="action-send-btn"
+                  :disabled="!canTRPGSendAction"
+                  @click="handleTRPGSendAction"
+                >
+                  {{ trpgButtonLabel }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped src="./DormitoryScreen.css"></style>

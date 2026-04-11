@@ -8,6 +8,7 @@ import newGameEntry from '../../plugins/feature-new-game/src/entry.js'
 import pluginManagerEntry from '../../plugins/feature-plugin-manager/src/entry.js'
 import settingsEntry from '../../plugins/feature-settings/src/entry.js'
 import worldbookEntry from '../../plugins/feature-worldbook/src/entry.js'
+import trpgEntry from '../../plugins/feature-trpg/src/entry.js'
 
 const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   loadSaveEntry,
@@ -20,6 +21,7 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   settingsEntry,
   worldbookEntry,
   adventureGameEntry,
+  trpgEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {

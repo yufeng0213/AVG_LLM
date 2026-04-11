@@ -276,16 +276,17 @@
 .character-grid-stage {
   height: 100%;
   min-height: 0;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .character-carousel {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 12px;
+  gap: 8px;
   align-items: start;
 }
 
@@ -372,6 +373,7 @@
   min-height: 0;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
+  position: relative;
 }
 
 .stage-head {
@@ -501,10 +503,10 @@
   position: absolute;
   z-index: 3;
   left: 50%;
-  top: 14px;
+  top: 18px;
   transform: translateX(-50%);
-  width: min(72%, 560px);
-  max-width: calc(100% - 120px);
+  width: min(75%, 580px);
+  max-width: calc(100% - 100px);
   display: grid;
   gap: 4px;
   pointer-events: none;
@@ -513,18 +515,19 @@
 
 .character-room-main {
   margin: 0;
-  font-size: 1.04rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--foreground, #ffffff);
-  text-shadow: 0 2px 8px color-mix(in srgb, var(--background, #0a0a0a) 60%, transparent);
+  text-shadow: 0 2px 10px color-mix(in srgb, var(--background, #0a0a0a) 65%, transparent);
+  letter-spacing: 0.3px;
 }
 
 .character-room-sub {
   margin: 0;
-  font-size: 0.76rem;
-  line-height: 1.45;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 75%, transparent);
-  text-shadow: 0 1px 5px color-mix(in srgb, var(--background, #0a0a0a) 50%, transparent);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 80%, transparent);
+  text-shadow: 0 1px 6px color-mix(in srgb, var(--background, #0a0a0a) 55%, transparent);
 }
 
 .dorm-menu-panel {
@@ -619,36 +622,37 @@
 .dorm-overlay-panel {
   position: absolute;
   z-index: 8;
-  top: 40px;
+  top: 50px;
   right: 14px;
-  max-height: 55vh;
-  width: min(320px, calc(100% - 28px));
+  max-height: 65vh;
+  width: min(340px, calc(100% - 28px));
   border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--background, #0a0a0a) 90%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background, #0a0a0a) 92%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  box-shadow: 0 8px 24px color-mix(in srgb, #000 30%, transparent);
+  box-shadow: 0 12px 32px color-mix(in srgb, #000 35%, transparent);
   overflow: hidden;
 }
 
 .dorm-overlay-panel-head {
-  padding: 8px 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .dorm-overlay-panel-title {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--foreground, #ffffff);
+  letter-spacing: 0.2px;
 }
 
 .dorm-overlay-panel-close {
@@ -676,9 +680,24 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 8px 10px;
+  padding: 10px 12px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent) transparent;
+}
+
+.dorm-overlay-panel-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dorm-overlay-panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dorm-overlay-panel-body::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
+  border-radius: 2px;
 }
 
 .sub-scene-panel {
@@ -1485,6 +1504,190 @@
   padding: 4px 0;
 }
 
+/* 背包面板样式 */
+.dorm-backpack-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.dorm-backpack-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.dorm-backpack-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+  letter-spacing: 0.3px;
+}
+
+.dorm-backpack-meta {
+  margin: 0;
+  font-size: 0.7rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+}
+
+.dorm-backpack-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dorm-backpack-empty {
+  margin: 0;
+  padding: 24px 16px;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.dorm-backpack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.dorm-backpack-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  border-radius: 10px;
+  transition: all 150ms ease;
+}
+
+.dorm-backpack-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
+}
+
+/* 可赠送物品的样式（可点击） */
+.dorm-backpack-item.is-giftable {
+  cursor: pointer;
+  position: relative;
+}
+
+.dorm-backpack-item.is-giftable:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 50%, transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.15);
+}
+
+.dorm-backpack-item.is-giftable:active {
+  transform: translateY(0);
+  background: rgba(0, 212, 255, 0.15);
+}
+
+.dorm-backpack-item.is-giftable::after {
+  content: '🎁';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  transition: opacity 150ms ease;
+}
+
+.dorm-backpack-item.is-giftable:hover::after {
+  opacity: 1;
+}
+
+.dorm-backpack-item-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.dorm-backpack-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: center;
+}
+
+.dorm-backpack-item-name {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+  line-height: 1.2;
+}
+
+.dorm-backpack-item-desc {
+  margin: 0;
+  font-size: 0.65rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dorm-backpack-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.dorm-backpack-item-category {
+  font-size: 0.6rem;
+  color: var(--accent-cyan, #00d4ff);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.dorm-backpack-item-quantity {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--accent-yellow, #f59e0b);
+}
+
+.dorm-backpack-feedback {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.7rem;
+  color: var(--accent-green, #22c55e);
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 6px;
+  text-align: center;
+}
+
+/* 赠送反馈样式 */
+.dorm-backpack-feedback.gift-feedback {
+  color: var(--accent-pink, #ec4899);
+  background: rgba(236, 72, 153, 0.1);
+  border: 1px solid rgba(236, 72, 153, 0.2);
+  font-weight: 500;
+}
+
+.dorm-backpack-feedback.processing {
+  color: var(--accent-cyan, #00d4ff);
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 .dorm-wardrobe-head {
   display: flex;
   align-items: center;
@@ -1618,29 +1821,67 @@
   left: 14px;
   right: 14px;
   bottom: 14px;
-  max-height: 45vh;
+  height: auto;
+  min-height: 150px;
+  max-height: none;
   border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--background, #0a0a0a) 85%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  padding: 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background, #0a0a0a) 88%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 12px;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 8px;
-  box-shadow: 0 10px 24px color-mix(in srgb, #000 30%, transparent);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  box-shadow: 0 12px 32px color-mix(in srgb, #000 35%, transparent);
+  transition: height 0.1s ease-out;
 }
 
 .dorm-chat-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
+  gap: 6px;
   position: relative;
-  padding-bottom: 2px;
+  padding-bottom: 4px;
   border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
-  margin-bottom: 2px;
-  min-height: 16px;
+  margin-bottom: 4px;
+  min-height: 20px;
+}
+
+.dorm-chat-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  cursor: ns-resize;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  transition: all 150ms ease;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.dorm-chat-drag-handle:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
+}
+
+.dorm-chat-drag-handle:active {
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 25%, transparent);
+}
+
+.drag-handle-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+  pointer-events: none;
+  letter-spacing: 1px;
+}
+
+.dorm-chat-drag-handle:hover .drag-handle-icon {
+  color: var(--foreground, #ffffff);
 }
 
 .dorm-chat-title {
@@ -1780,11 +2021,26 @@
   border-radius: 0;
   background: transparent;
   padding: 8px 0;
-  max-height: 120px;
+  max-height: 180px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent) transparent;
+}
+
+.dorm-chat-history::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dorm-chat-history::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dorm-chat-history::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
+  border-radius: 2px;
 }
 
 .dorm-chat-empty {
@@ -1833,6 +2089,41 @@
   flex-direction: row;
   gap: 8px;
   align-items: center;
+}
+
+/* 红包按钮样式 */
+.dorm-chat-red-packet-btn {
+  flex: 0 0 auto;
+  appearance: none;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 50%, #d63031 100%);
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+  width: 44px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(214, 48, 49, 0.3);
+}
+
+.dorm-chat-red-packet-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(214, 48, 49, 0.4);
+}
+
+.dorm-chat-red-packet-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.dorm-chat-red-packet-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .dorm-chat-input {
@@ -2108,6 +2399,54 @@
   color: color-mix(in srgb, var(--foreground, #ffffff) 85%, transparent);
 }
 
+/* 日记详情面板 */
+.diary-detail-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.diary-detail-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.diary-detail-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  margin-bottom: 12px;
+}
+
+.diary-detail-date {
+  font-size: 0.7rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.diary-detail-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+}
+
+.diary-detail-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.diary-detail-text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.8;
+  color: var(--foreground, #ffffff);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (max-width: 980px) {
   .dorm-action-compact,
   .sub-scene-action-compact {
@@ -2139,29 +2478,31 @@
 
   .character-room-hero-copy {
     left: 50%;
-    top: 10px;
-    width: min(76%, 520px);
-    max-width: calc(100% - 112px);
+    top: 12px;
+    width: min(78%, 540px);
+    max-width: calc(100% - 100px);
   }
 
   .dorm-menu-anchor {
-    top: 10px;
-    right: 10px;
+    top: 12px;
+    right: 12px;
     max-width: min(78vw, 220px);
   }
 
   .dorm-overlay-panel {
     left: 10px;
     right: 10px;
-    top: 64px;
-    bottom: 184px;
+    top: 56px;
+    bottom: 200px;
     width: auto;
+    max-height: 60vh;
   }
 
   .dorm-chat-overlay {
     left: 10px;
     right: 10px;
     bottom: 10px;
+    max-height: 50vh;
   }
 }
 
@@ -2229,31 +2570,33 @@
   }
 
   .dorm-overlay-panel-head {
-    padding: 8px 9px;
+    padding: 9px 10px;
   }
 
   .dorm-overlay-panel-title {
-    font-size: 0.76rem;
+    font-size: 0.78rem;
   }
 
   .dorm-overlay-panel-close {
-    font-size: 0.64rem;
-    padding: 3px 8px;
+    font-size: 0.66rem;
+    padding: 4px 8px;
   }
 
   .dorm-overlay-panel-body {
-    padding: 8px;
-    gap: 8px;
+    padding: 9px 10px;
+    gap: 9px;
   }
 
   .dorm-overlay-panel {
-    top: 58px;
-    bottom: 172px;
+    top: 52px;
+    bottom: 190px;
+    max-height: 58vh;
   }
 
   .dorm-chat-overlay {
-    padding: 8px;
-    gap: 6px;
+    padding: 10px;
+    gap: 8px;
+    max-height: 48vh;
   }
 
   .dorm-drift-panel {
@@ -2308,7 +2651,7 @@
   flex-grow: 0 !important;
   aspect-ratio: 1 / 1 !important;
   border-radius: 50% !important;
-  font-size: 1.2rem !important;
+  font-size: 1.3rem !important;
   line-height: 1 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -2318,28 +2661,34 @@
   justify-content: center !important;
 }
 
-.platform-android.android-portrait .dorm-chat-send-btn {
-  min-height: 44px !important;
-  height: 44px !important;
-  padding: 0 16px !important;
-  font-size: 0.85rem !important;
+/* Android竖屏 - 面板头部通用 */
+.platform-android.android-portrait .dorm-overlay-panel-head {
   display: flex !important;
+  flex-direction: row !important;
   align-items: center !important;
-  justify-content: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 10px 12px !important;
+  flex-shrink: 0 !important;
+}
+
+.platform-android.android-portrait .dorm-overlay-panel-title {
+  flex: 1 !important;
+  min-width: 0 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  width: auto !important;
-  min-width: 60px !important;
-  box-sizing: border-box !important;
-  border-radius: 22px !important;
-  line-height: 1 !important;
+  font-size: 0.9rem !important;
 }
 
+/* Android竖屏 - 聊天输入行 */
 .platform-android.android-portrait .dorm-chat-input-row {
   display: flex !important;
+  flex-direction: row !important;
   align-items: center !important;
   gap: 8px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
 }
 
 .platform-android.android-portrait .dorm-chat-input {
@@ -2350,6 +2699,26 @@
   box-sizing: border-box !important;
   flex: 1 !important;
   min-width: 0 !important;
+}
+
+/* Android竖屏 - 聊天发送按钮 */
+.platform-android.android-portrait .dorm-chat-send-btn {
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 0 14px !important;
+  font-size: 0.85rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 56px !important;
+  max-width: 100px !important;
 }
 
 /* Android竖屏 - 场景升级按钮 */
@@ -2462,4 +2831,2386 @@
 .platform-android.android-portrait .sub-scene-action-select-wrap {
   flex: 1 !important;
   min-width: 0 !important;
+}
+
+/* Android竖屏 - 商店面板 */
+.platform-android.android-portrait .dorm-shop-panel {
+  max-height: 90vh !important;
+  overflow: hidden !important;
+}
+
+.platform-android.android-portrait .dorm-shop-header {
+  padding: 12px 14px !important;
+}
+
+.platform-android.android-portrait .dorm-shop-title {
+  font-size: 1rem !important;
+}
+
+.platform-android.android-portrait .dorm-shop-item {
+  padding: 10px !important;
+  gap: 8px !important;
+}
+
+.platform-android.android-portrait .dorm-shop-item-icon {
+  width: 40px !important;
+  height: 40px !important;
+  font-size: 1.6rem !important;
+  flex-shrink: 0 !important;
+}
+
+.platform-android.android-portrait .dorm-shop-item-name {
+  font-size: 0.85rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.platform-android.android-portrait .dorm-shop-item-desc {
+  font-size: 0.75rem !important;
+  -webkit-line-clamp: 2 !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.platform-android.android-portrait .dorm-shop-buy-btn {
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 4px 10px !important;
+  font-size: 0.8rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 12px !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+  min-width: 50px !important;
+}
+
+.platform-android.android-portrait .dorm-shop-categories {
+  gap: 6px !important;
+}
+
+.platform-android.android-portrait .dorm-shop-category-btn {
+  min-height: 36px !important;
+  height: 36px !important;
+  padding: 0 10px !important;
+  font-size: 0.8rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .dorm-shop-toolbar {
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.platform-android.android-portrait .dorm-shop-refresh-btn {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 12px !important;
+  font-size: 0.8rem !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .dorm-shop-item-count {
+  font-size: 0.75rem !important;
+  white-space: nowrap !important;
+}
+
+/* Android竖屏 - 经济商店按钮 */
+.platform-android.android-portrait .economy-shop-btn {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 12px !important;
+  font-size: 0.8rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+}
+
+/* Android竖屏 - 世界书商店面板 */
+.platform-android.android-portrait .worldbook-shop-panel {
+  max-width: 100% !important;
+  max-height: 92vh !important;
+  border-radius: 12px !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-header {
+  padding: 12px 14px !important;
+  gap: 8px !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-title {
+  font-size: 1rem !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-close {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  flex: 0 0 36px !important;
+  flex-shrink: 0 !important;
+  font-size: 1.5rem !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-coins {
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+}
+
+.platform-android.android-portrait .shop-coin-item {
+  padding: 4px 8px !important;
+  font-size: 0.8rem !important;
+  white-space: nowrap !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-item {
+  padding: 10px !important;
+  gap: 8px !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-item-grid {
+  gap: 8px !important;
+  padding: 12px !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-item-name {
+  font-size: 0.85rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-item-desc {
+  font-size: 0.75rem !important;
+  -webkit-line-clamp: 2 !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-buy-btn {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 12px !important;
+  font-size: 0.8rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 8px !important;
+  line-height: 1 !important;
+  width: 100% !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-category-btn {
+  min-height: 36px !important;
+  height: 36px !important;
+  padding: 0 10px !important;
+  font-size: 0.8rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+.platform-android.android-portrait .worldbook-shop-refresh-btn {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 12px !important;
+  font-size: 0.8rem !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+/* Android竖屏 - 跑团启动按钮 & 任务板按钮 */
+.platform-android.android-portrait .trpg-launch-btn,
+.platform-android.android-portrait .task-board-btn {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 16px !important;
+  font-size: 0.9rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 12px !important;
+  line-height: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Android竖屏 - TRPG面板按钮 */
+.platform-android.android-portrait .start-trpg-btn {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 20px !important;
+  font-size: 1rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 12px !important;
+  line-height: 1 !important;
+}
+
+/* Android竖屏 - 任务邀请 "+" 按钮 */
+.platform-android.android-portrait .dorm-chat-task-invite-btn {
+  min-height: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  width: 40px !important;
+  font-size: 1.3rem !important;
+  box-sizing: border-box !important;
+}
+
+/* Android竖屏 - 聊天红包按钮 */
+.platform-android.android-portrait .dorm-chat-red-packet-btn {
+  min-height: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Android竖屏 - 聊天发送按钮 */
+.platform-android.android-portrait .action-send-btn {
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  font-size: 0.85rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 8px !important;
+  line-height: 1 !important;
+  min-width: 60px !important;
+}
+
+/* Android竖屏 - 红包金额确认按钮 */
+.platform-android.android-portrait .red-packet-amount-btn {
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  font-size: 0.85rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 8px !important;
+  line-height: 1 !important;
+}
+
+/* Android竖屏 - 礼物确认按钮 */
+.platform-android.android-portrait .dorm-gift-confirm-btn {
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  font-size: 0.85rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 8px !important;
+  line-height: 1 !important;
+}
+
+/* Android竖屏 - 话题按钮 */
+.platform-android.android-portrait .topic-btn {
+  min-height: 36px !important;
+  height: 36px !important;
+  padding: 0 12px !important;
+  font-size: 0.75rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 18px !important;
+  line-height: 1 !important;
+}
+
+.platform-android.android-portrait .topic-btn-llm {
+  min-height: 36px !important;
+  height: 36px !important;
+  padding: 0 12px !important;
+  font-size: 0.75rem !important;
+  box-sizing: border-box !important;
+  border-radius: 18px !important;
+  line-height: 1 !important;
+}
+
+/* Android竖屏 - TRPG面板操作按钮 */
+.platform-android.android-portrait .trpg-end-btn,
+.platform-android.android-portrait .trpg-new-btn,
+.platform-android.android-portrait .trpg-close-btn {
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  font-size: 0.85rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+  line-height: 1 !important;
+}
+
+/* 日记关闭按钮由组件自身适配 */
+
+/* 礼物确认关闭按钮 */
+.platform-android.android-portrait .dorm-gift-confirm-close {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  font-size: 1.2rem !important;
+  flex-shrink: 0 !important;
+  border-radius: 8px !important;
+}
+
+/* ==================== 商店面板样式 ==================== */
+.dorm-shop-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dorm-shop-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
+}
+
+.dorm-shop-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+}
+
+.dorm-shop-coins {
+  display: flex;
+  gap: 12px;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 70%, transparent);
+}
+
+.coin-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.1));
+  padding: 4px 10px;
+  border-radius: 12px;
+  color: #ffd700;
+  font-weight: 500;
+}
+
+/* 分类标签 */
+.dorm-shop-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.dorm-shop-category-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 70%, transparent);
+  background: color-mix(in srgb, var(--foreground, #ffffff) 5%, transparent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.dorm-shop-category-btn:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  border-color: color-mix(in srgb, var(--foreground, #ffffff) 30%, transparent);
+}
+
+.dorm-shop-category-btn.active {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 150, 255, 0.15));
+  border-color: var(--accent-cyan, #00d4ff);
+  color: var(--accent-cyan, #00d4ff);
+}
+
+.category-icon {
+  font-size: 1rem;
+}
+
+.category-label {
+  font-weight: 500;
+}
+
+/* 工具栏 */
+.dorm-shop-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dorm-shop-refresh-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 40%, transparent);
+  border-radius: 16px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  color: var(--accent-cyan, #00d4ff);
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 10%, transparent);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dorm-shop-refresh-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 20%, transparent);
+}
+
+.dorm-shop-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dorm-shop-item-count {
+  margin: 0;
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+}
+
+/* 商品列表 */
+.dorm-shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.dorm-shop-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dorm-shop-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dorm-shop-list::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
+  border-radius: 2px;
+}
+
+.dorm-shop-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.dorm-shop-item:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  border-color: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
+}
+
+.dorm-shop-item-icon {
+  font-size: 2rem;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.dorm-shop-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dorm-shop-item-name {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+}
+
+.dorm-shop-item-desc {
+  margin: 0 0 4px 0;
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent);
+  line-height: 1.3;
+}
+
+.dorm-shop-item-category {
+  margin: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent);
+}
+
+/* 购买按钮 */
+.dorm-shop-buy-btn {
+  appearance: none;
+  border: none;
+  border-radius: 16px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dorm-shop-buy-btn.affordable {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.25), rgba(0, 150, 255, 0.2));
+  color: var(--accent-cyan, #00d4ff);
+}
+
+.dorm-shop-buy-btn.affordable:hover {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.35), rgba(0, 150, 255, 0.3));
+  transform: scale(1.02);
+}
+
+.dorm-shop-buy-btn.unaffordable {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  color: color-mix(in srgb, var(--foreground, #ffffff) 30%, transparent);
+  cursor: not-allowed;
+}
+
+.buy-price {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.buy-hint {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+/* 购买反馈 */
+.dorm-shop-feedback {
+  margin: 8px 0 0 0;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--accent-cyan, #00d4ff);
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 10%, transparent);
+  border-radius: 10px;
+  text-align: center;
+}
+
+/* ========================================
+   世界书级别经济系统样式
+   ======================================== */
+
+/* 世界书卡片视图中的经济条 */
+.worldbook-economy-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin: 0 auto 12px;
+  width: fit-content;
+  max-width: 90%;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.06), rgba(138, 43, 226, 0.06));
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 15%, transparent);
+  border-radius: 20px;
+}
+
+.economy-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.economy-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.economy-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+  font-family: var(--font-mono, 'Courier New', monospace);
+}
+
+.economy-shop-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
+  border-radius: 12px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-cyan, #00d4ff);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(0, 150, 255, 0.08));
+  cursor: pointer;
+  transition: all 150ms ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.economy-shop-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 150, 255, 0.15));
+  transform: scale(1.03);
+}
+
+.economy-shop-btn:active {
+  transform: scale(0.97);
+}
+
+/* ========================================
+   世界书商店面板样式
+   ======================================== */
+
+.worldbook-shop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  padding: 20px;
+}
+
+.worldbook-shop-panel {
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background, #0a0a0a);
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 25%, transparent);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.worldbook-shop-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  position: relative;
+}
+
+.worldbook-shop-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--foreground, #ffffff);
+  font-family: var(--font-heading, 'Inter', system-ui, sans-serif);
+}
+
+.worldbook-shop-coins {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.shop-coin-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+  font-family: var(--font-mono, 'Courier New', monospace);
+}
+
+.worldbook-shop-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--foreground, #ffffff);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 150ms ease;
+}
+
+.worldbook-shop-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.worldbook-shop-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 商店分类按钮 */
+.worldbook-shop-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.worldbook-shop-category-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--foreground, #ffffff);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.worldbook-shop-category-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.worldbook-shop-category-btn.active {
+  border-color: var(--accent-cyan, #00d4ff);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 150, 255, 0.15));
+  color: var(--accent-cyan, #00d4ff);
+}
+
+.category-icon {
+  font-size: 1.1rem;
+}
+
+.category-label {
+  white-space: nowrap;
+}
+
+/* 商店工具栏 */
+.worldbook-shop-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.worldbook-shop-refresh-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
+  border-radius: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 150, 255, 0.08));
+  color: var(--accent-cyan, #00d4ff);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.worldbook-shop-refresh-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 150, 255, 0.15));
+}
+
+.worldbook-shop-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 购买反馈 */
+.worldbook-shop-feedback {
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--accent-cyan, #00d4ff);
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 10%, transparent);
+  border-radius: 8px;
+  text-align: center;
+}
+
+/* 商品网格 */
+.worldbook-shop-items {
+  flex: 1;
+}
+
+.worldbook-shop-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+  font-size: 0.9rem;
+}
+
+.worldbook-shop-item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.worldbook-shop-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  border-radius: 12px;
+  transition: all 150ms ease;
+}
+
+.worldbook-shop-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 20%, transparent);
+}
+
+.worldbook-shop-item-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.worldbook-shop-item-name {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+  text-align: center;
+}
+
+.worldbook-shop-item-desc {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.worldbook-shop-item-price {
+  margin: 8px 0 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-gold, #ffd700);
+  font-family: var(--font-mono, 'Courier New', monospace);
+}
+
+.worldbook-shop-buy-btn {
+  appearance: none;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+  margin-top: 4px;
+}
+
+.worldbook-shop-buy-btn.affordable {
+  background: linear-gradient(135deg, var(--accent-cyan, #00d4ff), #0096ff);
+  color: #000;
+}
+
+.worldbook-shop-buy-btn.affordable:hover {
+  transform: scale(1.05);
+}
+
+.worldbook-shop-buy-btn.unaffordable {
+  background: rgba(255, 255, 255, 0.08);
+  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent);
+  cursor: not-allowed;
+}
+
+/* 物品赠送确认弹窗样式 */
+.dorm-gift-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--background, #0a0a0a) 60%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.dorm-gift-confirm-dialog {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  animation: dorm-gift-confirm-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dorm-gift-confirm-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.dorm-gift-confirm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+}
+
+.dorm-gift-confirm-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--foreground, #ffffff);
+}
+
+.dorm-gift-confirm-close {
+  appearance: none;
+  background: none;
+  border: none;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 150ms ease;
+}
+
+.dorm-gift-confirm-close:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  color: var(--foreground, #ffffff);
+}
+
+.dorm-gift-confirm-body {
+  padding: 0 20px 18px;
+}
+
+.dorm-gift-confirm-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  border-radius: 12px;
+}
+
+.dorm-gift-confirm-item-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.dorm-gift-confirm-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dorm-gift-confirm-item-name {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+}
+
+.dorm-gift-confirm-item-desc {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent);
+}
+
+.dorm-gift-confirm-item-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.dorm-gift-confirm-item-category {
+  color: var(--accent-cyan, #00d4ff);
+}
+
+.dorm-gift-confirm-item-quantity {
+  color: var(--accent-pink, #ec4899);
+}
+
+.dorm-gift-confirm-hint {
+  margin: 14px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 65%, transparent);
+  text-align: center;
+}
+
+.dorm-gift-confirm-hint strong {
+  color: var(--accent-pink, #ec4899);
+  font-weight: 600;
+}
+
+.dorm-gift-confirm-footer {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px 18px;
+}
+
+.dorm-gift-confirm-btn {
+  appearance: none;
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.dorm-gift-confirm-btn.cancel {
+  background: color-mix(in srgb, var(--background, #0a0a0a) 60%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: color-mix(in srgb, var(--foreground, #ffffff) 70%, transparent);
+}
+
+.dorm-gift-confirm-btn.cancel:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  color: var(--foreground, #ffffff);
+}
+
+.dorm-gift-confirm-btn.confirm {
+  background: linear-gradient(135deg, var(--accent-pink, #ec4899), #d946ef);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.dorm-gift-confirm-btn.confirm:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent-pink, #ec4899) 35%, transparent);
+}
+
+.dorm-gift-confirm-btn.confirm:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.dorm-gift-confirm-btn.confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== 日记面板 ==================== */
+
+.dorm-diary {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dorm-diary-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+}
+
+.dorm-diary-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.dorm-diary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dorm-diary-item:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  border-color: color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
+  transform: translateX(4px);
+}
+
+.dorm-diary-item:active {
+  transform: translateX(2px) scale(0.99);
+}
+
+.diary-date {
+  font-size: 0.72rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.diary-title-text {
+  font-size: 0.9rem;
+  color: var(--foreground, #ffffff);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.dorm-diary-empty {
+  margin: 40px 0;
+  text-align: center;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 35%, transparent);
+  font-size: 0.88rem;
+}
+
+/* ==================== 日记详情弹窗 - 书本样式 ==================== */
+
+/* 遮罩层 */
+.diary-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: color-mix(in srgb, var(--background, #0a0a0a) 70%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* 弹窗过渡动画 */
+.diary-modal-enter-active,
+.diary-modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.diary-modal-enter-from,
+.diary-modal-leave-to {
+  opacity: 0;
+}
+
+.diary-modal-enter-active .diary-book,
+.diary-modal-leave-active .diary-book {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+
+.diary-modal-enter-from .diary-book {
+  transform: scale(0.8) rotateY(-15deg);
+  opacity: 0;
+}
+
+.diary-modal-leave-to .diary-book {
+  transform: scale(0.9) rotateY(10deg);
+  opacity: 0;
+}
+
+/* 书本容器 */
+.diary-book {
+  position: relative;
+  width: min(90vw, 480px);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 关闭按钮 */
+.diary-close-btn {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--foreground, #ffffff);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.diary-close-btn:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
+  transform: scale(1.1);
+}
+
+.diary-close-btn:active {
+  transform: scale(0.95);
+}
+
+/* 书本主体 */
+.diary-book-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent),
+    color-mix(in srgb, var(--foreground, #ffffff) 4%, transparent)
+  );
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
+  box-shadow:
+    0 20px 60px color-mix(in srgb, var(--background, #0a0a0a) 50%, transparent),
+    0 8px 24px color-mix(in srgb, var(--background, #0a0a0a) 30%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  overflow: hidden;
+}
+
+/* 书脊 */
+.diary-spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent-cyan, #00d4ff) 40%, transparent),
+    color-mix(in srgb, var(--accent-magenta, #5E6AD2) 40%, transparent)
+  );
+  border-radius: 16px 0 0 16px;
+}
+
+/* 书页容器 */
+.diary-pages {
+  position: relative;
+  min-height: 320px;
+  padding: 24px 24px 20px 32px;
+}
+
+/* 单页 */
+.diary-page {
+  position: relative;
+  min-height: 280px;
+}
+
+.diary-page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 日记头部 */
+.diary-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+}
+
+.diary-header .diary-date {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+}
+
+.diary-header .diary-title-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+  margin: 0;
+}
+
+/* 日记正文 */
+.diary-content {
+  flex: 1;
+}
+
+.diary-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.8;
+  color: var(--foreground, #ffffff);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 装饰线 */
+.diary-divider {
+  margin-top: auto;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent) 20%,
+    color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent) 80%,
+    transparent
+  );
+}
+
+/* 空状态 */
+.diary-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 35%, transparent);
+  font-size: 0.88rem;
+}
+
+/* ==================== 红包金额输入对话框 ==================== */
+
+/* 遮罩层 */
+.red-packet-amount-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: red-packet-overlay-fade-in 0.2s ease-out;
+}
+
+@keyframes red-packet-overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 对话框容器 */
+.red-packet-amount-dialog {
+  width: 90%;
+  max-width: 360px;
+  background: linear-gradient(145deg, #2a1a1a, #1a0f0f);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 100, 100, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  animation: red-packet-dialog-slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes red-packet-dialog-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 对话框头部 */
+.red-packet-amount-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(180deg, rgba(255, 80, 80, 0.15), transparent);
+  border-bottom: 1px solid rgba(255, 100, 100, 0.15);
+}
+
+.red-packet-amount-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffcccc;
+  text-shadow: 0 0 8px rgba(255, 100, 100, 0.3);
+}
+
+.red-packet-amount-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffaaaa;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.red-packet-amount-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+/* 对话框主体 */
+.red-packet-amount-body {
+  padding: 20px;
+}
+
+/* 当前金币显示 */
+.red-packet-amount-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 215, 0, 0.08);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  margin-bottom: 16px;
+}
+
+.current-coins-icon {
+  font-size: 1.3rem;
+}
+
+.current-coins-label {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.current-coins-value {
+  margin-left: auto;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffd700;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+}
+
+/* 输入字段 */
+.red-packet-amount-field {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 6px;
+}
+
+.field-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: rgba(255, 100, 100, 0.5);
+  box-shadow: 0 0 0 2px rgba(255, 100, 100, 0.15);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.field-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* 输入类型number的箭头样式 */
+.field-input[type="number"]::-webkit-inner-spin-button,
+.field-input[type="number"]::-webkit-outer-spin-button {
+  opacity: 0.5;
+}
+
+/* 提示信息 */
+.red-packet-amount-hint {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  background: rgba(255, 100, 100, 0.06);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: rgba(255, 200, 200, 0.6);
+  line-height: 1.5;
+}
+
+/* 对话框底部按钮区域 */
+.red-packet-amount-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.red-packet-amount-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* 取消按钮 */
+.red-packet-amount-btn.cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.red-packet-amount-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* 确认按钮 */
+.red-packet-amount-btn.confirm {
+  background: linear-gradient(135deg, #ff4444, #cc2222);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(255, 68, 68, 0.3);
+}
+
+.red-packet-amount-btn.confirm:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff5555, #dd3333);
+  box-shadow: 0 6px 16px rgba(255, 68, 68, 0.4);
+  transform: translateY(-1px);
+}
+
+.red-packet-amount-btn.confirm:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.red-packet-amount-btn.confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ========== 跑团按钮 & 任务板按钮 ========== */
+.character-grid-footer {
+  margin-top: 16px;
+  padding: 0 8px;
+  display: flex;
+  gap: 10px;
+}
+
+.trpg-launch-btn {
+  flex: 1;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(155, 89, 182, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.trpg-launch-btn:hover {
+  background: linear-gradient(135deg, #8e44ad, #7d3c98);
+  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
+  transform: translateY(-2px);
+}
+
+.trpg-launch-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(155, 89, 182, 0.3);
+}
+
+.task-board-btn {
+  flex: 1;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(243, 156, 18, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.task-board-btn:hover {
+  background: linear-gradient(135deg, #e67e22, #d35400);
+  box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+  transform: translateY(-2px);
+}
+
+.task-board-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+}
+
+/* ==================== 跑团界面样式 ==================== */
+
+/* 遮罩层 */
+.trpg-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+/* 容器 */
+.trpg-container {
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  background: linear-gradient(145deg, #1a1025, #0d0815);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(155, 89, 182, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: trpg-container-slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes trpg-container-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 头部 */
+.trpg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(180deg, rgba(155, 89, 182, 0.2), transparent);
+  border-bottom: 1px solid rgba(155, 89, 182, 0.2);
+}
+
+.trpg-title-group {
+  flex: 1;
+}
+
+.trpg-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #9b59b6, #e74c3c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.trpg-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.trpg-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.trpg-end-btn,
+.trpg-new-btn,
+.trpg-close-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.trpg-end-btn {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: #ffffff;
+}
+
+.trpg-end-btn:hover {
+  background: linear-gradient(135deg, #c0392b, #a93226);
+}
+
+.trpg-new-btn {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: #ffffff;
+}
+
+.trpg-new-btn:hover {
+  background: linear-gradient(135deg, #2980b9, #2471a3);
+}
+
+.trpg-close-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 1.2rem;
+}
+
+.trpg-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 错误提示 */
+.trpg-error-box {
+  margin: 12px 20px;
+  padding: 12px 16px;
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 8px;
+  color: #e74c3c;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.error-dismiss {
+  padding: 4px 12px;
+  border: 1px solid rgba(231, 76, 60, 0.5);
+  border-radius: 4px;
+  background: transparent;
+  color: #e74c3c;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.error-dismiss:hover {
+  background: rgba(231, 76, 60, 0.2);
+}
+
+/* 主体区域 */
+.trpg-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* 设置面板 */
+.trpg-setup-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.setup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setup-section-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #9b59b6;
+}
+
+/* 主题输入 */
+.topic-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topic-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.topic-input:focus {
+  border-color: rgba(155, 89, 182, 0.6);
+}
+
+.topic-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.topic-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.topic-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.topic-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8e44ad, #7d3c98);
+  transform: translateY(-1px);
+}
+
+.topic-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.topic-btn-llm {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.topic-btn-llm:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2980b9, #2471a3);
+}
+
+/* 角色列表 */
+.character-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.character-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.character-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.character-desc {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.no-characters-hint {
+  padding: 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.9rem;
+}
+
+/* 开始按钮 */
+.start-trpg-btn {
+  width: 100%;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(155, 89, 182, 0.3);
+}
+
+.start-trpg-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8e44ad, #7d3c98);
+  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
+  transform: translateY(-2px);
+}
+
+.start-trpg-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 游戏面板 */
+.trpg-game-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: calc(90vh - 120px);
+}
+
+/* 角色信息 */
+.trpg-character-info {
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.char-info-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px;
+}
+
+.char-info-card {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(155, 89, 182, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 80px;
+}
+
+.char-info-card:hover {
+  background: rgba(155, 89, 182, 0.2);
+}
+
+.char-info-card.active {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  border-color: #9b59b6;
+}
+
+.char-info-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.char-info-role {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.char-info-card.active .char-info-role {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.char-info-card.is-user {
+  border-color: rgba(52, 152, 219, 0.5);
+  background: rgba(52, 152, 219, 0.1);
+}
+
+.char-info-card.is-user.active {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  border-color: #3498db;
+}
+
+/* 消息区域 */
+.trpg-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.no-messages {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 24px;
+}
+
+.message-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.message-sender {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.gm-sender {
+  color: #f39c12;
+}
+
+.player-sender {
+  color: #3498db;
+}
+
+.sender-role {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.message-time {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin-left: auto;
+}
+
+.message-content {
+  padding: 10px 14px;
+  border-radius: 12px;
+  max-width: 85%;
+}
+
+.message-item.gm .message-content {
+  background: rgba(243, 156, 18, 0.15);
+  border: 1px solid rgba(243, 156, 18, 0.2);
+  align-self: flex-start;
+}
+
+.message-item.player .message-content {
+  background: rgba(52, 152, 219, 0.15);
+  border: 1px solid rgba(52, 152, 219, 0.2);
+  align-self: flex-end;
+}
+
+.message-item.character .message-content {
+  background: rgba(155, 89, 182, 0.15);
+  border: 1px solid rgba(155, 89, 182, 0.2);
+  align-self: flex-start;
+}
+
+.message-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #ffffff;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 输入区域 */
+.trpg-input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.input-character-select {
+  display: flex;
+}
+
+.input-character-dropdown {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.input-character-dropdown option {
+  background: #1a1025;
+  color: #ffffff;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.action-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.action-input:focus {
+  border-color: rgba(155, 89, 182, 0.6);
+}
+
+.action-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.action-input:disabled {
+  opacity: 0.6;
+}
+
+.action-send-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-send-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8e44ad, #7d3c98);
+}
+
+.action-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========== 任务板 Modal 过渡动画 ========== */
+.task-board-modal-enter-active,
+.task-board-modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.task-board-modal-enter-from,
+.task-board-modal-leave-to {
+  opacity: 0;
+}
+
+/* ========== 任务邀请 "+" 按钮 ========== */
+.dorm-chat-task-invite-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.dorm-chat-task-invite-btn {
+  flex: 0 0 auto;
+  appearance: none;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+  transition: all 0.2s;
+  line-height: 1;
+  padding: 0;
+}
+
+.dorm-chat-task-invite-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+}
+
+.dorm-chat-task-invite-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 任务邀请下拉菜单 */
+.dorm-chat-task-dropdown-body {
+  position: fixed;
+  background: linear-gradient(145deg, #1a1a2e, #16213e);
+  border: 2px solid #f39c12;
+  border-radius: 12px;
+  padding: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+}
+
+.dorm-chat-task-empty-dropdown {
+  padding: 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8rem;
+}
+
+.dorm-chat-task-dropdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.dorm-chat-task-dropdown-item:hover {
+  background: rgba(243, 156, 18, 0.15);
+}
+
+.task-invite-type {
+  font-size: 0.65rem;
+  color: rgba(243, 156, 18, 0.8);
+}
+
+.task-invite-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* 任务邀请卡片（聊天中） */
+.dorm-chat-task-invite-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(243, 156, 18, 0.12);
+  border: 1px solid rgba(243, 156, 18, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  max-width: 85%;
+}
+
+.dorm-chat-task-invite-card:hover {
+  background: rgba(243, 156, 18, 0.2);
+  border-color: rgba(243, 156, 18, 0.5);
+  transform: translateY(-1px);
+}
+
+.task-card-icon {
+  font-size: 1.2rem;
+}
+
+.task-card-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.task-card-hint {
+  font-size: 0.7rem;
+  color: rgba(243, 156, 18, 0.7);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* 任务执行 Modal 过渡动画 */
+.task-exec-modal-enter-active,
+.task-exec-modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.task-exec-modal-enter-from,
+.task-exec-modal-leave-to {
+  opacity: 0;
 }

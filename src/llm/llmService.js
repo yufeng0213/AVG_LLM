@@ -21,6 +21,10 @@ export {
   generatePhoneNewsFeed,
   generatePhoneMapData,
   generatePhoneShopItems,
+  generateDormShopItems,
+  generateTaskBoardTasks,
+  generateDormItemGiftReply,
+  generateCharacterDiary,
 } from './llmService.phone'
 
 export {
@@ -54,6 +58,10 @@ import {
   generatePhoneNewsFeed,
   generatePhoneMapData,
   generatePhoneShopItems,
+  generateDormShopItems,
+  generateTaskBoardTasks,
+  generateDormItemGiftReply,
+  generateCharacterDiary,
 } from './llmService.phone'
 import {
   generateBackpackUseResult,
@@ -83,7 +91,10 @@ export default {
   generatePhoneNewsFeed,
   generatePhoneMapData,
   generatePhoneShopItems,
-  generateHandheldBrickLevel,
+  generateDormShopItems,
+  generateTaskBoardTasks,
+  generateDormItemGiftReply,
+  generateCharacterDiary,
   generateHandheldPetProfile,
   generateHandheldPetReply,
   generateHandheldDungeonMap,

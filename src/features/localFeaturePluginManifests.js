@@ -9,12 +9,14 @@ import faceToFaceManifest from '../../plugins/feature-face-to-face/plugin.json'
 import loadSaveManifest from '../../plugins/feature-load-save/plugin.json'
 import newGameManifest from '../../plugins/feature-new-game/plugin.json'
 import dormitoryManifest from '../../plugins/feature-dormitory/plugin.json'
+import trpgManifest from '../../plugins/feature-trpg/plugin.json'
 
 const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   loadSaveManifest,
   newGameManifest,
   faceToFaceManifest,
   dormitoryManifest,
+  trpgManifest,
   cardCollectionManifest,
   narratorManagerManifest,
   pluginManagerManifest,
