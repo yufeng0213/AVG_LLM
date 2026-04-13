@@ -2792,20 +2792,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 6px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
   flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
 }
 
-.user-avatar img {
-  width: 100%;
-  height: 100%;
+.user-avatar img:first-of-type {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
+}
+
+.avatar-frame-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .user-avatar-placeholder {

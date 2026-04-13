@@ -20,6 +20,9 @@ import { useDormDiary } from './composables/useDormDiary.js'
 import { useDormRedPacket } from './composables/useDormRedPacket.js'
 import { useDormAppointment } from './composables/useDormAppointment.js'
 import { useDormSubScene } from './composables/useDormSubScene.js'
+import AvatarFrameScreen from './components/AvatarFrameScreen.vue'
+import { useAvatarFrame } from './composables/useAvatarFrame.js'
+import { useAvatar } from './composables/useAvatar.js'
 
 // 子组件导入
 import WorldBookCardView from './components/WorldBookCardView.vue'
@@ -2681,6 +2684,10 @@ const handleGiftAction = () => {
 
 const isPolaroidScreenOpen = ref(false)
 
+const { activeFrame } = useAvatarFrame()
+const { activeAvatarDataUrl } = useAvatar()
+const isAvatarFrameScreenOpen = ref(false)
+
 const handleOutingAction = () => {
   if (!ensureActionTimeAvailable('邀请出去玩')) return
   isPolaroidScreenOpen.value = true
@@ -3296,8 +3303,16 @@ onBeforeUnmount(() => {
         >
           <!-- 世界书级别货币显示 -->
           <div class="worldbook-top-bar">
-            <span class="user-avatar">
-              <img v-if="userPortraitUrl" :src="userPortraitUrl" alt="用户头像" />
+            <span class="user-avatar" @click="isAvatarFrameScreenOpen = true">
+              <template v-if="activeAvatarDataUrl || userPortraitUrl">
+                <img :src="activeAvatarDataUrl || userPortraitUrl" alt="用户头像" />
+                <img
+                  v-if="activeFrame?.dataUrl"
+                  :src="activeFrame.dataUrl"
+                  class="avatar-frame-overlay"
+                  alt=""
+                />
+              </template>
               <span v-else class="user-avatar-placeholder">👤</span>
             </span>
             <span class="economy-item">
@@ -3544,6 +3559,12 @@ onBeforeUnmount(() => {
     @close="appointment.closeAppointmentModal"
     @create="(payload) => appointment.createAppointment(payload.scheduledAt)"
     @cancel="appointment.cancelAppointment"
+  />
+
+  <!-- 头像框选择界面 -->
+  <AvatarFrameScreen
+    v-if="isAvatarFrameScreenOpen"
+    @close="isAvatarFrameScreenOpen = false"
   />
 </template>
 
