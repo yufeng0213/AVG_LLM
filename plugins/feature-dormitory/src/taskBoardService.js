@@ -92,11 +92,11 @@ export const startTaskExecution = (board, taskId) => {
 }
 
 /**
- * 标记任务可完成（in_progress → completable）
+ * 标记任务可完成（accepted/in_progress → completable）
  */
 export const markTaskCompletable = (board, taskId, evidence) => {
   const task = board.tasks.find((t) => t.id === taskId)
-  if (!task || task.status !== 'in_progress') return board
+  if (!task || (task.status !== 'in_progress' && task.status !== 'accepted')) return board
   task.status = 'completable'
   task.evidence = evidence
   task.completableAt = Date.now()

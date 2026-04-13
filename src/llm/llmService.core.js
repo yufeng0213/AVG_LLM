@@ -62,8 +62,15 @@ export const callChatCompletion = async ({
   temperature = 0.8,
   maxTokens = 2000,
   extraParams = {},
+  timeout = 120000, // 默认 120 秒超时
 }) => {
   const { customApi, apiKey, model } = config
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => {
+    console.warn('[LLM] fetch 超时，中止请求')
+    controller.abort()
+  }, timeout)
 
   try {
     const response = await fetch(customApi, {
@@ -88,7 +95,9 @@ export const callChatCompletion = async ({
         max_tokens: maxTokens,
         ...extraParams,
       }),
+      signal: controller.signal,
     })
+    clearTimeout(timer)
 
     if (!response.ok) {
       const errorText = await response.text()

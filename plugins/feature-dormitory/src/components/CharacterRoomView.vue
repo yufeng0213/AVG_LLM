@@ -3,6 +3,38 @@
  * 角色房间视图组件
  * 包含角色房间显示、覆盖面板、聊天界面等所有房间相关功能
  */
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import RedPacket from './RedPacket.vue'
+import DailyCyclePanel from './DailyCyclePanel.vue'
+import StatusPanel from './StatusPanel.vue'
+import BackpackPanel from './BackpackPanel.vue'
+import DiaryPanel from './DiaryPanel.vue'
+import PolaroidCameraScreen from '../PolaroidCameraScreen.vue'
+import GiftItemConfirmModal from './GiftItemConfirmModal.vue'
+import DiaryGeneratingModal from './DiaryGeneratingModal.vue'
+
+const dormChatHistoryRef = ref(null)
+const isDormMenuOpen = ref(false)
+const DORM_OVERLAY_PANEL_OPTIONS = [
+  { id: 'interaction', label: '互动' },
+  { id: 'drift', label: '漂流瓶' },
+  { id: 'backpack', label: '背包' },
+  { id: 'scene', label: '场景' },
+  { id: 'schedule', label: '日程' },
+  { id: 'status', label: '状态' },
+  { id: 'journal', label: '记录' },
+  { id: 'diary', label: '日记' },
+  { id: 'appointment', label: '约定' },
+]
+
+const activeDormOverlayPanelId = ref('')
+  // 面板相关
+const isDormOverlayPanelExpanded = ref(false)
+
+
+defineExpose({
+  dormChatHistoryRef
+})
 
 const props = defineProps({
   // 角色相关
@@ -18,21 +50,9 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  
-  // 面板相关
-  isDormOverlayPanelExpanded: {
-    type: Boolean,
-    default: false
-  },
-  activeDormOverlayPanelLabel: {
-    type: String,
-    default: ''
-  },
-  activeDormOverlayPanelId: {
-    type: String,
-    default: ''
-  },
-  
+
+
+
   // 状态相关
   selectedDormState: {
     type: Object,
@@ -62,17 +82,7 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  
-  // 事件链相关
-  selectedDormEventChainPreviewList: {
-    type: Array,
-    default: () => []
-  },
-  selectedDormEventChainDetail: {
-    type: Object,
-    default: null
-  },
-  
+
   // 场景相关
   generatedDormSubScenes: {
     type: Array,
@@ -106,10 +116,6 @@ const props = defineProps({
     type: String,
     default: '升级'
   },
-  activeDormSubSceneDecor: {
-    type: Array,
-    default: () => []
-  },
   activeDormSubSceneActivityOptions: {
     type: Array,
     default: () => []
@@ -118,7 +124,7 @@ const props = defineProps({
     type: Object,
     default: null
   },
-  
+
   // 日程相关
   currentDormTimeSlotLabel: {
     type: String,
@@ -140,7 +146,7 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  
+
   // 背包相关
   activeBookInventory: {
     type: Array,
@@ -150,11 +156,7 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  backpackPurchaseFeedback: {
-    type: String,
-    default: ''
-  },
-  
+
   // 漂流瓶相关
   selectedDormDriftRemainingThrowCount: {
     type: Number,
@@ -192,7 +194,23 @@ const props = defineProps({
     type: Number,
     default: 140
   },
-  
+  driftBottleDraft: {
+    type: String,
+    default: ''
+  },
+  canThrowDormDriftBottle: {
+    type: Boolean,
+    default: false
+  },
+  canPickDormDriftBottle: {
+    type: Boolean,
+    default: false
+  },
+  canAskDormDriftBottleFollowUp: {
+    type: Function,
+    default: () => false
+  },
+
   // 聊天相关
   dormChatOverlayHeight: {
     type: Number,
@@ -218,7 +236,7 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  
+
   // 互动相关
   dormQuickActionType: {
     type: String,
@@ -252,48 +270,61 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  
+
   // 日记相关
   diaryList: {
     type: Array,
     default: () => []
   },
-  
-  // 菜单相关
-  isDormMenuOpen: {
-    type: Boolean,
-    default: false
+  selectedDiary: {
+    type: Object,
+    default: null
   },
-  DORM_OVERLAY_PANEL_OPTIONS: {
-    type: Array,
-    default: () => []
-  },
-  
-  // 漂流瓶草稿
-  driftBottleDraft: {
+  diaryMode: {
     type: String,
-    default: ''
+    default: 'list'
   },
-  canThrowDormDriftBottle: {
+
+  // 拍立得
+  isPolaroidScreenOpen: {
     type: Boolean,
     default: false
   },
-  canPickDormDriftBottle: {
-    type: Boolean,
-    default: false
+
+  // 经济
+  activeBookEconomyCoins: {
+    type: Number,
+    default: 0
+  },
+
+  // Composable 对象（用于访问 .value ref）
+  gift: {
+    type: Object,
+    default: () => ({})
+  },
+  diary: {
+    type: Object,
+    default: () => ({})
+  },
+  redPacket: {
+    type: Object,
+    default: () => ({})
+  },
+  task: {
+    type: Object,
+    default: () => ({})
   }
 })
+
 
 const emit = defineEmits([
   'close-overlay-panel',
   'select-dorm-overlay-panel',
-  'toggle-dorm-menu',
   'select-dorm-sub-scene',
   'upgrade-scene-facility',
   'select-dorm-sub-scene-activity',
   'run-dorm-sub-scene-activity',
   'advance-dorm-day',
-  'select-dorm-event-chain',
   'gift-dorm-item',
   'throw-drift-bottle',
   'pick-drift-bottle',
@@ -306,27 +337,36 @@ const emit = defineEmits([
   'run-dorm-quick-action',
   'handle-dorm-event-option',
   'open-diary-detail',
+  'back-to-diary-list',
   'update-dorm-chat-draft',
   'update-drift-bottle-draft',
   'update-dorm-quick-action-type',
-  'format-journal-time',
-  'format-daily-wish-type-label',
-  'format-diary-date',
-  'render-template',
-  'get-dorm-archetype-label',
-  'format-dorm-event-option-preview'
+  'task-invite-click',
+  'task-invite-toggle',
+  'red-packet-opened',
+  'red-packet-send',
+  // 拍立得
+  'polaroid-back',
+  'polaroid-complete',
+  // 约定
+  'open-appointment',
 ])
 
 function handleCloseOverlayPanel() {
-  emit('close-overlay-panel')
+  isDormOverlayPanelExpanded.value = false
 }
 
 function handleSelectOverlayPanel(panelId) {
-  emit('select-dorm-overlay-panel', panelId)
+  console.log('[菜单] 选择面板:', panelId)
+  activeDormOverlayPanelId.value = panelId
+  console.log('[菜单] activeDormOverlayPanelId:', activeDormOverlayPanelId.value)
+  isDormOverlayPanelExpanded.value = true
+  isDormMenuOpen.value = false
 }
 
 function handleToggleMenu() {
-  emit('toggle-dorm-menu')
+  isDormMenuOpen.value = !isDormMenuOpen.value
+  console.log('[菜单] isDormMenuOpen:', isDormMenuOpen.value, '选项:', DORM_OVERLAY_PANEL_OPTIONS)
 }
 
 function handleSubSceneSelectChange(event) {
@@ -347,10 +387,6 @@ function handleRunActivity() {
 
 function handleAdvanceDay() {
   emit('advance-dorm-day')
-}
-
-function handleSelectChain(chainId) {
-  emit('select-dorm-event-chain', chainId)
 }
 
 function handleGiftItem(item) {
@@ -401,6 +437,10 @@ function handleOpenDiary(diary) {
   emit('open-diary-detail', diary)
 }
 
+function handleBackToDiaryList() {
+  emit('back-to-diary-list')
+}
+
 function handleChatDraftInput(event) {
   emit('update-dorm-chat-draft', event.target.value)
 }
@@ -413,9 +453,60 @@ function handleDormQuickActionTypeChange(event) {
   emit('update-dorm-quick-action-type', event.target.value)
 }
 
+function handleTaskInviteClick(taskId) {
+  emit('task-invite-click', taskId)
+}
+
+function handleTaskInviteToggle() {
+  isDormMenuOpen.value = false
+  emit('task-invite-toggle')
+}
+
+function handleRedPacketOpened(packet) {
+  emit('red-packet-opened', packet)
+}
+
+function handleRedPacketSend() {
+  emit('red-packet-send')
+}
+
+function handlePolaroidBack() {
+  emit('polaroid-back')
+}
+
+function handlePolaroidComplete(photoData) {
+  emit('polaroid-complete', photoData)
+}
+
 function isDriftFollowUpPending(entryId) {
   const entry = props.selectedDormDriftInbox.find(e => e.id === entryId)
   return entry?.replyState === 'pending'
+}
+
+// 来访类型工具
+const VISIT_TYPE_ICONS = { note: '📝', message: '💬', redPacket: '🧧', gift: '🎁' }
+const VISIT_TYPE_LABELS = { note: '纸条', message: '留言', redPacket: '红包', gift: '礼物' }
+
+function visitTypeIcon(type) {
+  return VISIT_TYPE_ICONS[type] || '📝'
+}
+
+function visitTypeLabel(type) {
+  return VISIT_TYPE_LABELS[type] || '内容'
+}
+
+function formatVisitTime(timestamp) {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diff = now - date
+  const mins = Math.floor(diff / (1000 * 60))
+  if (mins < 1) return '刚刚'
+  if (mins < 60) return `${mins} 分钟前`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} 小时前`
+  const days = Math.floor(hours / 24)
+  return `${days} 天前`
 }
 </script>
 
@@ -428,7 +519,6 @@ function isDriftFollowUpPending(entryId) {
       <!-- 覆盖面板 -->
       <section v-if="isDormOverlayPanelExpanded" class="dorm-overlay-panel" aria-label="寝室二级操作">
         <header class="dorm-overlay-panel-head">
-          <p class="dorm-overlay-panel-title">{{ activeDormOverlayPanelLabel }}</p>
           <button type="button" class="dorm-overlay-panel-close" @click="handleCloseOverlayPanel">×</button>
         </header>
 
@@ -486,7 +576,7 @@ function isDriftFollowUpPending(entryId) {
                 </div>
 
                 <div class="sub-scene-decor-row">
-                  <span v-for="decor in activeDormSubSceneDecor" :key="decor" class="sub-scene-decor-chip">
+                  <span v-for="decor in activeDormSubScene.decor" :key="`${activeDormSubScene.id}_${decor}`" class="sub-scene-decor-chip">
                     {{ decor }}
                   </span>
                 </div>
@@ -522,165 +612,32 @@ function isDriftFollowUpPending(entryId) {
           </section>
 
           <!-- 日程面板 -->
-          <section v-if="activeDormOverlayPanelId === 'schedule'" class="daily-cycle-panel">
-            <div class="daily-cycle-head">
-              <p class="daily-cycle-title">日程循环</p>
-              <p class="daily-cycle-meta">
-                第 {{ selectedDormState.dayIndex }} 天 · 当前时段：{{ currentDormTimeSlotLabel }} · 剩余行动 {{ remainingDormActionSlots }}
-              </p>
-            </div>
-
-            <div class="daily-cycle-toolbar">
-              <p class="daily-cycle-progress">今日心愿 {{ completedTodayWishCount }} / {{ totalTodayWishCount }}</p>
-              <button type="button" class="daily-next-day-btn" @click="handleAdvanceDay">
-                {{ isDormDayActionClosed ? '进入下一天' : '提前结束今日' }}
-              </button>
-            </div>
-
-            <ul class="daily-wish-list">
-              <li v-for="wish in selectedDormState.todayWishes" :key="wish.id" class="daily-wish-item" :class="{ completed: wish.completed }">
-                <span class="daily-wish-main">
-                  {{ wish.label }}
-                  <span class="daily-wish-type">[{{ wish.type }}]</span>
-                </span>
-                <span class="daily-wish-progress">
-                  {{ wish.progress }} / {{ wish.target }} · 奖励 好感+{{ wish.rewardAffection }} 体力+{{ wish.rewardEnergy }}
-                </span>
-              </li>
-            </ul>
-          </section>
-
-          <!-- 事件链面板 -->
-          <section v-if="activeDormOverlayPanelId === 'chain'" class="event-chain-preview-panel">
-            <div class="event-chain-preview-head">
-              <p class="event-chain-preview-title">事件链预览</p>
-              <p class="event-chain-preview-meta">当前关系阶段：{{ selectedDormRelationshipStageLabel }}</p>
-            </div>
-            <ul class="event-chain-preview-list">
-              <li
-                v-for="chain in selectedDormEventChainPreviewList"
-                :key="chain.id"
-                class="event-chain-preview-item"
-                :class="{
-                  unlocked: chain.unlocked,
-                  locked: !chain.unlocked,
-                  selected: chain.id === selectedDormEventChainDetail?.id,
-                }"
-                role="button"
-                tabindex="0"
-                @click="handleSelectChain(chain.id)"
-                @keydown.enter.prevent="handleSelectChain(chain.id)"
-                @keydown.space.prevent="handleSelectChain(chain.id)"
-              >
-                <div class="event-chain-preview-text">
-                  <p class="event-chain-preview-main">{{ chain.title }} · {{ chain.stepCount }} 阶段</p>
-                  <p class="event-chain-preview-sub">
-                    {{ chain.unlocked ? '已解锁，可在触发事件时进入该事件链。' : `未解锁，需关系阶段达到「${chain.requiredStageLabel}」。` }}
-                  </p>
-                </div>
-                <span class="event-chain-preview-badge" :class="{ unlocked: chain.unlocked, locked: !chain.unlocked }">
-                  {{ chain.unlocked ? '已解锁' : `需 ${chain.requiredStageLabel}` }}
-                </span>
-              </li>
-            </ul>
-
-            <section v-if="selectedDormEventChainDetail" class="event-chain-detail-panel" :class="{ unlocked: selectedDormEventChainDetail.unlocked, locked: !selectedDormEventChainDetail.unlocked }">
-              <div class="event-chain-detail-head">
-                <p class="event-chain-detail-title">{{ selectedDormEventChainDetail.title }}</p>
-                <span class="event-chain-detail-status" :class="{ unlocked: selectedDormEventChainDetail.unlocked, locked: !selectedDormEventChainDetail.unlocked }">
-                  {{ selectedDormEventChainDetail.unlocked ? '可触发' : `需 ${selectedDormEventChainDetail.requiredStageLabel}` }}
-                </span>
-              </div>
-
-              <p class="event-chain-detail-summary">{{ selectedDormEventChainDetail.summary }}</p>
-              <p class="event-chain-detail-meta">
-                总阶段数 {{ selectedDormEventChainDetail.stepCount }} · 起始阶段：{{ selectedDormEventChainDetail.firstStepTitle }}
-              </p>
-              <p class="event-chain-detail-meta">
-                {{
-                  selectedDormEventChainDetail.unlocked
-                    ? '当前关系阶段已满足触发条件，触发事件时有概率进入该事件链。'
-                    : `解锁条件：关系阶段达到「${selectedDormEventChainDetail.requiredStageLabel}」。`
-                }}
-              </p>
-              <p v-if="selectedDormEventChainDetail.firstStepDescription" class="event-chain-detail-meta">
-                起始剧情：{{ selectedDormEventChainDetail.firstStepDescription }}
-              </p>
-
-              <div class="event-chain-detail-endings">
-                <p class="event-chain-detail-endings-title">可能结局</p>
-                <div v-if="selectedDormEventChainDetail.endingTags.length > 0" class="event-chain-detail-tag-list">
-                  <span v-for="tag in selectedDormEventChainDetail.endingTags" :key="tag" class="event-chain-detail-tag">{{ tag }}</span>
-                </div>
-                <p v-else class="event-chain-detail-endings-empty">推进过程中会根据选项生成不同结局。</p>
-              </div>
-            </section>
-          </section>
+          <DailyCyclePanel
+            v-if="activeDormOverlayPanelId === 'schedule'"
+            :day-index="selectedDormState.dayIndex"
+            :current-time-slot-label="currentDormTimeSlotLabel"
+            :remaining-dorm-action-slots="remainingDormActionSlots"
+            :completed-today-wish-count="completedTodayWishCount"
+            :total-today-wish-count="totalTodayWishCount"
+            :today-wishes="selectedDormState.todayWishes"
+            :is-dorm-day-action-closed="isDormDayActionClosed"
+            @advance-day="handleAdvanceDay"
+          />
 
           <!-- 状态面板 -->
-          <div v-if="activeDormOverlayPanelId === 'status'" class="dorm-stat-grid">
-            <div class="dorm-stat-card">
-              <p class="dorm-stat-label">好感度</p>
-              <p class="dorm-stat-value">{{ selectedDormState.affection }}</p>
-              <div class="dorm-stat-bar"><span class="dorm-stat-bar-fill is-affection" :style="selectedDormAffectionStyle"></span></div>
-            </div>
-            <div class="dorm-stat-card">
-              <p class="dorm-stat-label">体力</p>
-              <p class="dorm-stat-value">{{ selectedDormState.energy }}</p>
-              <div class="dorm-stat-bar"><span class="dorm-stat-bar-fill is-energy" :style="selectedDormEnergyStyle"></span></div>
-            </div>
-            <div class="dorm-stat-card mini">
-              <p class="dorm-stat-label">心情 / 关系阶段</p>
-              <p class="dorm-stat-value compact">{{ selectedDormState.mood }} · {{ selectedDormRelationshipStageLabel }}</p>
-              <p class="dorm-stat-tip">{{ selectedDormRelationshipProgressHint }}</p>
-            </div>
-            <div class="dorm-stat-card mini">
-              <p class="dorm-stat-label">事件链解锁</p>
-              <p class="dorm-stat-value compact">{{ selectedDormUnlockedEventChainCount }} / 总事件链数</p>
-              <p class="dorm-stat-tip">{{ selectedDormUnlockedEventChainHint }}</p>
-            </div>
-            <div class="dorm-stat-card mini">
-              <p class="dorm-stat-label">访问 / 聊天 / 送礼 / 事件 / 场景 / 升级</p>
-              <p class="dorm-stat-value compact">{{ selectedDormState.visitCount }} / {{ selectedDormState.chatCount }} / {{ selectedDormState.giftCount }} / {{ selectedDormState.eventCount }} / {{ selectedDormState.sceneCount }} / {{ selectedDormState.facilityUpgradeCount }}</p>
-            </div>
-          </div>
+          <StatusPanel
+            v-if="activeDormOverlayPanelId === 'status'"
+            :character-data="selectedCharacter"
+            @close="handleCloseOverlayPanel"
+          />
 
           <!-- 背包面板 -->
-          <section v-if="activeDormOverlayPanelId === 'backpack'" class="dorm-backpack-panel">
-            <div class="dorm-backpack-head">
-              <p class="dorm-backpack-title">🎒 我的背包</p>
-              <p class="dorm-backpack-meta">共 {{ activeBookInventory.length }} 件物品</p>
-            </div>
-
-            <div class="dorm-backpack-list">
-              <p v-if="activeBookInventory.length === 0" class="dorm-backpack-empty">
-                背包空空如也，去商店逛逛吧！
-              </p>
-              <div v-else class="dorm-backpack-grid">
-                <article
-                  v-for="item in activeBookInventory"
-                  :key="item.id"
-                  class="dorm-backpack-item"
-                  :class="{ 'is-giftable': !isGiftItemProcessing }"
-                  @click="handleGiftItem(item)"
-                  :title="'点击送给' + (selectedCharacter?.label || '角色')"
-                >
-                  <div class="dorm-backpack-item-icon">{{ item.icon }}</div>
-                  <div class="dorm-backpack-item-info">
-                    <p class="dorm-backpack-item-name">{{ item.name }}</p>
-                    <p class="dorm-backpack-item-desc">{{ item.description }}</p>
-                    <p class="dorm-backpack-item-meta">
-                      <span class="dorm-backpack-item-category">{{ item.categoryLabel }}</span>
-                      <span v-if="item.quantity > 1" class="dorm-backpack-item-quantity">x{{ item.quantity }}</span>
-                    </p>
-                  </div>
-                </article>
-              </div>
-            </div>
-
-            <p v-if="isGiftItemProcessing" class="dorm-backpack-feedback processing">生成回复中...</p>
-            <p v-if="backpackPurchaseFeedback" class="dorm-backpack-feedback">{{ backpackPurchaseFeedback }}</p>
-          </section>
+          <BackpackPanel
+            v-if="activeDormOverlayPanelId === 'backpack'"
+            :backpack-items="activeBookInventory"
+            @close="handleCloseOverlayPanel"
+            @give-item="handleGiftItem"
+          />
 
           <!-- 漂流瓶面板 -->
           <section v-if="activeDormOverlayPanelId === 'drift'" class="dorm-drift-panel">
@@ -827,7 +784,7 @@ function isDriftFollowUpPending(entryId) {
             <section v-if="stageUpgradeToast" class="stage-upgrade-toast">
               <p class="stage-upgrade-title">关系阶段提升</p>
               <p class="stage-upgrade-main">{{ stageUpgradeToast.fromLabel }} -> {{ stageUpgradeToast.toLabel }}</p>
-              <p v-if="stageUpgradeToast.unlockedChainTitles.length > 0" class="stage-upgrade-sub">
+              <p v-if="stageUpgradeToast.unlockedChainTitles?.length > 0" class="stage-upgrade-sub">
                 新解锁事件链：{{ stageUpgradeToast.unlockedChainTitles.join('、') }}
               </p>
               <p v-else class="stage-upgrade-sub">本次阶段提升暂无新增事件链。</p>
@@ -840,11 +797,11 @@ function isDriftFollowUpPending(entryId) {
             <p v-if="activeDormEvent.source === 'scene'" class="dorm-event-source">
               场景事件 · {{ activeDormEvent.sourceSceneName || '当前场景' }} · 设施 Lv{{ activeDormEvent.facilityLevel }}（收益 +{{ activeDormEvent.facilityBonusPercent }}%）
             </p>
-            <p v-else class="dorm-event-source">通用寝室事件</p>
-            <p v-if="activeDormEvent.mode === 'chain'" class="dorm-event-chain-meta">
+            <p v-else-if="activeDormEvent.mode === 'chain'" class="dorm-event-chain-meta">
               {{ activeDormEventChainProgressText }} · 当前阶段：{{ activeDormEvent.chainStepTitle || `阶段 ${activeDormEvent.chainStepIndex + 1}` }}
             </p>
-            <p v-if="activeDormEvent.mode === 'chain' && activeDormEvent.chainPathLabels.length > 0" class="dorm-event-chain-path">
+            <p v-else class="dorm-event-source">通用寝室事件</p>
+            <p v-if="activeDormEvent.mode === 'chain' && activeDormEvent.chainPathLabels?.length > 0" class="dorm-event-chain-path">
               已选路线：{{ activeDormEvent.chainPathLabels.join(' → ') }}
             </p>
             <p class="dorm-event-desc">{{ activeDormEvent.description }}</p>
@@ -863,52 +820,43 @@ function isDriftFollowUpPending(entryId) {
           </section>
 
           <!-- 日记面板 -->
-          <section v-if="activeDormOverlayPanelId === 'diary'" class="dorm-diary">
-            <h3 class="dorm-diary-title">日记</h3>
-            <ul v-if="diaryList.length > 0" class="dorm-diary-list">
-              <li v-for="diary in diaryList" :key="diary.id" class="dorm-diary-item" @click="handleOpenDiary(diary)">
-                <time class="diary-date">{{ diary.date }}</time>
-                <span class="diary-title-text">{{ diary.title || '无题' }}</span>
-              </li>
-            </ul>
-            <p v-else class="dorm-diary-empty">暂无日记记录</p>
+          <DiaryPanel
+            v-if="activeDormOverlayPanelId === 'diary' || activeDormOverlayPanelId === 'diary-detail'"
+            :diary-entries="diaryList"
+            :selected-diary="selectedDiary"
+            :mode="diaryMode"
+            @close="handleCloseOverlayPanel"
+            @back="handleBackToDiaryList"
+            @select-diary="handleOpenDiary"
+          />
+
+          <!-- 约定面板 -->
+          <section v-if="activeDormOverlayPanelId === 'appointment'" class="appointment-panel-body">
+            <div class="appointment-panel-icon">📝</div>
+            <h3 class="appointment-panel-title">设定约定</h3>
+            <p class="appointment-panel-desc">选择一个时间，让角色来寝室留下小纸条。</p>
+            <button type="button" class="appointment-panel-open-btn" @click="$emit('open-appointment')">打开约定面板</button>
           </section>
         </div>
       </section>
 
       <!-- 聊天覆盖层 -->
-      <section class="dorm-chat-overlay" :style="{ height: dormChatOverlayHeight + 'px', maxHeight: dormChatOverlayHeight + 'px' }" aria-label="寝室聊天内容">
+      <section class="dorm-chat-overlay" :style="{ height: dormChatOverlayHeight + 'px' }" aria-label="寝室聊天内容" >
         <div class="dorm-chat-head">
-          <div class="dorm-chat-drag-handle" @mousedown="handleStartDragResize" @touchstart="handleStartDragResizeTouch">
-            <span class="drag-handle-icon">≡</span>
-          </div>
+          <span class="drag-handle-icon" @mousedown="handleStartDragResize" @touchstart="handleStartDragResizeTouch">≡</span>
           <p class="dorm-chat-title">和 {{ selectedCharacter?.label || '角色' }} 聊天</p>
           <div class="dorm-chat-menu-wrap">
             <button
               type="button"
               class="dorm-chat-menu-btn"
-              :class="{ active: isDormMenuOpen }"
-              :aria-expanded="isDormMenuOpen ? 'true' : 'false'"
               aria-label="展开寝室操作菜单"
-              @click.stop="handleToggleMenu"
+              @click="handleToggleMenu"
             >
               ···
             </button>
-            <section v-if="isDormMenuOpen" class="dorm-popup-menu" aria-label="寝室操作菜单">
-              <button
-                v-for="panel in DORM_OVERLAY_PANEL_OPTIONS"
-                :key="panel.id"
-                type="button"
-                class="dorm-popup-menu-btn"
-                :class="{ active: panel.id === activeDormOverlayPanelId }"
-                @click="handleSelectOverlayPanel(panel.id)"
-              >
-                {{ panel.label }}
-              </button>
-            </section>
           </div>
         </div>
-        <div class="dorm-chat-history">
+        <div ref="dormChatHistoryRef" class="dorm-chat-history">
           <p v-if="selectedDormChatHistory.length === 0" class="dorm-chat-empty">输入一句话，开始聊天。</p>
           <article
             v-for="message in selectedDormChatHistory"
@@ -916,11 +864,95 @@ function isDriftFollowUpPending(entryId) {
             class="dorm-chat-message"
             :class="{ user: message.role === 'user', assistant: message.role === 'assistant' }"
           >
-            <p class="dorm-chat-text">{{ message.text }}</p>
+            <!-- 红包消息渲染 -->
+            <RedPacket
+              v-if="message.type === 'redPacket' && message.redPacket"
+              :packet="message.redPacket"
+              @opened="handleRedPacketOpened"
+            />
+            <!-- 任务邀请卡片渲染 -->
+            <div
+              v-else-if="message.type === 'taskInvite'"
+              class="dorm-chat-task-card"
+              @click="handleTaskInviteClick(message.taskId)"
+            >
+              <div class="task-card-accent">
+                <span class="task-card-accent-icon">📋</span>
+              </div>
+              <div class="task-card-content">
+                <span class="task-card-label">任务邀请</span>
+                <span class="task-card-name">{{ message.taskName }}</span>
+                <span class="task-card-target" v-if="message.targetCharacterName">
+                  执行者：{{ message.targetCharacterName }}
+                </span>
+              </div>
+              <div class="task-card-arrow">
+                <span class="task-card-arrow-icon">›</span>
+              </div>
+            </div>
+            <!-- 礼物卡片渲染 -->
+            <div
+              v-else-if="message.type === 'gift' && message.gift"
+              class="dorm-chat-gift-card"
+            >
+              <div class="gift-accent"></div>
+              <div class="gift-body">
+                <div class="gift-icon">
+                  <span class="gift-emoji">{{ message.gift.icon }}</span>
+                </div>
+                <div class="gift-info">
+                  <p class="gift-sender">{{ selectedCharacter?.label || '角色' }}</p>
+                  <p class="gift-item-name">{{ message.gift.itemName }}</p>
+                  <p class="gift-message">"{{ message.gift.message }}"</p>
+                </div>
+                <span class="gift-badge" :class="{ success: message.gift.addedToBackpack }">
+                  {{ message.gift.addedToBackpack ? '已存入背包' : '背包无此物品' }}
+                </span>
+              </div>
+            </div>
+            <!-- 来访卡片渲染 -->
+            <div
+              v-else-if="message.type === 'visit' && message.visit"
+              class="dorm-chat-visit-card"
+            >
+              <div class="visit-card-header">
+                <span class="visit-type-icon">{{ visitTypeIcon(message.visit.visitType) }}</span>
+                <span class="visit-type-label">{{ visitTypeLabel(message.visit.visitType) }}</span>
+                <span class="visit-time">{{ formatVisitTime(message.visit.triggeredAt) }}</span>
+              </div>
+              <div class="visit-card-body">
+                <p class="visit-mood">{{ message.visit.mood }}</p>
+                <p class="visit-content">{{ message.visit.content }}</p>
+              </div>
+              <!-- 红包子卡片 -->
+              <RedPacket
+                v-if="message.visit.visitType === 'redPacket' && message.visit.redPacket"
+                :packet="message.visit.redPacket"
+                @opened="handleRedPacketOpened"
+              />
+              <!-- 礼物子卡片 -->
+              <div v-else-if="message.visit.visitType === 'gift' && message.visit.giftItem" class="visit-gift-sub">
+                <span class="visit-gift-icon">{{ message.visit.giftItem.icon }}</span>
+                <span class="visit-gift-name">{{ message.visit.giftItem.name }}</span>
+              </div>
+            </div>
+            <!-- 普通文本消息渲染 -->
+            <span v-else class="dorm-chat-text">{{ message.text }}</span>
           </article>
         </div>
 
         <div class="dorm-chat-input-row">
+          <!-- 任务邀请 "+" 按钮 -->
+          <div class="dorm-chat-task-invite-wrap">
+            <button
+              type="button"
+              class="dorm-chat-task-invite-btn"
+              :disabled="isDormChatSending"
+              @click.stop="handleTaskInviteToggle"
+              title="执行任务"
+            >+</button>
+          </div>
+
           <input
             :value="dormChatDraft"
             type="text"
@@ -933,6 +965,15 @@ function isDriftFollowUpPending(entryId) {
           />
           <button
             type="button"
+            class="dorm-chat-red-packet-btn"
+            :disabled="isDormChatSending"
+            @click="handleRedPacketSend"
+            title="发送红包"
+          >
+            🧧
+          </button>
+          <button
+            type="button"
             class="dorm-chat-send-btn"
             :disabled="!canSendDormChat"
             @click="handleSendChat"
@@ -943,11 +984,140 @@ function isDriftFollowUpPending(entryId) {
         <p v-if="dormChatError" class="dorm-chat-error">{{ dormChatError }}</p>
       </section>
     </article>
+
+    <!-- 弹出菜单（Teleport 到 body，避免被父元素裁剪） -->
+    <Teleport to="body">
+      <div v-show="isDormMenuOpen" class="dorm-popup-menu-backdrop" @click="handleToggleMenu">
+        <div class="dorm-popup-menu-overlay" aria-label="寝室操作菜单" @click.stop>
+          <p style="color: #f00; padding: 10px;">调试：{{ DORM_OVERLAY_PANEL_OPTIONS.length }} 个选项</p>
+          <button
+            v-for="panel in DORM_OVERLAY_PANEL_OPTIONS"
+            :key="panel.id"
+            type="button"
+            class="dorm-menu-item"
+            @click="handleSelectOverlayPanel(panel.id)"
+          >
+            {{ panel.label }}
+          </button>
+        </div>
+      </div>
+    </Teleport>
   </section>
+
+  <!-- 拍立得相机界面 -->
+  <PolaroidCameraScreen
+    v-if="isPolaroidScreenOpen"
+    :character-name="selectedCharacter?.label || '角色'"
+    @back="handlePolaroidBack"
+    @complete="handlePolaroidComplete"
+  />
+
+  <!-- 物品赠送确认弹窗 -->
+  <GiftItemConfirmModal
+    :is-open="gift.showGiftItemConfirm?.value"
+    :gift-item="gift.pendingGiftItem?.value"
+    :character-name="selectedCharacter?.label || '角色'"
+    :is-processing="gift.isGiftItemProcessing?.value"
+    @close="gift.closeGiftItemConfirm"
+    @confirm="gift.confirmGiftItem"
+  />
+
+  <!-- 日记生成中模态框 -->
+  <DiaryGeneratingModal
+    :is-open="diary.showDiaryGeneratingModal?.value"
+    :character-name="selectedCharacter?.label || '角色'"
+    :message="diary.diaryGeneratingMessage?.value"
+    @close="diary.showDiaryGeneratingModal.value = false"
+  />
+
+  <!-- 红包金额输入对话框 -->
+  <Teleport to="body">
+    <div v-if="redPacket.showRedPacketAmountDialog?.value" class="red-packet-amount-overlay" @click.self="redPacket.cancelSendRedPacket">
+      <div class="red-packet-amount-dialog">
+        <header class="red-packet-amount-head">
+          <h3 class="red-packet-amount-title">🧧 发送红包</h3>
+          <button type="button" class="red-packet-amount-close" @click="redPacket.cancelSendRedPacket">×</button>
+        </header>
+        <div class="red-packet-amount-body">
+          <div class="red-packet-amount-current">
+            <span class="current-coins-icon">💰</span>
+            <span class="current-coins-label">当前金币：</span>
+            <span class="current-coins-value">{{ activeBookEconomyCoins }}</span>
+          </div>
+          <label class="red-packet-amount-field">
+            <span class="field-label">红包金额（金币）</span>
+            <input
+              :value="redPacket.redPacketAmountInput?.value"
+              type="number"
+              class="field-input"
+              placeholder="请输入金额"
+              min="1"
+              :max="activeBookEconomyCoins"
+              step="1"
+              @input="redPacket.redPacketAmountInput.value = $event.target.value"
+              @keydown.enter="redPacket.confirmSendRedPacket"
+            />
+          </label>
+          <label class="red-packet-amount-field">
+            <span class="field-label">祝福语（可选）</span>
+            <input
+              :value="redPacket.redPacketBlessingInput?.value"
+              type="text"
+              class="field-input"
+              placeholder="输入祝福语"
+              maxlength="50"
+              @input="redPacket.redPacketBlessingInput.value = $event.target.value"
+            />
+          </label>
+          <p class="red-packet-amount-hint">
+            发送红包将扣除相应金币，领取者将获得等额金币奖励。
+          </p>
+        </div>
+        <footer class="red-packet-amount-footer">
+          <button type="button" class="red-packet-amount-btn cancel" @click="redPacket.cancelSendRedPacket">取消</button>
+          <button
+            type="button"
+            class="red-packet-amount-btn confirm"
+            :disabled="!redPacket.redPacketAmountInput?.value || Number(redPacket.redPacketAmountInput?.value) <= 0 || Number(redPacket.redPacketAmountInput?.value) > activeBookEconomyCoins"
+            @click="redPacket.confirmSendRedPacket"
+          >
+            确认发送
+          </button>
+        </footer>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- 任务邀请弹窗 -->
+  <Teleport to="body">
+    <div v-if="task.showTaskInviteDropdown?.value" class="task-invite-modal-overlay" @click.self="task.closeTaskInviteDropdown">
+      <div class="task-invite-modal" @click.stop>
+        <header class="task-invite-modal-head">
+          <h3 class="task-invite-modal-title">执行任务</h3>
+          <button type="button" class="task-invite-modal-close" @click="task.closeTaskInviteDropdown">×</button>
+        </header>
+        <div class="task-invite-modal-body">
+          <div v-if="task.getAcceptedTasksForInvite?.value?.length === 0" class="task-invite-empty">
+            暂无可执行的任务
+          </div>
+          <template v-for="t in task.getAcceptedTasksForInvite?.value" :key="t?.id || Math.random()">
+            <button
+              v-if="t"
+              type="button"
+              class="task-invite-modal-item"
+              @click.stop="task.handleSendTaskInvite(t)"
+            >
+              <span class="task-invite-type">{{ task.TASK_TYPE_LABELS_TASK?.[t.type] || t.type }}</span>
+              <span class="task-invite-name">{{ t.name }}</span>
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
-/* 基础样式继承自原 DormitoryScreen.css */
 .character-room-stage {
   position: relative;
   width: 100%;
@@ -984,9 +1154,8 @@ function isDriftFollowUpPending(entryId) {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  margin: 16px;
+  background: transparent;
+  margin: 8px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1027,187 +1196,613 @@ function isDriftFollowUpPending(entryId) {
   padding: 16px;
 }
 
-/* 聊天覆盖层样式 */
+/* ===== 聊天覆盖层 - iOS16 风格 ===== */
 .dorm-chat-overlay {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px 12px 0 0;
+  z-index: 6;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  height: auto;
+  min-height: 150px;
+  max-height: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(30, 30, 35, 0.35) 0%, rgba(18, 18, 22, 0.45) 100%);
+  backdrop-filter: blur(30px) saturate(1.8);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  padding: 0;
   display: flex;
   flex-direction: column;
-  z-index: 5;
+  box-shadow:
+    0 2px 16px rgba(0, 0, 0, 0.25),
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: height 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
+.platform-android.android-portrait .dorm-chat-overlay {
+  background: linear-gradient(180deg, rgba(30, 30, 35, 0.94) 0%, rgba(18, 18, 22, 0.96) 100%) !important;
+  backdrop-filter: blur(40px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 头部 */
 .dorm-chat-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.dorm-chat-drag-handle {
-  cursor: ns-resize;
-  padding: 4px;
-  color: #666;
+  gap: 10px;
+  padding-left: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+  flex-shrink: 0;
 }
 
 .drag-handle-icon {
-  font-size: 16px;
+  border: none;
+  background: transparent;
 }
 
 .dorm-chat-title {
   flex: 1;
   margin: 0;
-  font-size: 14px;
-  color: #333;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1;
+  letter-spacing: 0.02em;
 }
 
+/* 菜单 */
 .dorm-chat-menu-wrap {
   position: relative;
 }
 
 .dorm-chat-menu-btn {
-  background: none;
+  appearance: none;
   border: none;
-  font-size: 18px;
-  cursor: pointer;
-  color: #666;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
   padding: 4px 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+  letter-spacing: 2px;
 }
 
-.dorm-chat-menu-btn.active {
-  color: #333;
-}
 
 .dorm-popup-menu {
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   right: 0;
-  background: #fff;
+  z-index: 10;
+  min-width: 100px;
+  max-width: 140px;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 8px;
-  z-index: 20;
-  min-width: 150px;
+  background: color-mix(in srgb, var(--background, #0a0a0a) 70%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 4px 0;
+  margin-bottom: 4px;
+  box-shadow: 0 -4px 16px color-mix(in srgb, #000 20%, transparent);
+  display: flex;
+  flex-direction: column;
 }
 
 .dorm-popup-menu-btn {
-  display: block;
-  width: 100%;
-  padding: 8px 12px;
-  background: none;
+  appearance: none;
   border: none;
-  text-align: left;
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground, #ffffff);
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
   cursor: pointer;
-  border-radius: 4px;
-  font-size: 14px;
-  color: #333;
+  transition: all 150ms ease;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .dorm-popup-menu-btn:hover {
-  background: #f0f0f0;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
 }
 
 .dorm-popup-menu-btn.active {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 20%, transparent);
+  color: var(--accent-cyan, #00d4ff);
 }
 
+/* 聊天历史区 */
 .dorm-chat-history {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
-  max-height: 200px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.dorm-chat-history::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dorm-chat-history::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dorm-chat-history::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.dorm-chat-history::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .dorm-chat-empty {
   text-align: center;
-  color: #999;
-  margin: 24px 0;
+  color: rgba(255, 255, 255, 0.25);
+  margin: 20px 0;
+  font-size: 0.82rem;
 }
 
+/* 消息气泡 */
 .dorm-chat-message {
-  margin-bottom: 8px;
-}
-
-.dorm-chat-message.user {
-  text-align: right;
-}
-
-.dorm-chat-message.assistant {
-  text-align: left;
-}
-
-.dorm-chat-text {
-  display: inline-block;
-  padding: 8px 12px;
+  max-width: 75%;
+  padding: 10px 14px;
   border-radius: 16px;
-  max-width: 80%;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
   word-break: break-word;
 }
 
-.dorm-chat-message.user .dorm-chat-text {
-  background: #2196f3;
-  color: white;
+.dorm-chat-message.user {
+  align-self: flex-end;
+  margin-left: auto;
+  background: linear-gradient(135deg, rgba(90, 200, 250, 0.25), rgba(48, 176, 230, 0.18));
+  border-bottom-right-radius: 4px;
+  color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
-.dorm-chat-message.assistant .dorm-chat-text {
-  background: #f0f0f0;
-  color: #333;
+.dorm-chat-message.assistant {
+  align-self: flex-start;
+  margin-right: auto;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  border-bottom-left-radius: 4px;
+  color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* 消息包含红包/任务卡片时，外层透明 */
+.dorm-chat-message:has(.red-packet-chat),
+.dorm-chat-message:has(.dorm-chat-task-card) {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  padding: 0;
+  max-width: 100%;
+  border-radius: 0;
+}
+
+.dorm-chat-text {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+  word-break: break-word;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* 输入行 */
 .dorm-chat-input-row {
   display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-top: 1px solid #e0e0e0;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
 }
 
 .dorm-chat-input {
   flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #e0e0e0;
+  padding: 9px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  font-size: 14px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.05);
   outline: none;
+  transition: all 0.2s ease;
+}
+
+.dorm-chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
 }
 
 .dorm-chat-input:focus {
-  border-color: #2196f3;
+  border-color: rgba(90, 200, 250, 0.4);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 3px rgba(90, 200, 250, 0.1);
 }
 
 .dorm-chat-input:disabled {
-  background: #f0f0f0;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .dorm-chat-send-btn {
-  padding: 8px 16px;
-  background: #2196f3;
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #5ac8fa, #3a9fe0);
   color: white;
   border: none;
   border-radius: 20px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(90, 200, 250, 0.25);
 }
 
 .dorm-chat-send-btn:hover:not(:disabled) {
-  background: #1976d2;
+  background: linear-gradient(135deg, #6dd3ff, #4aaaf0);
+  box-shadow: 0 3px 12px rgba(90, 200, 250, 0.35);
+  transform: translateY(-1px);
+}
+
+.dorm-chat-send-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(90, 200, 250, 0.2);
 }
 
 .dorm-chat-send-btn:disabled {
-  background: #e0e0e0;
-  color: #999;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.06));
+  color: rgba(255, 255, 255, 0.3);
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .dorm-chat-error {
-  padding: 4px 12px 8px;
-  color: #f44336;
-  font-size: 12px;
+  padding: 4px 14px 10px;
+  color: #ff6b6b;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* 输入行附加按钮 */
+.dorm-chat-task-invite-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dorm-chat-task-invite-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.dorm-chat-task-invite-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #5ac8fa;
+}
+
+.dorm-chat-task-invite-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dorm-chat-red-packet-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(255, 80, 80, 0.15), rgba(255, 50, 50, 0.08));
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.dorm-chat-red-packet-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255, 80, 80, 0.25), rgba(255, 50, 50, 0.15));
+  border-color: rgba(255, 80, 80, 0.3);
+  transform: scale(1.05);
+}
+
+.dorm-chat-red-packet-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.task-invite-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+}
+
+/* 任务邀请卡片 */
+.dorm-chat-task-card {
+  display: flex;
+  align-items: stretch;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 85%;
+  align-self: flex-start;
+  background: linear-gradient(135deg,
+    rgba(52, 199, 89, 0.15) 0%,
+    rgba(48, 176, 72, 0.08) 100%
+  );
+  border: 1px solid rgba(52, 199, 89, 0.18);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dorm-chat-task-card:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg,
+    rgba(52, 199, 89, 0.22) 0%,
+    rgba(48, 176, 72, 0.12) 100%
+  );
+  border-color: rgba(52, 199, 89, 0.28);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.dorm-chat-task-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 左侧绿色图标区 */
+.task-card-accent {
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(52, 199, 89, 0.25), rgba(52, 199, 89, 0.12));
+  border-right: 1px solid rgba(52, 199, 89, 0.15);
+}
+
+.task-card-accent-icon {
+  font-size: 1rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* 内容区 */
+.task-card-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+}
+
+.task-card-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(52, 199, 89, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.task-card-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-card-target {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* 右侧箭头 */
+.task-card-arrow {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+
+.task-card-arrow-icon {
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.25);
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+.task-invite-modal-close {
+  appearance: none;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.15s;
+}
+
+.platform-android.android-portrait .task-invite-modal-close {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    max-width: 36px !important;
+    max-height: 36px !important;
+    flex: 0 0 36px !important;
+    font-size: 1.2rem !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+  }
+
+.dorm-chat-task-card:hover .task-card-arrow-icon {
+  color: rgba(52, 199, 89, 0.5);
+}
+
+/* ===== 礼物卡片 ===== */
+.dorm-chat-gift-card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-radius: 14px;
+  overflow: hidden;
+  max-width: 85%;
+  align-self: flex-start;
+  background: linear-gradient(135deg,
+    rgba(160, 100, 220, 0.22) 0%,
+    rgba(130, 80, 180, 0.16) 40%,
+    rgba(110, 70, 160, 0.1) 100%
+  );
+  border: 1px solid rgba(160, 100, 220, 0.2);
+  box-shadow:
+    0 2px 8px rgba(160, 100, 220, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.gift-accent {
+  width: 3px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #a855f7, #7c3aed, #c084fc);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+}
+
+.gift-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px 12px 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.gift-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(124, 58, 237, 0.15));
+  border-radius: 12px;
+  border: 1px solid rgba(168, 85, 247, 0.15);
+}
+
+.gift-emoji {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.gift-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.gift-sender {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 3px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gift-item-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(168, 85, 247, 0.85);
+  margin: 0 0 3px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gift-message {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gift-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gift-badge.success {
+  color: rgba(52, 199, 89, 0.85);
+  background: rgba(52, 199, 89, 0.1);
+  border: 1px solid rgba(52, 199, 89, 0.15);
 }
 
 /* 阶段提示动画 */
@@ -1244,5 +1839,232 @@ function isDriftFollowUpPending(entryId) {
   font-size: 12px;
   color: #4caf50;
   margin: 0;
+}
+</style>
+
+<!-- Teleport 到 body 的弹窗菜单（非 scoped） -->
+<style>
+.dorm-popup-menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9999;
+}
+
+.dorm-popup-menu-overlay {
+  position: absolute;
+  top: 56px;
+  right: 14px;
+  background: rgba(50, 50, 56, 0.55);
+  backdrop-filter: blur(30px) saturate(1.8);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: 8px;
+  min-width: 160px;
+  overflow: hidden;
+  animation: dorm-menu-slide-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dorm-menu-item {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dorm-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.dorm-menu-item.active {
+  background: rgba(90, 200, 250, 0.18);
+  color: #5ac8fa;
+  font-weight: 600;
+}
+
+@keyframes dorm-menu-slide-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 约定面板样式 */
+.appointment-panel-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 16px;
+}
+.platform-android.android-portrait .appointment-panel-body {
+  background: linear-gradient(180deg, rgba(30, 30, 35, 0.94) 0%, rgba(18, 18, 22, 0.96) 100%) !important;
+  backdrop-filter: blur(40px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.appointment-panel-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.appointment-panel-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+}
+
+.appointment-panel-desc {
+  margin: 0;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.appointment-panel-open-btn {
+  padding: 10px 24px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 212, 255, 0.25) 0%,
+    rgba(0, 150, 255, 0.15) 100%
+  );
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 10px;
+  color: var(--accent-cyan, #00d4ff);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.appointment-panel-open-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 212, 255, 0.35) 0%,
+    rgba(0, 150, 255, 0.2) 100%
+  );
+  border-color: rgba(0, 212, 255, 0.5);
+}
+
+.appointment-panel-open-btn:active {
+  transform: scale(0.97);
+}
+
+/* ===== 来访卡片 ===== */
+.dorm-chat-visit-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  max-width: 90%;
+  align-self: flex-start;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dorm-chat-message:has(.dorm-chat-visit-card) {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  padding: 0;
+  max-width: 100%;
+  border-radius: 0;
+}
+
+.visit-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.visit-type-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.visit-type-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.visit-time {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.visit-card-body {
+  padding: 8px 14px;
+}
+
+.visit-mood {
+  font-size: 0.68rem;
+  color: rgba(0, 212, 255, 0.6);
+  margin: 0 0 6px;
+}
+
+.visit-content {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.visit-gift-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin: 4px 8px 8px;
+  background: linear-gradient(135deg,
+    rgba(160, 100, 220, 0.15) 0%,
+    rgba(130, 80, 180, 0.08) 100%
+  );
+  border: 1px solid rgba(160, 100, 220, 0.15);
+  border-radius: 10px;
+}
+
+.visit-gift-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.visit-gift-name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(168, 85, 247, 0.8);
 }
 </style>

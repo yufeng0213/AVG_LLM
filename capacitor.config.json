@@ -17,6 +17,10 @@
       "style": "LIGHT",
       "overlaysWebView": false,
       "backgroundColor": "#0d0d1a"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_notification",
+      "largeIcon": "ic_notification"
     }
   }
 }

@@ -19,6 +19,8 @@ export const generateTaskExecutionOpening = async ({ task, characterRoles, world
     throw new Error(validation.error || 'API配置无效')
   }
 
+  console.log('[TaskExecService] generateTaskExecutionOpening, characterRoles:', JSON.stringify(characterRoles.map(r => ({ id: r.characterId, name: r.characterName }))))
+
   const roleSummary = characterRoles.map((r) => `${r.characterName}（${r.trpgRole}）${r.roleDescription ? ` - ${r.roleDescription}` : ''}`).join('\n')
 
   const worldContext = worldBook ? `
@@ -82,9 +84,15 @@ export const processTaskAction = async ({ task, characterRoles, messageHistory, 
     throw new Error(validation.error || 'API配置无效')
   }
 
+  console.log('[TaskExecService] processTaskAction, characterRoles:', JSON.stringify(characterRoles.map(r => ({ id: r.characterId, name: r.characterName }))))
+  console.log('[TaskExecService] processTaskAction, targetCharacterId:', targetCharacterId)
+
   const targetRole = characterRoles.find((r) => r.characterId === targetCharacterId)
   const targetCharName = targetRole?.characterName || '未知角色'
   const targetCharDesc = targetRole?.roleDescription || ''
+
+  console.log('[TaskExecService] processTaskAction, targetRole:', targetRole ? targetRole.characterName : 'NOT FOUND')
+  console.log('[TaskExecService] processTaskAction, targetCharName resolved:', targetCharName)
 
   const historyContext = messageHistory.slice(-10).map((msg) => {
     if (msg.role === 'gm') return `GM：${msg.content}`

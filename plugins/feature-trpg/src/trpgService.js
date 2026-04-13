@@ -77,13 +77,13 @@ export const generateRandomTopic = () => {
 /**
  * 从世界书获取所有角色，并在前面添加 User 角色
  */
-export const getWorldBookCharacters = (worldBook) => {
+export const getWorldBookCharacters = (worldBook, userName = 'User') => {
   const userCharacter = {
     id: 'user_player',
-    label: 'User',
+    label: userName,
     description: '玩家自身角色，由玩家直接控制。',
     isUser: true,
-    raw: { id: 'user_player', label: 'User' },
+    raw: { id: 'user_player', label: userName },
   }
 
   if (!worldBook || !Array.isArray(worldBook.characters)) {
@@ -105,9 +105,10 @@ export const getWorldBookCharacters = (worldBook) => {
  * 调用LLM为角色分配跑团身份（排除User角色）
  * @param {Array} characters - 角色列表（包含User）
  * @param {string} topic - 跑团主题
+ * @param {string} userName - 玩家名称
  * @returns {Promise<Array>} 角色身份分配结果
  */
-export const assignCharacterRoles = async (characters, topic) => {
+export const assignCharacterRoles = async (characters, topic, userName = 'User') => {
   const validation = await getValidatedActiveConfig()
   if (!validation.success) {
     throw new Error(validation.error || 'API配置无效')
@@ -122,7 +123,7 @@ export const assignCharacterRoles = async (characters, topic) => {
     return [
       {
         characterId: 'user_player',
-        characterName: 'User',
+        characterName: userName,
         trpgRole: '玩家',
         roleDescription: '冒险的参与者，由玩家直接控制。',
         specialAbility: '自由意志',
@@ -135,7 +136,7 @@ export const assignCharacterRoles = async (characters, topic) => {
 
   const systemPrompt = `你是一位专业的TRPG（桌上角色扮演游戏）主持人。你擅长为各种主题的跑团游戏分配角色身份。
 请根据提供的跑团主题和角色列表，为每个角色分配一个适合的跑团身份/职业/角色。
-注意：有一个名为 "User" 的角色是玩家自身，不需要你分配身份，你只需要为其他角色分配。
+注意：有一个名为 "${userName}" 的角色是玩家自身，不需要你分配身份，你只需要为其他角色分配。
 要求：
 1. 每个角色都要有独特的身份
 2. 身份要符合跑团主题的氛围
@@ -144,7 +145,7 @@ export const assignCharacterRoles = async (characters, topic) => {
 
   const userPrompt = `跑团主题：${topic || generateRandomTopic()}
 
-角色列表（不包含User，User由玩家直接控制）：
+角色列表（不包含${userName}，${userName}由玩家直接控制）：
 ${characterList}
 
 请为每个角色分配一个跑团身份，返回以下JSON格式（不要添加其他内容）：
@@ -190,7 +191,7 @@ ${characterList}
       // 添加 User 角色
       const userRole = {
         characterId: 'user_player',
-        characterName: 'User',
+        characterName: userName,
         trpgRole: '玩家',
         roleDescription: '冒险的参与者，由玩家直接控制。',
         specialAbility: '自由意志',
@@ -212,7 +213,7 @@ ${characterList}
 
     const userRole = {
       characterId: 'user_player',
-      characterName: 'User',
+      characterName: userName,
       trpgRole: '玩家',
       roleDescription: '冒险的参与者，由玩家直接控制。',
       specialAbility: '自由意志',
@@ -234,7 +235,7 @@ ${characterList}
 
     const userRole = {
       characterId: 'user_player',
-      characterName: 'User',
+      characterName: userName,
       trpgRole: '玩家',
       roleDescription: '冒险的参与者，由玩家直接控制。',
       specialAbility: '自由意志',

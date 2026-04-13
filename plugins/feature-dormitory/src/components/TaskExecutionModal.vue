@@ -5,6 +5,7 @@
  */
 
 import { computed, nextTick, ref, watch } from 'vue'
+import { marked } from 'marked'
 import {
   loadTaskExecutionSession,
   saveTaskExecutionSession,
@@ -32,6 +33,11 @@ const props = defineProps({
   worldBook: {
     type: Object,
     default: null
+  },
+  // 玩家名称（从世界书 userProfile 传入）
+  userName: {
+    type: String,
+    default: 'User'
   },
   // 任务目标角色信息（从聊天上下文传入）
   targetCharacterId: {
@@ -61,11 +67,11 @@ const effectiveCharacterRoles = computed(() => {
   // 优先使用传入的 characterRoles（如果有 TRPG 角色）
   if (props.characterRoles.length > 0) return props.characterRoles
 
-  // 否则构建 User + 目标角色
+  // 否则构建 玩家 + 目标角色
   const roles = [
     {
       characterId: 'user_player',
-      characterName: 'User',
+      characterName: props.userName,
       trpgRole: '玩家',
       roleDescription: '玩家控制的角色',
     }
@@ -95,13 +101,27 @@ const TASK_TYPE_LABELS = {
   daily: '日常',
 }
 
+// 配置 marked
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+})
+
+function renderMessageContent(text) {
+  if (!text) return ''
+  return marked.parse(text)
+}
+
 const canSendAction = computed(() => {
   return inputDraft.value.trim() && !isProcessing.value
 })
 
 // 初始化或恢复 session
 watch(() => props.isOpen, async (val) => {
-  console.log('[TaskExecution] watch 触发, isOpen:', val, 'task:', props.task ? props.task.id : 'null', 'task.type:', typeof props.task?.id)
+  console.log('[TaskExecution] watch 触发, isOpen:', val, 'task:', props.task ? props.task.id : 'null')
+  console.log('[TaskExecution] props.targetCharacterId:', props.targetCharacterId, 'props.targetCharacterName:', props.targetCharacterName)
+  console.log('[TaskExecution] props.task.targetCharacterId:', props.task?.targetCharacterId, 'props.task.targetCharacterName:', props.task?.targetCharacterName)
+  console.log('[TaskExecution] effectiveCharacterRoles:', JSON.stringify(effectiveCharacterRoles.value.map(r => ({ id: r.characterId, name: r.characterName }))))
 
   if (val && props.task) {
     console.log('[TaskExecution] 打开任务执行, taskId:', props.task.id, 'taskName:', props.task.name)
@@ -201,12 +221,15 @@ function handleSendAction() {
 async function handleProcessAction(action) {
   isProcessing.value = true
 
+  console.log('[TaskExecution] handleProcessAction, targetCharacterId:', props.targetCharacterId, 'targetCharacterName:', props.targetCharacterName)
+  console.log('[TaskExecution] handleProcessAction, effectiveCharacterRoles:', JSON.stringify(effectiveCharacterRoles.value.map(r => ({ id: r.characterId, name: r.characterName }))))
+
   // 添加玩家消息
   messages.value.push({
     id: `player_${Date.now()}`,
     role: 'player',
     characterId: 'user_player',
-    characterName: 'User',
+    characterName: props.userName,
     content: action,
     timestamp: Date.now(),
   })
@@ -373,7 +396,7 @@ function handleKeydown(e) {
                   <div class="task-exec-msg-header">
                     <span v-if="msg.role === 'gm'" class="task-exec-msg-sender gm-sender">🎲 GM（主持人）</span>
                     <span v-else-if="msg.role === 'player'" class="task-exec-msg-sender player-sender">
-                      {{ msg.characterName || 'User' }}
+                      {{ msg.characterName || userName }}
                     </span>
                     <span v-else-if="msg.role === 'character'" class="task-exec-msg-sender character-sender">
                       {{ msg.characterName || '未知角色' }}
@@ -384,7 +407,7 @@ function handleKeydown(e) {
                     <span class="task-exec-msg-time">{{ formatTime(msg.timestamp) }}</span>
                   </div>
                   <div class="task-exec-msg-content">
-                    <p class="task-exec-msg-text">{{ msg.content }}</p>
+                    <div v-html="renderMessageContent(msg.content)"></div>
                   </div>
                 </div>
               </template>
@@ -400,7 +423,7 @@ function handleKeydown(e) {
                 <div class="task-exec-msg-header">
                   <span v-if="msg.role === 'gm'" class="task-exec-msg-sender gm-sender">🎲 GM（主持人）</span>
                   <span v-else-if="msg.role === 'player'" class="task-exec-msg-sender player-sender">
-                    {{ msg.characterName || 'User' }}
+                    {{ msg.characterName || userName }}
                   </span>
                   <span v-else-if="msg.role === 'character'" class="task-exec-msg-sender character-sender">
                     {{ msg.characterName || '未知角色' }}
@@ -411,7 +434,7 @@ function handleKeydown(e) {
                   <span class="task-exec-msg-time">{{ formatTime(msg.timestamp) }}</span>
                 </div>
                 <div class="task-exec-msg-content">
-                  <p class="task-exec-msg-text">{{ msg.content }}</p>
+                  <div v-html="renderMessageContent(msg.content)"></div>
                 </div>
               </div>
             </template>
@@ -460,25 +483,34 @@ function handleKeydown(e) {
 </template>
 
 <style scoped>
-/* Task Execution Modal */
+/* Fullscreen overlay */
 .task-exec-overlay {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--background, #0a0a0a);
+  color: var(--foreground, #ffffff);
+  z-index: 1000;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  padding: 16px;
+  flex-direction: column;
+}
+
+/* Transition */
+.task-exec-modal-enter-active,
+.task-exec-modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.task-exec-modal-enter-from,
+.task-exec-modal-leave-to {
+  opacity: 0;
 }
 
 .task-exec-container {
   width: 100%;
-  max-width: 560px;
-  max-height: 90vh;
-  background: linear-gradient(145deg, #1a1a2e, #16213e);
-  border-radius: 16px;
-  border: 1px solid rgba(155, 89, 182, 0.3);
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -487,137 +519,202 @@ function handleKeydown(e) {
 
 /* Header */
 .task-exec-header {
-  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
+  flex-shrink: 0;
 }
 
 .task-exec-title-group {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 4px;
+  min-width: 0;
+  flex: 1;
 }
 
 .task-exec-title {
   margin: 0;
-  font-size: 1.1rem;
-  color: #ffffff;
+  font-size: 18px;
+  color: var(--foreground, #ffffff);
+  white-space: nowrap;
 }
 
 .task-exec-type-badge {
-  padding: 2px 8px;
-  border-radius: 8px;
-  font-size: 0.7rem;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.72rem;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
-.task-exec-type-explore { background: rgba(52, 152, 219, 0.2); color: #3498db; }
-.task-exec-type-collect { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-.task-exec-type-social { background: rgba(155, 89, 182, 0.2); color: #9b59b6; }
-.task-exec-type-combat { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
-.task-exec-type-daily { background: rgba(243, 156, 18, 0.2); color: #f39c12; }
+.task-exec-type-explore { background: rgba(52, 152, 219, 0.2); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.25); }
+.task-exec-type-collect { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.25); }
+.task-exec-type-social { background: rgba(155, 89, 182, 0.2); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.25); }
+.task-exec-type-combat { background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.25); }
+.task-exec-type-daily { background: rgba(243, 156, 18, 0.2); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.25); }
 
 .task-exec-task-name {
   margin: 0;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .task-exec-completed-badge {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #2ecc71;
-  background: rgba(46, 204, 113, 0.15);
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.2);
   padding: 2px 10px;
   border-radius: 10px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .task-exec-close-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  background: none;
   border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 1.2rem;
-  color: #ffffff;
+  font-size: 24px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+  padding: 4px 8px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+  .platform-android.android-portrait .task-exec-close-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+
+.task-exec-close-btn:hover {
+  color: var(--foreground, #ffffff);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* Character Bar */
 .task-exec-char-bar {
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 8px 16px;
+  flex-shrink: 0;
 }
 
 .task-exec-char-scroll {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   overflow-x: auto;
   padding-bottom: 4px;
 }
 
+.task-exec-char-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .task-exec-char-btn {
   flex-shrink: 0;
-  padding: 6px 10px;
-  border: 1px solid rgba(155, 89, 182, 0.3);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 70px;
+  min-width: 80px;
   transition: all 0.2s;
+}
+  .platform-android.android-portrait .task-exec-char-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+.task-exec-char-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .task-exec-char-btn.active {
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  border-color: #9b59b6;
+  border-color: var(--accent-cyan, #00d4ff);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(0, 150, 255, 0.06));
 }
 
 .task-exec-char-btn.is-user {
-  border-color: rgba(52, 152, 219, 0.5);
-  background: rgba(52, 152, 219, 0.1);
+  border-color: rgba(46, 204, 113, 0.25);
 }
 
 .task-exec-char-btn.is-user.active {
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  border-color: #3498db;
+  border-color: var(--accent-cyan, #00d4ff);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(0, 150, 255, 0.06));
 }
 
 .task-exec-char-name {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   font-weight: 600;
+  color: var(--foreground, #ffffff);
 }
 
 .task-exec-char-role {
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.68rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90px;
 }
 
 /* Messages */
 .task-exec-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 8px 16px;
+  overscroll-behavior-y: contain;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .task-exec-empty {
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
+  color: color-mix(in srgb, var(--foreground, #ffffff) 35%, transparent);
   padding: 24px;
+  font-size: 0.9rem;
 }
 
 /* History divider */
@@ -626,11 +723,12 @@ function handleKeydown(e) {
   align-items: center;
   justify-content: center;
   padding: 8px 0;
+  flex-shrink: 0;
 }
 
 .task-exec-history-divider span {
   font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
   white-space: nowrap;
 }
 
@@ -660,94 +758,212 @@ function handleKeydown(e) {
 }
 
 .gm-sender { color: #f39c12; }
-.player-sender { color: #3498db; }
+.player-sender { color: var(--accent-cyan, #00d4ff); }
 .character-sender { color: #9b59b6; }
 
 .task-exec-msg-time {
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.7rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 30%, transparent);
   margin-left: auto;
 }
 
 .task-exec-msg-content {
+  margin: 0;
   padding: 10px 14px;
   border-radius: 12px;
-  max-width: 85%;
+  font-size: 0.85rem;
+  color: var(--foreground, #ffffff);
+  white-space: normal;
+  line-height: 1.6;
 }
 
 .task-exec-msg.gm .task-exec-msg-content {
-  background: rgba(243, 156, 18, 0.15);
-  border: 1px solid rgba(243, 156, 18, 0.2);
+  background: linear-gradient(135deg, rgba(243, 156, 18, 0.08), rgba(243, 156, 18, 0.02));
+  border: 1px solid rgba(243, 156, 18, 0.12);
   align-self: flex-start;
 }
 
 .task-exec-msg.player .task-exec-msg-content {
-  background: rgba(52, 152, 219, 0.15);
-  border: 1px solid rgba(52, 152, 219, 0.2);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(0, 150, 255, 0.02));
+  border: 1px solid rgba(0, 212, 255, 0.1);
   align-self: flex-end;
 }
 
 .task-exec-msg.character .task-exec-msg-content {
-  background: rgba(155, 89, 182, 0.15);
-  border: 1px solid rgba(155, 89, 182, 0.2);
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.06), rgba(46, 204, 113, 0.02));
+  border: 1px solid rgba(46, 204, 113, 0.1);
   align-self: flex-start;
 }
 
-.task-exec-msg-text {
-  margin: 0;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.9);
+/* Markdown 渲染样式 */
+.task-exec-msg-content :deep(strong) {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.task-exec-msg-content :deep(em) {
+  font-style: italic;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 75%, transparent);
+}
+
+.task-exec-msg-content :deep(code) {
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono, 'Courier New', monospace);
+  color: #e0e0e0;
+}
+
+.task-exec-msg-content :deep(pre) {
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.8rem;
   line-height: 1.5;
-  white-space: pre-wrap;
+}
+
+.task-exec-msg-content :deep(pre code) {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+}
+
+.task-exec-msg-content :deep(hr) {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.task-exec-msg-content :deep(ul),
+.task-exec-msg-content :deep(ol) {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.task-exec-msg-content :deep(li) {
+  margin-bottom: 4px;
+}
+
+.task-exec-msg-content :deep(p) {
+  margin: 6px 0;
+}
+
+.task-exec-msg-content :deep(p:first-child) {
+  margin-top: 0;
+}
+
+.task-exec-msg-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.task-exec-msg-content :deep(a) {
+  color: var(--accent-cyan, #00d4ff);
+  text-decoration: none;
+}
+
+.task-exec-msg-content :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.task-exec-msg-content :deep(blockquote) {
+  margin: 8px 0;
+  padding: 6px 12px;
+  border-left: 3px solid rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.04);
+  border-radius: 0 6px 6px 0;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 70%, transparent);
+}
+
+.task-exec-msg-content :deep(h1),
+.task-exec-msg-content :deep(h2),
+.task-exec-msg-content :deep(h3) {
+  margin: 10px 0 4px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.task-exec-msg-content :deep(h1) { font-size: 1.1rem; }
+.task-exec-msg-content :deep(h2) { font-size: 1rem; }
+.task-exec-msg-content :deep(h3) { font-size: 0.95rem; }
+
+.task-exec-msg-content :deep(div) {
+  margin: 4px 0;
 }
 
 /* Input Area */
 .task-exec-input-area {
-  padding: 10px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .task-exec-input-row {
   display: flex;
   gap: 8px;
   align-items: center;
-  overflow: hidden;
 }
 
 .task-exec-input {
   flex: 1;
-  min-width: 0;
-  padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
-  color: #ffffff;
   font-size: 0.85rem;
+  color: var(--foreground, #ffffff);
   outline: none;
-  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.task-exec-input::placeholder {
+  color: color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
 }
 
 .task-exec-input:focus {
-  border-color: rgba(155, 89, 182, 0.5);
+  outline: none;
+  border-color: rgba(0, 212, 255, 0.4);
 }
 
 .task-exec-send-btn {
-  padding: 10px 18px;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  padding: 10px 20px;
   border: none;
   border-radius: 10px;
-  color: #ffffff;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.25), rgba(0, 150, 255, 0.12));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  color: var(--accent-cyan, #00d4ff);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
   transition: all 0.2s;
 }
-
+  .platform-android.android-portrait .task-exec-send-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
 .task-exec-send-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #8e44ad, #7d3c98);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.35), rgba(0, 150, 255, 0.2));
+  border-color: rgba(0, 212, 255, 0.5);
   transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.2);
 }
 
 .task-exec-send-btn:disabled {
@@ -759,7 +975,9 @@ function handleKeydown(e) {
 .task-exec-complete-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -768,13 +986,28 @@ function handleKeydown(e) {
 }
 
 .task-exec-complete-dialog {
-  background: linear-gradient(145deg, #1a1a2e, #16213e);
-  border: 1px solid rgba(46, 204, 113, 0.4);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 24px;
   text-align: center;
-  max-width: 360px;
+  max-width: 340px;
   width: 100%;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  animation: task-complete-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes task-complete-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .task-exec-complete-icon {
@@ -784,7 +1017,7 @@ function handleKeydown(e) {
 
 .task-exec-complete-title {
   margin: 0 0 8px;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   color: #2ecc71;
 }
 
@@ -792,15 +1025,16 @@ function handleKeydown(e) {
   margin: 0 0 8px;
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.7);
-  padding: 8px 12px;
-  background: rgba(46, 204, 113, 0.1);
-  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(46, 204, 113, 0.08);
+  border: 1px solid rgba(46, 204, 113, 0.15);
+  border-radius: 10px;
 }
 
 .task-exec-complete-hint {
   margin: 0 0 16px;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent);
 }
 
 .task-exec-complete-actions {
@@ -810,135 +1044,42 @@ function handleKeydown(e) {
 }
 
 .task-exec-cancel-btn {
-  padding: 8px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 8px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.task-exec-cancel-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+  color: #ffffff;
 }
 
 .task-exec-confirm-btn {
-  padding: 8px 20px;
-  background: linear-gradient(135deg, #2ecc71, #27ae60);
-  border: none;
-  border-radius: 8px;
-  color: #ffffff;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.3), rgba(46, 204, 113, 0.15));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  border-radius: 10px;
+  color: #2ecc71;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* Android竖屏适配 */
-.platform-android.android-portrait .task-exec-container {
-  max-width: 100% !important;
-  max-height: 95vh !important;
-  border-radius: 12px !important;
-}
-
-.platform-android.android-portrait .task-exec-header {
-  padding: 12px 14px !important;
-}
-
-.platform-android.android-portrait .task-exec-title-group {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-wrap: wrap !important;
-  overflow: hidden !important;
-  padding-right: 40px !important;
-}
-
-.platform-android.android-portrait .task-exec-title {
-  font-size: 1rem !important;
-  min-width: 0 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-
-.platform-android.android-portrait .task-exec-task-name {
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  max-width: calc(100% - 40px) !important;
-}
-
-.platform-android.android-portrait .task-exec-close-btn {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  min-height: 32px !important;
-  flex-shrink: 0 !important;
-}
-
-.platform-android.android-portrait .task-exec-completed-badge {
-  font-size: 0.7rem !important;
-  padding: 2px 8px !important;
-}
-
-.platform-android.android-portrait .task-exec-char-btn {
-  min-height: 40px !important;
-  min-width: 60px !important;
-}
-
-.platform-android.android-portrait .task-exec-send-btn {
-  height: 36px !important;
-  min-height: 36px !important;
-  max-height: 36px !important;
-  padding: 0 8px !important;
-  font-size: 0.8rem !important;
-  line-height: 1 !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-  flex: 0 0 auto !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 8px !important;
-  width: auto !important;
-  min-width: 0 !important;
-}
-
-.platform-android.android-portrait .task-exec-input {
-  height: 36px !important;
-  min-height: 36px !important;
-  max-height: 36px !important;
-  padding: 0 10px !important;
-  font-size: 0.85rem !important;
-  line-height: 1.2 !important;
-  box-sizing: border-box !important;
-  min-width: 0 !important;
-  flex: 1 1 0 !important;
-}
-
-.platform-android.android-portrait .task-exec-input-area {
-  padding: 8px 10px !important;
-  box-sizing: border-box !important;
-  width: 100% !important;
-  overflow: hidden !important;
-}
-
-.platform-android.android-portrait .task-exec-input-row {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.platform-android.android-portrait .task-exec-cancel-btn,
-.platform-android.android-portrait .task-exec-confirm-btn {
-  min-height: 36px !important;
-  height: 36px !important;
-  padding: 0 14px !important;
-  font-size: 0.8rem !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
+.task-exec-confirm-btn:hover {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.4), rgba(46, 204, 113, 0.25));
+  border-color: rgba(46, 204, 113, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(46, 204, 113, 0.2);
 }
 </style>

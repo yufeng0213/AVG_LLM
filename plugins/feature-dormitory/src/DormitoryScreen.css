@@ -274,8 +274,10 @@
 }
 
 .character-grid-stage {
+  position: relative;
   height: 100%;
   min-height: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -329,7 +331,23 @@
   opacity: 0.5;
   z-index: 1;
 }
-
+  .platform-android.android-portrait .character-carousel-card {
+    width: 80% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
 .character-carousel-card.is-active {
   transform: translateX(-50%) scale(1);
   opacity: 1;
@@ -1003,215 +1021,6 @@
   color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
 }
 
-.event-chain-preview-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px 0;
-}
-
-.event-chain-preview-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  padding: 2px 0;
-}
-
-.event-chain-preview-title {
-  margin: 0;
-  font-size: 0.7rem;
-  color: var(--foreground, #ffffff);
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-
-.event-chain-preview-meta {
-  margin: 0;
-  font-size: 0.58rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
-}
-
-.event-chain-preview-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.event-chain-preview-item {
-  border: none;
-  border-radius: 0;
-  padding: 3px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  cursor: pointer;
-  outline: none;
-  transition: all 150ms ease;
-}
-
-.event-chain-preview-item.unlocked {
-  color: var(--accent-green, #22c55e);
-}
-
-.event-chain-preview-item.locked {
-  opacity: 0.45;
-}
-
-.event-chain-preview-item:hover,
-.event-chain-preview-item:focus-visible {
-  opacity: 1;
-}
-
-.event-chain-preview-item.selected.unlocked {
-  color: var(--accent-green, #22c55e);
-  font-weight: 600;
-}
-
-.event-chain-preview-item.selected.locked {
-  opacity: 0.65;
-}
-
-.event-chain-preview-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-
-.event-chain-preview-main {
-  margin: 0;
-  font-size: 0.62rem;
-  color: var(--foreground, #ffffff);
-}
-
-.event-chain-preview-sub {
-  margin: 0;
-  font-size: 0.55rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
-  line-height: 1.3;
-}
-
-.event-chain-preview-badge {
-  border-radius: 999px;
-  padding: 1px 5px;
-  font-size: 0.52rem;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.event-chain-preview-badge.unlocked {
-  color: var(--accent-green, #22c55e);
-  background: color-mix(in srgb, var(--accent-green, #22c55e) 12%, transparent);
-}
-
-.event-chain-preview-badge.locked {
-  color: color-mix(in srgb, var(--foreground, #ffffff) 35%, transparent);
-  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
-}
-
-.event-chain-detail-panel {
-  padding: 3px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.event-chain-detail-panel.unlocked {
-  border-left: 1.5px solid var(--accent-green, #22c55e);
-  padding-left: 5px;
-}
-
-.event-chain-detail-panel.locked {
-  opacity: 0.45;
-}
-
-.event-chain-detail-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-}
-
-.event-chain-detail-title {
-  margin: 0;
-  font-size: 0.65rem;
-  color: var(--foreground, #ffffff);
-  font-weight: 600;
-}
-
-.event-chain-detail-status {
-  border-radius: 999px;
-  padding: 1px 5px;
-  font-size: 0.52rem;
-  white-space: nowrap;
-}
-
-.event-chain-detail-status.unlocked {
-  color: var(--accent-green, #22c55e);
-  background: color-mix(in srgb, var(--accent-green, #22c55e) 12%, transparent);
-}
-
-.event-chain-detail-status.locked {
-  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
-  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
-}
-
-.event-chain-detail-summary {
-  margin: 0;
-  font-size: 0.6rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent);
-  line-height: 1.35;
-}
-
-.event-chain-detail-meta {
-  margin: 0;
-  font-size: 0.55rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
-  line-height: 1.3;
-}
-
-.event-chain-detail-endings {
-  padding-top: 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.event-chain-detail-endings-title {
-  margin: 0;
-  font-size: 0.55rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.event-chain-detail-tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-}
-
-.event-chain-detail-tag {
-  border: none;
-  border-radius: 999px;
-  padding: 1px 4px;
-  font-size: 0.52rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent);
-  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
-}
-
-.event-chain-detail-endings-empty {
-  margin: 0;
-  font-size: 0.55rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent);
-}
-
 .dorm-stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1497,13 +1306,6 @@
   cursor: not-allowed;
 }
 
-.dorm-wardrobe-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px 0;
-}
-
 /* 背包面板样式 */
 .dorm-backpack-panel {
   display: flex;
@@ -1688,154 +1490,7 @@
   50% { opacity: 0.6; }
 }
 
-.dorm-wardrobe-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  padding: 2px 0;
-}
 
-.dorm-wardrobe-title {
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--foreground, #ffffff);
-  letter-spacing: 0.3px;
-}
-
-.dorm-wardrobe-coin {
-  margin: 0;
-  font-size: 0.6rem;
-  color: var(--accent-yellow, #f59e0b);
-}
-
-.dorm-wardrobe-equipped {
-  padding: 3px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.dorm-wardrobe-section-label {
-  margin: 0;
-  font-size: 0.52rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.dorm-wardrobe-equipped-main {
-  margin: 0;
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--foreground, #ffffff);
-}
-
-.dorm-wardrobe-equipped-sub {
-  margin: 0;
-  font-size: 0.58rem;
-  line-height: 1.3;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
-}
-
-.dorm-wardrobe-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.dorm-wardrobe-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.dorm-wardrobe-item {
-  padding: 3px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-}
-
-.dorm-wardrobe-item.owned {
-  color: var(--accent-green, #22c55e);
-}
-
-.dorm-wardrobe-item-main {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.dorm-wardrobe-item-name {
-  margin: 0;
-  font-size: 0.62rem;
-  color: var(--foreground, #ffffff);
-  font-weight: 600;
-}
-
-.dorm-wardrobe-item-meta {
-  margin: 0;
-  font-size: 0.52rem;
-  line-height: 1.25;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent);
-}
-
-.dorm-wardrobe-action-btn,
-.dorm-wardrobe-buy-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: 2px 5px;
-  font-size: 0.55rem;
-  font-weight: 600;
-  color: var(--accent-cyan, #00d4ff);
-  cursor: pointer;
-  transition: opacity 150ms ease;
-  white-space: nowrap;
-  opacity: 0.75;
-}
-
-.dorm-wardrobe-buy-btn {
-  color: var(--accent-green, #22c55e);
-}
-
-.dorm-wardrobe-action-btn:hover:not(:disabled),
-.dorm-wardrobe-buy-btn:hover:not(:disabled) {
-  opacity: 1;
-}
-
-.dorm-wardrobe-action-btn:disabled,
-.dorm-wardrobe-buy-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.3;
-}
-
-.dorm-chat-overlay {
-  position: absolute;
-  z-index: 6;
-  left: 14px;
-  right: 14px;
-  bottom: 14px;
-  height: auto;
-  min-height: 150px;
-  max-height: none;
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--background, #0a0a0a) 88%, transparent);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  padding: 12px;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 10px;
-  box-shadow: 0 12px 32px color-mix(in srgb, #000 35%, transparent);
-  transition: height 0.1s ease-out;
-}
 
 .dorm-chat-head {
   display: flex;
@@ -1849,120 +1504,19 @@
   min-height: 20px;
 }
 
-.dorm-chat-drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 24px;
-  cursor: ns-resize;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
-  transition: all 150ms ease;
-  flex-shrink: 0;
-  user-select: none;
-  -webkit-user-select: none;
-}
 
-.dorm-chat-drag-handle:hover {
-  background: color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
-}
 
-.dorm-chat-drag-handle:active {
-  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 25%, transparent);
-}
 
-.drag-handle-icon {
-  font-size: 0.9rem;
-  line-height: 1;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
-  pointer-events: none;
-  letter-spacing: 1px;
-}
 
-.dorm-chat-drag-handle:hover .drag-handle-icon {
-  color: var(--foreground, #ffffff);
-}
-
-.dorm-chat-title {
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--foreground, #ffffff);
-  line-height: 1;
-}
 
 .dorm-chat-menu-wrap {
   position: relative;
   display: inline-block;
 }
 
-.dorm-chat-menu-btn {
-  appearance: none;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: var(--foreground, #ffffff);
-  padding: 2px 6px;
-  font-size: 1.2rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 150ms ease;
-  white-space: nowrap;
-  line-height: 1;
-  letter-spacing: 2px;
-}
 
-.dorm-chat-menu-btn:hover {
-  color: var(--accent-cyan, #00d4ff);
-}
 
-.dorm-chat-menu-btn.active {
-  color: var(--accent-cyan, #00d4ff);
-}
 
-.dorm-popup-menu {
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  z-index: 10;
-  min-width: 100px;
-  max-width: 140px;
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--background, #0a0a0a) 70%, transparent);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  padding: 4px 0;
-  margin-bottom: 4px;
-  box-shadow: 0 -4px 16px color-mix(in srgb, #000 20%, transparent);
-  display: flex;
-  flex-direction: column;
-}
-
-.dorm-popup-menu-btn {
-  appearance: none;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: var(--foreground, #ffffff);
-  padding: 8px 16px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 150ms ease;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.dorm-popup-menu-btn:hover {
-  background: color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
-}
-
-.dorm-popup-menu-btn.active {
-  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 20%, transparent);
-  color: var(--accent-cyan, #00d4ff);
-}
 
 .dorm-chat-meta {
   margin: 0;
@@ -2009,12 +1563,7 @@
   border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 45%, transparent);
 }
 
-.dorm-chat-overlay {
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--foreground, #ffffff) 4%, transparent);
-  padding: 12px;
-}
+
 
 .dorm-chat-history {
   border: none;
@@ -2049,33 +1598,7 @@
   color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
 }
 
-.dorm-chat-message {
-  max-width: 75%;
-  padding: 10px 14px;
-  border-radius: 16px;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
 
-.dorm-chat-message.user {
-  align-self: flex-end;
-  margin-left: auto;
-  background: color-mix(in srgb, var(--accent-cyan, #06b6d4) 25%, transparent);
-  border-bottom-right-radius: 4px;
-  color: var(--foreground, #ffffff);
-}
-
-.dorm-chat-message.assistant {
-  align-self: flex-start;
-  margin-right: auto;
-  background: color-mix(in srgb, var(--background, #0a0a0a) 75%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-bottom-left-radius: 4px;
-  color: var(--foreground, #ffffff);
-}
 
 .dorm-chat-text {
   margin: 0;
@@ -2304,18 +1827,6 @@
   color: color-mix(in srgb, var(--accent-yellow, #f59e0b) 80%, transparent);
 }
 
-.dorm-event-chain-meta {
-  margin: 6px 0 0;
-  font-size: 0.72rem;
-  color: color-mix(in srgb, var(--accent-yellow, #f59e0b) 75%, transparent);
-}
-
-.dorm-event-chain-path {
-  margin: 4px 0 0;
-  font-size: 0.7rem;
-  color: color-mix(in srgb, var(--accent-yellow, #f59e0b) 70%, transparent);
-}
-
 .dorm-event-desc {
   margin: 6px 0 0;
   font-size: 0.8rem;
@@ -2376,8 +1887,6 @@
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
-  max-height: 180px;
-  overflow-y: auto;
   display: grid;
   gap: 6px;
 }
@@ -2399,54 +1908,6 @@
   color: color-mix(in srgb, var(--foreground, #ffffff) 85%, transparent);
 }
 
-/* 日记详情面板 */
-.diary-detail-panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.diary-detail-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-.diary-detail-header {
-  padding-bottom: 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
-  margin-bottom: 12px;
-}
-
-.diary-detail-date {
-  font-size: 0.7rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
-  display: block;
-  margin-bottom: 4px;
-}
-
-.diary-detail-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--foreground, #ffffff);
-}
-
-.diary-detail-body {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.diary-detail-text {
-  margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.8;
-  color: var(--foreground, #ffffff);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
 @media (max-width: 980px) {
   .dorm-action-compact,
   .sub-scene-action-compact {
@@ -2457,9 +1918,6 @@
     grid-template-columns: 1fr;
   }
 
-  .dorm-wardrobe-item {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 860px) {
@@ -2498,12 +1956,6 @@
     max-height: 60vh;
   }
 
-  .dorm-chat-overlay {
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    max-height: 50vh;
-  }
 }
 
 @media (max-width: 560px) {
@@ -2593,12 +2045,6 @@
     max-height: 58vh;
   }
 
-  .dorm-chat-overlay {
-    padding: 10px;
-    gap: 8px;
-    max-height: 48vh;
-  }
-
   .dorm-drift-panel {
     padding: 8px;
     gap: 8px;
@@ -2627,18 +2073,13 @@
   .daily-next-day-btn {
     width: 100%;
   }
-
-  .event-chain-preview-item {
-    grid-template-columns: 1fr;
-    align-items: start;
-  }
-
-  .event-chain-preview-badge {
-    justify-self: start;
-  }
 }
 
 /* Android竖屏专用样式 - 使用!important确保覆盖 */
+
+/* Android竖屏 - 聊天框磨砂背景 fallback（color-mix/backdrop-filter 兼容性） */
+
+
 .platform-android.android-portrait .dorm-overlay-panel-close {
   width: 36px !important;
   height: 36px !important;
@@ -2770,24 +2211,6 @@
   line-height: 1 !important;
   flex: 1 !important;
   min-width: 0 !important;
-}
-
-/* Android竖屏 - 衣橱操作按钮 */
-.platform-android.android-portrait .dorm-wardrobe-action-btn,
-.platform-android.android-portrait .dorm-wardrobe-buy-btn {
-  min-height: 32px !important;
-  height: 32px !important;
-  padding: 0 10px !important;
-  font-size: 0.7rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-  border-radius: 16px !important;
-  line-height: 1 !important;
-  width: auto !important;
-  min-width: 50px !important;
 }
 
 /* Android竖屏 - 场景互动选择框 */
@@ -2941,9 +2364,8 @@
 
 /* Android竖屏 - 世界书商店面板 */
 .platform-android.android-portrait .worldbook-shop-panel {
-  max-width: 100% !important;
-  max-height: 92vh !important;
-  border-radius: 12px !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .platform-android.android-portrait .worldbook-shop-header {
@@ -2987,98 +2409,44 @@
   white-space: nowrap !important;
 }
 
-.platform-android.android-portrait .worldbook-shop-item {
-  padding: 10px !important;
-  gap: 8px !important;
-}
-
 .platform-android.android-portrait .worldbook-shop-item-grid {
   gap: 8px !important;
-  padding: 12px !important;
 }
 
-.platform-android.android-portrait .worldbook-shop-item-name {
-  font-size: 0.85rem !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+.platform-android.android-portrait .worldbook-shop-item {
+  padding: 12px 12px 12px 10px !important;
+  min-height: 68px !important;
+  gap: 10px !important;
 }
 
-.platform-android.android-portrait .worldbook-shop-item-desc {
+.platform-android.android-portrait .item-name {
+  font-size: 0.8rem !important;
+}
+
+.platform-android.android-portrait .item-desc {
+  font-size: 0.68rem !important;
+}
+
+.platform-android.android-portrait .item-icon-col {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+.platform-android.android-portrait .item-icon {
+  font-size: 1.4rem !important;
+}
+
+.platform-android.android-portrait .shop-tab-bar {
+  min-height: 44px !important;
+}
+
+.platform-android.android-portrait .shop-tab-item {
+  min-height: 44px !important;
+  padding: 8px 14px !important;
+}
+
+.platform-android.android-portrait .tab-label {
   font-size: 0.75rem !important;
-  -webkit-line-clamp: 2 !important;
-  display: -webkit-box !important;
-  -webkit-box-orient: vertical !important;
-  overflow: hidden !important;
-}
-
-.platform-android.android-portrait .worldbook-shop-buy-btn {
-  min-height: 40px !important;
-  height: 40px !important;
-  padding: 0 12px !important;
-  font-size: 0.8rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-  border-radius: 8px !important;
-  line-height: 1 !important;
-  width: 100% !important;
-}
-
-.platform-android.android-portrait .worldbook-shop-category-btn {
-  min-height: 36px !important;
-  height: 36px !important;
-  padding: 0 10px !important;
-  font-size: 0.8rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-}
-
-.platform-android.android-portrait .worldbook-shop-refresh-btn {
-  min-height: 40px !important;
-  height: 40px !important;
-  padding: 0 12px !important;
-  font-size: 0.8rem !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-}
-
-/* Android竖屏 - 跑团启动按钮 & 任务板按钮 */
-.platform-android.android-portrait .trpg-launch-btn,
-.platform-android.android-portrait .task-board-btn {
-  min-height: 48px !important;
-  height: 48px !important;
-  padding: 0 16px !important;
-  font-size: 0.9rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-  border-radius: 12px !important;
-  line-height: 1 !important;
-  width: 100% !important;
-  min-width: 0 !important;
-}
-
-/* Android竖屏 - TRPG面板按钮 */
-.platform-android.android-portrait .start-trpg-btn {
-  min-height: 48px !important;
-  height: 48px !important;
-  padding: 0 20px !important;
-  font-size: 1rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-  border-radius: 12px !important;
-  line-height: 1 !important;
 }
 
 /* Android竖屏 - 任务邀请 "+" 按钮 */
@@ -3147,46 +2515,6 @@
 }
 
 /* Android竖屏 - 话题按钮 */
-.platform-android.android-portrait .topic-btn {
-  min-height: 36px !important;
-  height: 36px !important;
-  padding: 0 12px !important;
-  font-size: 0.75rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-  border-radius: 18px !important;
-  line-height: 1 !important;
-}
-
-.platform-android.android-portrait .topic-btn-llm {
-  min-height: 36px !important;
-  height: 36px !important;
-  padding: 0 12px !important;
-  font-size: 0.75rem !important;
-  box-sizing: border-box !important;
-  border-radius: 18px !important;
-  line-height: 1 !important;
-}
-
-/* Android竖屏 - TRPG面板操作按钮 */
-.platform-android.android-portrait .trpg-end-btn,
-.platform-android.android-portrait .trpg-new-btn,
-.platform-android.android-portrait .trpg-close-btn {
-  min-height: 44px !important;
-  height: 44px !important;
-  padding: 0 16px !important;
-  font-size: 0.85rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-  border-radius: 10px !important;
-  line-height: 1 !important;
-}
 
 /* 日记关闭按钮由组件自身适配 */
 
@@ -3452,32 +2780,54 @@
    ======================================== */
 
 /* 世界书卡片视图中的经济条 */
-.worldbook-economy-bar {
+.worldbook-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.user-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 8px 12px;
-  margin: 0 auto 12px;
-  width: fit-content;
-  max-width: 90%;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.06), rgba(138, 43, 226, 0.06));
-  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 15%, transparent);
-  border-radius: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
+  background: rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.user-avatar-placeholder {
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 .economy-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  gap: 10px;
+  padding-right: 10px;
+  padding-left: 10px;
+  border-radius: 8px;
+  border: 2px solid color-mix(in srgb, var(--accent-cyan, #6671d8) 60%, transparent);
 }
 
 .economy-icon {
   font-size: 1rem;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  transform: translateY(-1px);
 }
 
 .economy-value {
@@ -3485,24 +2835,35 @@
   font-weight: 600;
   color: var(--foreground, #ffffff);
   font-family: var(--font-mono, 'Courier New', monospace);
+  display: flex;
+  align-items: center;
 }
 
 .economy-shop-btn {
-  appearance: none;
-  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
-  border-radius: 12px;
-  padding: 5px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--accent-cyan, #00d4ff);
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(0, 150, 255, 0.08));
   cursor: pointer;
   transition: all 150ms ease;
-  display: flex;
   align-items: center;
   gap: 4px;
+  background: transparent;
+  border: none;
 }
-
+  .platform-android.android-portrait .economy-shop-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
 .economy-shop-btn:hover {
   background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 150, 255, 0.15));
   transform: scale(1.03);
@@ -3521,24 +2882,17 @@
   inset: 0;
   z-index: 1000;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  padding: 20px;
+  flex-direction: column;
+  background: var(--background, #0a0a0a);
 }
 
 .worldbook-shop-panel {
   width: 100%;
-  max-width: 600px;
-  max-height: 85vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--background, #0a0a0a);
-  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 25%, transparent);
-  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 .worldbook-shop-header {
@@ -3650,28 +3004,6 @@
   justify-content: flex-end;
 }
 
-.worldbook-shop-refresh-btn {
-  appearance: none;
-  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
-  border-radius: 8px;
-  padding: 8px 16px;
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 150, 255, 0.08));
-  color: var(--accent-cyan, #00d4ff);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 150ms ease;
-}
-
-.worldbook-shop-refresh-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 150, 255, 0.15));
-}
-
-.worldbook-shop-refresh-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 /* 购买反馈 */
 .worldbook-shop-feedback {
   padding: 10px 14px;
@@ -3709,67 +3041,6 @@
   border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
   border-radius: 12px;
   transition: all 150ms ease;
-}
-
-.worldbook-shop-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 20%, transparent);
-}
-
-.worldbook-shop-item-icon {
-  font-size: 2rem;
-  margin-bottom: 8px;
-}
-
-.worldbook-shop-item-name {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--foreground, #ffffff);
-  text-align: center;
-}
-
-.worldbook-shop-item-desc {
-  margin: 4px 0 0;
-  font-size: 0.75rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent);
-  text-align: center;
-  line-height: 1.3;
-}
-
-.worldbook-shop-item-price {
-  margin: 8px 0 4px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--accent-gold, #ffd700);
-  font-family: var(--font-mono, 'Courier New', monospace);
-}
-
-.worldbook-shop-buy-btn {
-  appearance: none;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 150ms ease;
-  margin-top: 4px;
-}
-
-.worldbook-shop-buy-btn.affordable {
-  background: linear-gradient(135deg, var(--accent-cyan, #00d4ff), #0096ff);
-  color: #000;
-}
-
-.worldbook-shop-buy-btn.affordable:hover {
-  transform: scale(1.05);
-}
-
-.worldbook-shop-buy-btn.unaffordable {
-  background: rgba(255, 255, 255, 0.08);
-  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent);
-  cursor: not-allowed;
 }
 
 /* 物品赠送确认弹窗样式 */
@@ -4309,7 +3580,23 @@
   justify-content: center;
   transition: all 0.2s ease;
 }
-
+  .platform-android.android-portrait .red-packet-amount-close {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
 .red-packet-amount-close:hover {
   background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
@@ -4422,7 +3709,23 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
-
+  .platform-android.android-portrait .red-packet-amount-btn  {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
 /* 取消按钮 */
 .red-packet-amount-btn.cancel {
   background: rgba(255, 255, 255, 0.08);
@@ -4458,615 +3761,39 @@
   box-shadow: none;
 }
 
-/* ========== 跑团按钮 & 任务板按钮 ========== */
-.character-grid-footer {
-  margin-top: 16px;
-  padding: 0 8px;
-  display: flex;
-  gap: 10px;
-}
-
-.trpg-launch-btn {
-  flex: 1;
-  padding: 14px 20px;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  border: none;
-  border-radius: 12px;
-  color: #ffffff;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 16px rgba(155, 89, 182, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.trpg-launch-btn:hover {
-  background: linear-gradient(135deg, #8e44ad, #7d3c98);
-  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
-  transform: translateY(-2px);
-}
-
-.trpg-launch-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(155, 89, 182, 0.3);
-}
-
-.task-board-btn {
-  flex: 1;
-  padding: 14px 20px;
-  background: linear-gradient(135deg, #f39c12, #e67e22);
-  border: none;
-  border-radius: 12px;
-  color: #ffffff;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 16px rgba(243, 156, 18, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.task-board-btn:hover {
-  background: linear-gradient(135deg, #e67e22, #d35400);
-  box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
-  transform: translateY(-2px);
-}
-
-.task-board-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
-}
-
-/* ==================== 跑团界面样式 ==================== */
-
-/* 遮罩层 */
-.trpg-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  padding: 20px;
-}
-
-/* 容器 */
-.trpg-container {
-  width: 100%;
-  max-width: 800px;
-  max-height: 90vh;
-  background: linear-gradient(145deg, #1a1025, #0d0815);
-  border-radius: 16px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(155, 89, 182, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+/* ========== 侧边操作按钮（TASK / TRPG） ========== */
+.side-action-bar {
+  position: absolute;
+  top: 56px;
+  right: 12px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  animation: trpg-container-slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  gap: 4px;
+  z-index: 10;
 }
 
-@keyframes trpg-container-slide-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* 头部 */
-.trpg-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: linear-gradient(180deg, rgba(155, 89, 182, 0.2), transparent);
-  border-bottom: 1px solid rgba(155, 89, 182, 0.2);
-}
-
-.trpg-title-group {
-  flex: 1;
-}
-
-.trpg-title {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #ffffff;
-  background: linear-gradient(135deg, #9b59b6, #e74c3c);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.trpg-subtitle {
-  margin: 4px 0 0;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.trpg-header-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.trpg-end-btn,
-.trpg-new-btn,
-.trpg-close-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.trpg-end-btn {
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
-  color: #ffffff;
-}
-
-.trpg-end-btn:hover {
-  background: linear-gradient(135deg, #c0392b, #a93226);
-}
-
-.trpg-new-btn {
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  color: #ffffff;
-}
-
-.trpg-new-btn:hover {
-  background: linear-gradient(135deg, #2980b9, #2471a3);
-}
-
-.trpg-close-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  font-size: 1.2rem;
-}
-
-.trpg-close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* 错误提示 */
-.trpg-error-box {
-  margin: 12px 20px;
-  padding: 12px 16px;
-  background: rgba(231, 76, 60, 0.15);
-  border: 1px solid rgba(231, 76, 60, 0.3);
-  border-radius: 8px;
-  color: #e74c3c;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.error-dismiss {
-  padding: 4px 12px;
-  border: 1px solid rgba(231, 76, 60, 0.5);
-  border-radius: 4px;
+.side-action-btn {
   background: transparent;
-  color: #e74c3c;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.error-dismiss:hover {
-  background: rgba(231, 76, 60, 0.2);
-}
-
-/* 主体区域 */
-.trpg-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-}
-
-/* 设置面板 */
-.trpg-setup-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.setup-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.setup-section-title {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #9b59b6;
-}
-
-/* 主题输入 */
-.topic-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.topic-input {
-  width: 100%;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(155, 89, 182, 0.3);
-  border-radius: 8px;
-  color: #ffffff;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-
-.topic-input:focus {
-  border-color: rgba(155, 89, 182, 0.6);
-}
-
-.topic-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.topic-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.topic-btn {
-  flex: 1;
-  padding: 10px 16px;
   border: none;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  color: #ffffff;
-  font-size: 0.9rem;
+  padding: 6px 12px;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent);
+  font-size: 0.78rem;
   font-weight: 600;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.topic-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #8e44ad, #7d3c98);
-  transform: translateY(-1px);
-}
-
-.topic-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.topic-btn-llm {
-  background: linear-gradient(135deg, #3498db, #2980b9);
-}
-
-.topic-btn-llm:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2980b9, #2471a3);
-}
-
-/* 角色列表 */
-.character-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 200px;
-  overflow-y: auto;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  transition: all 0.15s ease;
   border-radius: 8px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.character-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
+.side-action-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--foreground, #ffffff);
 }
 
-.character-name {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.character-desc {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.no-characters-hint {
-  padding: 16px;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.9rem;
-}
-
-/* 开始按钮 */
-.start-trpg-btn {
-  width: 100%;
-  padding: 14px 24px;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  color: #ffffff;
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 16px rgba(155, 89, 182, 0.3);
-}
-
-.start-trpg-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #8e44ad, #7d3c98);
-  box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
-  transform: translateY(-2px);
-}
-
-.start-trpg-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 游戏面板 */
-.trpg-game-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  height: calc(90vh - 120px);
-}
-
-/* 角色信息 */
-.trpg-character-info {
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-}
-
-.char-info-scroll {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 4px;
-}
-
-.char-info-card {
-  flex-shrink: 0;
-  padding: 8px 12px;
-  border: 1px solid rgba(155, 89, 182, 0.3);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 80px;
-}
-
-.char-info-card:hover {
-  background: rgba(155, 89, 182, 0.2);
-}
-
-.char-info-card.active {
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  border-color: #9b59b6;
-}
-
-.char-info-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.char-info-role {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.char-info-card.active .char-info-role {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.char-info-card.is-user {
-  border-color: rgba(52, 152, 219, 0.5);
-  background: rgba(52, 152, 219, 0.1);
-}
-
-.char-info-card.is-user.active {
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  border-color: #3498db;
-}
-
-/* 消息区域 */
-.trpg-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.no-messages {
-  text-align: center;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 24px;
-}
-
-.message-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.message-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.message-sender {
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.gm-sender {
-  color: #f39c12;
-}
-
-.player-sender {
-  color: #3498db;
-}
-
-.sender-role {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.message-time {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.3);
-  margin-left: auto;
-}
-
-.message-content {
-  padding: 10px 14px;
-  border-radius: 12px;
-  max-width: 85%;
-}
-
-.message-item.gm .message-content {
-  background: rgba(243, 156, 18, 0.15);
-  border: 1px solid rgba(243, 156, 18, 0.2);
-  align-self: flex-start;
-}
-
-.message-item.player .message-content {
-  background: rgba(52, 152, 219, 0.15);
-  border: 1px solid rgba(52, 152, 219, 0.2);
-  align-self: flex-end;
-}
-
-.message-item.character .message-content {
-  background: rgba(155, 89, 182, 0.15);
-  border: 1px solid rgba(155, 89, 182, 0.2);
-  align-self: flex-start;
-}
-
-.message-text {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: #ffffff;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* 输入区域 */
-.trpg-input-area {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-}
-
-.input-character-select {
-  display: flex;
-}
-
-.input-character-dropdown {
-  width: 100%;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(155, 89, 182, 0.3);
-  border-radius: 6px;
-  color: #ffffff;
-  font-size: 0.85rem;
-  outline: none;
-}
-
-.input-character-dropdown option {
-  background: #1a1025;
-  color: #ffffff;
-}
-
-.input-row {
-  display: flex;
-  gap: 8px;
-}
-
-.action-input {
-  flex: 1;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(155, 89, 182, 0.3);
-  border-radius: 8px;
-  color: #ffffff;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-
-.action-input:focus {
-  border-color: rgba(155, 89, 182, 0.6);
-}
-
-.action-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.action-input:disabled {
-  opacity: 0.6;
-}
-
-.action-send-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.action-send-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #8e44ad, #7d3c98);
-}
-
-.action-send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.side-action-btn:active {
+  transform: scale(0.95);
 }
 
 /* ========== 任务板 Modal 过渡动画 ========== */
@@ -5117,44 +3844,130 @@
   opacity: 0.5;
 }
 
-/* 任务邀请下拉菜单 */
-.dorm-chat-task-dropdown-body {
+/* 任务邀请弹窗 */
+.task-invite-modal-overlay {
   position: fixed;
-  background: linear-gradient(145deg, #1a1a2e, #16213e);
-  border: 2px solid #f39c12;
-  border-radius: 12px;
-  padding: 6px;
-  max-height: 240px;
-  overflow-y: auto;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 10000;
 }
 
-.dorm-chat-task-empty-dropdown {
-  padding: 12px;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.8rem;
+.task-invite-modal {
+  width: min(85vw, 340px);
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  animation: task-invite-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.platform-android.android-portrait .task-invite-modal {
+  background: linear-gradient(180deg, rgba(30, 30, 35, 0.94) 0%, rgba(18, 18, 22, 0.96) 100%) !important;
+  backdrop-filter: blur(40px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+@keyframes task-invite-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
-.dorm-chat-task-dropdown-item {
+
+
+.task-invite-modal-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.01em;
+}
+
+
+
+.task-invite-modal-body {
+  padding: 0 14px 14px;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-invite-modal-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.task-invite-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-invite-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+
+.task-invite-empty {
+  padding: 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.85rem;
+}
+
+.task-invite-modal-item {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
-  padding: 8px 12px;
+  gap: 3px;
+  padding: 12px 14px;
   border: none;
-  border-radius: 8px;
-  background: transparent;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   color: #ffffff;
   cursor: pointer;
   width: 100%;
   text-align: left;
-  transition: background 0.15s;
+  transition: all 0.2s ease;
 }
 
-.dorm-chat-task-dropdown-item:hover {
-  background: rgba(243, 156, 18, 0.15);
+.task-invite-modal-item:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.task-invite-modal-item:active {
+  transform: scale(0.98);
 }
 
 .task-invite-type {

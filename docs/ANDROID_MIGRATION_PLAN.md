@@ -592,6 +592,125 @@ Android竖屏专用样式需要添加 `!important` 确保覆盖默认样式：
    .debug * { outline: 1px solid red; }
    ```
 
+### 9.5 Android WebView 下拉刷新实现（v-if 模态框内）
+
+**问题**：在 `v-if` 控制的模态框（`Teleport to="body"`）内实现下拉刷新，PC 端正常，但 Android 端关闭模态框后再打开，所有按钮都无法点击。
+
+**根本原因分析**：
+
+1. **`document.querySelector` 在 `v-if` 渲染前返回 null** — 模态框打开时 `isOpen` 变为 `true`，但 `requestAnimationFrame` 触发时机过早，此时 `v-if` 对应的 DOM 还未渲染到 `body`，`querySelector` 找不到元素，监听器绑定失败。
+
+2. **关闭模态框后监听器未清理** — 点击 X 按钮时 `v-if=false` 销毁 DOM，但 `touchstart/touchmove/touchend` 监听器仍绑定在已被销毁的 DOM 上。下次打开时，旧监听器与新 DOM 之间出现状态不一致。
+
+3. **`{ passive: true }` vs `{ passive: false }`** — `touchmove` 必须使用 `{ passive: false }` 才能调用 `e.preventDefault()`，但 `touchstart` 用 `{ passive: true }`（不需要 preventDefault）。
+
+**解决方案**：
+
+```javascript
+// 关键：用 Vue 模板 ref 代替 document.querySelector
+const pullContainerEl = ref(null)  // 由 Vue 自动管理 v-if 生命周期
+let listenersAttached = false      // 防止重复绑定
+
+// 模板中直接绑定：
+// <div ref="pullContainerEl" class="worldbook-shop-body">
+
+function attachPullListeners() {
+  const el = pullContainerEl.value  // 注意：.value
+  if (!el) return
+  if (listenersAttached) return  // 防止重复绑定
+
+  el.addEventListener('touchstart', onTouchStart, { passive: true })
+  el.addEventListener('touchmove', onTouchMove, { passive: false })
+  el.addEventListener('touchend', onTouchEnd, { passive: false })
+  listenersAttached = true
+}
+
+function removePullListeners() {
+  const el = pullContainerEl.value
+  if (!el) return
+  el.removeEventListener('touchstart', onTouchStart)
+  el.removeEventListener('touchmove', onTouchMove)
+  el.removeEventListener('touchend', onTouchEnd)
+  listenersAttached = false
+}
+
+// watch isOpen：打开时 nextTick 后绑定，关闭时清理
+watch(() => props.isOpen, (val) => {
+  if (val) {
+    nextTick(() => {
+      attachPullListeners()
+    })
+  } else {
+    removePullListeners()
+    // 同时重置 pullState，防止状态残留
+    pullState.value = { pulling: false, pulled: false, distance: 0 }
+  }
+})
+```
+
+**触摸事件处理要点**：
+
+```javascript
+// 1. 触摸死区（Dead Zone）：小于此距离不拦截，click 事件正常工作
+const PULL_DEADZONE = 5  // 5px 内的下拉视为点击，不 preventDefault
+
+// 2. onTouchStart：容器在顶部时才允许下拉
+function onTouchStart(e) {
+  if (props.isRefreshing) return
+  if (pullContainerEl.value.scrollTop > 0) return  // 不在顶部，不处理
+  pullStartY = e.touches[0].clientY
+  touchId = e.touches[0].identifier
+  pullState.value = { pulling: true, pulled: false, distance: 0 }
+}
+
+// 3. onTouchMove：超过死区才 preventDefault
+function onTouchMove(e) {
+  if (!pullState.value.pulling) return
+  // 找同一个触摸点（多点触控时只追踪首次触摸的那个）
+  let touch = null
+  for (let i = 0; i < e.touches.length; i++) {
+    if (e.touches[i].identifier === touchId) {
+      touch = e.touches[i]; break
+    }
+  }
+  if (!touch) return
+
+  const deltaY = touch.clientY - pullStartY
+  if (deltaY < PULL_DEADZONE) return  // 关键：死区内不拦截，click 正常工作
+  e.preventDefault()  // 只有超过死区才阻止默认行为
+
+  pullState.value.distance = Math.min(deltaY, MAX_PULL)
+  pullState.value.pulled = pullState.value.distance >= PULL_THRESHOLD
+}
+
+// 4. onTouchEnd：只有超过死区才 preventDefault
+function onTouchEnd(e) {
+  if (!pullState.value.pulling) return
+  pullState.value.pulling = false
+
+  if (pullState.value.distance >= PULL_DEADZONE) {
+    e.preventDefault()  // 此时 click 本就不会触发
+    if (pullState.value.pulled) handleRefresh()
+  }
+  // 重置状态
+  pullState.value = { pulling: false, pulled: false, distance: 0 }
+  touchId = null
+}
+```
+
+**注意事项清单**：
+
+- [ ] **用 Vue 模板 ref（`ref="pullContainerEl"`）代替 `document.querySelector`** — Vue 自动在 `v-if` 渲染时填充 ref、销毁时置为 null，不会拿到过期 DOM
+- [ ] **`nextTick` 而不是 `requestAnimationFrame`** — `requestAnimationFrame` 可能在 `v-if` DOM 插入前触发；`nextTick` 保证 Vue 已完成 DOM 更新
+- [ ] **关闭时必须移除监听器** — 否则下次打开时会绑定两套监听器，状态混乱
+- [ ] **用 `listenersAttached` 标志防止重复绑定** — `nextTick` 可能被多次调用，重复绑定会导致事件触发多次
+- [ ] **touchmove 必须用 `{ passive: false }`** — 否则 `e.preventDefault()` 无效（Chrome 56+ 默认 passive: true）
+- [ ] **touchstart 用 `{ passive: true }`** — touchstart 不需要 preventDefault，passive: true 提升滚动性能
+- [ ] **触摸死区机制** — 小于 5px 的下拉不拦截，让 click 事件正常触发；超过 5px 才 preventDefault
+- [ ] **同一 touchId 追踪** — 多点触控时只追踪首次触摸的那个 touch point，避免其他手指干扰
+- [ ] **重置 pullState 状态** — 关闭模态框或刷新结束后必须重置 `pulling=false, pulled=false, distance=0`
+- [ ] **多手指触控安全** — `onTouchMove` 中通过 `touchId` 查找同一个手指，不能直接用 `e.touches[0]`
+
 ---
 
 ## 十、已解决问题记录

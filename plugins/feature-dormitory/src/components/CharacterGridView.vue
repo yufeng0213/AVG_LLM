@@ -95,7 +95,7 @@ const getCharacterCardClass = (index) => {
     @touchend="handleTouchEnd"
   >
     <!-- 世界书级别货币显示 -->
-    <div class="worldbook-economy-bar">
+    <div class="worldbook-top-bar">
       <span class="economy-item">
         <span class="economy-icon">💰</span>
         <span class="economy-value">{{ activeBookEconomyCoins }}</span>

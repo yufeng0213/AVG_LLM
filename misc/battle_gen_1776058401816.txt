@@ -1,0 +1,80 @@
+[T:林川|1|500|500|60|25|22|0.08|1.6|0]
+<S:skill_lin_1|热锅猛炒|🔥|attack|single|fire|0.8|0|1|借助炉火猛击敌人>
+  fx:burn@0.2@2@10
+<S:skill_lin_2|香料飞撒|🌶️|attack|random|poison|0.6|2|2|随机向敌人投掷刺激性香料粉末>
+  fx:
+[T:厨师长|0|1500|1500|200|100|50|0.3|2.0|1]
+<S:skill_chef_1|星陨切法|🔪|attack|front|physical|1.2|0|1|华丽的刀工切割前方敌人>
+  fx:
+<S:skill_chef_2|银河高汤|🍜|heal|all|none|1.5|3|1|用精心熬制的汤底为全队恢复生命>
+  fx:
+[T:薇拉|0|800|800|90|60|40|0.15|1.8|2]
+<S:skill_v_1|暗影穿刺|🗡️|attack|single|dark|1.0|0|1|从阴影中发起攻击>
+  fx:
+<S:skill_v_2|感官麻痹|🦠|debuff|single|none|0.5|2|1|施加神经毒素，降低敌人速度>
+  fx:stun@0.2@1@0,defenseDown@1.0@2@-10
+[T:K-7|0|1200|1200|70|80|15|0.05|1.5|3]
+<S:skill_k7_1|精准切削|⚙️|attack|single|physical|0.9|0|1|机械臂进行精确物理打击>
+  fx:
+<S:skill_k7_2|过载蒸汽|💨|attack|all|fire|0.7|3|1|释放高压蒸汽灼烧所有敌人>
+  fx:burn@0.1@2@5
+
+[W:0|0]
+story:餐厅后厨的冷藏区传来诡异动静，你们前去查看，发现几个鬼鬼祟祟的身影正在窃取珍贵的食材。
+[E:腐败储藏员|300|300|50|20|18|0.05|1.5|0]
+<S:enemy_store|腐液喷吐|💧|attack|single|poison|0.7|0|1|喷出腐败的液体攻击>
+  fx:poison@0.3@2@8
+[E:腐败储藏员|300|300|50|20|18|0.05|1.5|1]
+<S:enemy_store|腐液喷吐|💧|attack|single|poison|0.7|0|1|喷出腐败的液体攻击>
+  fx:poison@0.3@2@8
+[E:腐败储藏员|300|300|50|20|18|0.05|1.5|2]
+<S:enemy_store|腐液喷吐|💧|attack|single|poison|0.7|0|1|喷出腐败的液体攻击>
+  fx:poison@0.3@2@8
+[E:窃味食尸鬼|400|400|60|15|22|0.08|1.6|3]
+<S:enemy_ghoul|贪婪啃咬|🦷|attack|single|physical|0.9|0|1|撕咬敌人并窃取能量>
+  fx:healOverTime@0.5@2@15
+[D:drop_w1_1|应急绷带|🩹|consumable|heal|80||ally_single|1|为一名队友恢复80点生命值]
+[D:drop_w1_2|解毒香料|🌿|consumable|cure|0||ally_single|1|解除一名队友的中毒状态]
+
+[W:1|0]
+story:追击闯入者至废弃的厨房连接通道，遭遇了被暗影力量腐化的餐厅旧设备。
+[E:故障清洁机兵|350|350|55|25|12|0.05|1.5|0]
+<S:enemy_clean|高压水刃|💦|attack|single|physical|0.8|0|1|利用高压水流形成切割攻击>
+  fx:
+[E:故障清洁机兵|350|350|55|25|12|0.05|1.5|1]
+<S:enemy_clean|高压水刃|💦|attack|single|physical|0.8|0|1|利用高压水流形成切割攻击>
+  fx:
+[E:生锈烤箱守卫|450|450|40|35|8|0.05|1.5|2]
+<S:enemy_oven|灼热领域|🔥|attack|front|fire|0.6|0|1|散发出灼热的气息攻击前方>
+  fx:burn@0.2@2@10
+[E:暗影渗透者|380|380|70|18|30|0.1|1.7|3]
+<S:enemy_shadow|能量虹吸|⚫|attack|single|dark|0.9|1|1|吸取敌人能量造成伤害>
+  fx:attackDown@0.3@2@-10
+[D:drop_w2_1|护身调味料|🧂|consumable|buff|0||ally_single|1|为一名队友提供防御力提升20点，持续2回合]
+[D:drop_w2_2|能量饮料|🥤|consumable|heal|100||self|1|饮用后瞬间恢复100点生命值]
+[D:drop_w2_3|冰镇油膏|❄️|consumable|cure_all|0||ally_single|1|为一名队友解除所有减益状态]
+
+[W:2|1]
+story:在餐厅的核心厨房，真正的掠夺者现身——一名被暗影议会腐化的前餐厅副主厨，他带着被控制的厨房造物，妄图夺取终极食谱。
+[E:憎恶副主厨·卡恩斯|1500|1500|150|50|35|0.15|1.8|1]
+<S:boss_1|暗影厨刃风暴|⚔️|attack|all|dark|1.0|0|1|挥舞覆盖暗影能量的厨刀攻击全体>
+  fx:
+<S:boss_2|腐败盛宴|🍖|debuff|all|none|0.0|3|1|召唤腐败食物污染全场>
+  fx:attackDown@1.0@2@-15,defenseDown@1.0@2@-15
+[E:被控帮厨|280|280|45|15|20|0.05|1.5|0]
+<S:enemy_helper|盲目劈砍|🔪|attack|single|physical|0.8|0|1|被控制下的混乱攻击>
+  fx:
+[E:被控帮厨|280|280|45|15|20|0.05|1.5|2]
+<S:enemy_helper|盲目劈砍|🔪|attack|single|physical|0.8|0|1|被控制下的混乱攻击>
+  fx:
+[E:暗影肉钩|320|320|55|10|25|0.08|1.6|3]
+<S:enemy_hook|钩锁拖拽|⛓️|attack|single|physical|0.7|1|1|将敌人拖至近前并造成伤害>
+  fx:
+[E:哀嚎炖锅|400|400|30|40|5|0.05|1.5|4]
+<S:enemy_pot|沸腾诅咒|🍲|attack|back|fire|0.6|2|1|向后排喷洒滚烫的诅咒汤汁>
+  fx:burn@0.3@2@12
+[D:drop_w3_1|主厨的急救包|🧰|consumable|heal|150||ally_single|1|为一名队友恢复150点生命值]
+[D:drop_w3_2|暗影结晶|💎|material|none|0|none|self|99|蕴含暗影能量的结晶体，用途不明]
+[D:drop_w3_3|终极食谱残页|📜|material|none|0|none|self|99|终极食谱的一小部分，记载着神秘的力量]
+
+[G:作为Fork & Cake餐厅的新人学徒，林川本只想专注厨艺，却意外卷入了围绕“终极食谱”的星际纷争。银河联邦、暗影议会、艾瑞斯王朝和自由航行者公会的目光都聚焦于此。这次后厨的入侵事件，仅仅是风暴的开端。]

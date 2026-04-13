@@ -4,7 +4,7 @@
  * 显示任务列表、筛选、领取、提交、完成等功能
  */
 
-import { computed, ref } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 
 const props = defineProps({
   isOpen: {
@@ -39,12 +39,134 @@ const emit = defineEmits([
   'accept-task',
   'submit-task',
   'complete-task',
-  'delete-task'
+  'delete-task',
+  'team-battle',
 ])
 
 const activeFilter = ref('all')
 const submitText = ref({})
 const expandedTaskId = ref(null)
+
+// 确认接任务弹窗
+const confirmTask = ref(null)
+
+// 气泡提示
+const feedbackToast = ref({ visible: false, message: '' })
+let feedbackTimer = null
+
+function showFeedbackToast(message) {
+  if (!message) return
+  feedbackToast.value = { visible: true, message }
+  clearTimeout(feedbackTimer)
+  feedbackTimer = setTimeout(() => {
+    feedbackToast.value.visible = false
+  }, 3000)
+}
+
+watch(() => props.feedback, (val) => {
+  if (val) showFeedbackToast(val)
+})
+
+// 下拉刷新 — 用 Vue 模板 ref 代替 inline handler
+const PULL_DEADZONE = 5
+const PULL_THRESHOLD = 60
+const MAX_PULL = 120
+
+const pullState = ref({ pulling: false, pulled: false, distance: 0 })
+const pullContainerEl = ref(null)
+let pullStartY = 0
+let touchId = null
+let listenersAttached = false
+
+function onTouchStart(e) {
+  if (props.isLoading) return
+  const container = pullContainerEl.value
+  if (!container) return
+  if (container.scrollTop > 0) return
+  pullStartY = e.touches[0].clientY
+  touchId = e.touches[0].identifier
+  pullState.value = { pulling: true, pulled: false, distance: 0 }
+}
+
+function onTouchMove(e) {
+  if (!pullState.value.pulling) return
+
+  let touch = null
+  for (let i = 0; i < e.touches.length; i++) {
+    if (e.touches[i].identifier === touchId) {
+      touch = e.touches[i]
+      break
+    }
+  }
+  if (!touch) return
+
+  const deltaY = touch.clientY - pullStartY
+  if (deltaY < PULL_DEADZONE) return
+  e.preventDefault()
+
+  const clamped = Math.min(deltaY, MAX_PULL)
+  pullState.value.distance = clamped
+  pullState.value.pulled = clamped >= PULL_THRESHOLD
+}
+
+function onTouchEnd(e) {
+  if (!pullState.value.pulling) return
+  pullState.value.pulling = false
+
+  if (pullState.value.distance >= PULL_DEADZONE) {
+    e.preventDefault()
+    if (pullState.value.pulled) {
+      handleGenerate()
+    }
+  }
+  pullState.value.distance = 0
+  pullState.value.pulled = false
+  touchId = null
+}
+
+function attachPullListeners() {
+  const el = pullContainerEl.value
+  if (!el) {
+    console.warn('[TaskBoard] attachPullListeners: container ref is null')
+    return
+  }
+  if (listenersAttached) return
+
+  el.addEventListener('touchstart', onTouchStart, { passive: true })
+  el.addEventListener('touchmove', onTouchMove, { passive: false })
+  el.addEventListener('touchend', onTouchEnd, { passive: false })
+  listenersAttached = true
+  console.log('[TaskBoard] pull listeners attached')
+}
+
+function removePullListeners() {
+  const el = pullContainerEl.value
+  if (!el) return
+  el.removeEventListener('touchstart', onTouchStart)
+  el.removeEventListener('touchmove', onTouchMove)
+  el.removeEventListener('touchend', onTouchEnd)
+  listenersAttached = false
+  console.log('[TaskBoard] pull listeners removed')
+}
+
+function onRefreshComplete() {
+  pullState.value = { pulling: false, pulled: false, distance: 0 }
+}
+
+watch(() => props.isLoading, (val) => {
+  if (!val) onRefreshComplete()
+})
+
+watch(() => props.isOpen, (val) => {
+  if (val) {
+    nextTick(() => {
+      attachPullListeners()
+    })
+  } else {
+    removePullListeners()
+    onRefreshComplete()
+  }
+})
 
 const TASK_TYPES = [
   { id: 'all', label: '全部', icon: '📋' },
@@ -60,13 +182,18 @@ const TASK_TYPE_LABELS = TASK_TYPES.reduce((acc, t) => {
   return acc
 }, {})
 
+const safeTasks = computed(() => {
+  const tasks = props.tasks
+  return Array.isArray(tasks) ? tasks.filter(Boolean) : []
+})
+
 const filteredTasks = computed(() => {
-  if (activeFilter.value === 'all') return props.tasks
-  return props.tasks.filter((t) => t.type === activeFilter.value)
+  if (activeFilter.value === 'all') return safeTasks.value
+  return safeTasks.value.filter((t) => t.type === activeFilter.value)
 })
 
 const availableTaskCount = computed(() => {
-  return props.tasks.filter((t) => t.status === 'available').length
+  return safeTasks.value.filter((t) => t.status === 'available').length
 })
 
 function handleClose() {
@@ -78,7 +205,20 @@ function handleGenerate() {
 }
 
 function handleAccept(taskId) {
-  emit('accept-task', taskId)
+  const task = safeTasks.value.find((t) => t.id === taskId)
+  if (!task) return
+  confirmTask.value = task
+}
+
+function handleConfirmAccept() {
+  if (confirmTask.value) {
+    emit('accept-task', confirmTask.value.id)
+    confirmTask.value = null
+  }
+}
+
+function handleCancelAccept() {
+  confirmTask.value = null
 }
 
 function handleToggleSubmit(taskId) {
@@ -89,7 +229,7 @@ function handleToggleSubmit(taskId) {
   }
   expandedTaskId.value = taskId
   // 自动填入证据描述
-  const task = props.tasks.find((t) => t.id === taskId)
+  const task = safeTasks.value.find((t) => t.id === taskId)
   if (task?.status === 'completable' && task.evidence?.summary) {
     submitText.value[taskId] = task.evidence.summary
   } else {
@@ -112,6 +252,10 @@ function handleDelete(taskId) {
   emit('delete-task', taskId)
 }
 
+function handleTeamBattle(task) {
+  emit('team-battle', task)
+}
+
 function formatReward(task) {
   if (task.rewardType === 'coins') return `💰 ${task.rewardAmount} 金币`
   if (task.rewardType === 'crystals') return `💎 ${task.rewardAmount} 晶石`
@@ -122,11 +266,16 @@ function formatReward(task) {
 function getDifficultyStars(difficulty) {
   return '⭐'.repeat(difficulty)
 }
+
+function getTypeIcon(typeId) {
+  const type = TASK_TYPES.find((t) => t.id === typeId)
+  return type?.icon || '📋'
+}
 </script>
 
 <template>
   <Teleport to="body">
-    <Transition name="task-board-modal">
+    <Transition name="task-panel-modal">
       <div v-if="isOpen" class="task-board-overlay" @click.self="handleClose">
         <section class="task-board-panel">
           <!-- Header -->
@@ -142,12 +291,10 @@ function getDifficultyStars(difficulty) {
             <button type="button" class="task-board-close-btn" @click="handleClose">×</button>
           </header>
 
-          <div class="task-board-body">
-            <!-- Feedback -->
-            <div v-if="feedback" class="task-board-feedback">
-              {{ feedback }}
-            </div>
-
+          <div
+            ref="pullContainerEl"
+            class="task-board-body"
+          >
             <!-- Filters -->
             <div class="task-board-filters">
               <button
@@ -162,20 +309,16 @@ function getDifficultyStars(difficulty) {
               </button>
             </div>
 
-            <!-- Generate Button -->
-            <button
-              type="button"
-              class="task-generate-btn"
-              :disabled="isLoading"
-              @click="handleGenerate"
-            >
-              {{ isLoading ? '生成中...' : '✨ 刷新任务 (LLM)' }}
-            </button>
+            <!-- 下拉刷新中转圈提示 -->
+            <div v-if="isLoading" class="task-refresh-spinner">
+              <span class="spinner-icon"></span>
+              <span class="spinner-text">正在生成新任务…</span>
+            </div>
 
             <!-- Task List -->
             <div class="task-board-tasks">
               <div v-if="filteredTasks.length === 0" class="task-board-empty">
-                {{ isLoading ? '正在生成任务...' : '暂无任务，点击下方按钮生成' }}
+                {{ isLoading ? '正在生成任务…' : '暂无任务，请下拉刷新。' }}
               </div>
 
               <div
@@ -184,70 +327,76 @@ function getDifficultyStars(difficulty) {
                 class="task-card"
                 :class="`task-status-${task.status}`"
               >
-                <!-- Task Header -->
-                <div class="task-card-header">
-                  <span class="task-type-badge" :class="`task-type-${task.type}`">
-                    {{ TASK_TYPE_LABELS[task.type] }}
-                  </span>
-                  <span class="task-difficulty">{{ getDifficultyStars(task.difficulty) }}</span>
+                <!-- 左侧类型图标 -->
+                <div class="task-icon-area">
+                  <span class="task-icon-emoji">{{ getTypeIcon(task.type) }}</span>
                 </div>
 
-                <!-- Task Name -->
-                <h3 class="task-card-name">{{ task.name }}</h3>
-
-                <!-- Task Description -->
-                <p class="task-card-desc">{{ task.description }}</p>
-
-                <!-- Reward -->
-                <div class="task-card-reward">
-                  🎯 奖励：{{ formatReward(task) }}
+                <!-- 右侧信息 -->
+                <div class="task-info-area">
+                  <div class="task-info-header">
+                    <h3 class="task-card-name">{{ task.name }}</h3>
+                    <span class="task-difficulty">{{ getDifficultyStars(task.difficulty) }}</span>
+                  </div>
+                  <p class="task-card-desc">{{ task.description }}</p>
                 </div>
 
-                <!-- Actions -->
-                <div class="task-card-actions">
-                  <!-- Available -->
-                  <template v-if="task.status === 'available'">
-                    <button type="button" class="task-action-btn task-accept-btn" @click="handleAccept(task.id)">
-                      📌 领取任务
-                    </button>
-                    <button type="button" class="task-action-btn task-delete-btn" @click="handleDelete(task.id)">
-                      ✕
-                    </button>
-                  </template>
+                <!-- 底部奖励+操作 -->
+                <div class="task-card-footer">
+                  <div class="task-reward-info">
+                    {{ formatReward(task) }}
+                  </div>
+                  <div class="task-card-actions">
+                    <!-- Available -->
+                    <template v-if="task.status === 'available'">
+                      <button type="button" class="task-action-btn task-accept-btn" @click="handleAccept(task.id)">
+                        领取
+                      </button>
+                      <button type="button" class="task-action-btn task-delete-btn" @click="handleDelete(task.id)">
+                        删除
+                      </button>
+                    </template>
 
-                  <!-- Accepted -->
-                  <template v-if="task.status === 'accepted'">
-                    <button type="button" class="task-action-btn task-submit-toggle-btn" @click="handleToggleSubmit(task.id)">
-                      📤 提交完成报告
-                    </button>
-                  </template>
+                    <!-- Accepted -->
+                    <template v-if="task.status === 'accepted'">
+                      <button type="button" class="task-action-btn task-battle-btn" @click="handleTeamBattle(task)">
+                        ⚔️ 组队战斗
+                      </button>
+                      <button type="button" class="task-action-btn task-submit-toggle-btn" @click="handleToggleSubmit(task.id)">
+                        📤 提交完成报告
+                      </button>
+                    </template>
 
-                  <!-- In Progress -->
-                  <template v-if="task.status === 'in_progress'">
-                    <span class="task-in-progress-label">🎮 执行中</span>
-                  </template>
+                    <!-- In Progress -->
+                    <template v-if="task.status === 'in_progress'">
+                      <span class="task-in-progress-label">🎮 执行中</span>
+                    </template>
 
-                  <!-- Completable -->
-                  <template v-if="task.status === 'completable'">
-                    <button type="button" class="task-action-btn task-complete-btn" @click="handleToggleSubmit(task.id)">
-                      📤 提交任务（有证据）
-                    </button>
-                  </template>
+                    <!-- Completable -->
+                    <template v-if="task.status === 'completable'">
+                      <button type="button" class="task-action-btn task-battle-btn" @click="handleTeamBattle(task)">
+                        ⚔️ 组队战斗
+                      </button>
+                      <button type="button" class="task-action-btn task-complete-btn" @click="handleToggleSubmit(task.id)">
+                        📤 提交任务（有证据）
+                      </button>
+                    </template>
 
-                  <!-- Submitted -->
-                  <template v-if="task.status === 'submitted'">
-                    <button type="button" class="task-action-btn task-complete-btn" @click="handleComplete(task.id)">
-                      ✅ 领取奖励
-                    </button>
-                  </template>
+                    <!-- Submitted -->
+                    <template v-if="task.status === 'submitted'">
+                      <button type="button" class="task-action-btn task-complete-btn" @click="handleComplete(task.id)">
+                        ✅ 领取奖励
+                      </button>
+                    </template>
 
-                  <!-- Completed -->
-                  <template v-if="task.status === 'completed'">
-                    <span class="task-completed-label">✅ 已完成</span>
-                    <button type="button" class="task-action-btn task-delete-btn" @click="handleDelete(task.id)">
-                      ✕
-                    </button>
-                  </template>
+                    <!-- Completed -->
+                    <template v-if="task.status === 'completed'">
+                      <span class="task-completed-label">✅ 已完成</span>
+                      <button type="button" class="task-action-btn task-delete-btn" @click="handleDelete(task.id)">
+                        ✕
+                      </button>
+                    </template>
+                  </div>
                 </div>
 
                 <!-- Submit Textarea -->
@@ -270,41 +419,92 @@ function getDifficultyStars(difficulty) {
         </section>
       </div>
     </Transition>
+
+    <!-- 确认接任务弹窗 -->
+    <Transition name="task-confirm">
+      <div v-if="confirmTask" class="task-confirm-overlay" @click.self="handleCancelAccept">
+        <div class="task-confirm-dialog">
+          <!-- 类型大图标居中 -->
+          <div class="confirm-task-icon">
+            <span class="confirm-task-emoji">{{ getTypeIcon(confirmTask.type) }}</span>
+          </div>
+
+          <!-- 任务名称 -->
+          <h3 class="confirm-task-name">{{ confirmTask.name }}</h3>
+
+          <!-- 任务描述 -->
+          <p class="confirm-task-desc">{{ confirmTask.description }}</p>
+
+          <!-- 难度+奖励 徽章 -->
+          <div class="confirm-task-badge">
+            <span class="badge-difficulty">{{ getDifficultyStars(confirmTask.difficulty) }}</span>
+            <span class="badge-separator">·</span>
+            <span class="badge-reward">{{ formatReward(confirmTask) }}</span>
+          </div>
+
+          <!-- 确认提示 -->
+          <p class="confirm-task-hint">确认接取此任务吗？</p>
+
+          <!-- 按钮 -->
+          <div class="confirm-task-actions">
+            <button type="button" class="confirm-btn cancel" @click="handleCancelAccept">取消</button>
+            <button type="button" class="confirm-btn accept" @click="handleConfirmAccept">确认领取</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 反馈 Toast -->
+    <Transition name="task-toast">
+      <div v-if="feedbackToast.visible" class="task-toast-overlay">
+        <div class="task-toast-bubble">
+          {{ feedbackToast.message }}
+        </div>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 
 <style scoped>
 /* Task Board Modal */
+.task-panel-modal-enter-active,
+.task-panel-modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.task-panel-modal-enter-from,
+.task-panel-modal-leave-to {
+  opacity: 0;
+}
+
 .task-board-overlay {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--background, #0a0a0a);
+  color: var(--foreground, #ffffff);
+  z-index: 1000;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 16px;
+  flex-direction: column;
 }
 
 .task-board-panel {
   width: 100%;
-  max-width: 520px;
-  max-height: 85vh;
-  background: linear-gradient(145deg, #1a1a2e, #16213e);
-  border-radius: 16px;
-  border: 1px solid rgba(243, 156, 18, 0.3);
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .task-board-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   gap: 12px;
-  position: relative;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .task-board-title-group {
@@ -316,8 +516,8 @@ function getDifficultyStars(difficulty) {
 
 .task-board-title {
   margin: 0;
-  font-size: 1.2rem;
-  color: #ffffff;
+  font-size: 18px;
+  color: var(--foreground, #ffffff);
 }
 
 .task-board-count {
@@ -330,104 +530,165 @@ function getDifficultyStars(difficulty) {
 
 .task-board-coins {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
 .task-coin-item {
   font-size: 0.8rem;
-  color: #f39c12;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .task-board-close-btn {
-  background: rgba(255, 255, 255, 0.1);
+  background: none;
   border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 1.2rem;
-  color: #ffffff;
+  font-size: 24px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+  padding: 4px 8px;
+}
+  .platform-android.android-portrait .task-board-close-btn  {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+.task-board-close-btn:hover {
+  color: var(--foreground, #ffffff);
 }
 
 .task-board-body {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 16px;
+  overscroll-behavior-y: none;
 }
 
-.task-board-feedback {
-  padding: 8px 12px;
-  background: rgba(46, 204, 113, 0.15);
-  border: 1px solid rgba(46, 204, 113, 0.3);
-  border-radius: 8px;
-  color: #2ecc71;
+.task-refresh-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 0;
+  color: var(--accent-cyan, #00d4ff);
   font-size: 0.85rem;
+}
+
+.spinner-icon {
+  width: 18px;
+  height: 18px;
+  border: 2px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 25%, transparent);
+  border-top-color: var(--accent-cyan, #00d4ff);
+  border-radius: 50%;
+  animation: task-spinner-spin 0.8s linear infinite;
+}
+
+@keyframes task-spinner-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Filters - Tab style */
 .task-board-filters {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 0;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-x: auto;
   flex-shrink: 0;
   align-items: flex-end;
-  overflow-x: auto;
+}
+
+.task-board-filters::-webkit-scrollbar {
+  display: none;
 }
 
 .task-filter-btn {
-  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
   border: none;
   border-radius: 0;
   background: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
   font-size: 0.8rem;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: color 0.2s;
   flex: 0 0 auto;
+  position: relative;
+}
+  .platform-android.android-portrait .task-filter-btn {
+    flex: 0 0 auto !important;  /* 不伸缩，按内容宽度显示 */
+    min-width: auto !important;
+    max-width: none !important;
+    width: auto !important;
+    box-sizing: border-box !important;
+    padding: 16px !important;
+  }
+
+
+
+/* Toast */
+.task-toast-overlay {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
 }
 
-.task-filter-btn.active {
-  color: #f39c12;
-  background: transparent;
-  border-bottom: 2px solid #f39c12;
-  font-weight: 600;
+.task-toast-bubble {
+  padding: 12px 24px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  color: var(--accent-cyan, #ffffff);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+  max-width: 85%;
+  pointer-events: none;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.task-filter-btn:hover:not(.active) {
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.05);
+.task-toast-enter-active {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Generate Button */
-.task-generate-btn {
-  padding: 10px;
-  background: linear-gradient(135deg, #f39c12, #e67e22);
-  border: none;
-  border-radius: 10px;
-  color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex-shrink: 0;
+.task-toast-leave-active {
+  transition: all 0.3s ease-in;
 }
 
-.task-generate-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #e67e22, #d35400);
-  transform: translateY(-1px);
+.task-toast-enter-from {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.95);
 }
 
-.task-generate-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.task-toast-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
 }
 
 /* Task List */
@@ -435,118 +696,326 @@ function getDifficultyStars(difficulty) {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-top: 12px;
 }
 
 .task-board-empty {
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
+  color: color-mix(in srgb, var(--foreground, #ffffff) 40%, transparent);
   padding: 24px;
   font-size: 0.9rem;
 }
 
-/* Task Card */
+/* Task Card - 磨砂玻璃 iOS16 风格 */
 .task-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 14px;
-  transition: all 0.2s;
+  border-radius: 16px;
+  padding: 16px;
+  transition: all 0.25s ease;
+  position: relative;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+  .platform-android.android-portrait .task-card {
+    flex: 0 0 auto !important;  /* 不伸缩，按内容宽度显示 */
+    min-width: auto !important;
+    max-width: none !important;
+    width: auto !important;
+    box-sizing: border-box !important;
+    padding: 16px !important;
+  }
+.task-card:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.09) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.task-card.task-status-available {
-  border-left: 3px solid #3498db;
+/* 状态通过顶部小标签体现，不通过左边框 */
+.task-card::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
-.task-card.task-status-accepted {
-  border-left: 3px solid #f1c40f;
+.task-card.task-status-available::before {
+  background: #3498db;
+  box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
 }
 
-.task-card.task-status-submitted {
-  border-left: 3px solid #9b59b6;
+.task-card.task-status-accepted::before {
+  background: #f1c40f;
+  box-shadow: 0 0 8px rgba(241, 196, 15, 0.5);
+}
+
+.task-card.task-status-submitted::before {
+  background: #9b59b6;
+  box-shadow: 0 0 8px rgba(155, 89, 182, 0.5);
 }
 
 .task-card.task-status-completed {
-  border-left: 3px solid #2ecc71;
-  opacity: 0.7;
+  opacity: 0.55;
 }
 
-.task-card.task-status-in-progress {
-  border-left: 3px solid #e67e22;
+.task-card.task-status-completed::before {
+  background: #2ecc71;
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.4);
 }
 
-.task-card.task-status-completable {
-  border-left: 3px solid #2ecc71;
+.task-card.task-status-in-progress::before {
+  background: #e67e22;
+  box-shadow: 0 0 8px rgba(230, 126, 34, 0.5);
 }
 
-.task-card-header {
+.task-card.task-status-completable::before {
+  background: #2ecc71;
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.5);
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(46, 204, 113, 0.4); }
+  50% { box-shadow: 0 0 14px rgba(46, 204, 113, 0.7); }
+}
+
+/* 左侧类型图标区 - 无背景 */
+.task-icon-area {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-icon-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+/* 右侧信息区 */
+.task-info-area {
+  margin-left: 58px;
+  margin-bottom: 12px;
+}
+
+.task-info-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.task-type-badge {
-  padding: 2px 8px;
-  border-radius: 8px;
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.task-type-explore { background: rgba(52, 152, 219, 0.2); color: #3498db; }
-.task-type-collect { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-.task-type-social { background: rgba(155, 89, 182, 0.2); color: #9b59b6; }
-.task-type-combat { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
-.task-type-daily { background: rgba(243, 156, 18, 0.2); color: #f39c12; }
-
-.task-difficulty {
-  font-size: 0.7rem;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .task-card-name {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 0.95rem;
-  color: #ffffff;
+  color: var(--foreground, #ffffff);
   font-weight: 600;
+  line-height: 1.3;
+}
+
+.task-difficulty {
+  font-size: 0.6rem;
+  flex-shrink: 0;
+  line-height: 1.3;
 }
 
 .task-card-desc {
-  margin: 0 0 8px;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.6);
-  line-height: 1.4;
+  margin: 5px 0 0;
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.task-card-reward {
-  font-size: 0.8rem;
+/* 底部奖励+操作 */
+.task-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.task-reward-info {
+  font-size: 0.82rem;
   color: #f39c12;
-  margin-bottom: 10px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* Task Actions */
 .task-card-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .task-action-btn {
-  padding: 6px 14px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 8px;
-  font-size: 0.8rem;
+  border-radius: 12px;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
 }
-
+  .platform-android.android-portrait .task-action-btn{
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
 .task-accept-btn {
-  background: rgba(52, 152, 219, 0.2);
-  color: #3498db;
-  border: 1px solid rgba(52, 152, 219, 0.3);
-  flex: 1;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 212, 255, 0.25) 0%,
+    rgba(0, 150, 255, 0.15) 100%
+  );
+  color: var(--accent-cyan, #00d4ff);
+  border: 1px solid rgba(0, 212, 255, 0.3);
 }
 
 .task-accept-btn:hover {
-  background: rgba(52, 152, 219, 0.3);
+  background: linear-gradient(
+    135deg,
+    rgba(0, 212, 255, 0.35) 0%,
+    rgba(0, 150, 255, 0.2) 100%
+  );
+  border-color: rgba(0, 212, 255, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.2);
+}
+
+.task-accept-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.task-battle-btn {
+  background: linear-gradient(
+    135deg,
+    rgba(231, 76, 60, 0.25) 0%,
+    rgba(231, 76, 60, 0.1) 100%
+  );
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.task-battle-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(231, 76, 60, 0.35) 0%,
+    rgba(231, 76, 60, 0.18) 100%
+  );
+  border-color: rgba(231, 76, 60, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(231, 76, 60, 0.2);
+}
+
+.task-battle-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.task-submit-toggle-btn {
+  background: linear-gradient(
+    135deg,
+    rgba(241, 196, 15, 0.2) 0%,
+    rgba(241, 196, 15, 0.08) 100%
+  );
+  color: #f1c40f;
+  border: 1px solid rgba(241, 196, 15, 0.25);
+}
+
+.task-submit-toggle-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(241, 196, 15, 0.3) 0%,
+    rgba(241, 196, 15, 0.15) 100%
+  );
+  border-color: rgba(241, 196, 15, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(241, 196, 15, 0.15);
+}
+
+.task-complete-btn {
+  background: linear-gradient(
+    135deg,
+    rgba(46, 204, 113, 0.2) 0%,
+    rgba(46, 204, 113, 0.08) 100%
+  );
+  color: #2ecc71;
+  border: 1px solid rgba(46, 204, 113, 0.25);
+}
+
+.task-complete-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(46, 204, 113, 0.3) 0%,
+    rgba(46, 204, 113, 0.15) 100%
+  );
+  border-color: rgba(46, 204, 113, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(46, 204, 113, 0.15);
+}
+
+.task-delete-btn {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.task-delete-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(231, 76, 60, 0.15) 0%,
+    rgba(231, 76, 60, 0.05) 100%
+  );
+  color: #e74c3c;
+  border-color: rgba(231, 76, 60, 0.25);
 }
 
 .task-submit-toggle-btn {
@@ -627,33 +1096,270 @@ function getDifficultyStars(difficulty) {
 }
 
 .task-submit-cancel {
-  padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: none;
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 0.8rem;
   cursor: pointer;
+  transition: all 0.2s;
+}
+  .platform-android.android-portrait .task-submit-cancel {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+.task-submit-cancel:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .task-submit-confirm {
-  padding: 6px 14px;
-  background: rgba(243, 156, 18, 0.2);
-  border: 1px solid rgba(243, 156, 18, 0.4);
-  border-radius: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(243, 156, 18, 0.25) 0%,
+    rgba(243, 156, 18, 0.1) 100%
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(243, 156, 18, 0.35);
+  border-radius: 10px;
   color: #f39c12;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.task-submit-confirm:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(243, 156, 18, 0.35) 0%,
+    rgba(243, 156, 18, 0.18) 100%
+  );
+  border-color: rgba(243, 156, 18, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(243, 156, 18, 0.2);
+}
+
+.task-submit-confirm:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* 确认接任务弹窗（方案B：居中RPG风格） */
+.task-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 24px;
+}
+
+.task-confirm-dialog {
+  width: 100%;
+  max-width: 360px;
+  background: linear-gradient(145deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 28px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.confirm-task-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  background: none;
+}
+
+.confirm-task-emoji {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.confirm-task-name {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+  color: #ffffff;
+  font-weight: 600;
+  text-align: center;
+}
+
+.confirm-task-desc {
+  margin: 0 0 16px;
+  font-size: 0.82rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent);
+  line-height: 1.45;
+  text-align: center;
+  max-width: 90%;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.confirm-task-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: #f39c12;
+  margin-bottom: 14px;
+}
+
+.badge-separator {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.badge-reward {
+  font-weight: 600;
+}
+
+.confirm-task-hint {
+  margin: 0 0 16px;
+  font-size: 0.82rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
+}
+
+.confirm-task-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.confirm-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+  .platform-android.android-portrait .confirm-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+.confirm-btn.cancel {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.confirm-btn.cancel:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--foreground, #ffffff);
+}
+
+.confirm-btn.accept {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 212, 255, 0.3) 0%,
+    rgba(0, 150, 255, 0.18) 100%
+  );
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  color: var(--accent-cyan, #00d4ff);
+}
+
+.confirm-btn.accept:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 212, 255, 0.4) 0%,
+    rgba(0, 150, 255, 0.25) 100%
+  );
+  border-color: rgba(0, 212, 255, 0.55);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 212, 255, 0.25);
+}
+
+.confirm-btn.accept:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.task-confirm-enter-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.task-confirm-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.task-confirm-enter-from {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.task-confirm-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }
 
 /* Android竖屏适配 */
-.platform-android.android-portrait .task-board-panel {
-  max-width: 100% !important;
-  max-height: 95vh !important;
-  border-radius: 12px !important;
-}
-
 .platform-android.android-portrait .task-board-header {
   padding: 12px 16px !important;
   padding-right: 48px !important;
@@ -706,30 +1412,17 @@ function getDifficultyStars(difficulty) {
 }
 
 .platform-android.android-portrait .task-filter-btn.active {
-  border-bottom: 2px solid #f39c12 !important;
+  border-bottom: 2px solid var(--accent-cyan, #00d4ff) !important;
   background: transparent !important;
-  color: #f39c12 !important;
+  color: var(--accent-cyan, #00d4ff) !important;
   font-weight: 600 !important;
 }
 
-.platform-android.android-portrait .task-generate-btn {
+.platform-android.android-portrait .task-action-btn {
   min-height: 40px !important;
   height: auto !important;
   padding: 8px 16px !important;
-  font-size: 0.85rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-  border-radius: 10px !important;
-}
-
-.platform-android.android-portrait .task-action-btn {
-  min-height: 36px !important;
-  height: auto !important;
-  padding: 6px 12px !important;
-  font-size: 0.8rem !important;
+  font-size: 0.82rem !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -737,12 +1430,6 @@ function getDifficultyStars(difficulty) {
   box-sizing: border-box !important;
 }
 
-.platform-android.android-portrait .task-accept-btn,
-.platform-android.android-portrait .task-submit-toggle-btn,
-.platform-android.android-portrait .task-complete-btn {
-  flex: 1 1 0 !important;
-  min-width: 0 !important;
-}
 
 .platform-android.android-portrait .task-delete-btn {
   width: 36px !important;

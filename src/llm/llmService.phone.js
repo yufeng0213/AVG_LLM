@@ -3,15 +3,51 @@
  */
 
 import { getValidatedActiveConfig, callChatCompletion } from './llmService.core'
-const SMS_SYSTEM_PROMPT = `你是“短信角色回复生成器”。
+const SMS_SYSTEM_PROMPT = `你是”短信角色回复生成器”。
 你只负责代入指定角色，生成自然、口语化的短信回复，支持分成多条连续短信。
 
 硬性要求：
 1) 只输出 JSON 对象，不要输出 markdown，不要解释。
-2) JSON 格式优先：{"replies":["...","..."]}；兼容格式：{"reply":"..."}。
+2) JSON 格式优先：{“replies”:[“...”,”...”]}；兼容格式：{“reply”:”...”}。
 3) 每条回复必须是中文，建议 8-60 字，总条数 1-4 条。
 4) 语气与角色身份、世界观和最近上下文一致，不要跳戏。
-5) 不要把用户原话逐句重复，不要写“作为AI”“我无法”等元话术。`
+5) 不要把用户原话逐句重复，不要写”作为AI””我无法”等元话术。
+6) 如果你想发红包，请在 JSON 里额外加上 “redPacket” 字段，格式为：
+   {“replies”:[“...”], “redPacket”:{“amount”:金额,”blessing”:”祝福语”}}
+   amount 为 1-100 的整数，blessing 为 20 字以内的祝福语。
+   如果不想发红包，不要加 redPacket 字段。`
+
+const DORM_CHAT_SYSTEM_PROMPT = `你是”当面聊天回应生成器”。
+你负责代入指定角色，面对面回应玩家的聊天，不是发短信。
+场景是在角色的住所（寝室、宿舍、别墅等），根据角色背景和上下文自行推断具体地点。
+
+输出格式：
+- 你说的话直接写，不要用引号包裹对话内容
+- 动作、神态放在()括号里，例如：（歪了歪头）你也太客气了吧
+- 每条回复就是口语，可以夹杂括号里的动作描写
+- 每条回复之间用换行分隔，总条数 1-4 条
+
+硬性要求：
+1) 只输出 JSON 对象，不要输出 markdown，不要解释。
+2) JSON 格式：{“replies”:[“回复1”,”回复2”],”redPacketAction”:{...}}
+3) 每条回复必须是中文，建议 8-60 字，不要用””包裹你说的话。
+4) JSON 字符串内部不要用换行符，每条回复保持在一行内。
+5) 语气与角色身份、世界观和最近上下文一致，不要跳戏。
+6) 不要把用户原话逐句重复，不要写”作为AI””我无法”等元话术。
+7) 如果你觉得当前扮演的角色应该给用户钱（比如角色有钱且大方、想讨好用户、发零花钱等），请在 JSON 里额外加上 “redPacket” 字段，格式为：
+   {“replies”:[“...”], “redPacket”:{“amount”:金额,”blessing”:”祝福语”}}
+   amount 为 1-100 的整数，blessing 为 20 字以内的祝福语。
+   如果角色没有理由给用户钱，不要加 redPacket 字段。
+8) 如果玩家给你发了红包，请在 JSON 里额外加上 “redPacketAction” 字段，格式为：
+   {“replies”:[“...”], “redPacketAction”:{“action”:”accept或decline”,”remark”:”你的反应”}}
+   action 为 “accept”（领取）或 “decline”（退回），根据角色人设和上下文决定。
+   remark 是你对红包的反应或评语，10字以内。
+9) 如果你觉得角色应该送礼物给用户（比如有心意物品想送、回礼等），必须在 JSON 里加上 “giftToPlayer” 字段，格式严格如下：
+   {“replies”:[“...”], “giftToPlayer”:{“itemName”:”物品名”,”message”:”赠送语”}}
+   - itemName 是物品的具体名称，必须是中文，不要英文缩写，例如 “巧克力”、”玫瑰花”。
+   - message 是角色送礼物时说的话，20字以内。
+   - 如果你的 replies 里提到了”送你XX”、”给你XX”等送礼行为，就必须加上 giftToPlayer 字段。
+   - 如果没有合适的礼物，不要加 giftToPlayer 字段。`
 
 const splitSmsReplySegments = (text) => {
   const normalized = String(text || '').replace(/\r/g, '').trim()
@@ -42,7 +78,7 @@ const splitSmsReplySegments = (text) => {
 
 const tryParseSmsReplies = (rawContent) => {
   const raw = String(rawContent || '').trim()
-  if (!raw) return []
+  if (!raw) return { replies: [], redPacket: null }
 
   const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
   const candidate = fencedMatch?.[1]?.trim() || raw
@@ -54,6 +90,8 @@ const tryParseSmsReplies = (rawContent) => {
       return null
     }
   }
+
+  const parsed = parseJson(candidate)
 
   const extractReplies = (value) => {
     if (!value) return []
@@ -76,7 +114,7 @@ const tryParseSmsReplies = (rawContent) => {
     return ''
   }
 
-  let parsedReplies = extractReplies(parseJson(candidate))
+  let parsedReplies = extractReplies(parsed)
 
   if (parsedReplies.length === 0) {
     const start = candidate.indexOf('{')
@@ -101,16 +139,69 @@ const tryParseSmsReplies = (rawContent) => {
     .flatMap((text) => splitSmsReplySegments(text))
     .filter(Boolean)
 
-  if (normalizedReplies.length > 0) {
-    return normalizedReplies.slice(0, 6)
+  const replies = normalizedReplies.length > 0
+    ? normalizedReplies.slice(0, 6)
+    : splitSmsReplySegments(
+        candidate
+          .replace(/^["'`]+|["'`]+$/g, '')
+          .replace(/\s+/g, ' ')
+          .trim(),
+      )
+
+  // 提取红包信息
+  let redPacket = null
+  if (parsed && parsed.redPacket && typeof parsed.redPacket === 'object') {
+    const rp = parsed.redPacket
+    const amount = Number(rp.amount)
+    const blessing = String(rp.blessing || '').trim()
+    if (amount >= 1 && amount <= 100) {
+      redPacket = {
+        amount: Math.round(amount),
+        blessing: blessing || '小小意思，不成敬意~',
+      }
+    }
   }
 
-  return splitSmsReplySegments(
-    candidate
-      .replace(/^["'`]+|["'`]+$/g, '')
-      .replace(/\s+/g, ' ')
-      .trim(),
-  )
+  // 提取红包响应动作（玩家发红包时，角色的领取/退回决定）
+  let redPacketAction = null
+  if (parsed && parsed.redPacketAction && typeof parsed.redPacketAction === 'object') {
+    const rpa = parsed.redPacketAction
+    const action = String(rpa.action || '').toLowerCase().trim()
+    if (action === 'accept' || action === 'decline') {
+      redPacketAction = {
+        action,
+        remark: String(rpa.remark || '').trim().slice(0, 30),
+      }
+    }
+  }
+
+  // 提取角色送礼给玩家
+  let giftToPlayer = null
+  if (parsed && parsed.giftToPlayer && typeof parsed.giftToPlayer === 'object') {
+    const gtp = parsed.giftToPlayer
+    const itemName = String(gtp.itemName || gtp.name || '').trim()
+    if (itemName) {
+      giftToPlayer = {
+        itemName,
+        message: String(gtp.message || gtp.text || gtp.remark || '').trim().slice(0, 40),
+        count: Number(gtp.count) >= 1 ? Math.round(Number(gtp.count)) : 1,
+      }
+    }
+  }
+
+  return { replies, redPacket, redPacketAction, giftToPlayer }
+}
+
+const clampPromptLineCount = (value, fallback, max = 200) => {
+  const parsed = Number.parseInt(String(value), 10)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(0, Math.min(max, parsed))
+}
+
+const clampMaxTokens = (value, fallback) => {
+  const parsed = Number.parseInt(String(value), 10)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(128, Math.min(200000, parsed))
 }
 
 export const generatePhoneSmsReply = async (params = {}) => {
@@ -138,16 +229,6 @@ export const generatePhoneSmsReply = async (params = {}) => {
   const history = Array.isArray(params.history) ? params.history : []
   const dialogueHistory = Array.isArray(params.dialogueHistory) ? params.dialogueHistory : []
   const currentLine = params.currentLine && typeof params.currentLine === 'object' ? params.currentLine : null
-  const clampPromptLineCount = (value, fallback, max = 200) => {
-    const parsed = Number.parseInt(String(value), 10)
-    if (!Number.isFinite(parsed)) return fallback
-    return Math.max(0, Math.min(max, parsed))
-  }
-  const clampMaxTokens = (value, fallback) => {
-    const parsed = Number.parseInt(String(value), 10)
-    if (!Number.isFinite(parsed)) return fallback
-    return Math.max(128, Math.min(200000, parsed))
-  }
   const smsHistoryLimit = clampPromptLineCount(params.options?.historyLimit, 8, 300)
   const dialogueHistoryLimit = clampPromptLineCount(params.options?.dialogueLimit, 4, 180)
   const smsMaxTokens = clampMaxTokens(params.options?.maxTokens, 420)
@@ -230,16 +311,19 @@ export const generatePhoneSmsReply = async (params = {}) => {
       error: result.error || '短信生成失败',
       reply: '',
       replies: [],
+      redPacket: null,
     }
   }
 
-  const replies = tryParseSmsReplies(result.data)
+  const parsed = tryParseSmsReplies(result.data)
+  const replies = parsed.replies
   if (replies.length === 0) {
     return {
       success: false,
       error: '短信回复解析失败',
       reply: '',
       replies: [],
+      redPacket: null,
     }
   }
 
@@ -248,12 +332,123 @@ export const generatePhoneSmsReply = async (params = {}) => {
     error: null,
     reply: replies[0],
     replies,
+    redPacket: parsed.redPacket,
     data: result.data,
     rawResponse: result.rawResponse,
   }
 }
 
-const MOMENTS_SYSTEM_PROMPT = `你是“朋友圈评论生成器”。
+/**
+ * 寝室当面聊天
+ * 和 generatePhoneSmsReply 的区别：
+ * - 使用 DORM_CHAT_SYSTEM_PROMPT（面对面感，不是短信）
+ * - 用户提示词里不强调"短信记录"，改为"最近聊天"
+ * - 不传线索、剧情线等额外字段
+ */
+export const generateDormChatReply = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      reply: '',
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const contact = params.contact && typeof params.contact === 'object' ? params.contact : null
+  const userMessage = String(params.userMessage || '').trim()
+  const hasPendingRedPacket = !!params.hasPendingRedPacket
+
+  if (!contact?.name || !userMessage) {
+    return {
+      success: false,
+      error: '聊天参数不完整',
+      reply: '',
+    }
+  }
+
+  const history = Array.isArray(params.history) ? params.history : []
+  const historyLimit = clampPromptLineCount(params.options?.historyLimit, 10, 300)
+  const maxTokens = clampMaxTokens(params.options?.maxTokens, 420)
+
+  const recentChat = (historyLimit > 0 ? history.slice(-historyLimit) : [])
+    .map((item) => {
+      if (item.role === 'assistant') return `${contact.name}: ${String(item.text || '').trim()}`
+      if (item.type === 'redPacket') return `${item.senderName || '玩家'}: 🧧 发了一个红包`
+      return `玩家: ${String(item.text || '').trim()}`
+    })
+    .filter(Boolean)
+    .join('\n')
+
+  const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
+  const roleSummary = String(contact?.identity || contact?.subtitle || '').trim()
+  const userProfileName = String(worldBook?.userProfile?.name || worldBook?.userProfile?.nickname || '玩家').trim()
+
+  const userPrompt = [
+    `【世界书标题】${String(worldBook?.title || '默认世界书').trim()}`,
+    worldSummary ? `【世界背景】${worldSummary}` : '',
+    `【角色名】${contact.name}`,
+    roleSummary ? `【角色信息】${roleSummary}` : '',
+    `【玩家名】${userProfileName}`,
+    recentChat ? `【最近聊天】\n${recentChat}` : '',
+    `【玩家刚发送】${userMessage}`,
+    hasPendingRedPacket ? '【特别提示】玩家刚刚给你发了一个红包，请决定领取或退回，并在回复中体现你的反应。' : '',
+    '请面对面自然回应，可以描写动作、神态或环境。建议输出 1-4 条连续回复。',
+    '请只返回 JSON：{"replies":["回复1","回复2"]}（兼容单条：{"reply":"回复"}）。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: DORM_CHAT_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.85,
+    maxTokens,
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '聊天生成失败',
+      reply: '',
+      replies: [],
+      redPacket: null,
+      redPacketAction: null,
+      giftToPlayer: null,
+    }
+  }
+
+  const parsed = tryParseSmsReplies(result.data)
+  const replies = parsed.replies
+  if (replies.length === 0) {
+    return {
+      success: false,
+      error: '聊天回复解析失败',
+      reply: '',
+      replies: [],
+      redPacket: null,
+      redPacketAction: null,
+      giftToPlayer: null,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    reply: replies[0],
+    replies,
+    redPacket: parsed.redPacket,
+    redPacketAction: parsed.redPacketAction,
+    giftToPlayer: parsed.giftToPlayer,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+const MOMENTS_SYSTEM_PROMPT = `你是”朋友圈评论生成器”。
 你要根据动态内容、世界观和角色设定，生成 1-3 条自然的中文评论。
 
 硬性要求：
@@ -2357,6 +2552,13 @@ export const generateDormItemGiftReply = async (params = {}) => {
   const worldTitle = String(worldBook?.title || '默认世界书').trim()
   const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
 
+  const recentChat = Array.isArray(params.recentChat)
+    ? params.recentChat
+        .map((msg) => `${msg?.role === 'assistant' ? characterName : '玩家'}: ${String(msg?.text || msg?.content || '').trim()}`)
+        .filter(Boolean)
+        .join('\n')
+    : ''
+
   const userPrompt = [
     `【任务】玩家把背包里的物品送给了寝室角色，请生成角色收到礼物后的回复和剧情。`,
     `【世界书标题】${worldTitle}`,
@@ -2369,6 +2571,8 @@ export const generateDormItemGiftReply = async (params = {}) => {
     `【物品名】${itemIcon ? itemIcon + ' ' : ''}${itemName}`,
     itemCategory ? `【物品分类】${itemCategory}` : '',
     itemDescription ? `【物品说明】${itemDescription}` : '',
+    recentChat ? `【最近聊天】\n${recentChat}` : '',
+    '请结合最近聊天内容和角色性格，生成自然的回复。',
     '请返回 JSON，包含 replyText（角色的直接对话回复）、journalText（写入日记的剧情记录）、mood（心情）、affectionDelta（好感度变化）。',
     'replyText 应该是角色收到礼物后说的第一句话，要自然、符合性格。',
     'journalText 应该描述整个送礼过程的剧情，用"你"和角色名来叙述。',
@@ -2408,6 +2612,210 @@ export const generateDormItemGiftReply = async (params = {}) => {
     reply: parsed,
     data: result.data,
     rawResponse: result.rawResponse,
+  }
+}
+
+/**
+ * 生成角色来访内容（约定触发 / 随机来访）
+ * 角色来到玩家寝室发现人不在，会留下一些内容
+ * @param {Object} params - 参数
+ * @param {Object} params.worldBook - 世界书信息
+ * @param {Object} params.character - 角色信息 {name, identity, subtitle, background, tags}
+ * @param {number} params.currentAffection - 当前好感度 (0-100)
+ * @param {string} params.relationshipStage - 关系阶段标签
+ * @param {Array} params.recentChat - 最近聊天记录 [{role, text}]
+ * @param {string} params.visitReason - 来访原因 'appointment' | 'random'
+ * @param {string} params.triggerTime - 触发时间（人类可读）
+ * @param {Object} params.options - 额外选项
+ * @returns {Promise<Object>} 生成的来访内容
+ */
+export const generateCharacterVisit = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      visit: null,
+    }
+  }
+
+  const character = params.character && typeof params.character === 'object' ? params.character : {}
+  const charName = String(character.name || character.label || '角色').trim()
+  const charIdentity = String(character.identity || '').trim()
+  const charSubtitle = String(character.subtitle || '').trim()
+  const charBackground = String(character.background || '').trim()
+  const charTags = Array.isArray(character.tags) ? character.tags : []
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const worldTitle = String(worldBook?.title || '默认世界书').trim()
+  const worldSummary = String(worldBook?.summary || '').trim()
+  const worldOverview = String(worldBook?.entries?.overview || '').trim()
+
+  const currentAffection = Number(params.currentAffection) || 0
+  const relationshipStage = String(params.relationshipStage || '陌生').trim()
+
+  const recentChat = Array.isArray(params.recentChat) ? params.recentChat : []
+  const recentChatText = recentChat
+    .slice(-8)
+    .map((msg) => {
+      const roleText = msg.role === 'user' ? '你' : charName
+      return `${roleText}：${String(msg.text || '').trim()}`
+    })
+    .join('\n')
+
+  const visitReason = String(params.visitReason || 'random').trim()
+  const reasonText = visitReason === 'appointment' ? '约定来访（之前约定好了在这个时间来）' : '随机来访（临时起意来看看）'
+  const triggerTime = String(params.triggerTime || '现在').trim()
+
+  const temperature = params.options?.temperature || 0.85
+  const maxTokens = params.options?.maxTokens || 600
+  const extraParams = params.options?.extraParams
+
+  const systemPrompt = `你是一个角色扮演助手。
+你现在扮演角色【${charName}】。
+
+你的任务：角色来到了玩家的寝室/房间，但发现玩家本人不在，于是留下一些内容后离开。
+你需要以角色第一人称"我"的口吻，生成角色留下的内容。
+
+来访类型由角色自主决定，可以是以下之一：
+- note（小纸条）：写一张便条留在桌上
+- message（留言）：在手机上给玩家发消息
+- redPacket（红包）：发一个红包附带祝福语
+- gift（礼物）：留下一个小礼物
+
+输出要求：
+- 必须以 JSON 格式输出
+- 格式：{"visitType":"note","content":"正文内容","mood":"心情"}
+- visitType: 来访类型 "note" | "message" | "redPacket" | "gift"
+- content: 正文内容，50-200字，语气自然自然
+- mood: 角色当下的心情，2-8字
+- 如果 visitType 是 "redPacket"，额外加上 "redPacket": {"amount":金额,"blessing":"祝福语"}
+  amount 为 1-100 的整数，blessing 为 20 字以内的祝福语
+- 如果 visitType 是 "gift"，额外加上 "giftItem": {"name":"物品名","icon":"emoji"}
+  name 是物品名称，icon 是物品相关的 emoji
+- 内容要体现角色的性格、与玩家的关系、以及当前的好感度和关系阶段
+- 可以适当提及寝室里的细节或之前的回忆
+- 不要写"作为AI""我无法"等元话术`
+
+  const userPromptSections = []
+  userPromptSections.push(`【世界书标题】${worldTitle}`)
+  if (worldSummary) userPromptSections.push(`【世界背景】${worldSummary}`)
+  if (worldOverview) userPromptSections.push(`【世界概述】${worldOverview}`)
+  userPromptSections.push(`【角色名】${charName}`)
+  if (charSubtitle) userPromptSections.push(`【角色副标题】${charSubtitle}`)
+  if (charIdentity) userPromptSections.push(`【角色身份】${charIdentity}`)
+  if (charBackground) userPromptSections.push(`【角色背景】${charBackground}`)
+  if (charTags.length > 0) userPromptSections.push(`【角色标签】${charTags.join('、')}`)
+  userPromptSections.push(`【当前好感度】${currentAffection} / 100`)
+  userPromptSections.push(`【关系阶段】${relationshipStage}`)
+  if (recentChatText) userPromptSections.push(`【最近聊天】\n${recentChatText}`)
+  userPromptSections.push(`【来访原因】${reasonText}`)
+  userPromptSections.push(`【触发时间】${triggerTime}`)
+  userPromptSections.push(`
+请生成角色留给玩家的内容。
+必须以 JSON 格式返回：{"visitType":"类型","content":"正文","mood":"心情"}
+根据来访类型，可能需要加上 redPacket 或 giftItem 字段。`)
+
+  const userPrompt = userPromptSections.join('\n\n')
+
+  try {
+    const result = await callChatCompletion({
+      config: validated.config,
+      systemPrompt,
+      userPrompt,
+      temperature,
+      maxTokens,
+      extraParams,
+    })
+
+    const parsed = tryParseCharacterVisit(result.data)
+    if (!parsed) {
+      return {
+        success: false,
+        error: '来访内容解析失败',
+        visit: null,
+        data: result.data,
+        rawResponse: result.rawResponse,
+      }
+    }
+
+    return {
+      success: true,
+      error: null,
+      visit: parsed,
+      data: result.data,
+      rawResponse: result.rawResponse,
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err.message || '生成来访内容时发生错误',
+      visit: null,
+    }
+  }
+}
+
+const tryParseCharacterVisit = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return null
+
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  const parseJson = (text) => {
+    try { return JSON.parse(text) } catch { return null }
+  }
+
+  let parsed = parseJson(candidate)
+  if (!parsed) {
+    const jsonMatch = candidate.match(/\{[\s\S]*\}/)
+    if (jsonMatch) parsed = parseJson(jsonMatch[0])
+  }
+
+  if (!parsed || typeof parsed !== 'object') return null
+
+  const validTypes = ['note', 'message', 'redPacket', 'gift']
+  let visitType = String(parsed.visitType || parsed.type || 'note').trim().toLowerCase()
+  if (!validTypes.includes(visitType)) visitType = 'note'
+
+  const content = String(parsed.content || parsed.noteContent || parsed.text || parsed.message || '').trim()
+  if (!content) return null
+
+  const mood = String(parsed.mood || parsed.emotion || '').trim()
+
+  // 提取红包信息
+  let redPacket = null
+  if (parsed.redPacket && typeof parsed.redPacket === 'object') {
+    const rp = parsed.redPacket
+    const amount = Number(rp.amount)
+    const blessing = String(rp.blessing || '').trim()
+    if (amount >= 1 && amount <= 100) {
+      redPacket = {
+        amount: Math.round(amount),
+        blessing: blessing || '小小意思，不成敬意~',
+      }
+    }
+  }
+
+  // 提取礼物信息
+  let giftItem = null
+  if (parsed.giftItem && typeof parsed.giftItem === 'object') {
+    const gi = parsed.giftItem
+    const name = String(gi.name || gi.itemName || '').trim()
+    if (name) {
+      giftItem = {
+        name,
+        icon: String(gi.icon || gi.emoji || '🎁').trim(),
+      }
+    }
+  }
+
+  return {
+    visitType,
+    content,
+    mood: mood || '平静',
+    redPacket,
+    giftItem,
   }
 }
 

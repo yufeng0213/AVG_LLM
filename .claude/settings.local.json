@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(awk 'BEGIN{c=0} {if\\($0==\"{\"\\)c++;else c--} END{print \"brace balance:\", c}')",
+      "Bash(npm install:*)",
+      "Bash(xxd plugins/feature-dormitory/src/DormitoryScreen.vue)",
+      "Bash(xxd)",
+      "Bash(node:*)",
+      "Bash(npx vite:*)"
+    ]
+  }
+}

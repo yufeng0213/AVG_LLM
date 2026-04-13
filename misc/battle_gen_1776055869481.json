@@ -1,0 +1,828 @@
+```json
+{
+  "teamMembers": [
+    {
+      "id": "player_linchuan",
+      "name": "林川",
+      "portrait": "",
+      "isPlayer": true,
+      "hp": 350,
+      "maxHp": 350,
+      "attack": 60,
+      "defense": 25,
+      "speed": 22,
+      "critRate": 0.08,
+      "critDmg": 1.6,
+      "position": 0,
+      "skills": [
+        {
+          "id": "skill_lin_1",
+          "name": "热锅猛炒",
+          "icon": "🔥",
+          "description": "用炽热的锅铲进行物理攻击，概率附加烧伤",
+          "type": "attack",
+          "targetMode": "single",
+          "damageType": "physical",
+          "damageMultiplier": 1.0,
+          "hitCount": 1,
+          "cooldown": 0,
+          "effects": [
+            {
+              "type": "burn",
+              "chance": 0.3,
+              "duration": 2,
+              "value": 15
+            }
+          ]
+        },
+        {
+          "id": "skill_lin_2",
+          "name": "冰镇刀工",
+          "icon": "❄️",
+          "description": "快速切割的同时附加冰霜效果，降低目标速度",
+          "type": "attack",
+          "targetMode": "single",
+          "damageType": "ice",
+          "damageMultiplier": 0.8,
+          "hitCount": 1,
+          "cooldown": 1,
+          "effects": [
+            {
+              "type": "poison",
+              "chance": 1.0,
+              "duration": 2,
+              "value": -10
+            }
+          ]
+        },
+        {
+          "id": "skill_lin_3",
+          "name": "香料迷雾",
+          "icon": "💨",
+          "description": "向敌方全体投掷麻痹性香料，概率造成眩晕",
+          "type": "attack",
+          "targetMode": "all",
+          "damageType": "poison",
+          "damageMultiplier": 0.4,
+          "hitCount": 1,
+          "cooldown": 3,
+          "effects": [
+            {
+              "type": "stun",
+              "chance": 0.2,
+              "duration": 1,
+              "value": 0
+            }
+          ]
+        },
+        {
+          "id": "skill_lin_4",
+          "name": "急救包扎",
+          "icon": "🩹",
+          "description": "为单个队友进行紧急治疗",
+          "type": "heal",
+          "targetMode": "single",
+          "damageType": "",
+          "damageMultiplier": 0,
+          "hitCount": 1,
+          "cooldown": 2,
+          "effects": [
+            {
+              "type": "healOverTime",
+              "chance": 1.0,
+              "duration": 2,
+              "value": 30
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "char_chef",
+      "name": "厨师长",
+      "portrait": "",
+      "isPlayer": false,
+      "hp": 450,
+      "maxHp": 450,
+      "attack": 75,
+      "defense": 35,
+      "speed": 18,
+      "critRate": 0.12,
+      "critDmg": 1.7,
+      "position": 1,
+      "skills": [
+        {
+          "id": "skill_chef_1",
+          "name": "烈焰煎锅",
+          "icon": "🍳",
+          "description": "挥舞炽热的煎锅进行物理攻击，附加火焰伤害",
+          "type": "attack",
+          "targetMode": "single",
+          "damageType": "fire",
+          "damageMultiplier": 1.2,
+          "hitCount": 1,
+          "cooldown": 0,
+          "effects": [
+            {
+              "type": "burn",
+              "chance": 0.4,
+              "duration": 2,
+              "value": 20
+            }
+          ]
+        },
+        {
+          "id": "skill_chef_2",
+          "name": "高压蒸汽",
+          "icon": "💨",
+          "description": "释放高压蒸汽冲击前方所有敌人",
+          "type": "attack",
+          "targetMode": "front",
+          "damageType": "physical",
+          "damageMultiplier": 0.9,
+          "hitCount": 1,
+          "cooldown": 2,
+          "effects": [
+            {
+              "type": "defenseDown",
+              "chance": 0.5,
+              "duration": 2,
+              "value": 15
+            }
+          ]
+        },
+        {
+          "id": "skill_chef_3",
+          "name": "香料护盾",
+          "icon": "🛡️",
+          "description": "为自身附加一层香料护盾",
+          "type": "buff",
+          "targetMode": "self",
+          "damageType": "",
+          "damageMultiplier": 0,
+          "hitCount": 1,
+          "cooldown": 3,
+          "effects": [
+            {
+              "type": "shield",
+              "chance": 1.0,
+              "duration": 2,
+              "value": 50
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "char_vila",
+      "name": "薇拉",
+      "portrait": "",
+      "isPlayer": false,
+      "hp": 400,
+      "maxHp": 400,
+      "attack": 85,
+      "defense": 20,
+      "speed": 28,
+      "critRate": 0.15,
+      "critDmg": 1.8,
+      "position": 2,
+      "skills": [
+        {
+          "id": "skill_vila_1",
+          "name": "暗影穿刺",
+          "icon": "🗡️",
+          "description": "高速突刺单个目标，造成物理伤害",
+          "type": "attack",
+          "targetMode": "single",
+          "damageType": "physical",
+          "damageMultiplier": 1.3,
+          "hitCount": 1,
+          "cooldown": 0,
+          "effects": [
+            {
+              "type": "bleed",
+              "chance": 0.3,
+              "duration": 3,
+              "value": 25
+            }
+          ]
+        },
+        {
+          "id": "skill_vila_2",
+          "name": "神经毒素",
+          "icon": "☠️",
+          "description": "投掷毒剂攻击随机2个目标",
+          "type": "attack",
+          "targetMode": "random",
+          "damageType": "poison",
+          "damageMultiplier": 0.7,
+          "hitCount": 2,
+          "cooldown": 2,
+          "effects": [
+            {
+              "type": "poison",
+              "chance": 0.8,
+              "duration": 3,
+              "value": 30
+            }
+          ]
+        },
+        {
+          "id": "skill_vila_3",
+          "name": "烟雾弹",
+          "icon": "💣",
+          "description": "投掷烟雾弹掩护队友，提升全体攻击",
+          "type": "buff",
+          "targetMode": "all",
+          "damageType": "",
+          "damageMultiplier": 0,
+          "hitCount": 1,
+          "cooldown": 4,
+          "effects": [
+            {
+              "type": "attackUp",
+              "chance": 1.0,
+              "duration": 2,
+              "value": 20
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "char_k7",
+      "name": "K-7",
+      "portrait": "",
+      "isPlayer": false,
+      "hp": 500,
+      "maxHp": 500,
+      "attack": 65,
+      "defense": 40,
+      "speed": 15,
+      "critRate": 0.05,
+      "critDmg": 1.5,
+      "position": 3,
+      "skills": [
+        {
+          "id": "skill_k7_1",
+          "name": "机械臂重击",
+          "icon": "🤖",
+          "description": "使用机械臂进行强力物理攻击",
+          "type": "attack",
+          "targetMode": "single",
+          "damageType": "physical",
+          "damageMultiplier": 1.1,
+          "hitCount": 1,
+          "cooldown": 0,
+          "effects": []
+        },
+        {
+          "id": "skill_k7_2",
+          "name": "电弧冲击",
+          "icon": "⚡",
+          "description": "释放电弧攻击敌方全体",
+          "type": "attack",
+          "targetMode": "all",
+          "damageType": "lightning",
+          "damageMultiplier": 0.6,
+          "hitCount": 1,
+          "cooldown": 3,
+          "effects": [
+            {
+              "type": "stun",
+              "chance": 0.15,
+              "duration": 1,
+              "value": 0
+            }
+          ]
+        },
+        {
+          "id": "skill_k7_3",
+          "name": "应急修理",
+          "icon": "🔧",
+          "description": "为生命值最低的队友恢复生命",
+          "type": "heal",
+          "targetMode": "single",
+          "damageType": "",
+          "damageMultiplier": 0,
+          "hitCount": 1,
+          "cooldown": 2,
+          "effects": [
+            {
+              "type": "healOverTime",
+              "chance": 1.0,
+              "duration": 2,
+              "value": 40
+            }
+          ]
+        },
+        {
+          "id": "skill_k7_4",
+          "name": "防御协议",
+          "icon": "🛡️",
+          "description": "为自身提升防御",
+          "type": "buff",
+          "targetMode": "self",
+          "damageType": "",
+          "damageMultiplier": 0,
+          "hitCount": 1,
+          "cooldown": 3,
+          "effects": [
+            {
+              "type": "defenseDown",
+              "chance": 1.0,
+              "duration": 3,
+              "value": -25
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "waves": [
+    {
+      "waveIndex": 0,
+      "isBossWave": false,
+      "enemies": [
+        {
+          "id": "enemy_1_w1",
+          "name": "腐化洗碗工",
+          "portrait": "",
+          "isPlayer": false,
+          "hp": 180,
+          "maxHp": 180,
+          "attack": 35,
+          "defense": 12,
+          "speed": 14,
+          "critRate": 0.05,
+          "critDmg": 1.5,
+          "position": 0,
+          "skills": [
+            {
+              "id": "enemy_skill_wash_1",
+              "name": "污秽泼溅",
+              "icon": "💦",
+              "description": "泼洒腐蚀性洗碗水",
+              "type": "attack",
+              "targetMode": "single",
+              "damageType": "poison",
+              "damageMultiplier": 0.9,
+              "hitCount": 1,
+              "cooldown": 0,
+              "effects": [
+                {
+                  "type": "poison",
+                  "chance": 0.4,
+                  "duration": 2,
+                  "value": 10
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "enemy_2_w1",
+          "name": "狂躁切菜工",
+          "portrait": "",
+          "isPlayer": false,
+          "hp": 220,
+          "maxHp": 220,
+          "attack": 45,
+          "defense": 8,
+          "speed": 18,
+          "critRate": 0.08,
+          "critDmg": 1.6,
+          "position": 1,
+          "skills": [
+            {
+              "id": "enemy_skill_chop_1",
+              "name": "疯狂剁砍",
+              "icon": "🔪",
+              "description": "快速挥舞菜刀攻击",
+              "type": "attack",
+              "targetMode": "single",
+              "damageType": "physical",
+              "damageMultiplier": 1.1,
+              "hitCount": 1,
+              "cooldown": 0,
+              "effects": []
+            }
+          ]
+        },
+        {
+          "id": "enemy_3_w1",
+          "name": "发霉传菜员",
+          "portrait": "",
+          "isPlayer": false,
+          "hp": 160,
+          "maxHp": 160,
+          "attack": 30,
+          "defense": 10,
+          "speed": 20,
+          "critRate": 0.05,
+          "critDmg": 1.5,
+          "position": 2,
+          "skills": [
+            {
+              "id": "enemy_skill_serve_1",
+              "name": "霉斑投掷",
+              "icon": "🍄",
+              "description": "投掷发霉的食物残渣",
+              "type": "attack",
+              "targetMode": "single",
+              "damageType": "poison",
+              "damageMultiplier": 0.8,
+              "hitCount": 1,
+              "cooldown": 0,
+              "effects": [
+                {
+                  "type": "poison",
+                  "chance": 0.5,
+                  "duration": 2,
+                  "value": 12
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "enemy_4_w1",
+          "name": "油脂附着者",
+          "portrait": "",
+          "isPlayer": false,
+          "hp": 200,
+          "maxHp": 200,
+          "attack": 40,
+          "defense": 15,
+          "speed": 12,
+          "critRate": 0.06,
+          "critDmg": 1.5,
+          "position": 3,
+          "skills": [
+            {
+              "id": "enemy_skill_grease_1",
+              "name": "油腻扑击",
+              "icon": "🛢️",
+              "description": "用沾满油污的身体撞击",
+              "type": "attack",
+              "targetMode": "single",
+              "damageType": "physical",
+              "damageMultiplier": 1.0,
+              "hitCount": 1,
+              "cooldown": 0,
+              "effects": [
+                {
+                  "type": "poison",
+                  "chance": 0.3,
+                  "duration": 1,
+                  "value": -5
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "backgroundStory": "后厨的储藏室传来异响。当你们打开门时，曾经的服务员们已经变成了被黑暗能量腐蚀的怪物。它们曾经熟练的手艺现在变成了致命的威胁，手中握着沾满油污的厨具，眼窝中闪烁着诡异的绿光。",
+      "dropTable": [
+        {
+          "id": "drop_w1_1",
+          "name": "小瓶生命药水",
+          "icon": "🧪",
+          "description": "恢复60点生命值",
+          "category": "consumable",
+          "effectType": "heal",
+          "value": 60,
+          "damageType": "",
+          "targetMode": "self",
+          "usageCount": 1
+        },
+        {
+          "id": "drop_w1_2",
+          "name": "攻击药水",
+          "icon": "⚔️",
+          "description": "暂时提升20点攻击力，持续3回合",
+          "category": "consumable",
+          "effectType": "buff",
+          "value": 20,
+          "damageType": "",
+          "targetMode": "self",
+          "usageCount": 1
+        },
+        {
+          "id": "drop_w1_3",
+          "name": "简易解毒剂",
+          "icon": "💉",
+          "description": "解除中毒状态",
+          "category": "consumable",
+          "effectType": "cure",
+          "value": 0,
+          "damageType": "",
+          "targetMode": "self",
+          "usageCount": 1
+        }
+      ]
+    },
+    {
+      "waveIndex": 1,
+      "isBossWave": false,
+      "enemies": [
+        {
+          "id": "enemy_1_w2",
+          "name": "熔炉看火人",
+          "portrait": "",
+          "isPlayer": false,
+          "hp": 320,
+          "maxHp": 320,
+          "attack": 55,
+          "defense": 20,
+          "speed": 16,
+          "critRate": 0.08,
+          "critDmg": 1.7,
+          "position": 0,
+          "skills": [
+            {
+              "id": "enemy_skill_fireman_1",
+              "name": "炉火喷射",
+              "icon": "🔥",
+              "description": "喷射高温炉火攻击",
+              "type": "attack",
+              "targetMode": "single",
+              "damageType": "fire",
+              "damageMultiplier": 1.2,
+              "hitCount": 1,
+              "cooldown": 0,
+              "effects": [
+                {
+                  "type": "burn",
+                  "chance": 0.5,
+                  "duration": 2,
+                  "value": 20
+                }
+              ]
+            },
+            {
+              "id": "enemy_skill_fireman_2",
+              "name": "热浪冲击",
+              "icon": "🌡️",
+              "description": "释放热浪攻击前方所有敌人",
+              "type": "attack",
+              "targetMode": "front",
+              "damageType": "fire",
+              "damageMultiplier": 0.8,
+              "hitCount": 1,
+              "cooldown": 2,
+              "effects": []
+            }
+          ]
+        },
+        {
+          "id": "enemy_2_w2",
+          "name": "冰库管理员",
+          "portrait": "",
+          "isPlayer": false,
+          "hp": 280,
+          "maxHp": 280,
+          "attack": 40,
+          "defense": 25,
+          "speed": 14,
+          "critRate": 0.06,
+          "critDmg": 1.6,
+          "position": 1,
+          "skills": [
+            {
+              "id": "enemy_skill_iceman_1",
+              "name": "寒冰锁链",
+              "icon": "❄️",
+              "description": "投掷寒冰锁链束缚目标",
+              "type": "attack",
+              "targetMode": "single",
+              "damageType": "ice",
+              "damageMultiplier": 0.9,
+              "hitCount": 1,
+              "cooldown": 0,
+              "effects": [
+                {
+                  "type": "poison",
+                  "chance": 0.6,
+                  "duration": 2,
+                  "value": -15
+                }
+              ]
+            },
+            {
+              "id": "enemy_skill_iceman_2",
+              "name": "冷气护甲",
+              "icon": "🛡️",
+              "description": "为自身附加冰霜护甲",
+              "type": "buff",
+              "targetMode": "self",
+              "damageType": "",
+              "damageMultiplier": 0,
+              "hitCount": 1,
+              "cooldown": 3,
+              "effects": [
+                {
+                  "type": "shield",
+                  "chance": 1.0,
+                  "duration": 2,
+                  "value": 40
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "enemy_3_w2",
+          "name": "香料调配师",
+          "portrait": "",
+          "isPlayer": false,
+          "hp": 240,
+          "maxHp": 240,
+          "attack": 35,
+          "defense": 18,
+          "speed": 22,
+          "critRate": 0.07,
+          "critDmg": 1.6,
+          "position": 2,
+          "skills": [
+            {
+              "id": "enemy_skill_spice_1",
+              "name": "麻痹香料",
+              "icon": "💨",
+              "description": "投掷麻痹性香料攻击随机敌人",
+              "type": "attack",
+              "targetMode": "random",
+              "damageType": "poison",
+              "damageMultiplier": 0.7,
+              "hitCount": 2,
+              "cooldown": 0,
+              "effects": [
+                {
+                  "type": "stun",
+                  "chance": 0.25,
+                  "duration": 1,
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "id": "enemy_skill_spice_2",
+              "name": "剧毒混合物",
+              "icon": "☠️",
+              "description": "向单个目标投掷剧毒混合物",
+              "type": "attack",
+              "targetMode": "single",
+              "damageType": "poison",
+              "damageMultiplier": 1.1,
+              "hitCount": 1,
+              "cooldown": 2,
+              "effects": [
+                {
+                  "type": "poison",
+                  "chance": 0.8,
+                  "duration": 3,
+                  "value": 25
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "backgroundStory": "踏入餐厅的核心厨房区域，曾经的大厨们已经被黑暗力量彻底扭曲。熔炉的火光映照出他们扭曲的身影，冰库的寒气让他们的皮肤呈现诡异的蓝色。空气中弥漫着香料与腐败混合的诡异气味。",
+      "dropTable": [
+        {
+          "id": "drop_w2_1",
+          "name": "中瓶生命药水",
+          "icon": "🧪",
+          "description": "恢复100点生命值",
+          "category": "consumable",
+          "effectType": "heal",
+          "value": 100,
+          "damageType": "",
+          "targetMode": "self",
+          "usageCount": 1
+        },
+        {
+          "id": "drop_w2_2",
+          "name": "防御药水",
+          "icon": "🛡️",
+          "description": "暂时提升25点防御力，持续3回合",
+          "category": "consumable",
+          "effectType": "buff",
+          "value": 25,
+          "damageType": "",
+          "targetMode": "self",
+          "usageCount": 1
+        },
+        {
+          "id": "drop_w2_3",
+          "name": "火焰炸弹",
+          "icon": "💥",
+          "description": "投掷炸弹造成范围火焰伤害",
+          "category": "consumable",
+          "effectType": "damage",
+          "value": 80,
+          "damageType": "fire",
+          "targetMode": "all",
+          "usageCount": 1
+        },
+        {
+          "id": "drop_w2_4",
+          "name": "万能解毒剂",
+          "icon": "💊",
+          "description": "解除所有异常状态",
+          "category": "consumable",
+          "effectType": "cure_all",
+          "value": 0,
+          "damageType": "",
+          "targetMode": "self",
+          "usageCount": 1
+        }
+      ]
+    },
+    {
+      "waveIndex": 2,
+      "isBossWave": true,
+      "enemies": [
+        {
+          "id": "boss_1",
+          "name": "饕餮厨房长 - 格罗姆",
+          "portrait": "",
+          "isPlayer": false,
+          "hp": 1200,
+          "maxHp": 1200,
+          "attack": 140,
+          "defense": 50,
+          "speed": 25,
+          "critRate": 0.15,
+          "critDmg": 1.9,
+          "position": 0,
+          "skills": [
+            {
+              "id": "boss_skill_1",
+              "name": "深渊咀嚼",
+              "icon": "👹",
+              "description": "用布满獠牙的大嘴撕咬单个目标",
+              "type": "attack",
+              "targetMode": "single",
+              "damageType": "physical",
+              "damageMultiplier": 1.8,
+              "hitCount": 1,
+              "cooldown": 0,
+              "effects": [
+                {
+                  "type": "bleed",
+                  "chance": 0.5,
+                  "duration": 3,
+                  "value": 40
+                }
+              ]
+            },
+            {
+              "id": "boss_skill_2",
+              "name": "腐败盛宴",
+              "icon": "🍽️",
+              "description": "向所有敌人投掷腐败食物",
+              "type": "attack",
+              "targetMode": "all",
+              "damageType": "poison",
+              "damageMultiplier": 0.8,
+              "hitCount": 1,
+              "cooldown": 2,
+              "effects": [
+                {
+                  "type": "poison",
+                  "chance": 0.7,
+                  "duration": 3,
+                  "value": 30
+                }
+              ]
+            },
+            {
+              "id": "boss_skill_3",
+              "name": "厨房狂暴",
+              "icon": "👨‍🍳",
+              "description": "提升自身攻击和速度",
+              "type": "buff",
+              "targetMode": "self",
+              "damageType": "",
+              "damageMultiplier": 0,
+              "hitCount": 1,
+              "cooldown": 3,
+              "effects": [
+                {
+                  "type": "attackUp",
+                  "chance": 1.0,
+                  "duration": 3,
+                  "value": 40
+                },
+                {
+                  "type": "poison",
+                  "chance": 1.0,
+                  "duration": 3,
+                  "value": 10
+                }
+              ]
+            },
+            {
+              "id":

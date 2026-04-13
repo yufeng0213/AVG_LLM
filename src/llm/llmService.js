@@ -15,6 +15,7 @@ export {
 
 export {
   generatePhoneSmsReply,
+  generateDormChatReply,
   generatePhoneMomentsReplies,
   generatePhoneMomentsBatchReplies,
   generatePhoneForumPosts,
@@ -24,6 +25,7 @@ export {
   generateDormShopItems,
   generateTaskBoardTasks,
   generateDormItemGiftReply,
+  generateCharacterVisit,
   generateCharacterDiary,
 } from './llmService.phone'
 
@@ -52,6 +54,7 @@ import {
 } from './llmService.core'
 import {
   generatePhoneSmsReply,
+  generateDormChatReply,
   generatePhoneMomentsReplies,
   generatePhoneMomentsBatchReplies,
   generatePhoneForumPosts,
@@ -61,6 +64,7 @@ import {
   generateDormShopItems,
   generateTaskBoardTasks,
   generateDormItemGiftReply,
+  generateCharacterVisit,
   generateCharacterDiary,
 } from './llmService.phone'
 import {
@@ -94,6 +98,7 @@ export default {
   generateDormShopItems,
   generateTaskBoardTasks,
   generateDormItemGiftReply,
+  generateCharacterVisit,
   generateCharacterDiary,
   generateHandheldPetProfile,
   generateHandheldPetReply,
