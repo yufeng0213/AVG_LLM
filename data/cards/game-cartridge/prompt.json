@@ -1,0 +1,49 @@
+{
+  "id": "game-cartridge",
+  "name": "digital",
+  "category": "游戏卡带",
+  "description": "一个复古游戏卡带的标签",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "gameName": {
+      "type": "string",
+      "description": "游戏名称"
+    },
+    "version": {
+      "type": "string",
+      "description": "版本号，如v1.0"
+    },
+    "publisher": {
+      "type": "string",
+      "description": "发行商"
+    },
+    "year": {
+      "type": "string",
+      "description": "发行年份"
+    },
+    "saveData": {
+      "type": "string",
+      "description": "存档数据描述"
+    },
+    "player": {
+      "type": "string",
+      "description": "玩家名称"
+    }
+  },
+  "promptTemplate": "请生成一张「digital」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "pixel-art",
+    "colors": [
+      "#1a1a2e",
+      "#0f0",
+      "#4a4a6a"
+    ],
+    "mood": "一个复古游戏卡带的标签"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

@@ -1,0 +1,50 @@
+{
+  "id": "evidence-label",
+  "name": "noir",
+  "category": "证据袋标签",
+  "description": "证物袋上的手写标签",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "caseNo": {
+      "type": "string",
+      "description": "案件编号"
+    },
+    "item": {
+      "type": "string",
+      "description": "物品名称"
+    },
+    "description": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "详细描述"
+    },
+    "collector": {
+      "type": "string",
+      "description": "采集人"
+    },
+    "date": {
+      "type": "date",
+      "description": "采集日期"
+    },
+    "chainOfCustody": {
+      "type": "string",
+      "description": "保管链记录"
+    }
+  },
+  "promptTemplate": "请生成一张「noir」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "证物袋上的手写标签"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

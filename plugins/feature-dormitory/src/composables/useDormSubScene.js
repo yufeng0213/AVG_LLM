@@ -621,6 +621,15 @@ export function useDormSubScene(deps) {
       consumeTimeSlot: true,
       wishType: 'scene',
     })
+
+    // 阳台温室浇花联动：给农场今日 +10% 生长 Buff
+    if (scene.id === 'sun-balcony' && activity.id === 'water-plants') {
+      try {
+        localStorage.setItem('avg_llm_farm_watered_today', new Date().toDateString())
+      } catch (e) {
+        // ignore
+      }
+    }
   }
 
   function handleDormSubSceneActivitySelectChange(event) {

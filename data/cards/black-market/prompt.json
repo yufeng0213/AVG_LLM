@@ -1,0 +1,54 @@
+{
+  "id": "black-market",
+  "name": "cyberpunk",
+  "category": "黑市交易记录",
+  "description": "一条黑市交易记录",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "transactionId": {
+      "type": "string",
+      "description": "交易编号"
+    },
+    "buyer": {
+      "type": "string",
+      "description": "买家代号"
+    },
+    "seller": {
+      "type": "string",
+      "description": "卖家代号"
+    },
+    "item": {
+      "type": "text",
+      "maxLength": 150,
+      "description": "交易物品描述"
+    },
+    "price": {
+      "type": "string",
+      "description": "交易价格"
+    },
+    "date": {
+      "type": "date",
+      "description": "交易日期"
+    },
+    "location": {
+      "type": "string",
+      "description": "交易地点"
+    }
+  },
+  "promptTemplate": "请生成一张「cyberpunk」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "glowing-card",
+    "colors": [
+      "#080810",
+      "#0ff",
+      "#f0f"
+    ],
+    "mood": "一条黑市交易记录"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

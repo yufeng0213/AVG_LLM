@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>horror</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;display:flex;justify-content:center;align-items:center;background:linear-gradient(135deg,#2c1810,#1a0f08);padding:20px}
+.card{position:relative;max-width:400px;width:100%;background:linear-gradient(180deg,#f8f0e0,#efe5cc);padding:40px 30px;box-shadow:0 15px 50px rgba(0,0,0,0.5);border-radius:2px;font-family:'Georgia','SimSun',serif;transform:rotate(-0.5deg)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,transparent,transparent 26px,rgba(100,80,140,0.12) 26px,rgba(100,80,140,0.12) 27px);pointer-events:none}
+.card::after{content:'';position:absolute;top:0;left:40px;width:1px;height:100%;background:rgba(200,50,50,0.15);pointer-events:none}
+.title{text-align:center;font-size:20px;color:#6b2020;margin-bottom:25px;letter-spacing:2px;font-style:italic}
+.fields{position:relative;z-index:1}
+.field{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(107,32,32,0.1)}
+.field:last-child{border-bottom:none}
+.label{color:#8b4040;font-style:italic}
+.value{color:#3a2020;text-align:right;max-width:60%;font-style:italic}
+.ink-stain{position:absolute;bottom:20px;right:20px;width:30px;height:30px;background:radial-gradient(circle,rgba(139,0,0,0.15),transparent);border-radius:50%}
+.tear{position:absolute;top:15px;left:15px;font-size:18px;opacity:0.2}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="tear">&#128167;</div>
+<h2 class="title">horror</h2>
+<div class="fields">
+<div class="field"><span class="label">content:</span><span class="value">{{content}}</span></div>
+        <div class="field"><span class="label">date:</span><span class="value">{{date}}</span></div>
+        <div class="field"><span class="label">ghostName:</span><span class="value">{{ghostName}}</span></div>
+        <div class="field"><span class="label">hauntedPlace:</span><span class="value">{{hauntedPlace}}</span></div>
+        <div class="field"><span class="label">emotion:</span><span class="value">{{emotion}}</span></div>
+</div>
+<div class="ink-stain"></div>
+</div>
+</body>
+</html>

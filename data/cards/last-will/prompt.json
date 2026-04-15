@@ -1,0 +1,50 @@
+{
+  "id": "last-will",
+  "name": "letter",
+  "category": "最后遗嘱",
+  "description": "一个人的最后遗嘱",
+  "trigger": {
+    "type": "random",
+    "probability": 0.008,
+    "conditions": []
+  },
+  "variables": {
+    "testator": {
+      "type": "string",
+      "description": "立遗嘱人"
+    },
+    "date": {
+      "type": "date",
+      "description": "立遗嘱日期"
+    },
+    "beneficiary": {
+      "type": "string",
+      "description": "继承人/受益人"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "遗嘱内容"
+    },
+    "witness": {
+      "type": "string",
+      "description": "见证人"
+    },
+    "seal": {
+      "type": "string",
+      "description": "印章/签名"
+    }
+  },
+  "promptTemplate": "请生成一张「letter」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "handwritten",
+    "colors": [
+      "#2c1810",
+      "#6b2020",
+      "#3a2020"
+    ],
+    "mood": "一个人的最后遗嘱"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

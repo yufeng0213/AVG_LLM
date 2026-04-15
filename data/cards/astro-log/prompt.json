@@ -1,0 +1,50 @@
+{
+  "id": "astro-log",
+  "name": "scifi",
+  "category": "宇航员日志",
+  "description": "一段宇航员的太空日志",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "missionDay": {
+      "type": "string",
+      "description": "任务第几天"
+    },
+    "astronaut": {
+      "type": "string",
+      "description": "宇航员姓名"
+    },
+    "location": {
+      "type": "string",
+      "description": "当前位置"
+    },
+    "log": {
+      "type": "text",
+      "maxLength": 250,
+      "description": "日志内容"
+    },
+    "earthView": {
+      "type": "string",
+      "description": "从太空看地球的描述"
+    },
+    "date": {
+      "type": "date",
+      "description": "记录日期"
+    }
+  },
+  "promptTemplate": "请生成一张「scifi」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一段宇航员的太空日志"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

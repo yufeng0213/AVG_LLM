@@ -1,0 +1,55 @@
+{
+  "id": "confession-tape",
+  "name": "noir",
+  "category": "审讯录音带标签",
+  "description": "一盘审讯录音带的标签",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "caseNo": {
+      "type": "string",
+      "description": "案件编号"
+    },
+    "suspect": {
+      "type": "string",
+      "description": "嫌疑人"
+    },
+    "interrogator": {
+      "type": "string",
+      "description": "审讯官"
+    },
+    "date": {
+      "type": "date",
+      "description": "审讯日期"
+    },
+    "duration": {
+      "type": "string",
+      "description": "录音时长"
+    },
+    "summary": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "审讯摘要"
+    },
+    "keyPoints": {
+      "type": "text",
+      "maxLength": 150,
+      "description": "关键供词"
+    }
+  },
+  "promptTemplate": "请生成一张「noir」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一盘审讯录音带的标签"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

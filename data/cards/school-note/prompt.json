@@ -1,0 +1,55 @@
+{
+  "id": "school-note",
+  "name": "校园纸条",
+  "category": "note",
+  "description": "一张藏在课本里的悄悄话纸条",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "sender": {
+      "type": "string",
+      "description": "写纸条的人，通常是同学或暗恋对象"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "收纸条的人，通常是玩家角色"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "纸条上的悄悄话内容，应该有趣、暧昧或搞笑"
+    },
+    "subject": {
+      "type": "string",
+      "description": "正在上的科目",
+      "options": [
+        "数学",
+        "语文",
+        "英语",
+        "历史",
+        "物理",
+        "化学"
+      ],
+      "default": "数学"
+    },
+    "date": {
+      "type": "date",
+      "description": "写纸条的日期"
+    }
+  },
+  "promptTemplate": "请生成一张「校园纸条」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "retro-paper",
+    "colors": [
+      "#f5e6c8",
+      "#8b6914",
+      "#4a3728"
+    ],
+    "mood": "一张藏在课本里的悄悄话纸条"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

@@ -1,0 +1,58 @@
+{
+  "id": "tea-prophecy",
+  "name": "fantasy",
+  "category": "预言茶渣",
+  "description": "一杯茶中的预言解读",
+  "trigger": {
+    "type": "random",
+    "probability": 0.008,
+    "conditions": []
+  },
+  "variables": {
+    "teaType": {
+      "type": "string",
+      "description": "茶的种类",
+      "options": [
+        "红茶",
+        "绿茶",
+        "普洱",
+        "乌龙",
+        "花草茶"
+      ],
+      "default": "红茶"
+    },
+    "pattern": {
+      "type": "string",
+      "description": "茶渣图案描述"
+    },
+    "prophecy": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "预言内容"
+    },
+    "reader": {
+      "type": "string",
+      "description": "解读者"
+    },
+    "date": {
+      "type": "date",
+      "description": "占卜日期"
+    },
+    "accuracy": {
+      "type": "string",
+      "description": "准确度评估"
+    }
+  },
+  "promptTemplate": "请生成一张「fantasy」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "retro-paper",
+    "colors": [
+      "#f5e6c8",
+      "#8b6914",
+      "#4a3728"
+    ],
+    "mood": "一杯茶中的预言解读"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

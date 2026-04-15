@@ -108,7 +108,7 @@ export const markTaskCompletable = (board, taskId, evidence) => {
  */
 export const completeTask = (board, taskId) => {
   const task = board.tasks.find((t) => t.id === taskId)
-  if (!task || task.status !== 'submitted') return board
+  if (!task || (task.status !== 'submitted' && task.status !== 'completable')) return board
   task.status = 'completed'
   task.completedAt = Date.now()
   return { ...board, tasks: [...board.tasks] }

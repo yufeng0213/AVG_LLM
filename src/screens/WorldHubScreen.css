@@ -1,0 +1,743 @@
+/* ========== 世界主界面 ========== */
+.world-hub-screen {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  background: var(--background, #0a0a0a);
+  color: var(--foreground, #ffffff);
+}
+
+/* 背景图 */
+.world-hub-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(94, 106, 210, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 80%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+    var(--background, #0a0a0a);
+  z-index: 0;
+}
+
+.world-hub-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--background, #0a0a0a) 30%, transparent) 0%,
+    transparent 30%,
+    transparent 70%,
+    color-mix(in srgb, var(--background, #0a0a0a) 60%, transparent) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ========== 顶部状态栏 ========== */
+.world-hub-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px clamp(12px, 3vw, 24px);
+}
+
+.world-hub-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.world-hub-avatar-wrap {
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform 150ms ease;
+}
+
+.world-hub-avatar-wrap:hover {
+  transform: scale(1.06);
+}
+
+.world-hub-avatar-wrap:active {
+  transform: scale(0.96);
+}
+
+.world-hub-avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  border: 2px solid color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
+}
+
+.world-hub-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.world-hub-avatar-placeholder {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.world-hub-avatar-frame-img {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  pointer-events: none;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.world-hub-username {
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.world-hub-economy {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.economy-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground, #ffffff);
+}
+
+.economy-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.economy-value {
+  font-family: var(--font-mono, 'Courier New', monospace);
+  font-size: 0.9rem;
+}
+
+.world-hub-settings-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 150ms ease;
+  flex-shrink: 0;
+}
+
+.world-hub-settings-btn:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+}
+
+.settings-icon {
+  font-size: 1.4rem;
+  display: block;
+}
+
+.world-hub-wp-reset-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 150ms ease;
+  flex-shrink: 0;
+}
+
+.world-hub-wp-reset-btn:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+}
+
+/* ========== 按钮区域 ========== */
+.world-hub-buttons {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 clamp(12px, 3vw, 24px);
+  gap: 16px;
+}
+
+.hub-button-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hub-column-right {
+  margin-left: auto;
+}
+
+/* 散落按钮 */
+.hub-scatter-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background, #0a0a0a) 60%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--foreground, #ffffff);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.hub-scatter-btn:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 14%, transparent);
+  border-color: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
+  transform: translateY(-1px);
+}
+
+.hub-scatter-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.hub-btn-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.hub-btn-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ========== 底部区域 ========== */
+.world-hub-footer {
+  position: relative;
+  z-index: 2;
+  padding: clamp(12px, 3vh, 24px) clamp(12px, 3vw, 24px);
+  padding-bottom: calc(clamp(12px, 3vh, 24px) + max(env(safe-area-inset-bottom, 0px), 8px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 主线大按钮 */
+.hub-primary-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-cyan, #00d4ff) 15%, transparent),
+    color-mix(in srgb, var(--accent-magenta, #5E6AD2) 10%, transparent)
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--foreground, #ffffff);
+  padding: clamp(14px, 2.5vh, 20px) 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  width: 100%;
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent-cyan, #00d4ff) 10%, transparent);
+}
+
+.hub-primary-btn:hover {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-cyan, #00d4ff) 22%, transparent),
+    color-mix(in srgb, var(--accent-magenta, #5E6AD2) 16%, transparent)
+  );
+  border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 45%, transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px color-mix(in srgb, var(--accent-cyan, #00d4ff) 18%, transparent);
+}
+
+.hub-primary-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.hub-primary-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.hub-primary-label {
+  font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* 底部小按钮行 */
+.hub-secondary-bar {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hub-secondary-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background, #0a0a0a) 50%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: color-mix(in srgb, var(--foreground, #ffffff) 70%, transparent);
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+.hub-secondary-btn:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  border-color: color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
+  color: var(--foreground, #ffffff);
+}
+
+.hub-secondary-btn:active {
+  transform: scale(0.96);
+}
+
+.hub-sec-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.hub-sec-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+/* 新游戏按钮高亮 */
+.hub-secondary-btn--accent {
+  border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 25%, transparent);
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 8%, transparent);
+  color: var(--foreground, #ffffff);
+}
+
+.hub-secondary-btn--accent:hover {
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 40%, transparent);
+}
+
+/* ========== 新游戏弹窗 ========== */
+.new-game-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.new-game-dialog {
+  width: min(92vw, 520px);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background, #0a0a0a);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
+  border-radius: 18px;
+  overflow: hidden;
+  color: var(--foreground, #ffffff);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.dialog-close {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--foreground, #ffffff);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+}
+
+.dialog-close:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+}
+
+.dialog-desc {
+  margin: 0;
+  padding: 10px 20px;
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
+}
+
+.worldbook-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.worldbook-item {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 3%, transparent);
+  color: var(--foreground, #ffffff);
+  cursor: pointer;
+  transition: all 150ms ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.worldbook-item:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+}
+
+.worldbook-item.selected {
+  border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-cyan, #00d4ff) 8%, transparent);
+}
+
+.book-indicator {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 70%, transparent);
+  margin-top: 2px;
+}
+
+.book-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.book-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.book-badge {
+  font-size: 0.65rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-magenta, #5E6AD2) 10%, transparent);
+  color: color-mix(in srgb, var(--accent-magenta, #5E6AD2) 65%, transparent);
+  width: fit-content;
+}
+
+.book-summary {
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.dialog-select-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 20px 14px;
+}
+
+.dialog-select-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 60%, transparent);
+}
+
+.dialog-select-control {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 5%, transparent);
+  color: var(--foreground, #ffffff);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.dialog-select-control option {
+  background: var(--background, #0a0a0a);
+  color: var(--foreground, #ffffff);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+}
+
+.dialog-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex: 1;
+}
+
+.dialog-btn.cancel {
+  background: transparent;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
+}
+
+.dialog-btn.cancel:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
+}
+
+.dialog-btn.confirm {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-cyan, #00d4ff) 15%, transparent),
+    color-mix(in srgb, var(--accent-magenta, #5E6AD2) 10%, transparent)
+  );
+  border-color: color-mix(in srgb, var(--accent-cyan, #00d4ff) 30%, transparent);
+  color: var(--foreground, #ffffff);
+}
+
+.dialog-btn.confirm:hover {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-cyan, #00d4ff) 22%, transparent),
+    color-mix(in srgb, var(--accent-magenta, #5E6AD2) 16%, transparent)
+  );
+}
+
+/* ========== Android 竖屏适配 ========== */
+.platform-android.android-portrait .world-hub-screen {
+  width: 100%;
+  height: 100dvh;
+}
+
+.platform-android.android-portrait .world-hub-header {
+  padding: 10px 14px;
+}
+
+.platform-android.android-portrait .world-hub-avatar {
+  width: 44px;
+  height: 44px;
+}
+
+.platform-android.android-portrait .world-hub-username {
+  font-size: 0.95rem;
+  max-width: 100px;
+}
+
+.platform-android.android-portrait .economy-item {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+.platform-android.android-portrait .economy-value {
+  font-size: 0.85rem;
+}
+
+.platform-android.android-portrait .world-hub-buttons {
+  padding: 0 14px;
+  gap: 12px;
+}
+
+.platform-android.android-portrait .hub-scatter-btn {
+  padding: 8px 14px;
+  border-radius: 12px;
+  min-height: 44px;
+}
+
+.platform-android.android-portrait .hub-btn-icon {
+  font-size: 1.2rem;
+}
+
+.platform-android.android-portrait .hub-btn-label {
+  font-size: 0.82rem;
+}
+
+.platform-android.android-portrait .world-hub-footer {
+  padding: 14px;
+  padding-bottom: calc(14px + max(env(safe-area-inset-bottom, 0px), 8px));
+  gap: 8px;
+}
+
+.platform-android.android-portrait .hub-primary-btn {
+  padding: 14px 20px;
+  border-radius: 14px;
+  min-height: 56px;
+}
+
+.platform-android.android-portrait .hub-primary-label {
+  font-size: 1.15rem;
+}
+
+.platform-android.android-portrait .hub-secondary-bar {
+  gap: 5px;
+}
+
+.platform-android.android-portrait .hub-secondary-btn {
+  padding: 6px 10px;
+  min-height: 40px;
+  border-radius: 10px;
+}
+
+.platform-android.android-portrait .hub-sec-label {
+  font-size: 0.75rem;
+}
+
+/* ========== 小屏幕适配 ========== */
+@media (max-width: 480px) {
+  .world-hub-header {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .world-hub-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .world-hub-username {
+    font-size: 0.85rem;
+    max-width: 80px;
+  }
+
+  .economy-item {
+    padding: 3px 8px;
+    font-size: 0.78rem;
+  }
+
+  .economy-value {
+    font-size: 0.82rem;
+  }
+
+  .settings-icon {
+    font-size: 1.2rem;
+  }
+
+  .world-hub-buttons {
+    padding: 0 12px;
+    gap: 10px;
+  }
+
+  .hub-scatter-btn {
+    padding: 8px 12px;
+  }
+
+  .hub-btn-icon {
+    font-size: 1.1rem;
+  }
+
+  .hub-btn-label {
+    font-size: 0.78rem;
+  }
+
+  .world-hub-footer {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .hub-primary-btn {
+    padding: 12px 18px;
+  }
+
+  .hub-secondary-btn {
+    padding: 5px 8px;
+  }
+
+  .hub-sec-label {
+    font-size: 0.72rem;
+  }
+
+    .platform-android.android-portrait .world-hub-wp-reset-btn,
+    .platform-android.android-portrait .world-hub-settings-btn,
+    .platform-android.android-portrait .hub-secondary-btn{
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+}

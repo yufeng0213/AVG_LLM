@@ -1,0 +1,54 @@
+{
+  "id": "auction-card",
+  "name": "business",
+  "category": "拍卖品卡片",
+  "description": "一场拍卖会上的拍品卡片",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "lotNo": {
+      "type": "string",
+      "description": "拍品编号"
+    },
+    "itemName": {
+      "type": "string",
+      "description": "拍品名称"
+    },
+    "description": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "拍品描述"
+    },
+    "estimate": {
+      "type": "string",
+      "description": "估价"
+    },
+    "startingBid": {
+      "type": "string",
+      "description": "起拍价"
+    },
+    "auctioneer": {
+      "type": "string",
+      "description": "拍卖师"
+    },
+    "date": {
+      "type": "date",
+      "description": "拍卖日期"
+    }
+  },
+  "promptTemplate": "请生成一张「business」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "retro-paper",
+    "colors": [
+      "#f5e6c8",
+      "#8b6914",
+      "#4a3728"
+    ],
+    "mood": "一场拍卖会上的拍品卡片"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

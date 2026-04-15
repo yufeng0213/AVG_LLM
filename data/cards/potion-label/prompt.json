@@ -1,0 +1,61 @@
+{
+  "id": "potion-label",
+  "name": "fantasy",
+  "category": "药剂标签",
+  "description": "一瓶魔法药剂的标签",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "potionName": {
+      "type": "string",
+      "description": "药剂名称"
+    },
+    "effect": {
+      "type": "string",
+      "description": "药剂效果",
+      "options": [
+        "治愈",
+        "隐身",
+        "变形",
+        "强化",
+        "致幻"
+      ],
+      "default": "治愈"
+    },
+    "brewer": {
+      "type": "string",
+      "description": "调配师"
+    },
+    "dosage": {
+      "type": "string",
+      "description": "用法用量"
+    },
+    "warning": {
+      "type": "string",
+      "description": "使用警告"
+    },
+    "batchNo": {
+      "type": "string",
+      "description": "批次号"
+    },
+    "expiry": {
+      "type": "string",
+      "description": "保质期"
+    }
+  },
+  "promptTemplate": "请生成一张「fantasy」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "retro-paper",
+    "colors": [
+      "#f5e6c8",
+      "#8b6914",
+      "#4a3728"
+    ],
+    "mood": "一瓶魔法药剂的标签"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

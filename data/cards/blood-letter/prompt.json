@@ -1,0 +1,46 @@
+{
+  "id": "blood-letter",
+  "name": "血书",
+  "category": "horror",
+  "description": "一封用血写成的信",
+  "trigger": {
+    "type": "random",
+    "probability": 0.008,
+    "conditions": []
+  },
+  "variables": {
+    "sender": {
+      "type": "string",
+      "description": "写信人，以血书写的人"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "收信人"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "血书正文，应该充满绝望、怨恨或深情"
+    },
+    "date": {
+      "type": "date",
+      "description": "书写日期"
+    },
+    "seal": {
+      "type": "string",
+      "description": "血印或签名"
+    }
+  },
+  "promptTemplate": "请生成一张「血书」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "handwritten",
+    "colors": [
+      "#2c1810",
+      "#6b2020",
+      "#3a2020"
+    ],
+    "mood": "一封用血写成的信"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

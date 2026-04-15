@@ -1,0 +1,54 @@
+{
+  "id": "whisper-note",
+  "name": "note",
+  "category": "深夜耳语",
+  "description": "一段深夜的悄悄话记录",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "speaker": {
+      "type": "string",
+      "description": "说话人"
+    },
+    "listener": {
+      "type": "string",
+      "description": "听话人"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "悄悄话内容，应该温柔或暧昧"
+    },
+    "time": {
+      "type": "string",
+      "description": "时间，如深夜2:00"
+    },
+    "mood": {
+      "type": "string",
+      "description": "氛围",
+      "options": [
+        "温柔",
+        "紧张",
+        "暧昧",
+        "悲伤",
+        "甜蜜"
+      ],
+      "default": "温柔"
+    }
+  },
+  "promptTemplate": "请生成一张「note」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "handwritten",
+    "colors": [
+      "#2c1810",
+      "#6b2020",
+      "#3a2020"
+    ],
+    "mood": "一段深夜的悄悄话记录"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

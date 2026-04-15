@@ -1,0 +1,65 @@
+{
+  "id": "border-pass",
+  "name": "ticket",
+  "category": "边境通行证",
+  "description": "一张穿越边境的通行证",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "holderName": {
+      "type": "string",
+      "description": "持证人姓名"
+    },
+    "from": {
+      "type": "string",
+      "description": "出发地"
+    },
+    "to": {
+      "type": "string",
+      "description": "目的地"
+    },
+    "validFrom": {
+      "type": "string",
+      "description": "有效期起始"
+    },
+    "validTo": {
+      "type": "string",
+      "description": "有效期截止"
+    },
+    "issuer": {
+      "type": "string",
+      "description": "签发人/机构"
+    },
+    "purpose": {
+      "type": "string",
+      "description": "通行目的",
+      "options": [
+        "贸易",
+        "探亲",
+        "公务",
+        "避难",
+        "旅行"
+      ],
+      "default": "贸易"
+    },
+    "passNo": {
+      "type": "string",
+      "description": "通行证编号"
+    }
+  },
+  "promptTemplate": "请生成一张「ticket」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一张穿越边境的通行证"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

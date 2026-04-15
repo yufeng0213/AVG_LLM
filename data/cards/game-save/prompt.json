@@ -1,0 +1,60 @@
+{
+  "id": "game-save",
+  "name": "digital",
+  "category": "游戏存档",
+  "description": "一个游戏存档记录",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "saveNo": {
+      "type": "string",
+      "description": "存档编号"
+    },
+    "player": {
+      "type": "string",
+      "description": "玩家名称"
+    },
+    "level": {
+      "type": "string",
+      "description": "当前等级/关卡"
+    },
+    "location": {
+      "type": "string",
+      "description": "当前位置"
+    },
+    "playTime": {
+      "type": "string",
+      "description": "游戏时长"
+    },
+    "date": {
+      "type": "date",
+      "description": "存档日期"
+    },
+    "status": {
+      "type": "string",
+      "description": "存档状态",
+      "options": [
+        "正常",
+        "损坏",
+        "加密",
+        "隐藏"
+      ],
+      "default": "正常"
+    }
+  },
+  "promptTemplate": "请生成一张「digital」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "pixel-art",
+    "colors": [
+      "#1a1a2e",
+      "#0f0",
+      "#4a4a6a"
+    ],
+    "mood": "一个游戏存档记录"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

@@ -1,0 +1,60 @@
+{
+  "id": "morgue-tag",
+  "name": "horror",
+  "category": "停尸房标签",
+  "description": "一张停尸房的身份标签",
+  "trigger": {
+    "type": "random",
+    "probability": 0.008,
+    "conditions": []
+  },
+  "variables": {
+    "tagNo": {
+      "type": "string",
+      "description": "标签编号"
+    },
+    "name": {
+      "type": "string",
+      "description": "死者姓名（或无名氏）"
+    },
+    "dateIn": {
+      "type": "date",
+      "description": "入殓日期"
+    },
+    "cause": {
+      "type": "string",
+      "description": "死因"
+    },
+    "coroner": {
+      "type": "string",
+      "description": "法医姓名"
+    },
+    "status": {
+      "type": "string",
+      "description": "状态",
+      "options": [
+        "待确认",
+        "已确认",
+        "无名氏",
+        "转运中"
+      ],
+      "default": "待确认"
+    },
+    "notes": {
+      "type": "string",
+      "description": "备注"
+    }
+  },
+  "promptTemplate": "请生成一张「horror」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一张停尸房的身份标签"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

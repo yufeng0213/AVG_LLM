@@ -1,0 +1,54 @@
+{
+  "id": "sea-log",
+  "name": "航海日志",
+  "category": "retro",
+  "description": "一艘远洋船只的航海日志",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "shipName": {
+      "type": "string",
+      "description": "船只名称"
+    },
+    "date": {
+      "type": "date",
+      "description": "记录日期"
+    },
+    "captain": {
+      "type": "string",
+      "description": "船长姓名"
+    },
+    "coordinates": {
+      "type": "string",
+      "description": "当前位置坐标"
+    },
+    "weather": {
+      "type": "string",
+      "description": "天气状况"
+    },
+    "log": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "日志内容"
+    },
+    "course": {
+      "type": "string",
+      "description": "航向"
+    }
+  },
+  "promptTemplate": "请生成一张「航海日志」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "retro-paper",
+    "colors": [
+      "#f5e6c8",
+      "#8b6914",
+      "#4a3728"
+    ],
+    "mood": "一艘远洋船只的航海日志"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

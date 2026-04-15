@@ -1,0 +1,54 @@
+{
+  "id": "time-capsule",
+  "name": "note",
+  "category": "时光胶囊留言",
+  "description": "一个时光胶囊中的留言",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "sender": {
+      "type": "string",
+      "description": "留言人"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "收信人"
+    },
+    "content": {
+      "type": "text",
+      "maxLength": 300,
+      "description": "时光胶囊留言内容"
+    },
+    "openDate": {
+      "type": "date",
+      "description": "预定开启日期"
+    },
+    "mood": {
+      "type": "string",
+      "description": "情感",
+      "options": [
+        "期待",
+        "怀念",
+        "祝福",
+        "遗憾",
+        "希望"
+      ],
+      "default": "期待"
+    }
+  },
+  "promptTemplate": "请生成一张「note」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "retro-paper",
+    "colors": [
+      "#f5e6c8",
+      "#8b6914",
+      "#4a3728"
+    ],
+    "mood": "一个时光胶囊中的留言"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

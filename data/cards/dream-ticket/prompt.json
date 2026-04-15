@@ -1,0 +1,62 @@
+{
+  "id": "dream-ticket",
+  "name": "ticket",
+  "category": "梦境入场券",
+  "description": "一张进入他人梦境的入场券",
+  "trigger": {
+    "type": "random",
+    "probability": 0.008,
+    "conditions": []
+  },
+  "variables": {
+    "dreamer": {
+      "type": "string",
+      "description": "梦境主人"
+    },
+    "ticketNo": {
+      "type": "string",
+      "description": "入场券编号"
+    },
+    "dreamType": {
+      "type": "string",
+      "description": "梦境类型",
+      "options": [
+        "美梦",
+        "噩梦",
+        "清醒梦",
+        "回忆梦",
+        "预知梦"
+      ],
+      "default": "美梦"
+    },
+    "duration": {
+      "type": "string",
+      "description": "停留时长"
+    },
+    "date": {
+      "type": "date",
+      "description": "入场日期"
+    },
+    "gatekeeper": {
+      "type": "string",
+      "description": "守门人"
+    },
+    "rules": {
+      "type": "text",
+      "maxLength": 150,
+      "description": "梦境规则"
+    }
+  },
+  "promptTemplate": "请生成一张「ticket」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "glowing-card",
+    "colors": [
+      "#080810",
+      "#0ff",
+      "#f0f"
+    ],
+    "mood": "一张进入他人梦境的入场券"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

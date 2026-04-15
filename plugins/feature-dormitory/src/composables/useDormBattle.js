@@ -649,23 +649,32 @@ export function useDormBattle() {
   function executeHeal(actor, skill) {
     const targets = session.teamMembers.filter(m => m.isAlive)
 
+    // 计算治疗量：优先使用 damageMultiplier * attack，fallback 为 maxHp 的 10%
+    const calcHealValue = (caster, target) => {
+      const mult = skill.damageMultiplier || 0
+      const baseHeal = mult > 0
+        ? Math.round(mult * (caster.attack || 0))
+        : Math.round((caster.maxHp || 100) * 0.1)
+      return Math.max(1, baseHeal)
+    }
+
     if (skill.targetMode === 'all') {
       // 治疗全体
       targets.forEach(target => {
-        const healValue = Math.round(skill.damageMultiplier * actor.attack)
+        const healValue = calcHealValue(actor, target)
         const actualHeal = calculateHeal(actor, target, healValue)
         target.hp = Math.min(target.maxHp, target.hp + actualHeal)
         session.battleLog.push(`${actor.name} 使用 [${skill.name}] 为 ${target.name} 恢复了 ${actualHeal} 点生命值！`)
       })
     } else if (skill.targetMode === 'self') {
-      const healAmount = calculateHeal(actor, actor, skill.damageMultiplier * actor.attack)
+      const healAmount = calcHealValue(actor, actor)
       actor.hp = Math.min(actor.maxHp, actor.hp + healAmount)
       session.battleLog.push(`${actor.name} 使用 [${skill.name}] 恢复了 ${healAmount} 点生命值！`)
     } else {
       // 治疗当前 HP 百分比最低的队友
       const target = targets.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0]
       if (target) {
-        const healValue = Math.round(skill.damageMultiplier * actor.attack)
+        const healValue = calcHealValue(actor, target)
         const actualHeal = calculateHeal(actor, target, healValue)
         target.hp = Math.min(target.maxHp, target.hp + actualHeal)
         session.battleLog.push(`${actor.name} 使用 [${skill.name}] 为 ${target.name} 恢复了 ${actualHeal} 点生命值！`)

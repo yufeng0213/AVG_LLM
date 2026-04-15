@@ -7,7 +7,10 @@
       "Bash(xxd plugins/feature-dormitory/src/DormitoryScreen.vue)",
       "Bash(xxd)",
       "Bash(node:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(ls -d E:/avg_llm/data/cards/*/)",
+      "Bash(python:*)"
     ]
   }
 }

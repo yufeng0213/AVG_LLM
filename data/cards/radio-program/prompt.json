@@ -1,0 +1,47 @@
+{
+  "id": "radio-program",
+  "name": "retro",
+  "category": "电台节目单",
+  "description": "一份复古电台节目单",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "stationName": {
+      "type": "string",
+      "description": "电台名称"
+    },
+    "date": {
+      "type": "date",
+      "description": "播出日期"
+    },
+    "programs": {
+      "type": "text",
+      "maxLength": 250,
+      "description": "节目单内容"
+    },
+    "host": {
+      "type": "string",
+      "description": "主持人名称"
+    },
+    "dedication": {
+      "type": "text",
+      "maxLength": 150,
+      "description": "点歌/留言"
+    }
+  },
+  "promptTemplate": "请生成一张「retro」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "retro-paper",
+    "colors": [
+      "#f5e6c8",
+      "#8b6914",
+      "#4a3728"
+    ],
+    "mood": "一份复古电台节目单"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

@@ -1,0 +1,61 @@
+{
+  "id": "certificate",
+  "name": "鉴定证书",
+  "category": "business",
+  "description": "一份正式的鉴定证书",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "certId": {
+      "type": "string",
+      "description": "证书编号"
+    },
+    "itemName": {
+      "type": "string",
+      "description": "鉴定物品名称"
+    },
+    "result": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "鉴定结果描述"
+    },
+    "authenticity": {
+      "type": "string",
+      "description": "鉴定结论",
+      "options": [
+        "真品",
+        "赝品",
+        "存疑",
+        "仿制品"
+      ],
+      "default": "真品"
+    },
+    "expert": {
+      "type": "string",
+      "description": "鉴定师姓名"
+    },
+    "date": {
+      "type": "date",
+      "description": "鉴定日期"
+    },
+    "org": {
+      "type": "string",
+      "description": "鉴定机构名称"
+    }
+  },
+  "promptTemplate": "请生成一张「鉴定证书」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "retro-paper",
+    "colors": [
+      "#f5e6c8",
+      "#8b6914",
+      "#4a3728"
+    ],
+    "mood": "一份正式的鉴定证书"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

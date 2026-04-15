@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>noir</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;display:flex;justify-content:center;align-items:center;background:linear-gradient(180deg,#d4c5a9,#c8b896);padding:20px;font-family:'Courier New',monospace}
+.card{position:relative;max-width:400px;width:100%;background:#f5f0e1;padding:35px 30px;box-shadow:0 5px 25px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.1)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:repeating-linear-gradient(90deg,#333 0px,#333 2px,transparent 2px,transparent 8px)}
+.card::after{content:'CONFIDENTIAL';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:48px;color:rgba(200,0,0,0.06);font-weight:bold;letter-spacing:10px;pointer-events:none;white-space:nowrap}
+.title{text-align:center;font-size:18px;color:#222;margin-bottom:20px;letter-spacing:2px;text-transform:uppercase;border-bottom:2px solid #333;padding-bottom:10px}
+.fields{}
+.field{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dotted rgba(0,0,0,0.15);font-size:12px}
+.field:last-child{border-bottom:none}
+.label{color:#555;font-weight:bold}
+.value{color:#111;text-align:right;max-width:55%;font-family:'Courier New',monospace}
+.stamp{text-align:center;margin-top:15px;font-size:11px;color:#999;letter-spacing:2px}
+.hole{position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:12px;height:12px;background:#d4c5a9;border-radius:50%;border:1px solid rgba(0,0,0,0.1)}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="hole"></div>
+<h2 class="title">noir</h2>
+<div class="fields">
+<div class="field"><span class="label">caseNo:</span><span class="value">{{caseNo}}</span></div>
+        <div class="field"><span class="label">defendant:</span><span class="value">{{defendant}}</span></div>
+        <div class="field"><span class="label">crime:</span><span class="value">{{crime}}</span></div>
+        <div class="field"><span class="label">verdict:</span><span class="value">{{verdict}}</span></div>
+        <div class="field"><span class="label">judge:</span><span class="value">{{judge}}</span></div>
+        <div class="field"><span class="label">date:</span><span class="value">{{date}}</span></div>
+        <div class="field"><span class="label">evidence:</span><span class="value">{{evidence}}</span></div>
+</div>
+<div class="stamp">--- END OF DOCUMENT ---</div>
+</div>
+</body>
+</html>

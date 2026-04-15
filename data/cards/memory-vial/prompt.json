@@ -1,0 +1,58 @@
+{
+  "id": "memory-vial",
+  "name": "fantasy",
+  "category": "记忆药剂瓶",
+  "description": "一个装有记忆的小药瓶",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "memoryOwner": {
+      "type": "string",
+      "description": "记忆主人"
+    },
+    "memoryDate": {
+      "type": "date",
+      "description": "记忆日期"
+    },
+    "memoryContent": {
+      "type": "text",
+      "maxLength": 250,
+      "description": "记忆内容"
+    },
+    "bottleNo": {
+      "type": "string",
+      "description": "药剂瓶编号"
+    },
+    "brewer": {
+      "type": "string",
+      "description": "调配师"
+    },
+    "color": {
+      "type": "string",
+      "description": "药剂颜色",
+      "options": [
+        "蓝色",
+        "粉色",
+        "金色",
+        "紫色",
+        "透明"
+      ],
+      "default": "蓝色"
+    }
+  },
+  "promptTemplate": "请生成一张「fantasy」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "glowing-card",
+    "colors": [
+      "#080810",
+      "#0ff",
+      "#f0f"
+    ],
+    "mood": "一个装有记忆的小药瓶"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

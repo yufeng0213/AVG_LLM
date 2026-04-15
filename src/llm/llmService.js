@@ -16,6 +16,7 @@ export {
 export {
   generatePhoneSmsReply,
   generateDormChatReply,
+  generatePhoneCallReply,
   generatePhoneMomentsReplies,
   generatePhoneMomentsBatchReplies,
   generatePhoneForumPosts,
@@ -27,6 +28,8 @@ export {
   generateDormItemGiftReply,
   generateCharacterVisit,
   generateCharacterDiary,
+  generateRedditPosts,
+  generateRedditCommentReplies,
 } from './llmService.phone'
 
 export {
@@ -55,6 +58,7 @@ import {
 import {
   generatePhoneSmsReply,
   generateDormChatReply,
+  generatePhoneCallReply,
   generatePhoneMomentsReplies,
   generatePhoneMomentsBatchReplies,
   generatePhoneForumPosts,
@@ -66,6 +70,8 @@ import {
   generateDormItemGiftReply,
   generateCharacterVisit,
   generateCharacterDiary,
+  generateRedditPosts,
+  generateRedditCommentReplies,
 } from './llmService.phone'
 import {
   generateBackpackUseResult,
@@ -89,6 +95,8 @@ export default {
   generateCharacterSpeech,
   generateCardContent,
   generatePhoneSmsReply,
+  generateDormChatReply,
+  generatePhoneCallReply,
   generatePhoneMomentsReplies,
   generatePhoneMomentsBatchReplies,
   generatePhoneForumPosts,
@@ -100,6 +108,8 @@ export default {
   generateDormItemGiftReply,
   generateCharacterVisit,
   generateCharacterDiary,
+  generateRedditPosts,
+  generateRedditCommentReplies,
   generateHandheldPetProfile,
   generateHandheldPetReply,
   generateHandheldDungeonMap,

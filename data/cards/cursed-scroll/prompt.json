@@ -1,0 +1,54 @@
+{
+  "id": "cursed-scroll",
+  "name": "horror",
+  "category": "诅咒卷轴",
+  "description": "一份被诅咒的古老卷轴",
+  "trigger": {
+    "type": "random",
+    "probability": 0.008,
+    "conditions": []
+  },
+  "variables": {
+    "curseName": {
+      "type": "string",
+      "description": "诅咒名称"
+    },
+    "victim": {
+      "type": "string",
+      "description": "被诅咒者"
+    },
+    "caster": {
+      "type": "string",
+      "description": "施咒者"
+    },
+    "curseContent": {
+      "type": "text",
+      "maxLength": 250,
+      "description": "诅咒内容"
+    },
+    "duration": {
+      "type": "string",
+      "description": "诅咒持续时间"
+    },
+    "breakingCondition": {
+      "type": "string",
+      "description": "解除条件"
+    },
+    "date": {
+      "type": "date",
+      "description": "施咒日期"
+    }
+  },
+  "promptTemplate": "请生成一张「horror」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "handwritten",
+    "colors": [
+      "#2c1810",
+      "#6b2020",
+      "#3a2020"
+    ],
+    "mood": "一份被诅咒的古老卷轴"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

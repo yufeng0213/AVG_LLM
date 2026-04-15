@@ -1,0 +1,54 @@
+{
+  "id": "train-log",
+  "name": "retro",
+  "category": "列车运行记录",
+  "description": "一列老式火车的运行日志",
+  "trigger": {
+    "type": "random",
+    "probability": 0.03,
+    "conditions": []
+  },
+  "variables": {
+    "trainNo": {
+      "type": "string",
+      "description": "列车编号"
+    },
+    "conductor": {
+      "type": "string",
+      "description": "列车长"
+    },
+    "route": {
+      "type": "string",
+      "description": "运行路线"
+    },
+    "date": {
+      "type": "date",
+      "description": "记录日期"
+    },
+    "departure": {
+      "type": "string",
+      "description": "发车时间"
+    },
+    "arrival": {
+      "type": "string",
+      "description": "到达时间"
+    },
+    "incidents": {
+      "type": "text",
+      "maxLength": 150,
+      "description": "异常事件记录"
+    }
+  },
+  "promptTemplate": "请生成一张「retro」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一列老式火车的运行日志"
+  },
+  "rarity": "common",
+  "collectible": true
+}

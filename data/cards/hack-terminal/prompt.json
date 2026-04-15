@@ -1,0 +1,57 @@
+{
+  "id": "hack-terminal",
+  "name": "cyberpunk",
+  "category": "黑客终端",
+  "description": "一个黑客终端的输出",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "terminalId": {
+      "type": "string",
+      "description": "终端编号"
+    },
+    "target": {
+      "type": "string",
+      "description": "入侵目标"
+    },
+    "breachLevel": {
+      "type": "string",
+      "description": "入侵等级",
+      "options": [
+        "探测",
+        "渗透",
+        "获取",
+        "完全控制"
+      ],
+      "default": "渗透"
+    },
+    "data": {
+      "type": "text",
+      "maxLength": 250,
+      "description": "获取的数据内容"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "时间戳"
+    },
+    "operator": {
+      "type": "string",
+      "description": "操作员代号"
+    }
+  },
+  "promptTemplate": "请生成一张「cyberpunk」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "glowing-card",
+    "colors": [
+      "#080810",
+      "#0ff",
+      "#f0f"
+    ],
+    "mood": "一个黑客终端的输出"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

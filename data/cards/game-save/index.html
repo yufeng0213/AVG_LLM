@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>digital</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;display:flex;justify-content:center;align-items:center;background:#1a1a2e;padding:20px;font-family:'Courier New',monospace;image-rendering:pixelated}
+.card{position:relative;max-width:400px;width:100%;background:#2d2d44;border:4px solid #4a4a6a;padding:25px 20px;box-shadow:0 0 20px rgba(0,255,0,0.1),inset 0 0 30px rgba(0,0,0,0.3)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:20px;background:linear-gradient(180deg,#3d3d5a,#2d2d44);border-bottom:2px solid #4a4a6a}
+.title{text-align:center;font-size:16px;color:#0f0;margin-top:15px;margin-bottom:20px;letter-spacing:3px;text-shadow:0 0 5px #0f0}
+.fields{}
+.field{display:flex;justify-content:space-between;padding:5px 8px;margin:4px 0;background:rgba(0,0,0,0.2);font-size:11px;border-left:3px solid #0f0}
+.label{color:#0a0}
+.value{color:#0f0;text-shadow:0 0 3px rgba(0,255,0,0.5)}
+.blink{animation:blink 1s steps(2) infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.status-bar{text-align:center;margin-top:15px;font-size:10px;color:#666}
+.pixels{position:absolute;bottom:5px;right:5px;font-size:8px;color:#444;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="card">
+<h2 class="title">digital</h2>
+<div class="fields">
+<div class="field"><span class="label">saveNo:</span><span class="value">{{saveNo}}</span></div>
+        <div class="field"><span class="label">player:</span><span class="value">{{player}}</span></div>
+        <div class="field"><span class="label">level:</span><span class="value">{{level}}</span></div>
+        <div class="field"><span class="label">location:</span><span class="value">{{location}}</span></div>
+        <div class="field"><span class="label">playTime:</span><span class="value">{{playTime}}</span></div>
+        <div class="field"><span class="label">date:</span><span class="value">{{date}}</span></div>
+        <div class="field"><span class="label">status:</span><span class="value">{{status}}</span></div>
+</div>
+<div class="status-bar"><span class="blink">&#9608;</span> PRESS START <span class="blink">&#9608;</span></div>
+<div class="pixels">8-BIT</div>
+</div>
+</body>
+</html>

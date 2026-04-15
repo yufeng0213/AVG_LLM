@@ -33,6 +33,7 @@ const buildHostContext = (options = {}) => {
     onLoadSave: typeof options.onLoadSave === 'function' ? options.onLoadSave : EMPTY_FN,
     onLoadBackup: typeof options.onLoadBackup === 'function' ? options.onLoadBackup : EMPTY_FN,
     onOpenWorldBookEditor: typeof options.onOpenWorldBookEditor === 'function' ? options.onOpenWorldBookEditor : EMPTY_FN,
+    onNavigate: typeof options.onNavigate === 'function' ? options.onNavigate : EMPTY_FN,
     getActiveWorldBookId: () => {
       const value = String(activeWorldBookIdRef?.value || '').trim()
       return value || 'default_world_book'

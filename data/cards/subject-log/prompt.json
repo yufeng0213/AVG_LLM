@@ -1,0 +1,62 @@
+{
+  "id": "subject-log",
+  "name": "medical",
+  "category": "实验体观察日志",
+  "description": "一份实验体的行为观察记录",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "subjectId": {
+      "type": "string",
+      "description": "实验体编号"
+    },
+    "name": {
+      "type": "string",
+      "description": "实验体姓名"
+    },
+    "observer": {
+      "type": "string",
+      "description": "观察员姓名"
+    },
+    "date": {
+      "type": "date",
+      "description": "观察日期"
+    },
+    "behavior": {
+      "type": "text",
+      "maxLength": 250,
+      "description": "行为观察记录"
+    },
+    "notes": {
+      "type": "text",
+      "maxLength": 150,
+      "description": "备注"
+    },
+    "status": {
+      "type": "string",
+      "description": "状态",
+      "options": [
+        "正常",
+        "异常",
+        "危险",
+        "失控"
+      ],
+      "default": "正常"
+    }
+  },
+  "promptTemplate": "请生成一张「medical」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一份实验体的行为观察记录"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

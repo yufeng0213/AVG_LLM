@@ -1,0 +1,53 @@
+{
+  "id": "space-ticket",
+  "name": "星际船票",
+  "category": "scifi",
+  "description": "一张星际旅行的登船票",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "from": {
+      "type": "string",
+      "description": "出发星域"
+    },
+    "to": {
+      "type": "string",
+      "description": "目的星域"
+    },
+    "flightNo": {
+      "type": "string",
+      "description": "航班号"
+    },
+    "gate": {
+      "type": "string",
+      "description": "登船口"
+    },
+    "seat": {
+      "type": "string",
+      "description": "座位号"
+    },
+    "date": {
+      "type": "date",
+      "description": "出发日期"
+    },
+    "boardingTime": {
+      "type": "string",
+      "description": "登船时间"
+    }
+  },
+  "promptTemplate": "请生成一张「星际船票」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "glowing-card",
+    "colors": [
+      "#080810",
+      "#0ff",
+      "#f0f"
+    ],
+    "mood": "一张星际旅行的登船票"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

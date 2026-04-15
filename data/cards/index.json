@@ -6,169 +6,298 @@
       "name": "信件",
       "description": "各种类型的信件卡片",
       "icon": "✉️",
-      "cards": ["letter-love", "letter-apology", "letter-farewell"]
+      "cards": [
+        "letter-love",
+        "letter-apology",
+        "letter-farewell",
+        "last-will"
+      ]
     },
     "greeting": {
       "name": "贺卡",
       "description": "节日和庆祝类贺卡",
       "icon": "🎉",
-      "cards": ["greeting-birthday", "greeting-newyear", "greeting-valentine"]
+      "cards": [
+        "greeting-birthday",
+        "greeting-newyear",
+        "greeting-valentine"
+      ]
     },
     "email": {
       "name": "电子邮件",
       "description": "各种类型的电子邮件",
       "icon": "📧",
-      "cards": ["email-work", "email-mysterious"]
+      "cards": [
+        "email-work",
+        "email-mysterious"
+      ]
     },
     "photo": {
       "name": "照片",
       "description": "各种类型的照片卡片",
       "icon": "📷",
-      "cards": ["photo-secret", "photo-vintage", "photo-group"]
+      "cards": [
+        "photo-secret",
+        "photo-vintage",
+        "photo-group",
+        "film-memory"
+      ]
     },
     "diary": {
       "name": "日记",
       "description": "各种类型的日记卡片",
       "icon": "📔",
-      "cards": ["diary-secret", "diary-travel"]
+      "cards": [
+        "diary-secret",
+        "diary-travel"
+      ]
     },
     "note": {
       "name": "便签",
       "description": "便签和留言类卡片",
       "icon": "📝",
-      "cards": ["note-sticky", "minimalist-note", "poetry-note", "memo-work"]
+      "cards": [
+        "note-sticky",
+        "minimalist-note",
+        "poetry-note",
+        "memo-work",
+        "school-note",
+        "tree-hole",
+        "whisper-note",
+        "time-capsule"
+      ]
     },
     "ticket": {
       "name": "票据",
       "description": "各种类型的票据卡片",
       "icon": "🎫",
-      "cards": ["ticket-train", "ticket-plane", "coupon-ticket", "lottery-ticket"]
+      "cards": [
+        "ticket-train",
+        "ticket-plane",
+        "coupon-ticket",
+        "lottery-ticket",
+        "concert-ticket",
+        "border-pass",
+        "dream-ticket"
+      ]
     },
     "news": {
       "name": "新闻",
       "description": "报纸和新闻类卡片",
       "icon": "📰",
-      "cards": ["news-clipping", "weather-report"]
+      "cards": [
+        "news-clipping",
+        "weather-report"
+      ]
     },
     "cyberpunk": {
       "name": "赛博朋克",
       "description": "赛博朋克风格卡片",
       "icon": "🌐",
-      "cards": ["cyberpunk-holocard"]
+      "cards": [
+        "cyberpunk-holocard",
+        "neon-sign",
+        "hack-terminal",
+        "wanted-crypto",
+        "black-market"
+      ]
     },
     "ancient": {
       "name": "古风",
       "description": "古风/中国风卡片",
       "icon": "📜",
-      "cards": ["ancient-scroll", "ancient-poetry", "wuxia-letter", "xianxia-jade"]
+      "cards": [
+        "ancient-scroll",
+        "ancient-poetry",
+        "wuxia-letter",
+        "xianxia-jade",
+        "shrine-charm"
+      ]
     },
     "kawaii": {
       "name": "可爱",
       "description": "可爱卡通风格卡片",
       "icon": "💕",
-      "cards": ["kawaii-note"]
+      "cards": [
+        "kawaii-note"
+      ]
     },
     "horror": {
       "name": "恐怖",
       "description": "恐怖/暗黑风格卡片",
       "icon": "👻",
-      "cards": ["horror-letter", "gothic-letter", "lovecraft-manuscript"]
+      "cards": [
+        "horror-letter",
+        "gothic-letter",
+        "lovecraft-manuscript",
+        "blood-letter",
+        "morgue-tag",
+        "seance-record",
+        "ghost-diary",
+        "medium-record"
+      ]
     },
     "steampunk": {
       "name": "蒸汽朋克",
       "description": "蒸汽朋克风格卡片",
       "icon": "⚙️",
-      "cards": ["steampunk-telegram"]
+      "cards": [
+        "steampunk-telegram"
+      ]
     },
     "surreal": {
       "name": "超现实",
       "description": "超现实/梦幻风格卡片",
       "icon": "🌙",
-      "cards": ["surreal-dream"]
+      "cards": [
+        "surreal-dream"
+      ]
     },
     "weird-tale": {
       "name": "新怪谈",
       "description": "新怪谈/异常现象风格卡片",
       "icon": "🔍",
-      "cards": ["weird-tale-report"]
+      "cards": [
+        "weird-tale-report"
+      ]
     },
     "scifi": {
       "name": "科幻",
       "description": "科幻/未来风格卡片",
       "icon": "🚀",
-      "cards": ["scifi-transmission"]
+      "cards": [
+        "scifi-transmission",
+        "space-ticket",
+        "radio-message",
+        "star-map",
+        "astro-log"
+      ]
     },
     "noir": {
       "name": "黑色电影",
       "description": "黑色电影/侦探风格卡片",
       "icon": "🕵️",
-      "cards": ["noir-detective"]
+      "cards": [
+        "noir-detective",
+        "prison-file",
+        "court-record",
+        "confession-tape",
+        "crime-scene-photo",
+        "evidence-tag",
+        "evidence-label"
+      ]
     },
     "fantasy": {
       "name": "奇幻",
       "description": "奇幻/魔法风格卡片",
       "icon": "🔮",
-      "cards": ["fantasy-scroll", "prophecy-scroll", "tarot-card"]
+      "cards": [
+        "fantasy-scroll",
+        "prophecy-scroll",
+        "tarot-card",
+        "divination-receipt",
+        "tea-prophecy",
+        "spell-book",
+        "potion-label",
+        "memory-vial",
+        "cursed-scroll",
+        "fairy-contract"
+      ]
     },
     "postcard": {
       "name": "明信片",
       "description": "明信片类卡片",
       "icon": "🖼️",
-      "cards": ["postcard-travel"]
+      "cards": [
+        "postcard-travel"
+      ]
     },
     "retro": {
       "name": "复古",
       "description": "复古风格卡片",
       "icon": "📻",
-      "cards": ["retro-radio", "vintage-poster"]
+      "cards": [
+        "retro-radio",
+        "vintage-poster",
+        "sea-log",
+        "radio-program",
+        "drama-program",
+        "museum-tag",
+        "train-log"
+      ]
     },
     "medical": {
       "name": "医疗",
       "description": "医疗/健康类卡片",
       "icon": "🏥",
-      "cards": ["medical-report"]
+      "cards": [
+        "medical-report",
+        "lab-record",
+        "lab-result",
+        "subject-log"
+      ]
     },
     "recipe": {
       "name": "食谱",
       "description": "食谱/烹饪类卡片",
       "icon": "🍳",
-      "cards": ["recipe-card"]
+      "cards": [
+        "recipe-card"
+      ]
     },
     "music": {
       "name": "音乐",
       "description": "音乐/乐谱类卡片",
       "icon": "🎵",
-      "cards": ["music-score"]
+      "cards": [
+        "music-score",
+        "record-sleeve"
+      ]
     },
     "business": {
       "name": "商务",
       "description": "商务/名片类卡片",
       "icon": "💼",
-      "cards": ["business-card"]
+      "cards": [
+        "business-card",
+        "certificate",
+        "auction-card",
+        "press-pass"
+      ]
     },
     "invitation": {
       "name": "邀请函",
       "description": "邀请函类卡片",
       "icon": "💌",
-      "cards": ["invitation-card"]
+      "cards": [
+        "invitation-card"
+      ]
     },
     "contract": {
       "name": "契约",
       "description": "契约/文书类卡片",
       "icon": "📜",
-      "cards": ["contract-paper"]
+      "cards": [
+        "contract-paper"
+      ]
     },
     "wanted": {
       "name": "通缉令",
       "description": "通缉令/悬赏类卡片",
       "icon": "⚠️",
-      "cards": ["wanted-poster"]
+      "cards": [
+        "wanted-poster"
+      ]
     },
     "digital": {
       "name": "数字",
       "description": "数字/电子风格卡片",
       "icon": "📱",
-      "cards": ["qr-message"]
+      "cards": [
+        "qr-message",
+        "game-save",
+        "game-cartridge"
+      ]
     }
   },
   "cards": {
@@ -477,6 +606,306 @@
       "category": "news",
       "rarity": "common",
       "preview": "一份天气预报报告"
+    },
+    "school-note": {
+      "name": "校园纸条",
+      "category": "note",
+      "rarity": "uncommon",
+      "preview": "一张藏在课本里的悄悄话纸条"
+    },
+    "concert-ticket": {
+      "name": "演唱会门票",
+      "category": "ticket",
+      "rarity": "rare",
+      "preview": "一张带全息防伪的演唱会门票"
+    },
+    "divination-receipt": {
+      "name": "占卜收据",
+      "category": "fantasy",
+      "rarity": "uncommon",
+      "preview": "神秘占卜师开具的收据"
+    },
+    "prison-file": {
+      "name": "监狱档案",
+      "category": "noir",
+      "rarity": "rare",
+      "preview": "一份机密囚犯档案"
+    },
+    "sea-log": {
+      "name": "航海日志",
+      "category": "retro",
+      "rarity": "uncommon",
+      "preview": "一艘远洋船只的航海日志"
+    },
+    "neon-sign": {
+      "name": "霓虹灯牌",
+      "category": "cyberpunk",
+      "rarity": "rare",
+      "preview": "一块赛博朋克风格的霓虹灯招牌"
+    },
+    "certificate": {
+      "name": "鉴定证书",
+      "category": "business",
+      "rarity": "rare",
+      "preview": "一份正式的鉴定证书"
+    },
+    "blood-letter": {
+      "name": "血书",
+      "category": "horror",
+      "rarity": "epic",
+      "preview": "一封用血写成的信"
+    },
+    "space-ticket": {
+      "name": "星际船票",
+      "category": "scifi",
+      "rarity": "uncommon",
+      "preview": "一张星际旅行的登船票"
+    },
+    "lab-record": {
+      "name": "medical",
+      "category": "medical",
+      "rarity": "rare",
+      "preview": "一份实验室研究记录"
+    },
+    "film-memory": {
+      "name": "photo",
+      "category": "photo",
+      "rarity": "rare",
+      "preview": "一段复古胶片风格的回忆"
+    },
+    "shrine-charm": {
+      "name": "神社御守",
+      "category": "ancient",
+      "rarity": "uncommon",
+      "preview": "一个来自神社的祈愿御守"
+    },
+    "court-record": {
+      "name": "noir",
+      "category": "noir",
+      "rarity": "epic",
+      "preview": "一份法庭审判记录"
+    },
+    "record-sleeve": {
+      "name": "music",
+      "category": "music",
+      "rarity": "rare",
+      "preview": "一张黑胶唱片的封套"
+    },
+    "radio-program": {
+      "name": "retro",
+      "category": "retro",
+      "rarity": "uncommon",
+      "preview": "一份复古电台节目单"
+    },
+    "subject-log": {
+      "name": "medical",
+      "category": "medical",
+      "rarity": "rare",
+      "preview": "一份实验体的行为观察记录"
+    },
+    "game-cartridge": {
+      "name": "digital",
+      "category": "digital",
+      "rarity": "uncommon",
+      "preview": "一个复古游戏卡带的标签"
+    },
+    "seance-record": {
+      "name": "horror",
+      "category": "horror",
+      "rarity": "epic",
+      "preview": "一次降神会的完整记录"
+    },
+    "evidence-tag": {
+      "name": "noir",
+      "category": "noir",
+      "rarity": "uncommon",
+      "preview": "证物袋上的标签"
+    },
+    "tree-hole": {
+      "name": "note",
+      "category": "note",
+      "rarity": "rare",
+      "preview": "一条匿名树洞留言"
+    },
+    "astro-log": {
+      "name": "scifi",
+      "category": "scifi",
+      "rarity": "rare",
+      "preview": "一段宇航员的太空日志"
+    },
+    "drama-program": {
+      "name": "retro",
+      "category": "retro",
+      "rarity": "uncommon",
+      "preview": "一场戏剧演出的节目单"
+    },
+    "border-pass": {
+      "name": "ticket",
+      "category": "ticket",
+      "rarity": "rare",
+      "preview": "一张穿越边境的通行证"
+    },
+    "tea-prophecy": {
+      "name": "fantasy",
+      "category": "fantasy",
+      "rarity": "epic",
+      "preview": "一杯茶中的预言解读"
+    },
+    "morgue-tag": {
+      "name": "horror",
+      "category": "horror",
+      "rarity": "epic",
+      "preview": "一张停尸房的身份标签"
+    },
+    "hack-terminal": {
+      "name": "cyberpunk",
+      "category": "cyberpunk",
+      "rarity": "rare",
+      "preview": "一个黑客终端的输出"
+    },
+    "game-save": {
+      "name": "digital",
+      "category": "digital",
+      "rarity": "uncommon",
+      "preview": "一个游戏存档记录"
+    },
+    "medium-record": {
+      "name": "灵媒通灵记录",
+      "category": "horror",
+      "rarity": "epic",
+      "preview": "一次灵媒通灵的完整记录"
+    },
+    "evidence-label": {
+      "name": "noir",
+      "category": "noir",
+      "rarity": "uncommon",
+      "preview": "证物袋上的手写标签"
+    },
+    "whisper-note": {
+      "name": "note",
+      "category": "note",
+      "rarity": "rare",
+      "preview": "一段深夜的悄悄话记录"
+    },
+    "museum-tag": {
+      "name": "retro",
+      "category": "retro",
+      "rarity": "common",
+      "preview": "博物馆展品的说明标签"
+    },
+    "lab-result": {
+      "name": "medical",
+      "category": "medical",
+      "rarity": "uncommon",
+      "preview": "一份化验室检测报告"
+    },
+    "dream-ticket": {
+      "name": "ticket",
+      "category": "ticket",
+      "rarity": "epic",
+      "preview": "一张进入他人梦境的入场券"
+    },
+    "spell-book": {
+      "name": "fantasy",
+      "category": "fantasy",
+      "rarity": "rare",
+      "preview": "一本魔法书上撕下的一页"
+    },
+    "wanted-crypto": {
+      "name": "cyberpunk",
+      "category": "cyberpunk",
+      "rarity": "rare",
+      "preview": "暗网上的通缉令"
+    },
+    "ghost-diary": {
+      "name": "horror",
+      "category": "horror",
+      "rarity": "epic",
+      "preview": "一页幽灵留下的日记"
+    },
+    "press-pass": {
+      "name": "business",
+      "category": "business",
+      "rarity": "common",
+      "preview": "一张记者媒体通行证"
+    },
+    "potion-label": {
+      "name": "fantasy",
+      "category": "fantasy",
+      "rarity": "uncommon",
+      "preview": "一瓶魔法药剂的标签"
+    },
+    "train-log": {
+      "name": "retro",
+      "category": "retro",
+      "rarity": "common",
+      "preview": "一列老式火车的运行日志"
+    },
+    "memory-vial": {
+      "name": "fantasy",
+      "category": "fantasy",
+      "rarity": "rare",
+      "preview": "一个装有记忆的小药瓶"
+    },
+    "radio-message": {
+      "name": "scifi",
+      "category": "scifi",
+      "rarity": "uncommon",
+      "preview": "来自太空站的电报"
+    },
+    "cursed-scroll": {
+      "name": "horror",
+      "category": "fantasy",
+      "rarity": "epic",
+      "preview": "一份被诅咒的古老卷轴"
+    },
+    "auction-card": {
+      "name": "business",
+      "category": "business",
+      "rarity": "uncommon",
+      "preview": "一场拍卖会上的拍品卡片"
+    },
+    "confession-tape": {
+      "name": "noir",
+      "category": "noir",
+      "rarity": "rare",
+      "preview": "一盘审讯录音带的标签"
+    },
+    "star-map": {
+      "name": "scifi",
+      "category": "scifi",
+      "rarity": "rare",
+      "preview": "一张古老星图的碎片"
+    },
+    "fairy-contract": {
+      "name": "fantasy",
+      "category": "fantasy",
+      "rarity": "epic",
+      "preview": "与精灵签订的契约"
+    },
+    "crime-scene-photo": {
+      "name": "noir",
+      "category": "noir",
+      "rarity": "rare",
+      "preview": "一张案发现场的照片及说明"
+    },
+    "time-capsule": {
+      "name": "note",
+      "category": "note",
+      "rarity": "rare",
+      "preview": "一个时光胶囊中的留言"
+    },
+    "black-market": {
+      "name": "cyberpunk",
+      "category": "cyberpunk",
+      "rarity": "uncommon",
+      "preview": "一条黑市交易记录"
+    },
+    "last-will": {
+      "name": "letter",
+      "category": "letter",
+      "rarity": "epic",
+      "preview": "一个人的最后遗嘱"
     }
   },
   "rarityLevels": {

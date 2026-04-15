@@ -1,0 +1,60 @@
+{
+  "id": "record-sleeve",
+  "name": "music",
+  "category": "唱片封套",
+  "description": "一张黑胶唱片的封套",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "albumName": {
+      "type": "string",
+      "description": "专辑名称"
+    },
+    "artist": {
+      "type": "string",
+      "description": "艺术家/乐队名称"
+    },
+    "tracks": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "曲目列表"
+    },
+    "year": {
+      "type": "string",
+      "description": "发行年份"
+    },
+    "dedication": {
+      "type": "text",
+      "maxLength": 150,
+      "description": "献词/寄语"
+    },
+    "genre": {
+      "type": "string",
+      "description": "音乐风格",
+      "options": [
+        "流行",
+        "摇滚",
+        "爵士",
+        "古典",
+        "电子",
+        "民谣"
+      ],
+      "default": "流行"
+    }
+  },
+  "promptTemplate": "请生成一张「music」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "handwritten",
+    "colors": [
+      "#2c1810",
+      "#6b2020",
+      "#3a2020"
+    ],
+    "mood": "一张黑胶唱片的封套"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

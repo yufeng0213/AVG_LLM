@@ -1,0 +1,54 @@
+{
+  "id": "film-memory",
+  "name": "胶片记忆",
+  "category": "photo",
+  "description": "一段复古胶片风格的回忆",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "memory": {
+      "type": "text",
+      "maxLength": 250,
+      "description": "回忆内容描述"
+    },
+    "location": {
+      "type": "string",
+      "description": "拍摄地点"
+    },
+    "date": {
+      "type": "date",
+      "description": "拍摄日期"
+    },
+    "filmNo": {
+      "type": "string",
+      "description": "胶片编号"
+    },
+    "mood": {
+      "type": "string",
+      "description": "情感基调",
+      "options": [
+        "温暖",
+        "忧伤",
+        "快乐",
+        "怀念",
+        "遗憾"
+      ],
+      "default": "温暖"
+    }
+  },
+  "promptTemplate": "请生成一张「photo」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "handwritten",
+    "colors": [
+      "#2c1810",
+      "#6b2020",
+      "#3a2020"
+    ],
+    "mood": "一段复古胶片风格的回忆"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

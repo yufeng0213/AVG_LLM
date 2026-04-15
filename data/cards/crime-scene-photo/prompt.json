@@ -1,0 +1,54 @@
+{
+  "id": "crime-scene-photo",
+  "name": "noir",
+  "category": "案发现场照片",
+  "description": "一张案发现场的照片及说明",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "caseNo": {
+      "type": "string",
+      "description": "案件编号"
+    },
+    "location": {
+      "type": "string",
+      "description": "案发现场位置"
+    },
+    "date": {
+      "type": "date",
+      "description": "拍摄日期"
+    },
+    "photographer": {
+      "type": "string",
+      "description": "摄影师/取证员"
+    },
+    "description": {
+      "type": "text",
+      "maxLength": 250,
+      "description": "现场描述"
+    },
+    "evidence": {
+      "type": "string",
+      "description": "关键证据"
+    },
+    "timeOfCrime": {
+      "type": "string",
+      "description": "案发时间"
+    }
+  },
+  "promptTemplate": "请生成一张「noir」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一张案发现场的照片及说明"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

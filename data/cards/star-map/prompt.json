@@ -1,0 +1,54 @@
+{
+  "id": "star-map",
+  "name": "scifi",
+  "category": "星图碎片",
+  "description": "一张古老星图的碎片",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "region": {
+      "type": "string",
+      "description": "星域区域"
+    },
+    "stars": {
+      "type": "string",
+      "description": "主要恒星列表"
+    },
+    "constellation": {
+      "type": "string",
+      "description": "星座名称"
+    },
+    "navigator": {
+      "type": "string",
+      "description": "导航员"
+    },
+    "date": {
+      "type": "date",
+      "description": "测绘日期"
+    },
+    "notes": {
+      "type": "text",
+      "maxLength": 150,
+      "description": "备注"
+    },
+    "destination": {
+      "type": "string",
+      "description": "目标目的地"
+    }
+  },
+  "promptTemplate": "请生成一张「scifi」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "handwritten",
+    "colors": [
+      "#2c1810",
+      "#6b2020",
+      "#3a2020"
+    ],
+    "mood": "一张古老星图的碎片"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

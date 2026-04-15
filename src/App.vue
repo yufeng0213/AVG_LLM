@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, computed, watch } from 'vue'
 import GameScreen from './screens/GameScreen.vue'
 import StartScreen from './screens/StartScreen.vue'
+import WorldHubScreen from './screens/WorldHubScreen.vue'
 import { getPlatform, isMobileDevice, isNative, isAndroid } from './utils/platform'
 import { buildStartMenuRegistry, resolveStartMenuAction } from './features/startMenuRegistry'
 import { getLocalFeaturePluginManifests } from './features/localFeaturePluginManifests'
@@ -13,6 +14,11 @@ import {
   subscribeFeaturePluginRuntimeState,
 } from './features/featurePluginRuntimeState'
 import { StatusBar, Style } from '@capacitor/status-bar'
+import { runMigration } from '../plugins/feature-dormitory/src/composables/runMigration.js'
+import GlobalMailbox from '../plugins/feature-dormitory/src/components/GlobalMailbox.vue'
+import CheckInScreen from '../plugins/feature-dormitory/src/CheckInScreen.vue'
+import CheckIn7Screen from '../plugins/feature-dormitory/src/CheckIn7Screen.vue'
+import AvatarFrameScreen from '../plugins/feature-dormitory/src/components/AvatarFrameScreen.vue'
 
 // PC 端设计基准分辨率（16:9 横屏比例）
 const DESIGN_WIDTH = 1920
@@ -22,7 +28,7 @@ const DESIGN_HEIGHT = 1080
 const ANDROID_DESIGN_WIDTH = 1080
 const ANDROID_DESIGN_HEIGHT = 1920
 
-const currentScreen = ref('start')
+const currentScreen = ref('world-hub')
 const activeWorldBookId = ref('default_world_book')
 const activeNarratorId = ref(null)
 const uiScale = ref(1)
@@ -186,6 +192,30 @@ const backToStart = () => {
   currentScreen.value = 'start'
 }
 
+const backToWorldHub = () => {
+  currentScreen.value = 'world-hub'
+}
+
+// WorldHubScreen 按钮处理
+const isMailboxOpen = ref(false)
+const isCheckInOpen = ref(false)
+const isCheckIn7Open = ref(false)
+const isAvatarSettingsOpen = ref(false)
+
+const openMainStory = () => {
+  // TODO: 打开主线入口界面（MainStoryEntry）
+  // 临时：直接打开世界书选择（复用新游戏逻辑）
+  openNewGame()
+}
+
+const openShop = () => { currentScreen.value = 'shop' }
+const openTask = () => { currentScreen.value = 'task-board' }
+const openCheckIn = () => { isCheckInOpen.value = true }
+const openCheckIn7 = () => { isCheckIn7Open.value = true }
+const openMailbox = () => { isMailboxOpen.value = true }
+
+const openPhone = () => { currentScreen.value = 'phone' }
+
 // 加载存档后进入游戏
 const handleLoadSave = (saveData) => {
   loadedSaveData.value = saveData
@@ -220,11 +250,12 @@ const pluginScreenRegistry = computed(() => buildPluginScreenRegistry({
   pluginManifests: enabledFeaturePluginManifests.value,
   pluginEntries: localFeaturePluginEntries,
   activeWorldBookIdRef: activeWorldBookId,
-  onBackToStart: backToStart,
+  onBackToStart: backToWorldHub,
   onBackToWorldBookShelf: backToWorldBookShelf,
   onLoadSave: handleLoadSave,
   onLoadBackup: handleLoadBackup,
   onOpenWorldBookEditor: openWorldBookEditor,
+  onNavigate: (screen) => { currentScreen.value = screen },
 }))
 
 const activePluginScreen = computed(() => {
@@ -276,6 +307,12 @@ const handleFeaturePluginRuntimeStateChange = (nextState) => {
 }
 
 onMounted(() => {
+  // 执行数据迁移
+  const migrationResult = runMigration()
+  if (migrationResult.ok) {
+    console.log('[App] Data migration result:', migrationResult)
+  }
+
   updateUiScale()
   window.addEventListener('resize', updateUiScale)
   unsubscribeFeaturePluginRuntime = subscribeFeaturePluginRuntimeState(
@@ -343,11 +380,11 @@ watch(currentScreen, (screen) => {
 
 watch(activePluginScreen, (pluginScreen) => {
   const screen = currentScreen.value
-  if (screen === 'start' || screen === 'game') {
+  if (screen === 'start' || screen === 'game' || screen === 'world-hub') {
     return
   }
   if (!pluginScreen) {
-    currentScreen.value = 'start'
+    currentScreen.value = 'world-hub'
   }
 })
 </script>
@@ -359,6 +396,29 @@ watch(activePluginScreen, (pluginScreen) => {
       :class="{ 'game-fullscreen': currentScreen === 'game' || currentScreen === 'face-to-face' }"
       :style="{ '--ui-scale': uiScale, ...containerStyle }"
     >
+      <WorldHubScreen
+        v-if="currentScreen === 'world-hub'"
+        @open-new-game="openNewGame"
+        @open-main-story="openMainStory"
+        @open-dormitory="() => currentScreen = 'dormitory'"
+        @open-game-center="() => currentScreen = 'game-center'"
+        @open-trpg="() => currentScreen = 'trpg'"
+        @open-shop="openShop"
+        @open-task="openTask"
+        @open-checkin="openCheckIn"
+        @open-checkin7="openCheckIn7"
+        @open-mailbox="openMailbox"
+        @open-worldbook="() => currentScreen = 'worldbook-shelf'"
+        @open-card-collection="() => currentScreen = 'card-collection'"
+        @open-adventure="() => currentScreen = 'adventure-game'"
+        @open-narrator="() => currentScreen = 'narrator-manager'"
+        @open-plugin="() => currentScreen = 'plugin-manager'"
+        @open-settings="() => currentScreen = 'settings'"
+        @open-face-to-face="() => currentScreen = 'face-to-face'"
+        @open-load-save="() => currentScreen = 'load-save'"
+        @open-phone="openPhone"
+        @open-avatar="isAvatarSettingsOpen = true"
+      />
       <StartScreen
         v-if="currentScreen === 'start'"
         :menu-items="startMenuItems"
@@ -371,7 +431,7 @@ watch(activePluginScreen, (pluginScreen) => {
         :save-data="loadedSaveData"
         :world-book-id="activeWorldBookId"
         :session-narrator-id="activeNarratorId"
-        @back="backToStart"
+        @back="backToWorldHub"
       />
       <component
         v-else-if="activePluginScreen"
@@ -379,7 +439,33 @@ watch(activePluginScreen, (pluginScreen) => {
         v-bind="activePluginScreen.props"
         v-on="activePluginScreen.events"
       />
+
+      <!-- 签到（全屏，从 WorldHub 直接打开） -->
+      <CheckInScreen
+        v-if="isCheckInOpen"
+        :coins="0"
+        @back="isCheckInOpen = false"
+        @checkin-daily-result="() => {}"
+      />
+      <CheckIn7Screen
+        v-if="isCheckIn7Open"
+        :coins="0"
+        @back="isCheckIn7Open = false"
+        @checkin7-result="() => {}"
+      />
     </div>
+
+    <!-- 全局 Modal（Teleport 到 body，放在 app 外层） -->
+    <GlobalMailbox
+      :is-open="isMailboxOpen"
+      :coins="0"
+      @close="isMailboxOpen = false"
+      @mail-affection-change="() => {}"
+    />
+    <AvatarFrameScreen
+      v-if="isAvatarSettingsOpen"
+      @close="isAvatarSettingsOpen = false"
+    />
   </div>
 </template>
 

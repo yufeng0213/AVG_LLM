@@ -53,6 +53,7 @@ export const generateBattleData = async ({ task, selectedCharacters, worldBook, 
 - type: attack(攻击), heal(治疗), buff(增益), debuff(减益)
 - target: single, all, front, back, random, self
 - dmgType: physical, fire, poison, ice, lightning, dark, none
+- multiplier(技能倍率): 攻击技能取 0.8-2.0；治疗技能取 1.0-3.0（治疗量 = multiplier × 施法者攻击力）；buff/debuff 技能可设为 0
 - effect type: poison, burn, bleed, stun, defenseDown, attackUp, healOverTime, shield
 - effect value: 伤害类为正数(伤害值)，debuff类负数表示降低的属性值
 - category: consumable

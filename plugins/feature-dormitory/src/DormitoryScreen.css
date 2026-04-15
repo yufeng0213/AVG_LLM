@@ -3807,6 +3807,25 @@
   transform: scale(0.95);
 }
 
+/* 信箱按钮 */
+.side-action-mailbox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.mailbox-unread {
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 8px;
+  min-width: 14px;
+  text-align: center;
+  line-height: 1.2;
+}
+
 /* ========== 任务板 Modal 过渡动画 ========== */
 .task-board-modal-enter-active,
 .task-board-modal-leave-active {

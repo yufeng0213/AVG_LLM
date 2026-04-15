@@ -4,7 +4,7 @@
  * 完整的跑团功能，包括角色分配、开场生成、剧情交互
  */
 
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { marked } from 'marked'
 import {
   loadTRPGSession,
@@ -32,9 +32,19 @@ const props = defineProps({
     type: String,
     default: 'User',
   },
+  // 外部传入的已选角色列表（跨世界书），最多 3 个（+ User = 4）
+  selectedCharacters: {
+    type: Array,
+    default: () => [],
+  },
+  // 当为 true 时不使用 Teleport，直接内联渲染（用于全屏路由容器）
+  noTeleport: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'remove-character'])
 
 // 跑团状态
 const isTRPGLoading = ref(false)
@@ -115,11 +125,33 @@ function formatTRPGTime(timestamp) {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
 }
 
+// 当外部传入的已选角色变化时，自动同步到 trpgCharacters
+watch(
+  () => props.selectedCharacters,
+  (chars) => {
+    if (chars && chars.length > 0) {
+      trpgCharacters.value = getWorldBookCharacters(
+        { characters: chars },
+        props.userName,
+      )
+    } else if (props.activeBook && (!chars || chars.length === 0)) {
+      trpgCharacters.value = getWorldBookCharacters(props.activeBook, props.userName)
+    }
+  },
+  { deep: true },
+)
+
 // 跑团方法
 function open() {
   trpgError.value = ''
 
-  if (props.activeBook) {
+  if (props.selectedCharacters && props.selectedCharacters.length > 0) {
+    // 使用外部传入的跨世界书角色
+    trpgCharacters.value = getWorldBookCharacters(
+      { characters: props.selectedCharacters },
+      props.userName,
+    )
+  } else if (props.activeBook) {
     trpgCharacters.value = getWorldBookCharacters(props.activeBook, props.userName)
   }
 
@@ -313,7 +345,155 @@ defineExpose({ open })
 </script>
 
 <template>
-  <Teleport to="body">
+  <div v-if="noTeleport">
+    <div v-if="isOpen" class="trpg-overlay trpg-inline-mode" @click.self="handleClose">
+      <section class="trpg-panel">
+        <!-- Header -->
+        <header class="trpg-header">
+          <div class="trpg-title-group">
+            <h2 class="trpg-title">🎲 TRPG 跑团</h2>
+            <p v-if="currentTRPGTopic" class="trpg-subtitle">{{ currentTRPGTopic }}</p>
+          </div>
+          <div class="trpg-header-actions">
+            <button v-if="isTRPGRunning" type="button" class="trpg-header-btn trpg-end-btn" @click="handleEndTRPG">结束</button>
+            <button v-if="!isTRPGRunning && trpgMessages.length > 0" type="button" class="trpg-header-btn trpg-new-btn" @click="handleNewTRPG">新跑团</button>
+            <button type="button" class="trpg-close-btn" @click="handleClose">×</button>
+          </div>
+        </header>
+
+        <!-- Error -->
+        <div v-if="trpgError" class="trpg-error-box">
+          <p>{{ trpgError }}</p>
+          <button type="button" class="error-dismiss" @click="trpgError = ''">关闭</button>
+        </div>
+
+        <!-- Body -->
+        <div class="trpg-body">
+          <!-- 设置阶段 -->
+          <div v-if="!isTRPGRunning" class="trpg-setup-panel">
+            <div class="setup-section">
+              <h2 class="setup-section-title">📖 跑团主题</h2>
+              <div class="topic-input-group">
+                <input
+                  v-model="trpgTopicInput"
+                  type="text"
+                  class="topic-input"
+                  placeholder="输入跑团主题，或点击下方按钮生成..."
+                  maxlength="50"
+                />
+                <div class="topic-actions">
+                  <button type="button" class="topic-btn" @click="handleTRPGRandomTopic">🎲 随机主题</button>
+                  <button type="button" class="topic-btn topic-btn-llm" :disabled="isTRPGGeneratingTopic" @click="handleTRPGGenerateTopicByLLM">
+                    {{ isTRPGGeneratingTopic ? '生成中...' : '✨ LLM生成' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setup-section">
+              <h2 class="setup-section-title">👥 参与角色</h2>
+              <p v-if="trpgCharacters.length === 0" class="no-characters-hint">
+                暂无参与角色。
+              </p>
+              <div v-else class="character-list">
+                <div v-for="char in trpgCharacters" :key="char.id" class="character-item character-item-with-remove">
+                  <div class="character-item-info">
+                    <span class="character-name">{{ char.label }}</span>
+                    <span v-if="char.description" class="character-desc">{{ char.description }}</span>
+                    <span v-if="char._sourceBookTitle" class="character-book-tag">《{{ char._sourceBookTitle }}》</span>
+                  </div>
+                  <button
+                    v-if="!char.isUser"
+                    type="button"
+                    class="char-remove-btn"
+                    @click="emit('remove-character', char.raw?.id ?? char.id)"
+                  >×</button>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="start-trpg-btn"
+              :disabled="!canStartTRPG || isTRPGRolesLoading"
+              @click="handleStartTRPG"
+            >
+              {{ isTRPGRolesLoading ? '分配角色中...' : '🎲 开始跑团！' }}
+            </button>
+          </div>
+
+          <!-- 跑团进行中 -->
+          <div v-else class="trpg-game-panel">
+            <!-- 角色信息栏 -->
+            <div class="trpg-character-info">
+              <div class="char-info-scroll">
+                <button
+                  v-for="role in trpgCharacterRoles"
+                  :key="role.characterId"
+                  type="button"
+                  class="char-info-card"
+                  :class="{ active: trpgSelectedCharacterId === role.characterId, 'is-user': role.characterId === 'user_player' }"
+                  @click="trpgSelectedCharacterId = role.characterId"
+                >
+                  <span class="char-info-name">{{ role.characterId === 'user_player' ? '👤 ' : '' }}{{ role.characterName }}</span>
+                  <span class="char-info-role">{{ role.trpgRole }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 消息区域 -->
+            <div ref="trpgMessageContainerRef" class="trpg-messages">
+              <div v-if="trpgMessages.length === 0" class="no-messages">暂无消息</div>
+              <template v-else>
+                <div v-for="msg in trpgMessages" :key="msg.id" class="message-item" :class="msg.role">
+                  <div class="message-header">
+                    <span v-if="msg.role === 'gm'" class="message-sender gm-sender">🎲 GM（主持人）</span>
+                    <span v-else class="message-sender player-sender">
+                      {{ msg.characterName }}
+                      <span v-if="getTRPGCharacterRoleById(msg.characterId)" class="sender-role">（{{ getTRPGCharacterRoleById(msg.characterId) }}）</span>
+                    </span>
+                    <span class="message-time">{{ formatTRPGTime(msg.timestamp) }}</span>
+                  </div>
+                  <div class="message-content" v-html="renderMessageContent(msg.content)"></div>
+                </div>
+              </template>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="trpg-input-area">
+              <div class="input-character-select">
+                <select v-model="trpgSelectedCharacterId" class="input-character-dropdown">
+                  <option v-for="role in trpgCharacterRoles" :key="role.characterId" :value="role.characterId">
+                    {{ role.characterName }}（{{ role.trpgRole }}）
+                  </option>
+                </select>
+              </div>
+              <div class="input-row">
+                <input
+                  v-model="trpgPlayerActionInput"
+                  type="text"
+                  class="action-input"
+                  :placeholder="trpgInputPlaceholder"
+                  maxlength="500"
+                  :disabled="isTRPGProcessingAction"
+                  @keydown.enter="handleTRPGSendAction"
+                />
+                <button
+                  type="button"
+                  class="send-action-btn"
+                  :disabled="!canTRPGSendAction"
+                  @click="handleTRPGSendAction"
+                >
+                  {{ trpgButtonLabel }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <Teleport v-else to="body">
     <Transition name="trpg-modal">
       <div v-if="isOpen" class="trpg-overlay" @click.self="handleClose">
         <section class="trpg-panel">
@@ -365,9 +545,18 @@ defineExpose({ open })
                   当前世界书暂无角色，请先在世界书中创建角色。
                 </p>
                 <div v-else class="character-list">
-                  <div v-for="char in trpgCharacters" :key="char.id" class="character-item">
-                    <span class="character-name">{{ char.label }}</span>
-                    <span v-if="char.description" class="character-desc">{{ char.description }}</span>
+                  <div v-for="char in trpgCharacters" :key="char.id" class="character-item character-item-with-remove">
+                    <div class="character-item-info">
+                      <span class="character-name">{{ char.label }}</span>
+                      <span v-if="char.description" class="character-desc">{{ char.description }}</span>
+                      <span v-if="char._sourceBookTitle" class="character-book-tag">《{{ char._sourceBookTitle }}》</span>
+                    </div>
+                    <button
+                      v-if="!char.isUser"
+                      type="button"
+                      class="char-remove-btn"
+                      @click="emit('remove-character', char.raw?.id ?? char.id)"
+                    >×</button>
                   </div>
                 </div>
               </div>
@@ -478,6 +667,21 @@ defineExpose({ open })
   background: var(--background, #0a0a0a);
   color: var(--foreground, #ffffff);
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 内联模式（在全屏路由容器内，不设 fixed 和背景） */
+.trpg-overlay.trpg-inline-mode {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  background: transparent;
+  z-index: auto;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -764,6 +968,54 @@ defineExpose({ open })
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   font-size: 0.85rem;
+}
+
+/* 带移除按钮的角色项 */
+.character-item-with-remove {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.character-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.character-book-tag {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 140, 0, 0.1);
+  color: rgba(255, 140, 0, 0.7);
+}
+
+.char-remove-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(217, 64, 64, 0.3);
+  color: rgba(217, 64, 64, 0.7);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+.char-remove-btn:hover {
+  background: rgba(217, 64, 64, 0.15);
+  border-color: rgba(217, 64, 64, 0.5);
+  color: #e74c3c;
 }
 
 .character-name {

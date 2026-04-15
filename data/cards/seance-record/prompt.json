@@ -1,0 +1,54 @@
+{
+  "id": "seance-record",
+  "name": "horror",
+  "category": "降神会记录",
+  "description": "一次降神会的完整记录",
+  "trigger": {
+    "type": "random",
+    "probability": 0.008,
+    "conditions": []
+  },
+  "variables": {
+    "date": {
+      "type": "date",
+      "description": "降神会日期"
+    },
+    "location": {
+      "type": "string",
+      "description": "地点"
+    },
+    "medium": {
+      "type": "string",
+      "description": "灵媒名称"
+    },
+    "participants": {
+      "type": "string",
+      "description": "参与者"
+    },
+    "spiritName": {
+      "type": "string",
+      "description": "通灵对象（灵魂名称）"
+    },
+    "message": {
+      "type": "text",
+      "maxLength": 250,
+      "description": "灵魂传达的信息"
+    },
+    "result": {
+      "type": "string",
+      "description": "降神会结果"
+    }
+  },
+  "promptTemplate": "请生成一张「horror」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "handwritten",
+    "colors": [
+      "#2c1810",
+      "#6b2020",
+      "#3a2020"
+    ],
+    "mood": "一次降神会的完整记录"
+  },
+  "rarity": "epic",
+  "collectible": true
+}

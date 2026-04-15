@@ -262,7 +262,13 @@ export const generatePhoneSmsReply = async (params = {}) => {
   const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
   const roleSummary = String(contact?.identity || contact?.subtitle || '').trim()
   const styleHint = String(worldBook?.defaultNarratorId || '').trim()
-  const userProfileName = String(worldBook?.userProfile?.name || worldBook?.userProfile?.nickname || '玩家').trim()
+
+  // 使用有效用户身份（全局用户 + 世界书覆写），由调用方传入
+  const smsEffectiveUser = params.effectiveUser && typeof params.effectiveUser === 'object' ? params.effectiveUser : null
+  const smsPlayerName = smsEffectiveUser
+    ? String(smsEffectiveUser.name || '玩家').trim()
+    : String(worldBook?.userProfile?.name || worldBook?.userProfile?.nickname || '玩家').trim()
+
   const currentLineText = currentLine?.text
     ? `${String(currentLine?.speaker || '旁白')}: ${String(currentLine.text || '').trim()}`
     : ''
@@ -282,7 +288,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     `【角色名】${contact.name}`,
     roleSummary ? `【角色信息】${roleSummary}` : '',
     styleHint ? `【叙事风格ID参考】${styleHint}` : '',
-    `【当前发信人】${userProfileName}`,
+    `【当前发信人】${smsPlayerName}`,
     currentLineText ? `【当前剧情句】${currentLineText}` : '',
     recentDialogue ? `【最近剧情上下文】\n${recentDialogue}` : '',
     recentSms ? `【最近短信记录】\n${recentSms}` : '',
@@ -383,14 +389,21 @@ export const generateDormChatReply = async (params = {}) => {
 
   const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
   const roleSummary = String(contact?.identity || contact?.subtitle || '').trim()
-  const userProfileName = String(worldBook?.userProfile?.name || worldBook?.userProfile?.nickname || '玩家').trim()
+
+  // 使用有效用户身份（全局用户 + 世界书覆写），由调用方传入
+  const effectiveUser = params.effectiveUser && typeof params.effectiveUser === 'object' ? params.effectiveUser : null
+  const playerDisplayName = effectiveUser
+    ? String(effectiveUser.name || '玩家').trim()
+    : String(worldBook?.userProfile?.name || worldBook?.userProfile?.nickname || '玩家').trim()
+  const playerDescription = effectiveUser ? String(effectiveUser.description || '').trim() : ''
 
   const userPrompt = [
     `【世界书标题】${String(worldBook?.title || '默认世界书').trim()}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
     `【角色名】${contact.name}`,
     roleSummary ? `【角色信息】${roleSummary}` : '',
-    `【玩家名】${userProfileName}`,
+    `【玩家名】${playerDisplayName}`,
+    playerDescription ? `【玩家简介】${playerDescription}` : '',
     recentChat ? `【最近聊天】\n${recentChat}` : '',
     `【玩家刚发送】${userMessage}`,
     hasPendingRedPacket ? '【特别提示】玩家刚刚给你发了一个红包，请决定领取或退回，并在回复中体现你的反应。' : '',
@@ -446,6 +459,144 @@ export const generateDormChatReply = async (params = {}) => {
     data: result.data,
     rawResponse: result.rawResponse,
   }
+}
+
+const CALL_SYSTEM_PROMPT = `你是"电话通话角色回应生成器"。
+你负责代入指定角色，模拟和玩家的电话通话。
+电话中只能通过声音感知对方，看不到动作、表情或环境。
+
+输出格式：
+- 你说的话直接写，不要用引号包裹对话内容
+- 声音相关的描写放在()括号里，例如：（叹气）（轻笑）（拉开椅子的声音）（沉默了几秒）（喝了一口水）（纸张翻动声）
+- 可以描写：语气变化、叹气、轻笑、呼吸声、喝水声、咳嗽、沉默、纸张翻动声等
+- 不要描写：点头、摇头、歪头、眨眼、环顾四周等纯视觉动作
+- 多条回复之间用 |R| 分隔，总条数 1-4 条
+
+硬性要求：
+1) 不要输出 JSON，不要 markdown，不要解释，只输出用 |R| 分隔的回复内容
+2) 每条回复必须是中文，建议 8-60 字
+3) 语气与角色身份、世界观和最近上下文一致，不要跳戏
+4) 不要把用户原话逐句重复，不要写"作为AI""我无法"等元话术
+5) 电话中只能听到声音，所以描写要围绕听觉感知展开`
+
+/**
+ * 电话通话回复生成
+ * 和 generateDormChatReply 的区别：
+ * - 使用 CALL_SYSTEM_PROMPT（电话听觉视角，不是面对面）
+ * - 输出格式用 |R| 分隔，不是 JSON
+ * - 不传红包、礼物等字段（电话场景不涉及）
+ */
+export const generatePhoneCallReply = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      reply: '',
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const contact = params.contact && typeof params.contact === 'object' ? params.contact : null
+  const userMessage = String(params.userMessage || '').trim()
+
+  if (!contact?.name || !userMessage) {
+    return {
+      success: false,
+      error: '通话参数不完整',
+      reply: '',
+    }
+  }
+
+  const history = Array.isArray(params.history) ? params.history : []
+  const historyLimit = clampPromptLineCount(params.options?.historyLimit, 10, 300)
+  const maxTokens = clampMaxTokens(params.options?.maxTokens, 420)
+
+  const recentChat = (historyLimit > 0 ? history.slice(-historyLimit) : [])
+    .map((item) => {
+      if (item.role === 'assistant') return `${contact.name}: ${String(item.text || '').trim()}`
+      return `玩家: ${String(item.text || '').trim()}`
+    })
+    .filter(Boolean)
+    .join('\n')
+
+  const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
+  const roleSummary = String(contact?.identity || contact?.subtitle || '').trim()
+
+  const effectiveUser = params.effectiveUser && typeof params.effectiveUser === 'object' ? params.effectiveUser : null
+  const playerDisplayName = effectiveUser
+    ? String(effectiveUser.name || '玩家').trim()
+    : String(worldBook?.userProfile?.name || worldBook?.userProfile?.nickname || '玩家').trim()
+  const playerDescription = effectiveUser ? String(effectiveUser.description || '').trim() : ''
+
+  const userPrompt = [
+    `【世界书标题】${String(worldBook?.title || '默认世界书').trim()}`,
+    worldSummary ? `【世界背景】${worldSummary}` : '',
+    `【角色名】${contact.name}`,
+    roleSummary ? `【角色信息】${roleSummary}` : '',
+    `【玩家名】${playerDisplayName}`,
+    playerDescription ? `【玩家简介】${playerDescription}` : '',
+    recentChat ? `【最近通话记录】\n${recentChat}` : '',
+    `【玩家刚说的话】${userMessage}`,
+    '请在电话中自然回应，可以夹杂声音描写。建议输出 1-4 条连续回复。',
+    '请只返回用 |R| 分隔的回复内容，不要输出 JSON 或 markdown。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: CALL_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.85,
+    maxTokens,
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '通话回复生成失败',
+      reply: '',
+      replies: [],
+    }
+  }
+
+  const replies = tryParseCallReplies(result.data)
+  if (replies.length === 0) {
+    return {
+      success: false,
+      error: '通话回复解析失败',
+      reply: '',
+      replies: [],
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    reply: replies[0],
+    replies,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+const tryParseCallReplies = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return []
+
+  // 尝试去掉可能的 markdown fence
+  const fencedMatch = raw.match(/```\w*\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  const replies = candidate
+    .split(/\s*\|R\|\s*/)
+    .map((r) => r.trim())
+    .filter(Boolean)
+    .slice(0, 6)
+
+  return replies
 }
 
 const MOMENTS_SYSTEM_PROMPT = `你是”朋友圈评论生成器”。
@@ -1909,7 +2060,329 @@ export const generatePhoneMapData = async (params = {}) => {
   }
 }
 
-const PHONE_SHOP_SYSTEM_PROMPT = `你是“点购网商品生成器”。
+const REDDIT_SYSTEM_PROMPT = `你是”世界书Reddit帖子生成器”。
+你要模拟这个世界书中的普通居民（非CHAR角色）在Reddit上发帖和评论。
+内容要像真实用户的生活分享、吐槽、讨论，贴合世界观设定。
+
+输出格式（不要使用JSON）：
+- 帖子区块以 [P] 开头，字段格式：
+  [P]
+  title=帖子标题
+  author=作者昵称
+  content=正文内容
+  flair=讨论|吐槽|分享|求助|攻略
+  hot=是
+- 评论紧跟在所属帖子下方，格式：
+  [C]author=评论作者
+  text=评论内容
+- 帖子之间用 || 分隔（独占一行）
+- 每个帖子配 1-3 条评论
+- 热度字段：hot=是 表示热门，否则省略该行
+- 帖子正文 30-150 字，评论 8-60 字
+- 作者名要像真实网名，不要直接用角色名
+
+硬性要求：
+1) 不要用 JSON，不要 markdown，只输出上述格式
+2) 内容贴合世界书设定
+3) 语气像真实论坛用户，不要出现”作为AI”等话术
+4) 生成 3-5 条帖子`
+
+const tryParseRedditPosts = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return []
+
+  // Remove possible code fence
+  const fencedMatch = raw.match(/```\w*\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  // Split by || on its own line as post block separator
+  const blocks = candidate.split(/^\s*\|\|\s*$/m)
+  const posts = []
+
+  for (const block of blocks) {
+    const lines = block.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) continue
+
+    // Extract post fields from lines after [P]
+    const postLineIdx = lines.findIndex(l => l === '[P]' || l.startsWith('[P]') && l.length <= 2)
+    if (postLineIdx < 0) continue
+
+    const fields = {}
+    for (let i = postLineIdx + 1; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.startsWith('[C]')) break // hit a comment
+      const eqIdx = line.indexOf('=')
+      if (eqIdx > 0) {
+        const key = line.slice(0, eqIdx).trim()
+        const val = line.slice(eqIdx + 1).trim()
+        if (key && val) fields[key] = val
+      }
+    }
+
+    if (!fields.title || !fields.author || !fields.content) continue
+
+    // Parse comments
+    const comments = []
+    let inComment = false
+    let currentComment = {}
+    for (let i = postLineIdx + 1; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.startsWith('[C]author=')) {
+        if (currentComment.authorName && currentComment.content) {
+          comments.push(currentComment)
+        }
+        currentComment = {
+          id: `rc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          authorName: line.slice('[C]author='.length).trim(),
+          content: '',
+          createdAt: new Date().toISOString(),
+        }
+        inComment = true
+      } else if (line === '[C]' || line.startsWith('[C] ')) {
+        inComment = true
+      } else if (line.startsWith('text=')) {
+        if (!currentComment.id) {
+          currentComment = {
+            id: `rc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            authorName: '',
+            content: '',
+            createdAt: new Date().toISOString(),
+          }
+        }
+        currentComment.content = line.slice(5).trim()
+        if (currentComment.authorName && currentComment.content) {
+          comments.push(currentComment)
+          currentComment = {}
+          inComment = false
+        }
+      } else if (inComment && !line.startsWith('title=') && !line.startsWith('author=') && !line.startsWith('flair=') && !line.startsWith('hot=') && !line.startsWith('content=')) {
+        // continuation of comment content
+        if (currentComment.content) {
+          currentComment.content += '\n' + line
+        }
+      }
+    }
+    // Flush last comment
+    if (currentComment.authorName && currentComment.content) {
+      comments.push(currentComment)
+    }
+
+    posts.push({
+      id: `reddit_post_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      title: fields.title,
+      authorName: fields.author,
+      content: fields.content,
+      flair: ['讨论', '吐槽', '分享', '求助', '攻略'].includes(fields.flair) ? fields.flair : '讨论',
+      isHot: fields.hot === '是' || fields.hot === 'yes' || fields.hot === 'hot',
+      comments,
+      createdAt: new Date().toISOString(),
+    })
+  }
+
+  return posts.slice(0, 8)
+}
+
+export const generateRedditPosts = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      posts: [],
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const postCountRaw = Number(params.postCount)
+  const postCount = Number.isFinite(postCountRaw)
+    ? Math.max(3, Math.min(6, Math.floor(postCountRaw)))
+    : 4
+
+  const worldTitle = String(worldBook?.title || '默认世界书').trim()
+  const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
+  const worldEntries = worldBook?.entries && typeof worldBook.entries === 'object'
+    ? Object.entries(worldBook.entries)
+        .filter(([key]) => key !== 'overview')
+        .map(([key, value]) => `【${key}】${String(value || '').trim().slice(0, 150)}`)
+        .filter(([, v]) => v)
+        .slice(0, 8)
+        .join('\n')
+    : ''
+
+  const userPrompt = [
+    `【目标】生成约 ${postCount} 条Reddit风格帖子。`,
+    `【世界书标题】${worldTitle}`,
+    worldSummary ? `【世界背景】${worldSummary}` : '',
+    worldEntries ? `【世界设定详情】\n${worldEntries}` : '',
+    '请严格按照分隔符格式输出，不要用JSON。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: REDDIT_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.9,
+    maxTokens: params.options?.maxTokens ?? Math.min(2000, 400 + postCount * 300),
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || 'Reddit帖子生成失败',
+      posts: [],
+    }
+  }
+
+  const posts = tryParseRedditPosts(result.data)
+  if (posts.length === 0) {
+    return {
+      success: false,
+      error: 'Reddit帖子解析失败',
+      posts: [],
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    posts,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+const REDDIT_REPLY_SYSTEM_PROMPT = `你是”Reddit评论生成器”。
+你要模拟世界书中的普通居民在Reddit帖子下发表评论。
+评论内容要自然口语化，贴合世界观。
+
+输出格式（不要使用JSON）：
+- 每条评论两行：
+  [C]author=评论作者
+  text=评论内容
+- 生成 1-3 条评论
+- 评论 8-60 字
+- 作者名要像真实网名
+
+硬性要求：
+1) 不要用JSON，不要markdown，只输出上述格式
+2) 内容贴合世界书设定和帖子内容
+3) 不要出现”作为AI”等话术`
+
+const tryParseRedditComments = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return []
+
+  const fencedMatch = raw.match(/```\w*\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  const comments = []
+  let currentComment = {}
+
+  for (const line of candidate.split('\n').map(l => l.trim()).filter(Boolean)) {
+    if (line.startsWith('[C]author=')) {
+      // flush previous
+      if (currentComment.authorName && currentComment.content) {
+        comments.push(currentComment)
+      }
+      currentComment = {
+        id: `rr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        authorName: line.slice('[C]author='.length).trim(),
+        content: '',
+        createdAt: new Date().toISOString(),
+      }
+    } else if (line.startsWith('text=')) {
+      currentComment.content = line.slice(5).trim()
+      if (currentComment.authorName && currentComment.content) {
+        comments.push(currentComment)
+        currentComment = {}
+      }
+    }
+  }
+  // flush last
+  if (currentComment.authorName && currentComment.content) {
+    comments.push(currentComment)
+  }
+
+  return comments.slice(0, 3)
+}
+
+export const generateRedditCommentReplies = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      comments: [],
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const postTitle = String(params.postTitle || '').trim()
+  const postContent = String(params.postContent || '').trim()
+  const userComment = String(params.userComment || '').trim()
+
+  if (!postContent) {
+    return {
+      success: false,
+      error: '帖子内容为空',
+      comments: [],
+    }
+  }
+
+  const worldTitle = String(worldBook?.title || '默认世界书').trim()
+  const worldSummary = String(worldBook?.summary || '').trim()
+
+  const userPrompt = [
+    `【世界书标题】${worldTitle}`,
+    worldSummary ? `【世界背景】${worldSummary}` : '',
+    `【帖子标题】${postTitle}`,
+    `【帖子正文】${postContent}`,
+    userComment ? `【玩家评论】${userComment}` : '',
+    userComment ? '请生成NPC对玩家评论的回复' : '请生成NPC对这篇帖子的评论',
+    '请按格式输出评论行（不要JSON）。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: REDDIT_REPLY_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.9,
+    maxTokens: params.options?.maxTokens ?? 500,
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || 'Reddit评论生成失败',
+      comments: [],
+    }
+  }
+
+  const comments = tryParseRedditComments(result.data)
+  if (comments.length === 0) {
+    return {
+      success: false,
+      error: 'Reddit评论解析失败',
+      comments: [],
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    comments,
+    data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+const PHONE_SHOP_SYSTEM_PROMPT = `你是”点购网商品生成器”。
 你要根据世界书、当前剧情和用户搜索词，生成可购买的商品列表。
 
 硬性要求：

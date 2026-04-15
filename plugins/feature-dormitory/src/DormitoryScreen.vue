@@ -12,6 +12,10 @@ import { getValidatedActiveConfig, callChatCompletion } from '../../../src/llm/l
 import { isAndroid } from '../../../src/utils/platform.js'
 import RedPacket from './components/RedPacket.vue'
 import TRPGPanel from './components/TRPGPanel.vue'
+import CheckIn7Screen from './CheckIn7Screen.vue'
+import CheckInScreen from './CheckInScreen.vue'
+import GameCenterScreen from './GameCenterScreen.vue'
+import MailboxScreen from './MailboxScreen.vue'
 import { createRedPacket, addRedPacket, recordSentRedPacket } from './redPacketService.js'
 import { useDormShop } from './composables/useDormShop.js'
 import { useDormGift } from './composables/useDormGift.js'
@@ -23,10 +27,11 @@ import { useDormSubScene } from './composables/useDormSubScene.js'
 import AvatarFrameScreen from './components/AvatarFrameScreen.vue'
 import { useAvatarFrame } from './composables/useAvatarFrame.js'
 import { useAvatar } from './composables/useAvatar.js'
+import { useGlobalUser } from './composables/useGlobalUser.js'
 
 // 子组件导入
-import WorldBookCardView from './components/WorldBookCardView.vue'
-import CharacterGridView from './components/CharacterGridView.vue'
+import NestSelectorView from './components/NestSelectorView.vue'
+import CharacterSelectView from './components/CharacterSelectView.vue'
 import CharacterRoomView from './components/CharacterRoomView.vue'
 import DriftBottlePanel from './components/DriftBottlePanel.vue'
 import WorldBookShopModal from './components/WorldBookShopModal.vue'
@@ -37,10 +42,10 @@ import TeamSelectModal from './components/TeamSelectModal.vue'
 import BattleScreen from './components/BattleScreen.vue'
 import { markTaskCompletable, saveTaskBoard } from './taskBoardService.js'
 
-const emit = defineEmits(['back'])
+const emit = defineEmits(['back', 'open-face-to-face'])
 
-const VIEW_BOOK_CARD = 'book-card'
-const VIEW_CHARACTER_GRID = 'character-grid'
+const VIEW_NEST_SELECTOR = 'nest-selector'
+const VIEW_CHARACTER_SELECT = 'character-select'
 const VIEW_CHARACTER_ROOM = 'character-room'
 
 const DEFAULT_PORTRAIT_PATH = './data/lihui/default.png'
@@ -54,7 +59,6 @@ const DORM_ENERGY_MIN = 0
 const DORM_ENERGY_MAX = 100
 const DORM_JOURNAL_LIMIT = 18
 const DORM_CHAT_HISTORY_LIMIT = 24
-const CARD_SWIPE_TRIGGER_PX = 52
 const DORM_SCENE_FACILITY_MIN_LEVEL = 1
 const DORM_SCENE_FACILITY_MAX_LEVEL = 5
 const DORM_SCENE_FACILITY_BONUS_STEP = 0.12
@@ -106,12 +110,11 @@ const DORM_QUICK_ACTION_LABEL_MAP = DORM_QUICK_ACTION_OPTIONS.reduce((accumulato
   return accumulator
 }, {})
 
-const currentView = ref(VIEW_BOOK_CARD)
+const currentView = ref(VIEW_NEST_SELECTOR)
+const selectedWorldBook = ref(null)    // 从寝室选择视图选中的世界书
+const selectedCharacterCard = ref(null) // 从角色选择视图选中的角色卡片
 const worldBooks = ref([])
 const activeCardIndex = ref(0)
-const cardTransitionName = ref('card-slide-next')
-const activeCharacterIndex = ref(0)
-const characterTransitionName = ref('card-slide-next')
 const selectedCharacterId = ref('')
 const portraitUrlMap = ref({})
 const defaultPortraitUrl = ref(DEFAULT_PORTRAIT_PATH)
@@ -214,12 +217,239 @@ const handleLaunchTRPG = () => {
   trpgPanelRef.value?.open()
 }
 
+// 游戏厅
+const isGameCenterOpen = ref(false)
+const gameCenterRef = ref(null)
+
+const handleLaunchGameCenter = () => {
+  isGameCenterOpen.value = true
+}
+
+const handleGameCenterBack = () => {
+  isGameCenterOpen.value = false
+}
+
+// 游戏厅转发的各类游戏结果处理
+const handleGameCenterSpinResult = ({ cost, winAmount }) => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) return
+  const net = winAmount - cost
+  if (net !== 0) {
+    updateWorldBookEconomy(bookId, (previous) => ({
+      ...previous,
+      coins: clampInt(previous.coins + net, 0, 9999, previous.coins),
+    }))
+  }
+}
+
+const handleGameCenterGachaResult = ({ type, cost, prize, rarity, item, results }) => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) return
+  if (type === 'pull' && prize) {
+    updateWorldBookEconomy(bookId, (previous) => ({
+      ...previous,
+      coins: clampInt(previous.coins - cost, 0, 9999, previous.coins),
+    }))
+    addToWorldBookInventory(bookId, {
+      id: prize.id,
+      name: prize.name,
+      icon: prize.icon,
+      type: prize.type,
+      rarity: rarity || 'N',
+      quantity: prize.count || 1,
+      category: 'gacha',
+      purchasedAt: Date.now(),
+    })
+  } else if (type === 'multi' && results) {
+    updateWorldBookEconomy(bookId, (previous) => ({
+      ...previous,
+      coins: clampInt(previous.coins - cost, 0, 9999, previous.coins),
+    }))
+    for (const r of results) {
+      addToWorldBookInventory(bookId, {
+        id: r.prize.id,
+        name: r.prize.name,
+        icon: r.prize.icon,
+        type: r.prize.type,
+        rarity: r.rarity || 'N',
+        quantity: r.prize.count || 1,
+        category: 'gacha',
+        purchasedAt: Date.now(),
+      })
+    }
+  } else if (type === 'synthesis' && item) {
+    addToWorldBookInventory(bookId, {
+      ...item,
+      category: 'gacha',
+      purchasedAt: Date.now(),
+    })
+  }
+}
+
+const handleGameCenterNetResult = ({ cost, earned }) => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) return
+  const net = earned - cost
+  if (net !== 0) {
+    updateWorldBookEconomy(bookId, (previous) => ({
+      ...previous,
+      coins: clampInt(previous.coins + net, 0, 9999, previous.coins),
+    }))
+  }
+}
+
+const handleGameCenterSimpleResult = ({ cost, earned }) => {
+  if (cost > 0) {
+    activeBookEconomyCoins.value -= cost
+  }
+  if (earned > 0) {
+    activeBookEconomyCoins.value += earned
+  }
+}
+
+const handleGameCenterKitchenProduce = (dish) => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) return
+  addToWorldBookInventory(bookId, {
+    id: dish.id,
+    name: dish.name,
+    icon: dish.icon,
+    description: dish.description,
+    category: dish.category,
+    categoryLabel: dish.categoryLabel,
+    quantity: 1,
+    purchasedAt: Date.now(),
+  })
+}
+
+const handleGameCenterKitchenConsume = ({ materialKey }) => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) return
+  const current = readWorldBookInventory(bookId)
+  const idx = current.findIndex((item) => {
+    if (item.id?.includes(materialKey)) return true
+    return false
+  })
+  if (idx >= 0) {
+    const qty = current[idx].quantity || 1
+    if (qty <= 1) {
+      current.splice(idx, 1)
+    } else {
+      current[idx].quantity = qty - 1
+    }
+    persistWorldBookInventory(bookId, current)
+    worldBookInventoryMap.value[bookId] = [...current]
+    worldBookInventoryMap.value = { ...worldBookInventoryMap.value }
+  }
+}
+
+// 七日签到
+const isCheckIn7ScreenOpen = ref(false)
+
+const handleLaunchCheckIn7 = () => {
+  isCheckIn7ScreenOpen.value = true
+}
+
+const handleCheckIn7Back = () => {
+  isCheckIn7ScreenOpen.value = false
+}
+
+const handleCheckIn7Result = ({ cost, earned }) => {
+  if (cost > 0) {
+    activeBookEconomyCoins.value -= cost
+  }
+  if (earned > 0) {
+    activeBookEconomyCoins.value += earned
+  }
+}
+
+// 日历签到
+const isCheckInScreenOpen = ref(false)
+
+const handleLaunchCheckIn = () => {
+  isCheckInScreenOpen.value = true
+}
+
+const handleCheckInBack = () => {
+  isCheckInScreenOpen.value = false
+}
+
+const handleCheckInDailyResult = ({ cost, earned }) => {
+  if (cost > 0) {
+    activeBookEconomyCoins.value -= cost
+  }
+  if (earned > 0) {
+    activeBookEconomyCoins.value += earned
+  }
+}
+
+// 信箱
+const isMailboxOpen = ref(false)
+const mailboxUnreadCount = ref(0)
+
+function refreshMailboxUnread() {
+  try {
+    const bookId = String(activeBook.value?.id || '').trim() || 'default'
+    const all = JSON.parse(localStorage.getItem('avg_llm_dormitory_mailbox_v1') || '{}')
+    const bookState = all[bookId]
+    if (bookState?.inbox) {
+      mailboxUnreadCount.value = bookState.inbox.filter(m => !m.read).length
+    } else {
+      mailboxUnreadCount.value = 0
+    }
+  } catch (e) {
+    mailboxUnreadCount.value = 0
+  }
+}
+
+const handleLaunchMailbox = () => {
+  refreshMailboxUnread()
+  isMailboxOpen.value = true
+}
+
+const handleMailboxBack = () => {
+  isMailboxOpen.value = false
+  setTimeout(refreshMailboxUnread, 300)
+}
+
+const handleMailAffectionChange = () => {
+  // 蝴蝶结邮票效果：好感度 +1
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) return
+  // TODO: 根据角色 ID 增加好感度
+}
+
+// 信箱角色列表（含好感度）
+const mailboxCharacters = computed(() => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  return characterCards.value.map(card => {
+    const key = `${bookId}::${card.id}`
+    const state = dormRuntimeMap.value[key]
+    const affection = state?.affection ?? 50
+    const stageId = state?.relationshipStage || 'stranger'
+    const stage = DORM_RELATIONSHIP_STAGE_LIBRARY.find(s => s.id === stageId)
+    return {
+      id: card.id,
+      label: card.label,
+      raw: card.raw,
+      affection,
+      stageLabel: stage?.label || '陌生',
+    }
+  })
+})
+
+const handleGameSkinBuy = ({ gameKey, cost }) => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) return
+  updateWorldBookEconomy(bookId, (previous) => ({
+    ...previous,
+    coins: clampInt(previous.coins - cost, 0, 9999, previous.coins),
+  }))
+}
+
 const portraitImageCache = ref(new Map())
 let characterPreloadToken = 0
 let dormNotificationListener = null
-let cardTouchStartX = 0
-let cardTouchStartY = 0
-let cardTouchTracking = false
 let stageUpgradeToastTimer = null
 let dormChatRequestToken = 0
 let dormDriftPickRequestToken = 0
@@ -1164,6 +1394,29 @@ const activeBook = computed(() => {
   return worldBooks.value[nextIndex] || null
 })
 
+// 有效用户身份（全局用户 + 当前世界书覆写）
+// 内联 useEffectiveUser 逻辑：从全局用户和世界书数据合成
+const globalUserForEffective = useGlobalUser()
+const effectiveUser = computed(() => {
+  const bookId = String(activeBook.value?.id || '').trim()
+  if (!bookId) {
+    return {
+      name: globalUserForEffective.username.value || '玩家',
+      description: '',
+      avatar: globalUserForEffective.avatar.value,
+      avatarFrame: globalUserForEffective.avatarFrame.value,
+    }
+  }
+  const allBookData = JSON.parse(localStorage.getItem('avg_llm_world_book_data_v1') || '{}')
+  const bookData = allBookData[bookId] || {}
+  return {
+    name: bookData.userName || globalUserForEffective.username.value || '玩家',
+    description: bookData.userDescription || '',
+    avatar: globalUserForEffective.avatar.value,
+    avatarFrame: globalUserForEffective.avatarFrame.value,
+  }
+})
+
 const userPortraitUrl = ref('')
 
 const loadUserPortrait = async () => {
@@ -1977,6 +2230,7 @@ const requestDormDriftBottleRoleReply = async ({
     const smsResult = await generatePhoneSmsReply({
       worldBook,
       contact: buildDormChatContact(characterCard),
+      effectiveUser: effectiveUser.value,
       userMessage: safeMode === 'follow-up'
         ? [
             '我们在寝室漂流瓶互动中继续追问同一条瓶子。',
@@ -2398,6 +2652,7 @@ const handleSendDormChat = async () => {
       worldBook: activeBook.value,
       contact: buildDormChatContact(),
       userMessage,
+      effectiveUser: effectiveUser.value,
       history: historyBefore
         .slice(-12)
         .map((item) => {
@@ -2980,7 +3235,6 @@ const switchWorldBookCard = async (direction = 1) => {
 
   const step = Number(direction) >= 0 ? 1 : -1
   const total = worldBooks.value.length
-  cardTransitionName.value = step > 0 ? 'card-slide-next' : 'card-slide-prev'
   activeCardIndex.value = (activeCardIndex.value + step + total) % total
   selectedCharacterId.value = ''
   actionFeedback.value = ''
@@ -2991,142 +3245,40 @@ const switchWorldBookCard = async (direction = 1) => {
   await preloadCharacterPortraits()
 }
 
-const goToNextWorldBook = async () => {
-  await switchWorldBookCard(1)
-}
-
-const goToPrevWorldBook = async () => {
-  await switchWorldBookCard(-1)
-}
-
-const handleCardTouchStart = (event) => {
-  const touch = event.touches?.[0]
-  if (!touch) return
-  cardTouchStartX = touch.clientX
-  cardTouchStartY = touch.clientY
-  cardTouchTracking = true
-}
-
-const handleCardTouchCancel = () => {
-  cardTouchTracking = false
-}
-
-const handleCardTouchEnd = async (event) => {
-  if (!cardTouchTracking) return
-  cardTouchTracking = false
-
-  const touch = event.changedTouches?.[0]
-  if (!touch) return
-
-  const deltaX = touch.clientX - cardTouchStartX
-  const deltaY = touch.clientY - cardTouchStartY
-  const horizontalSwipe = Math.abs(deltaX) >= CARD_SWIPE_TRIGGER_PX && Math.abs(deltaX) > Math.abs(deltaY)
-  if (!horizontalSwipe) return
-
-  if (deltaX < 0) {
-    await goToNextWorldBook()
-    return
-  }
-  await goToPrevWorldBook()
-}
-
-const enterCharacterGrid = async () => {
-  if (!activeBook.value) return
-  currentView.value = VIEW_CHARACTER_GRID
-  activeCharacterIndex.value = 0
+// 从 NestSelectorView 进入角色选择
+const handleEnterDormFromNest = async (book) => {
+  if (!book) return
+  selectedWorldBook.value = book
+  // 确保该书被设为 active
+  await setActiveWorldBookId(book.id)
+  currentView.value = VIEW_CHARACTER_SELECT
+  // 重置角色选择
+  selectedCharacterCard.value = null
   selectedCharacterId.value = ''
-  dormQuickActionType.value = 'chat'
-  activeDormOverlayPanelId.value = 'interaction'
-  isDormOverlayPanelExpanded.value = false
-  isDormNavMenuOpen.value = false
-  isDormMenuOpen.value = false
-  dormChatDraft.value = ''
-  driftBottleDraft.value = ''
-  dormChatError.value = ''
-  isDormChatSending.value = false
-  isDormDriftPicking.value = false
-  dormDriftPickRequestToken += 1
-  driftFollowupPendingEntryId.value = ''
-  dormDriftFollowupRequestToken += 1
-  actionFeedback.value = ''
-  clearStageUpgradeToast()
-  clearDormEvent({ persist: false })
-  await preloadCharacterPortraits()
 }
 
-const switchCharacterCard = async (step) => {
-  const total = characterCards.value.length
-  if (total <= 1) return
-  characterTransitionName.value = step > 0 ? 'card-slide-next' : 'card-slide-prev'
-  activeCharacterIndex.value = (activeCharacterIndex.value + step + total) % total
+// 从 CharacterSelectView 进入角色房间
+const handleEnterRoomFromSelect = async (card) => {
+  if (!card) return
+  selectedCharacterCard.value = card
+  await enterCharacterRoom(card.id)
 }
 
-const goToNextCharacter = async () => {
-  await switchCharacterCard(1)
+// NestSelectorView 返回
+const handleNestSelectorBack = () => {
+  emit('back')
 }
 
-const goToPrevCharacter = async () => {
-  await switchCharacterCard(-1)
+// CharacterSelectView 返回
+const handleCharacterSelectBack = () => {
+  currentView.value = VIEW_NEST_SELECTOR
+  selectedWorldBook.value = null
+  selectedCharacterCard.value = null
 }
 
-const switchToCharacter = async (targetIndex) => {
-  const total = characterCards.value.length
-  if (total <= 1) return
-  const current = activeCharacterIndex.value
-  if (targetIndex === current) return
-  const diff = (targetIndex - current + total) % total
-  const step = diff <= total / 2 ? diff : diff - total
-  characterTransitionName.value = step > 0 ? 'card-slide-next' : 'card-slide-prev'
-  activeCharacterIndex.value = targetIndex
-}
-
-let characterTouchTracking = false
-let characterTouchStartX = 0
-
-const handleCharacterTouchStart = (event) => {
-  const touch = event.touches?.[0]
-  if (!touch) return
-  characterTouchTracking = true
-  characterTouchStartX = touch.clientX
-}
-
-const handleCharacterTouchCancel = () => {
-  characterTouchTracking = false
-}
-
-const handleCharacterTouchEnd = async (event) => {
-  if (!characterTouchTracking) return
-  characterTouchTracking = false
-  const touch = event.changedTouches?.[0]
-  if (!touch) return
-  const deltaX = touch.clientX - characterTouchStartX
-  const threshold = 40
-  if (Math.abs(deltaX) < threshold) return
-  if (deltaX < 0) {
-    await goToNextCharacter()
-    return
-  }
-  await goToPrevCharacter()
-}
-
-const backToBookCard = () => {
-  currentView.value = VIEW_BOOK_CARD
-  selectedCharacterId.value = ''
-  dormQuickActionType.value = 'chat'
-  activeDormOverlayPanelId.value = 'interaction'
-  isDormOverlayPanelExpanded.value = false
-  isDormNavMenuOpen.value = false
-  dormChatDraft.value = ''
-  driftBottleDraft.value = ''
-  dormChatError.value = ''
-  isDormChatSending.value = false
-  isDormDriftPicking.value = false
-  dormDriftPickRequestToken += 1
-  driftFollowupPendingEntryId.value = ''
-  dormDriftFollowupRequestToken += 1
-  actionFeedback.value = ''
-  clearStageUpgradeToast()
-  clearDormEvent({ persist: false })
+// 面对面按钮
+const handleOpenFaceToFace = () => {
+  emit('open-face-to-face')
 }
 
 const enterCharacterRoom = (characterId) => {
@@ -3150,25 +3302,6 @@ const enterCharacterRoom = (characterId) => {
   dormDriftFollowupRequestToken += 1
   clearStageUpgradeToast()
   setActiveDormEvent(dormRuntimeMap.value[selectedDormRuntimeKey.value]?.activeEvent, { persist: false })
-}
-
-const backToCharacterGrid = () => {
-  currentView.value = VIEW_CHARACTER_GRID
-  dormQuickActionType.value = 'chat'
-  activeDormOverlayPanelId.value = 'interaction'
-  isDormNavMenuOpen.value = false
-  isDormMenuOpen.value = false
-  dormChatDraft.value = ''
-  driftBottleDraft.value = ''
-  dormChatError.value = ''
-  isDormChatSending.value = false
-  isDormDriftPicking.value = false
-  dormDriftPickRequestToken += 1
-  driftFollowupPendingEntryId.value = ''
-  dormDriftFollowupRequestToken += 1
-  actionFeedback.value = ''
-  clearStageUpgradeToast()
-  clearDormEvent({ persist: false })
 }
 
 const formatJournalTime = (value) => {
@@ -3263,114 +3396,26 @@ onBeforeUnmount(() => {
     </header>
 
     <section class="dormitory-body">
-      <div v-if="isLoadingBooks" class="dorm-state-box">正在加载世界书...</div>
-      <div v-else-if="worldBooks.length === 0" class="dorm-state-box">未找到世界书，请先创建世界书。</div>
+      <!-- 寝室选择视图 -->
+      <NestSelectorView
+        v-if="currentView === VIEW_NEST_SELECTOR"
+        @back="handleNestSelectorBack"
+        @enter-dorm="handleEnterDormFromNest"
+        @open-face-to-face="handleOpenFaceToFace"
+        @open-avatar="isAvatarFrameScreenOpen = true"
+      />
 
-      <template v-else>
-        <section
-          v-if="currentView === VIEW_BOOK_CARD"
-          class="worldbook-card-stage"
-          @touchstart="handleCardTouchStart"
-          @touchcancel="handleCardTouchCancel"
-          @touchend="handleCardTouchEnd"
-        >
-          <div class="worldbook-card-wrap">
-            <p class="card-swipe-hint">支持左右滑动切换世界书</p>
-            <Transition :name="cardTransitionName" mode="out-in">
-              <article :key="activeBook?.id || `book-${activeCardIndex}`" class="worldbook-card">
-                <p class="card-index">世界书卡片 {{ activeCardIndex + 1 }} / {{ worldBooks.length }}</p>
-                <h2 class="worldbook-title">{{ activeBook?.title || '未命名世界书' }}</h2>
-                <p class="worldbook-summary">{{ activeBook?.summary || '该世界书暂未填写简介。' }}</p>
-                <div class="worldbook-meta-row">
-                  <span class="meta-chip">{{ characterCards.length }} 个 CHAR</span>
-                  <span class="meta-chip">{{ activeBook?.isDefault ? '默认' : '自定义' }}</span>
-                </div>
-                <button type="button" class="enter-dorm-btn" :disabled="characterCards.length === 0" @click="enterCharacterGrid">
-                  进入寝室
-                </button>
-                <p v-if="characterCards.length === 0" class="worldbook-hint">该世界书暂无 CHAR，请先在世界书中创建角色。</p>
-              </article>
-            </Transition>
-          </div>
-        </section>
+      <!-- 角色选择视图 -->
+      <CharacterSelectView
+        v-else-if="currentView === VIEW_CHARACTER_SELECT"
+        :world-book="selectedWorldBook"
+        @back="handleCharacterSelectBack"
+        @enter-room="handleEnterRoomFromSelect"
+      />
 
-        <section
-          v-else-if="currentView === VIEW_CHARACTER_GRID"
-          class="character-grid-stage"
-          @touchstart="handleCharacterTouchStart"
-          @touchcancel="handleCharacterTouchCancel"
-          @touchend="handleCharacterTouchEnd"
-        >
-          <!-- 世界书级别货币显示 -->
-          <div class="worldbook-top-bar">
-            <span class="user-avatar" @click="isAvatarFrameScreenOpen = true">
-              <template v-if="activeAvatarDataUrl || userPortraitUrl">
-                <img :src="activeAvatarDataUrl || userPortraitUrl" alt="用户头像" />
-                <img
-                  v-if="activeFrame?.dataUrl"
-                  :src="activeFrame.dataUrl"
-                  class="avatar-frame-overlay"
-                  alt=""
-                />
-              </template>
-              <span v-else class="user-avatar-placeholder">👤</span>
-            </span>
-            <span class="economy-item">
-              {{ activeBook?.userProfile?.name || '未命名角色' }}
-            </span>
-            <span class="economy-item">
-              <span class="economy-icon">💰</span>
-              <span class="economy-value">{{ activeBookEconomyCoins }}</span>
-            </span>
-            <span class="economy-item">
-              <span class="economy-icon">💎</span>
-              <span class="economy-value">{{ activeBookEconomyCrystals }}</span>
-            </span>
-            <button type="button" class="economy-shop-btn" @click="shop.openWorldBookShop">
-              🏪 SHOP
-            </button>
-          </div>
-
-          <!-- 侧边操作按钮：TASK / TRPG -->
-          <div class="side-action-bar">
-            <button type="button" class="side-action-btn" @click="task.handleOpenTaskBoard">
-              TASK
-            </button>
-            <button type="button" class="side-action-btn" @click="handleLaunchTRPG">
-              TRPG
-            </button>
-          </div>
-          
-          <div v-if="isLoadingCharacters" class="dorm-state-box">正在加载角色立绘...</div>
-          <div v-else-if="characterCards.length === 0" class="dorm-state-box">当前世界书暂无 CHAR。</div>
-          <div v-else class="character-carousel">
-            <p class="card-swipe-hint">左右滑动切换角色</p>
-            <p class="character-card-name">{{ characterCards[activeCharacterIndex]?.label || '未命名角色' }}</p>
-            <div class="character-carousel-track">
-              <button
-                v-for="(character, index) in characterCards"
-                :key="character.id"
-                type="button"
-                class="character-carousel-card"
-                :class="{
-                  'is-active': index === activeCharacterIndex,
-                  'is-prev': index === (activeCharacterIndex - 1 + characterCards.length) % characterCards.length,
-                  'is-next': index === (activeCharacterIndex + 1) % characterCards.length
-                }"
-                @click="index === activeCharacterIndex ? enterCharacterRoom(character.id) : switchToCharacter(index)"
-              >
-                <img
-                  class="character-card-portrait-img"
-                  :src="portraitUrlMap[character.id] || defaultPortraitUrl"
-                  :alt="character.label"
-                />
-              </button>
-            </div>
-          </div>
-        </section>
-
+      <!-- 角色房间视图 -->
+      <template v-else-if="currentView === VIEW_CHARACTER_ROOM">
         <CharacterRoomView
-          v-else
           ref="characterRoomViewRef"
           :selected-character="selectedCharacter"
           :selected-character-portrait-url="selectedCharacterPortraitUrl"
@@ -3565,6 +3610,52 @@ onBeforeUnmount(() => {
   <AvatarFrameScreen
     v-if="isAvatarFrameScreenOpen"
     @close="isAvatarFrameScreenOpen = false"
+  />
+
+  <!-- 游戏厅 -->
+  <GameCenterScreen
+    v-if="isGameCenterOpen"
+    ref="gameCenterRef"
+    :coins="activeBookEconomyCoins"
+    :inventory="activeBookInventory"
+    @back="handleGameCenterBack"
+    @spin-result="handleGameCenterSpinResult"
+    @gacha-result="handleGameCenterGachaResult"
+    @pachinko-result="handleGameCenterNetResult"
+    @farm-harvest="handleGameCenterNetResult"
+    @dograce-result="handleGameCenterNetResult"
+    @kitchen-produce="handleGameCenterKitchenProduce"
+    @kitchen-consume="handleGameCenterKitchenConsume"
+    @xylophone-result="handleGameCenterSimpleResult"
+    @harmonica-result="handleGameCenterSimpleResult"
+    @match3-result="handleGameCenterSimpleResult"
+    @game-skin-buy="handleGameSkinBuy"
+  />
+
+  <!-- 七日签到 -->
+  <CheckIn7Screen
+    v-if="isCheckIn7ScreenOpen"
+    :coins="activeBookEconomyCoins"
+    @back="handleCheckIn7Back"
+    @checkin7-result="handleCheckIn7Result"
+  />
+
+  <!-- 日历签到 -->
+  <CheckInScreen
+    v-if="isCheckInScreenOpen"
+    :coins="activeBookEconomyCoins"
+    @back="handleCheckInBack"
+    @checkin-daily-result="handleCheckInDailyResult"
+  />
+
+  <!-- 信箱 -->
+  <MailboxScreen
+    v-if="isMailboxOpen"
+    :coins="activeBookEconomyCoins"
+    :characters="mailboxCharacters"
+    :world-book-id="String(activeBook?.id || 'default')"
+    @back="handleMailboxBack"
+    @mail-affection-change="handleMailAffectionChange"
   />
 </template>
 

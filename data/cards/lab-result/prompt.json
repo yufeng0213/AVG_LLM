@@ -1,0 +1,62 @@
+{
+  "id": "lab-result",
+  "name": "medical",
+  "category": "化验报告",
+  "description": "一份化验室检测报告",
+  "trigger": {
+    "type": "random",
+    "probability": 0.02,
+    "conditions": []
+  },
+  "variables": {
+    "reportNo": {
+      "type": "string",
+      "description": "报告编号"
+    },
+    "patient": {
+      "type": "string",
+      "description": "受检者姓名"
+    },
+    "testType": {
+      "type": "string",
+      "description": "检测类型",
+      "options": [
+        "血液",
+        "DNA",
+        "毒素",
+        "辐射",
+        "基因"
+      ],
+      "default": "血液"
+    },
+    "result": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "检测结果"
+    },
+    "reference": {
+      "type": "string",
+      "description": "参考值"
+    },
+    "date": {
+      "type": "date",
+      "description": "检测日期"
+    },
+    "labTech": {
+      "type": "string",
+      "description": "检验员"
+    }
+  },
+  "promptTemplate": "请生成一张「medical」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一份化验室检测报告"
+  },
+  "rarity": "uncommon",
+  "collectible": true
+}

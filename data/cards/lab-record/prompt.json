@@ -1,0 +1,57 @@
+{
+  "id": "lab-record",
+  "name": "实验记录",
+  "category": "medical",
+  "description": "一份实验室研究记录",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "expId": {
+      "type": "string",
+      "description": "实验编号"
+    },
+    "project": {
+      "type": "string",
+      "description": "研究项目名称"
+    },
+    "researcher": {
+      "type": "string",
+      "description": "研究员姓名"
+    },
+    "date": {
+      "type": "date",
+      "description": "实验日期"
+    },
+    "conclusion": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "实验结论"
+    },
+    "dangerLevel": {
+      "type": "string",
+      "description": "危险等级",
+      "options": [
+        "安全",
+        "注意",
+        "危险",
+        "极度危险"
+      ],
+      "default": "安全"
+    }
+  },
+  "promptTemplate": "请生成一张「medical」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一份实验室研究记录"
+  },
+  "rarity": "rare",
+  "collectible": true
+}

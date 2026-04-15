@@ -1,0 +1,65 @@
+{
+  "id": "prison-file",
+  "name": "监狱档案",
+  "category": "noir",
+  "description": "一份机密囚犯档案",
+  "trigger": {
+    "type": "random",
+    "probability": 0.015,
+    "conditions": []
+  },
+  "variables": {
+    "prisonerId": {
+      "type": "string",
+      "description": "囚犯编号"
+    },
+    "name": {
+      "type": "string",
+      "description": "囚犯姓名"
+    },
+    "crime": {
+      "type": "string",
+      "description": "罪名"
+    },
+    "sentence": {
+      "type": "string",
+      "description": "刑期"
+    },
+    "dangerLevel": {
+      "type": "string",
+      "description": "危险等级",
+      "options": [
+        "低",
+        "中",
+        "高",
+        "极高"
+      ],
+      "default": "中"
+    },
+    "photo": {
+      "type": "string",
+      "description": "照片描述或备注"
+    },
+    "specialNotes": {
+      "type": "text",
+      "maxLength": 200,
+      "description": "特殊备注"
+    },
+    "date": {
+      "type": "date",
+      "description": "建档日期"
+    }
+  },
+  "promptTemplate": "请生成一张「监狱档案」的内容。\n\n背景信息：\n- 当前场景：{{scene}}\n- 发送者：{{sender}}\n- 接收者：{{recipient}}\n\n要求：\n1. 内容要符合该卡片的风格和情境\n2. 语气要自然、有代入感\n3. 字数控制在100-300字之间\n\n请直接输出内容，不要有其他说明。",
+  "style": {
+    "theme": "typewriter-doc",
+    "colors": [
+      "#d4c5a9",
+      "#333",
+      "#555"
+    ],
+    "mood": "一份机密囚犯档案"
+  },
+  "rarity": "rare",
+  "collectible": true
+}
