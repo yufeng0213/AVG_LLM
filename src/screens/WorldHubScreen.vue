@@ -1,7 +1,7 @@
 <script setup>
 import './WorldHubScreen.css'
 import { computed, onMounted, ref } from 'vue'
-import { useGlobalUser } from '../../plugins/feature-dormitory/src/composables/useGlobalUser.js'
+import { useGlobalUser } from '../composables/useGlobalUser.js'
 import { useAvatar } from '../../plugins/feature-dormitory/src/composables/useAvatar.js'
 import { useAvatarFrame } from '../../plugins/feature-dormitory/src/composables/useAvatarFrame.js'
 import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStore'
@@ -30,6 +30,7 @@ const emit = defineEmits([
   'open-load-save',
   'open-phone',
   'open-avatar',
+  'open-test',
 ])
 
 const { username, avatar: globalAvatar, avatarFrame: globalAvatarFrame, economy } = useGlobalUser()
@@ -207,6 +208,10 @@ onMounted(async () => {
         <button type="button" class="hub-scatter-btn" @click="emit('open-mailbox')">
           <span class="hub-btn-icon">📮</span>
           <span class="hub-btn-label">信箱</span>
+        </button>
+        <button type="button" class="hub-scatter-btn" @click="emit('open-test')">
+          <span class="hub-btn-icon">🌌</span>
+          <span class="hub-btn-label">星空</span>
         </button>
       </div>
     </section>

@@ -471,8 +471,24 @@ export const createEmptyPortraits = () => []
 export const createEmptyScenes = () => []
 export const createEmptyBackgroundAssets = () => []
 
+// 创建新卡牌边框配置
+export const createNewCardBorder = (filePath, fileName, name, list) => {
+  const index = (list?.length || 0) + 1
+  return {
+    id: `cardBorder_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name: name || `边框 ${index}`,
+    filePath,
+    fileName,
+    cropRect: { x: 0, y: 0, w: 0, h: 0 },
+    addedAt: new Date().toISOString(),
+  }
+}
+
+// 创建默认显示设置
 export const createDefaultDisplaySettings = () => ({
   portraitStyle: 'card',
+  cardBorderList: [],
+  activeCardBorderId: '',
 })
 
 // 创建新场景配置
@@ -596,10 +612,33 @@ const normalizePortraitStyle = (rawStyle) => {
 
 const normalizeDisplaySettings = (rawSettings) => {
   const fallback = createDefaultDisplaySettings()
+  const cardBorderList = Array.isArray(rawSettings?.cardBorderList)
+    ? rawSettings.cardBorderList.map((item, index) => normalizeCardBorder(item, index))
+    : []
+  const activeId = rawSettings?.activeCardBorderId || ''
+  const activeExists = activeId && cardBorderList.some((item) => item.id === activeId)
   return {
     portraitStyle: normalizePortraitStyle(rawSettings?.portraitStyle || fallback.portraitStyle),
+    cardBorderList,
+    activeCardBorderId: activeExists ? activeId : (cardBorderList.length > 0 ? cardBorderList[0].id : ''),
   }
 }
+
+const normalizeCropRect = (rawRect) => ({
+  x: Number.isFinite(rawRect?.x) ? Math.max(0, Math.round(rawRect.x)) : 0,
+  y: Number.isFinite(rawRect?.y) ? Math.max(0, Math.round(rawRect.y)) : 0,
+  w: Number.isFinite(rawRect?.w) ? Math.max(0, Math.round(rawRect.w)) : 0,
+  h: Number.isFinite(rawRect?.h) ? Math.max(0, Math.round(rawRect.h)) : 0,
+})
+
+const normalizeCardBorder = (rawBorder, index = 0) => ({
+  id: String(rawBorder?.id || `cardBorder_${index + 1}`),
+  name: String(rawBorder?.name || `边框 ${index + 1}`),
+  filePath: String(rawBorder?.filePath || ''),
+  fileName: String(rawBorder?.fileName || ''),
+  cropRect: normalizeCropRect(rawBorder?.cropRect),
+  addedAt: String(rawBorder?.addedAt || new Date().toISOString()),
+})
 
 const normalizeBackgroundAsset = (rawAsset, index = 0) => {
   const idFallback = `bg_${index + 1}`

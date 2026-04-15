@@ -1,0 +1,28 @@
+{
+  "id": "phone",
+  "name": "手机",
+  "description": "模拟手机界面，包含短信、电话、相册、日历、笔记、论坛等应用。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "phone",
+    "title": "手机",
+    "icon": "\ud83d\udcf1",
+    "order": 38,
+    "variant": "tone-green border-solid"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "phone"
+  },
+  "storage": {
+    "namespace": "phone"
+  },
+  "capabilities": [
+    "storage",
+    "worldbook"
+  ],
+  "enabledByDefault": true
+}

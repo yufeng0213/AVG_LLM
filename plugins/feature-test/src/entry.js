@@ -1,19 +1,19 @@
-import TRPGScreen from './TRPGScreen.vue'
+import StarrySkyScreen from './StarrySkyScreen.vue'
 
-const TRPGFeatureEntry = {
-  id: 'trpg',
-  route: 'trpg',
+const TestFeatureEntry = {
+  id: 'test',
+  route: 'starry-sky',
   mount() {
     return {
       type: 'route',
-      route: 'trpg',
+      route: 'starry-sky',
     }
   },
   resolveRouteConfig(context = {}) {
     const onBack = context.onBackToStart || (() => {})
 
     return {
-      component: TRPGScreen,
+      component: StarrySkyScreen,
       events: {
         back: onBack,
       },
@@ -24,4 +24,4 @@ const TRPGFeatureEntry = {
   },
 }
 
-export default TRPGFeatureEntry
+export default TestFeatureEntry

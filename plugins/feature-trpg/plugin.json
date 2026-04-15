@@ -5,6 +5,12 @@
   "version": "0.1.0",
   "apiVersion": 1,
   "runtime": "local",
+  "menu": {
+    "key": "trpg",
+    "title": "跑团",
+    "icon": "\ud83c\udfb2",
+    "order": 40
+  },
   "entry": {
     "type": "route",
     "module": "./src/entry.js",

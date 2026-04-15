@@ -7,7 +7,7 @@
 import './NestSelectorView.css'
 import { computed, onMounted, ref } from 'vue'
 import { getActiveWorldBookId, loadWorldBooks } from '../../../../src/worldbook/worldBookStore.js'
-import { useGlobalUser } from '../composables/useGlobalUser.js'
+import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
 import { useAvatar } from '../composables/useAvatar.js'
 import { useAvatarFrame } from '../composables/useAvatarFrame.js'
 

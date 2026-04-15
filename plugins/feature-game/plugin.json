@@ -1,0 +1,27 @@
+{
+  "id": "game",
+  "name": "游戏厅",
+  "description": "世界书游戏厅，包含老虎机、扭蛋机、弹珠台等游戏。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "game",
+    "title": "游戏厅",
+    "icon": "\ud83c\udfae",
+    "order": 37,
+    "variant": "tone-purple border-solid"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "game-center"
+  },
+  "storage": {
+    "namespace": "game"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

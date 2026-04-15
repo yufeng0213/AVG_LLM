@@ -7,6 +7,7 @@ import {
   CHARACTER_PERSONALITY_SCORE_MIN,
   createDefaultCharacterVoiceConfig,
   createDefaultPersonalityProfile,
+  createNewCardBorder,
   RELATIONSHIP_METRIC_MAX,
   RELATIONSHIP_METRIC_MIN,
   WORLD_BOOK_ENTRY_DEFS,
@@ -84,6 +85,12 @@ const userIdentityOpen = ref(false)
 const userAppearanceOpen = ref(false)
 const userBackgroundOpen = ref(false)
 const userPortraitsOpen = ref(false)
+
+// 卡牌边框相关
+const cardBorderPreviewImg = ref(null)
+const cardBorderPreviewWrap = ref(null)
+const cardBorderImgNaturalSize = ref({ naturalWidth: 0, naturalHeight: 0 })
+const cropRectConfirmed = ref(false)
 
 // 世界背景高级设置展开状态
 const displaySettingsOpen = ref(false)
@@ -171,6 +178,30 @@ const narratorOptions = computed(() => {
   }
 
   return enabledProfiles
+})
+
+// 卡牌边框计算属性
+const cardBorderList = computed(() => activeBook.value?.displaySettings?.cardBorderList || [])
+const activeCardBorder = computed(() => {
+  const activeId = activeBook.value?.displaySettings?.activeCardBorderId
+  if (!activeId || cardBorderList.value.length === 0) return null
+  return cardBorderList.value.find((b) => b.id === activeId) || cardBorderList.value[0] || null
+})
+
+// 用像素定位，相对图片在 wrap 容器中的实际显示尺寸
+const cropRectStyle = computed(() => {
+  if (!activeCardBorder.value) return {}
+  const rect = activeCardBorder.value.cropRect
+  const img = cardBorderImgNaturalSize.value
+  if (!img.naturalWidth || !img.naturalHeight || !img.displayWidth) return {}
+  const scaleX = img.displayWidth / img.naturalWidth
+  const scaleY = img.displayHeight / img.naturalHeight
+  return {
+    left: `${rect.x * scaleX}px`,
+    top: `${rect.y * scaleY}px`,
+    width: `${rect.w * scaleX}px`,
+    height: `${rect.h * scaleY}px`,
+  }
 })
 
 const markBookUpdated = () => {
@@ -678,18 +709,178 @@ const cancelEditTitle = () => {
 // 确认编辑标题
 const confirmEditTitle = async () => {
   if (!activeBook.value) return
-  
+
   const newTitle = editTitle.value.trim()
   if (!newTitle) {
     statusMessage.value = '世界书名称不能为空'
     return
   }
-  
+
   activeBook.value.title = newTitle
   markBookUpdated()
   showEditTitleDialog.value = false
   statusMessage.value = `世界书名称已更新为：${newTitle}`
 }
+
+// ========== 卡牌边框管理 ==========
+
+const switchActiveCardBorder = (borderId) => {
+  if (!activeBook.value) return
+  updateDisplaySetting('activeCardBorderId', borderId)
+}
+
+const updateCardBorderField = (borderId, field, value) => {
+  if (!activeBook.value) return
+  const list = activeBook.value.displaySettings?.cardBorderList
+  if (!list) return
+  const border = list.find((b) => b.id === borderId)
+  if (!border) return
+  border[field] = value
+  markBookUpdated()
+}
+
+const updateCardBorderCoord = (coord, value) => {
+  if (!activeCardBorder.value) return
+  const num = Number.parseInt(String(value || ''), 10)
+  if (!Number.isFinite(num) || num < 0) return
+  const rect = activeCardBorder.value.cropRect
+  rect[coord] = num
+  markBookUpdated()
+}
+
+const onCardBorderImageLoaded = (event) => {
+  const img = event.target
+  const updateDisplay = () => {
+    cardBorderImgNaturalSize.value = {
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,
+      displayWidth: img.clientWidth || img.naturalWidth,
+      displayHeight: img.clientHeight || img.naturalHeight,
+    }
+  }
+  updateDisplay()
+  requestAnimationFrame(updateDisplay)
+}
+
+const pickCardBorderFile = () => {
+  if (typeof document === 'undefined') {
+    return Promise.resolve({ file: null, canceled: true })
+  }
+
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/png,image/webp,image/jpeg'
+    input.style.position = 'fixed'
+    input.style.left = '-9999px'
+
+    let settled = false
+    const finish = (file, canceled = false) => {
+      if (settled) return
+      settled = true
+      window.removeEventListener('focus', handleFocus)
+      input.remove()
+      resolve({ file, canceled })
+    }
+
+    const handleFocus = () => {
+      window.setTimeout(() => {
+        if (!settled) {
+          finish(null, true)
+        }
+      }, 320)
+    }
+
+    input.addEventListener('change', () => {
+      const file = input.files?.[0] || null
+      finish(file, !file)
+    }, { once: true })
+
+    input.addEventListener('cancel', () => {
+      finish(null, true)
+    }, { once: true })
+
+    window.addEventListener('focus', handleFocus, { once: true })
+    document.body.appendChild(input)
+    input.click()
+  })
+}
+
+const importCardBorderImage = async () => {
+  if (!activeBook.value) return
+
+  const picked = await pickCardBorderFile()
+  if (picked.canceled || !picked.file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const dataUrl = e.target?.result
+    if (!dataUrl) {
+      statusMessage.value = '读取图片文件失败'
+      return
+    }
+
+    const list = activeBook.value.displaySettings?.cardBorderList || []
+    const newBorder = createNewCardBorder(dataUrl, picked.file.name, picked.file.name.replace(/\.[^.]+$/, ''), list)
+    if (!activeBook.value.displaySettings || typeof activeBook.value.displaySettings !== 'object') {
+      activeBook.value.displaySettings = {}
+    }
+    if (!activeBook.value.displaySettings.cardBorderList) {
+      activeBook.value.displaySettings.cardBorderList = []
+    }
+    activeBook.value.displaySettings.cardBorderList = [...list, newBorder]
+    activeBook.value.displaySettings.activeCardBorderId = newBorder.id
+    markBookUpdated()
+    statusMessage.value = `已导入边框：${newBorder.name}`
+  }
+  reader.onerror = () => {
+    statusMessage.value = '读取图片文件失败'
+  }
+  reader.readAsDataURL(picked.file)
+}
+
+const deleteCardBorder = (borderId) => {
+  if (!activeBook.value) return
+  const list = activeBook.value.displaySettings?.cardBorderList
+  if (!list || list.length === 0) return
+
+  const border = list.find((b) => b.id === borderId)
+  const name = border?.name || '此边框'
+
+  if (!confirm(`确定要删除「${name}」吗？此操作不可撤销。`)) return
+
+  const newList = list.filter((b) => b.id !== borderId)
+  activeBook.value.displaySettings.cardBorderList = newList
+
+  // 如果删除的是当前使用的边框，自动切换到第一个
+  const activeId = activeBook.value.displaySettings.activeCardBorderId
+  if (activeId === borderId) {
+    activeBook.value.displaySettings.activeCardBorderId = newList.length > 0 ? newList[0].id : ''
+  }
+
+  markBookUpdated()
+  statusMessage.value = `已删除边框：${name}`
+}
+
+const confirmCropRect = () => {
+  if (!activeCardBorder.value) return
+  if (activeCardBorder.value.cropRect.w === 0 && activeCardBorder.value.cropRect.h === 0) return
+  cropRectConfirmed.value = true
+  statusMessage.value = `已确认「${activeCardBorder.value.name}」的立绘叠加位置`
+}
+
+const resetCropRect = () => {
+  cropRectConfirmed.value = false
+  statusMessage.value = '已解除确认，可重新调整坐标'
+}
+
+// 切换边框时重置确认状态
+watch(
+  () => activeBook.value?.displaySettings?.activeCardBorderId,
+  () => {
+    cropRectConfirmed.value = false
+  },
+)
 
 const saveWorldBooks = async () => {
    if (!activeBook.value) {

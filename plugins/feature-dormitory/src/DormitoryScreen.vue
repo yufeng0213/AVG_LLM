@@ -11,15 +11,9 @@ import { generatePhoneSmsReply, generateDormChatReply } from '../../../src/llm'
 import { getValidatedActiveConfig, callChatCompletion } from '../../../src/llm/llmService.core.js'
 import { isAndroid } from '../../../src/utils/platform.js'
 import RedPacket from './components/RedPacket.vue'
-import TRPGPanel from './components/TRPGPanel.vue'
-import CheckIn7Screen from './CheckIn7Screen.vue'
-import CheckInScreen from './CheckInScreen.vue'
-import GameCenterScreen from './GameCenterScreen.vue'
-import MailboxScreen from './MailboxScreen.vue'
+import MailboxScreen from '../../feature-mail/src/components/MailboxScreen.vue'
 import { createRedPacket, addRedPacket, recordSentRedPacket } from './redPacketService.js'
-import { useDormShop } from './composables/useDormShop.js'
 import { useDormGift } from './composables/useDormGift.js'
-import { useDormTask } from './composables/useDormTask.js'
 import { useDormDiary } from './composables/useDormDiary.js'
 import { useDormRedPacket } from './composables/useDormRedPacket.js'
 import { useDormAppointment } from './composables/useDormAppointment.js'
@@ -27,20 +21,14 @@ import { useDormSubScene } from './composables/useDormSubScene.js'
 import AvatarFrameScreen from './components/AvatarFrameScreen.vue'
 import { useAvatarFrame } from './composables/useAvatarFrame.js'
 import { useAvatar } from './composables/useAvatar.js'
-import { useGlobalUser } from './composables/useGlobalUser.js'
+import { useGlobalUser } from '../../../src/composables/useGlobalUser.js'
 
 // 子组件导入
 import NestSelectorView from './components/NestSelectorView.vue'
 import CharacterSelectView from './components/CharacterSelectView.vue'
 import CharacterRoomView from './components/CharacterRoomView.vue'
 import DriftBottlePanel from './components/DriftBottlePanel.vue'
-import WorldBookShopModal from './components/WorldBookShopModal.vue'
-import TaskBoardModal from './components/TaskBoardModal.vue'
-import TaskExecutionModal from './components/TaskExecutionModal.vue'
 import AppointmentModal from './components/AppointmentModal.vue'
-import TeamSelectModal from './components/TeamSelectModal.vue'
-import BattleScreen from './components/BattleScreen.vue'
-import { markTaskCompletable, saveTaskBoard } from './taskBoardService.js'
 
 const emit = defineEmits(['back', 'open-face-to-face'])
 
@@ -208,181 +196,6 @@ const driftBottleDraft = ref('')
 const isDormDriftPicking = ref(false)
 const driftFollowupPendingEntryId = ref('')
 
-// 跑团面板 ref
-const trpgPanelRef = ref(null)
-const isTRPGPanelOpen = ref(false)
-
-const handleLaunchTRPG = () => {
-  isTRPGPanelOpen.value = true
-  trpgPanelRef.value?.open()
-}
-
-// 游戏厅
-const isGameCenterOpen = ref(false)
-const gameCenterRef = ref(null)
-
-const handleLaunchGameCenter = () => {
-  isGameCenterOpen.value = true
-}
-
-const handleGameCenterBack = () => {
-  isGameCenterOpen.value = false
-}
-
-// 游戏厅转发的各类游戏结果处理
-const handleGameCenterSpinResult = ({ cost, winAmount }) => {
-  const bookId = String(activeBook.value?.id || '').trim()
-  if (!bookId) return
-  const net = winAmount - cost
-  if (net !== 0) {
-    updateWorldBookEconomy(bookId, (previous) => ({
-      ...previous,
-      coins: clampInt(previous.coins + net, 0, 9999, previous.coins),
-    }))
-  }
-}
-
-const handleGameCenterGachaResult = ({ type, cost, prize, rarity, item, results }) => {
-  const bookId = String(activeBook.value?.id || '').trim()
-  if (!bookId) return
-  if (type === 'pull' && prize) {
-    updateWorldBookEconomy(bookId, (previous) => ({
-      ...previous,
-      coins: clampInt(previous.coins - cost, 0, 9999, previous.coins),
-    }))
-    addToWorldBookInventory(bookId, {
-      id: prize.id,
-      name: prize.name,
-      icon: prize.icon,
-      type: prize.type,
-      rarity: rarity || 'N',
-      quantity: prize.count || 1,
-      category: 'gacha',
-      purchasedAt: Date.now(),
-    })
-  } else if (type === 'multi' && results) {
-    updateWorldBookEconomy(bookId, (previous) => ({
-      ...previous,
-      coins: clampInt(previous.coins - cost, 0, 9999, previous.coins),
-    }))
-    for (const r of results) {
-      addToWorldBookInventory(bookId, {
-        id: r.prize.id,
-        name: r.prize.name,
-        icon: r.prize.icon,
-        type: r.prize.type,
-        rarity: r.rarity || 'N',
-        quantity: r.prize.count || 1,
-        category: 'gacha',
-        purchasedAt: Date.now(),
-      })
-    }
-  } else if (type === 'synthesis' && item) {
-    addToWorldBookInventory(bookId, {
-      ...item,
-      category: 'gacha',
-      purchasedAt: Date.now(),
-    })
-  }
-}
-
-const handleGameCenterNetResult = ({ cost, earned }) => {
-  const bookId = String(activeBook.value?.id || '').trim()
-  if (!bookId) return
-  const net = earned - cost
-  if (net !== 0) {
-    updateWorldBookEconomy(bookId, (previous) => ({
-      ...previous,
-      coins: clampInt(previous.coins + net, 0, 9999, previous.coins),
-    }))
-  }
-}
-
-const handleGameCenterSimpleResult = ({ cost, earned }) => {
-  if (cost > 0) {
-    activeBookEconomyCoins.value -= cost
-  }
-  if (earned > 0) {
-    activeBookEconomyCoins.value += earned
-  }
-}
-
-const handleGameCenterKitchenProduce = (dish) => {
-  const bookId = String(activeBook.value?.id || '').trim()
-  if (!bookId) return
-  addToWorldBookInventory(bookId, {
-    id: dish.id,
-    name: dish.name,
-    icon: dish.icon,
-    description: dish.description,
-    category: dish.category,
-    categoryLabel: dish.categoryLabel,
-    quantity: 1,
-    purchasedAt: Date.now(),
-  })
-}
-
-const handleGameCenterKitchenConsume = ({ materialKey }) => {
-  const bookId = String(activeBook.value?.id || '').trim()
-  if (!bookId) return
-  const current = readWorldBookInventory(bookId)
-  const idx = current.findIndex((item) => {
-    if (item.id?.includes(materialKey)) return true
-    return false
-  })
-  if (idx >= 0) {
-    const qty = current[idx].quantity || 1
-    if (qty <= 1) {
-      current.splice(idx, 1)
-    } else {
-      current[idx].quantity = qty - 1
-    }
-    persistWorldBookInventory(bookId, current)
-    worldBookInventoryMap.value[bookId] = [...current]
-    worldBookInventoryMap.value = { ...worldBookInventoryMap.value }
-  }
-}
-
-// 七日签到
-const isCheckIn7ScreenOpen = ref(false)
-
-const handleLaunchCheckIn7 = () => {
-  isCheckIn7ScreenOpen.value = true
-}
-
-const handleCheckIn7Back = () => {
-  isCheckIn7ScreenOpen.value = false
-}
-
-const handleCheckIn7Result = ({ cost, earned }) => {
-  if (cost > 0) {
-    activeBookEconomyCoins.value -= cost
-  }
-  if (earned > 0) {
-    activeBookEconomyCoins.value += earned
-  }
-}
-
-// 日历签到
-const isCheckInScreenOpen = ref(false)
-
-const handleLaunchCheckIn = () => {
-  isCheckInScreenOpen.value = true
-}
-
-const handleCheckInBack = () => {
-  isCheckInScreenOpen.value = false
-}
-
-const handleCheckInDailyResult = ({ cost, earned }) => {
-  if (cost > 0) {
-    activeBookEconomyCoins.value -= cost
-  }
-  if (earned > 0) {
-    activeBookEconomyCoins.value += earned
-  }
-}
-
 // 信箱
 const isMailboxOpen = ref(false)
 const mailboxUnreadCount = ref(0)
@@ -437,15 +250,6 @@ const mailboxCharacters = computed(() => {
     }
   })
 })
-
-const handleGameSkinBuy = ({ gameKey, cost }) => {
-  const bookId = String(activeBook.value?.id || '').trim()
-  if (!bookId) return
-  updateWorldBookEconomy(bookId, (previous) => ({
-    ...previous,
-    coins: clampInt(previous.coins - cost, 0, 9999, previous.coins),
-  }))
-}
 
 const portraitImageCache = ref(new Map())
 let characterPreloadToken = 0
@@ -1976,8 +1780,6 @@ const applyDormAction = ({
 }
 
 // ===== 商店与赠送 Composable =====
-const shop = useDormShop(activeBook, worldBookEconomyMap, worldBookInventoryMap)
-console.log('shop: ', shop.isWorldBookShopOpen)
 
 const gift = useDormGift({
   selectedCharacter,
@@ -1996,83 +1798,6 @@ const gift = useDormGift({
   persistWorldBookInventory,
   worldBookInventoryMap,
 })
-
-const task = useDormTask({
-  activeBook,
-  selectedCharacter,
-  selectedCharacterId,
-  selectedDormState,
-  selectedDormChatHistory,
-  updateSelectedDormState,
-  updateWorldBookEconomy: (bookId, updater) => {
-    updateWorldBookEconomy(bookId, updater)
-  },
-  addToWorldBookInventory: (bookId, item) => {
-    addToWorldBookInventory(bookId, item)
-  },
-  normalizeDormChatHistory,
-})
-
-// 战斗系统状态
-const isTeamSelectOpen = ref(false)
-const isBattleScreenOpen = ref(false)
-const battleTask = ref(null)
-const battleSelectedCharacters = ref([])
-
-function handleOpenTeamBattle(taskItem) {
-  battleTask.value = taskItem
-  isTeamSelectOpen.value = true
-}
-
-function handleTeamSelectClose() {
-  isTeamSelectOpen.value = false
-}
-
-function handleTeamSelectStartBattle(selected) {
-  battleSelectedCharacters.value = selected
-  isTeamSelectOpen.value = false
-  isBattleScreenOpen.value = true
-}
-
-function handleBattleVictory() {
-  isBattleScreenOpen.value = false
-  // 标记任务为可完成
-  const bookId = getActiveWorldBookId()
-  if (bookId && battleTask.value) {
-    // 先从内存中查找任务，确保 ID 匹配
-    const taskFromMemory = task.taskBoardTasks.value.find(t => t.id === battleTask.value.id)
-    const targetTask = taskFromMemory || battleTask.value
-    console.log('[BattleVictory] 目标任务:', targetTask.id, targetTask.name, targetTask.status)
-    console.log('[BattleVictory] 当前内存任务:', task.taskBoardTasks.value.map(t => ({ id: t.id, status: t.status, name: t.name })))
-
-    const board = { tasks: [...task.taskBoardTasks.value], lastGenerated: Date.now() }
-    const evidence = {
-      type: 'battle',
-      waves: 3,
-      victory: true,
-      summary: `战斗胜利！完成了任务「${targetTask.name}」`,
-    }
-    const updated = markTaskCompletable(board, targetTask.id, evidence)
-    console.log('[BattleVictory] markTaskCompletable结果:', updated.tasks?.map(t => ({ id: t.id, status: t.status, name: t.name })) || '空')
-    saveTaskBoard(bookId, updated)
-    // 同步到 taskBoardTasks
-    task.taskBoardTasks.value = updated.tasks
-    actionFeedback.value = '战斗胜利！任务已完成，可领取奖励。'
-  }
-  battleTask.value = null
-  battleSelectedCharacters.value = []
-}
-
-function handleBattleDefeat() {
-  isBattleScreenOpen.value = false
-  actionFeedback.value = '战斗失败，任务仍然可以重新尝试或使用对话模式完成。'
-  battleTask.value = null
-  battleSelectedCharacters.value = []
-}
-
-function handleBattleClose() {
-  isBattleScreenOpen.value = false
-}
 
 const diary = useDormDiary({
   selectedCharacter,
@@ -3198,15 +2923,6 @@ watch(
   },
 )
 
-// 当 activeBook 加载后，初始化任务板数据
-watch(
-  activeBook,
-  (book) => {
-    task.syncTaskBoardFromBook()
-  },
-  { immediate: true },
-)
-
 const refreshWorldBooks = async () => {
   isLoadingBooks.value = true
   try {
@@ -3334,9 +3050,6 @@ onMounted(async () => {
   }
   defaultPortraitUrl.value = await getDefaultPortraitUrl()
   await refreshWorldBooks()
-
-  // 初始化商店商品
-  shop.initShopItems()
 
   // 检查并生成当天的日记
   diary.checkAndGenerateDailyDiary()
@@ -3497,8 +3210,6 @@ onBeforeUnmount(() => {
           @update-dorm-chat-draft="handleDormChatDraftInput"
           @update-drift-bottle-draft="handleDriftBottleDraftInput"
           @update-dorm-quick-action-type="handleDormQuickActionTypeChange"
-          @task-invite-click="task.handleTaskInviteClick"
-          @task-invite-toggle="task.toggleTaskInviteDropdown"
           @red-packet-opened="redPacket.handleRedPacketOpened"
           @red-packet-send="redPacket.handleSendRedPacket"
           :is-polaroid-screen-open="isPolaroidScreenOpen"
@@ -3506,7 +3217,6 @@ onBeforeUnmount(() => {
           :gift="gift"
           :diary="diary"
           :red-packet="redPacket"
-          :task="task"
           @polaroid-back="handlePolaroidBack"
           @polaroid-complete="handlePolaroidComplete"
           @open-appointment="appointment.openAppointmentModal"
@@ -3514,85 +3224,6 @@ onBeforeUnmount(() => {
       </template>
     </section>
   </main>
-
-  <!-- 世界书商店面板 -->
-  <WorldBookShopModal
-    :is-open="shop.isWorldBookShopOpen.value"
-    :active-book-economy-coins="shop.activeBookEconomyCoins.value"
-    :active-book-economy-crystals="shop.activeBookEconomyCrystals.value"
-    :shop-items="shop.shopFilteredItems.value"
-    :selected-category="shop.shopSelectedCategory.value"
-    :categories="shop.DORM_SHOP_CATEGORIES"
-    :is-refreshing="shop.isShopRefreshing.value"
-    :purchase-feedback="shop.shopPurchaseFeedback.value"
-    @close="shop.closeWorldBookShop"
-    @select-category="shop.handleSelectShopCategory"
-    @refresh-items="shop.handleRefreshShopItems"
-    @buy-item="shop.handleBuyShopItem"
-  />
-
-  <!-- 任务板面板 -->
-  <TaskBoardModal
-    :is-open="task.isTaskBoardOpen.value"
-    :tasks="task.taskBoardTasks.value"
-    :is-loading="task.taskBoardGenerating.value"
-    :feedback="task.taskBoardFeedback.value"
-    :coins="shop.activeBookEconomyCoins.value"
-    :crystals="shop.activeBookEconomyCrystals.value"
-    @close="task.handleCloseTaskBoard"
-    @generate-tasks="task.handleGenerateTaskBoardTasks"
-    @accept-task="task.handleAcceptTaskBoardTask"
-    @submit-task="task.handleSubmitTaskBoardTask"
-    @complete-task="task.handleCompleteTaskBoardTask"
-    @delete-task="task.handleDeleteTaskBoardTask"
-    @team-battle="handleOpenTeamBattle"
-  />
-
-  <!-- 任务执行界面 -->
-  <TaskExecutionModal
-    v-if="task.isTaskExecutionOpen.value && task.currentExecutionTask.value"
-    :key="'task_exec_' + (task.currentExecutionTask.value?.id || 'none')"
-    :is-open="task.isTaskExecutionOpen.value"
-    :task="task.currentExecutionTask.value"
-    :character-roles="[]"
-    :world-book="activeBook"
-    :user-name="activeBookUserName"
-    :target-character-id="task.currentExecutionTask.value?.targetCharacterId || ''"
-    :target-character-name="task.currentExecutionTask.value?.targetCharacterName || ''"
-    @close="task.handleTaskExecutionClose"
-    @complete="task.handleTaskExecutionComplete"
-  />
-
-  <!-- 组队选择界面 -->
-  <TeamSelectModal
-    :is-open="isTeamSelectOpen"
-    :world-book="activeBook"
-    :user-profile="activeBookUserProfile"
-    @close="handleTeamSelectClose"
-    @start-battle="handleTeamSelectStartBattle"
-  />
-
-  <!-- 战斗界面 -->
-  <BattleScreen
-    :is-open="isBattleScreenOpen"
-    :task-id="battleTask?.id || ''"
-    :board-id="getActiveWorldBookId()"
-    :world-book="activeBook"
-    :selected-characters="battleSelectedCharacters"
-    :user-profile="activeBookUserProfile"
-    @close="handleBattleClose"
-    @battle-victory="handleBattleVictory"
-    @battle-defeat="handleBattleDefeat"
-  />
-
-  <!-- 跑团界面 -->
-  <TRPGPanel
-    ref="trpgPanelRef"
-    :is-open="isTRPGPanelOpen"
-    :active-book="activeBook"
-    :user-name="activeBookUserName"
-    @close="isTRPGPanelOpen = false"
-  />
 
   <!-- 约定设定面板 -->
   <AppointmentModal
@@ -3612,46 +3243,9 @@ onBeforeUnmount(() => {
     @close="isAvatarFrameScreenOpen = false"
   />
 
-  <!-- 游戏厅 -->
-  <GameCenterScreen
-    v-if="isGameCenterOpen"
-    ref="gameCenterRef"
-    :coins="activeBookEconomyCoins"
-    :inventory="activeBookInventory"
-    @back="handleGameCenterBack"
-    @spin-result="handleGameCenterSpinResult"
-    @gacha-result="handleGameCenterGachaResult"
-    @pachinko-result="handleGameCenterNetResult"
-    @farm-harvest="handleGameCenterNetResult"
-    @dograce-result="handleGameCenterNetResult"
-    @kitchen-produce="handleGameCenterKitchenProduce"
-    @kitchen-consume="handleGameCenterKitchenConsume"
-    @xylophone-result="handleGameCenterSimpleResult"
-    @harmonica-result="handleGameCenterSimpleResult"
-    @match3-result="handleGameCenterSimpleResult"
-    @game-skin-buy="handleGameSkinBuy"
-  />
-
-  <!-- 七日签到 -->
-  <CheckIn7Screen
-    v-if="isCheckIn7ScreenOpen"
-    :coins="activeBookEconomyCoins"
-    @back="handleCheckIn7Back"
-    @checkin7-result="handleCheckIn7Result"
-  />
-
-  <!-- 日历签到 -->
-  <CheckInScreen
-    v-if="isCheckInScreenOpen"
-    :coins="activeBookEconomyCoins"
-    @back="handleCheckInBack"
-    @checkin-daily-result="handleCheckInDailyResult"
-  />
-
   <!-- 信箱 -->
   <MailboxScreen
     v-if="isMailboxOpen"
-    :coins="activeBookEconomyCoins"
     :characters="mailboxCharacters"
     :world-book-id="String(activeBook?.id || 'default')"
     @back="handleMailboxBack"

@@ -1,0 +1,27 @@
+{
+  "id": "checkin",
+  "name": "签到",
+  "description": "每日签到和七日连续签到系统。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "checkin",
+    "title": "签到",
+    "icon": "\ud83d\udcc5",
+    "order": 38,
+    "variant": "tone-green border-solid"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "checkin"
+  },
+  "storage": {
+    "namespace": "checkin"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

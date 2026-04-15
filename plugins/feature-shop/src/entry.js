@@ -1,19 +1,19 @@
-import TRPGScreen from './TRPGScreen.vue'
+import ShopScreen from './ShopScreen.vue'
 
-const TRPGFeatureEntry = {
-  id: 'trpg',
-  route: 'trpg',
+const ShopFeatureEntry = {
+  id: 'shop',
+  route: 'shop',
   mount() {
     return {
       type: 'route',
-      route: 'trpg',
+      route: 'shop',
     }
   },
   resolveRouteConfig(context = {}) {
     const onBack = context.onBackToStart || (() => {})
 
     return {
-      component: TRPGScreen,
+      component: ShopScreen,
       events: {
         back: onBack,
       },
@@ -24,4 +24,4 @@ const TRPGFeatureEntry = {
   },
 }
 
-export default TRPGFeatureEntry
+export default ShopFeatureEntry

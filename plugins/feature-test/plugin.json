@@ -1,0 +1,26 @@
+{
+  "id": "test",
+  "name": "测试",
+  "description": "星空与星球交互效果测试。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "starry-sky",
+    "title": "星空测试",
+    "icon": "\u2b50",
+    "order": 999
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "starry-sky"
+  },
+  "storage": {
+    "namespace": "test"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

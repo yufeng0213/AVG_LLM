@@ -1,0 +1,27 @@
+{
+  "id": "shop",
+  "name": "商店",
+  "description": "全局商店系统。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "shop",
+    "title": "商店",
+    "icon": "\ud83d\uded2",
+    "order": 36,
+    "variant": "tone-gold border-solid"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "shop"
+  },
+  "storage": {
+    "namespace": "shop"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

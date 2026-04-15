@@ -1,0 +1,23 @@
+{
+  "id": "mail",
+  "name": "信箱",
+  "description": "信箱系统，支持写信、收信、延迟回信、邮票系统。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "mail",
+    "title": "信箱",
+    "icon": "\ud83d\udcee",
+    "order": 39,
+    "variant": "tone-blue border-solid"
+  },
+  "entry": {
+    "type": "component"
+  },
+  "capabilities": [
+    "storage",
+    "worldbook"
+  ],
+  "enabledByDefault": true
+}

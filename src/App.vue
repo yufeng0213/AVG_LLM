@@ -15,9 +15,9 @@ import {
 } from './features/featurePluginRuntimeState'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { runMigration } from '../plugins/feature-dormitory/src/composables/runMigration.js'
-import GlobalMailbox from '../plugins/feature-dormitory/src/components/GlobalMailbox.vue'
-import CheckInScreen from '../plugins/feature-dormitory/src/CheckInScreen.vue'
-import CheckIn7Screen from '../plugins/feature-dormitory/src/CheckIn7Screen.vue'
+import GlobalMailbox from '../plugins/feature-mail/src/components/GlobalMailbox.vue'
+import CheckInScreen from '../plugins/feature-checkin/src/CheckInScreen.vue'
+import CheckIn7Screen from '../plugins/feature-checkin/src/CheckIn7Screen.vue'
 import AvatarFrameScreen from '../plugins/feature-dormitory/src/components/AvatarFrameScreen.vue'
 
 // PC 端设计基准分辨率（16:9 横屏比例）
@@ -210,6 +210,7 @@ const openMainStory = () => {
 
 const openShop = () => { currentScreen.value = 'shop' }
 const openTask = () => { currentScreen.value = 'task-board' }
+const openTest = () => { currentScreen.value = 'starry-sky' }
 const openCheckIn = () => { isCheckInOpen.value = true }
 const openCheckIn7 = () => { isCheckIn7Open.value = true }
 const openMailbox = () => { isMailboxOpen.value = true }
@@ -393,7 +394,7 @@ watch(activePluginScreen, (pluginScreen) => {
   <div class="app-stage" :class="[`platform-${platform}`, { 'android-portrait': isAndroidPlatform }]">
     <div
       class="app-shell"
-      :class="{ 'game-fullscreen': currentScreen === 'game' || currentScreen === 'face-to-face' }"
+      :class="{ 'game-fullscreen': currentScreen === 'game' || currentScreen === 'face-to-face' || currentScreen === 'trpg' }"
       :style="{ '--ui-scale': uiScale, ...containerStyle }"
     >
       <WorldHubScreen
@@ -418,6 +419,7 @@ watch(activePluginScreen, (pluginScreen) => {
         @open-load-save="() => currentScreen = 'load-save'"
         @open-phone="openPhone"
         @open-avatar="isAvatarSettingsOpen = true"
+        @open-test="openTest"
       />
       <StartScreen
         v-if="currentScreen === 'start'"
@@ -458,7 +460,6 @@ watch(activePluginScreen, (pluginScreen) => {
     <!-- 全局 Modal（Teleport 到 body，放在 app 外层） -->
     <GlobalMailbox
       :is-open="isMailboxOpen"
-      :coins="0"
       @close="isMailboxOpen = false"
       @mail-affection-change="() => {}"
     />

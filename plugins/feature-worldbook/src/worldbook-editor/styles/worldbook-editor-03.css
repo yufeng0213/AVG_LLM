@@ -106,3 +106,232 @@
   padding: 6px 12px !important;
   font-size: 0.85rem !important;
 }
+
+/* ========== 卡牌边框管理样式 ========== */
+
+.card-border-section {
+  margin-top: 16px !important;
+  padding: 16px !important;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan) 20%, transparent) !important;
+  border-radius: 10px !important;
+  background: color-mix(in srgb, var(--accent-cyan) 4%, transparent) !important;
+}
+
+.card-border-title {
+  margin: 0 0 12px 0 !important;
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  color: var(--accent-cyan) !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* 边框列表 */
+.card-border-list {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+.card-border-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 10px 6px 6px !important;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan) 20%, transparent) !important;
+  border-radius: 8px !important;
+  background: color-mix(in srgb, var(--foreground) 4%, transparent) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  max-width: 220px !important;
+}
+
+.card-border-item:hover {
+  background: color-mix(in srgb, var(--accent-cyan) 10%, transparent) !important;
+  border-color: color-mix(in srgb, var(--accent-cyan) 35%, transparent) !important;
+}
+
+.card-border-item.active {
+  background: color-mix(in srgb, var(--accent-cyan) 15%, transparent) !important;
+  border-color: var(--accent-cyan) !important;
+}
+
+.card-border-thumb {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  flex: 0 0 auto !important;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.card-border-thumb img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.card-border-thumb .thumb-placeholder {
+  font-size: 0.7rem !important;
+  color: var(--text-muted) !important;
+}
+
+.card-border-name {
+  font-size: 0.82rem !important;
+  color: var(--text-secondary) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.card-border-delete-btn {
+  flex: 0 0 auto !important;
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  background: color-mix(in srgb, var(--accent-magenta) 15%, transparent) !important;
+  color: var(--accent-magenta) !important;
+  font-size: 0.9rem !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+}
+
+.card-border-delete-btn:hover {
+  background: color-mix(in srgb, var(--accent-magenta) 30%, transparent) !important;
+}
+
+.card-border-actions {
+  margin-bottom: 12px !important;
+}
+
+/* 边框预览区 */
+.card-border-preview-area {
+  margin-bottom: 12px !important;
+}
+
+.card-border-preview-area .preview-label {
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  margin-bottom: 8px !important;
+}
+
+.card-border-preview-box {
+  position: relative !important;
+  width: 100% !important;
+  max-height: 500px !important;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan) 20%, transparent) !important;
+  border-radius: 10px !important;
+  background: color-mix(in srgb, var(--foreground) 4%, transparent) !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  overflow: auto !important;
+}
+
+/* 包裹层：尺寸收缩到图片实际显示大小，overlay 相对此容器定位 */
+.card-border-preview-wrap {
+  position: relative !important;
+  display: inline-block !important;
+  line-height: 0 !important;
+}
+
+.card-border-preview-img {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* 裁切矩形覆盖层 */
+.crop-rect-overlay {
+  position: absolute !important;
+  border: 2px dashed color-mix(in srgb, var(--accent-yellow) 70%, transparent) !important;
+  background: transparent !important;
+  pointer-events: none !important;
+  transition: all 0.1s ease !important;
+  box-shadow: none !important;
+}
+
+/* 立绘叠加区域灰色半透明遮罩 */
+.portrait-overlay {
+  position: absolute !important;
+  background: rgba(100, 100, 100, 0.55) !important;
+  border: 2px solid rgba(180, 180, 180, 0.7) !important;
+  pointer-events: none !important;
+  transition: all 0.1s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.portrait-overlay-label {
+  font-size: 0.72rem !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+}
+
+/* 坐标输入 */
+.card-border-coords {
+  padding-top: 12px !important;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent) !important;
+}
+
+.card-border-coords .setting-label {
+  display: block !important;
+  margin-bottom: 8px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: color-mix(in srgb, var(--foreground) 60%, transparent) !important;
+}
+
+.coord-grid {
+  gap: 8px !important;
+}
+
+.coord-field {
+  margin-bottom: 0 !important;
+}
+
+.coord-label {
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: var(--text-muted) !important;
+  margin-bottom: 4px !important;
+  display: block !important;
+  text-align: center !important;
+}
+
+.coord-input {
+  text-align: center !important;
+  padding: 8px !important;
+  min-height: 36px !important;
+}
+
+.crop-confirm-actions {
+  display: flex !important;
+  gap: 10px !important;
+  margin-top: 10px !important;
+  align-items: center !important;
+}
+
+.crop-confirm-actions .action-button {
+  padding: 6px 16px !important;
+  font-size: 0.82rem !important;
+}

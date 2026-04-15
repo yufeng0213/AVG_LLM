@@ -10,7 +10,12 @@
       "Bash(npx vite:*)",
       "Bash(npx vue-tsc:*)",
       "Bash(ls -d E:/avg_llm/data/cards/*/)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(cp E:/avg_llm/plugins/feature-dormitory/src/services/battleBackpackService.js E:/avg_llm/plugins/feature-task/src/services/battleBackpackService.js)",
+      "Bash(rm E:/avg_llm/plugins/feature-dormitory/src/services/battleBackpackService.js)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(pkill -f vite)"
     ]
   }
 }

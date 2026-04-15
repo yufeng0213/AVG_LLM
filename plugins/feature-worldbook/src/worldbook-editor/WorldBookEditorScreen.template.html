@@ -93,6 +93,164 @@
               </div>
               <p class="setting-hint">新游戏未手动覆盖时，将使用该叙事者风格。</p>
             </label>
+
+            <!-- 卡牌边框管理 -->
+            <section class="card-border-section" aria-label="卡牌边框管理">
+              <h3 class="card-border-title">卡牌边框</h3>
+
+              <!-- 当前使用的边框 -->
+              <label class="setting-field">
+                <span class="setting-label">当前使用</span>
+                <div class="select-wrapper">
+                  <select
+                    :value="activeBook?.displaySettings?.activeCardBorderId || ''"
+                    class="setting-select"
+                    :disabled="(activeBook?.displaySettings?.cardBorderList?.length || 0) === 0"
+                    @change="switchActiveCardBorder($event.target.value)"
+                  >
+                    <option value="" disabled>请先导入边框</option>
+                    <option
+                      v-for="border in activeBook?.displaySettings?.cardBorderList || []"
+                      :key="border.id"
+                      :value="border.id"
+                    >
+                      {{ border.name }}{{ border.id === (activeBook?.displaySettings?.activeCardBorderId) ? '（使用中）' : '' }}
+                    </option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </label>
+
+              <!-- 已导入的边框列表 -->
+              <div class="card-border-list" v-if="(activeBook?.displaySettings?.cardBorderList?.length || 0) > 0">
+                <div
+                  v-for="border in activeBook?.displaySettings?.cardBorderList"
+                  :key="border.id"
+                  class="card-border-item"
+                  :class="{ active: border.id === activeBook?.displaySettings?.activeCardBorderId }"
+                  @click="switchActiveCardBorder(border.id)"
+                >
+                  <div class="card-border-thumb">
+                    <img v-if="border.filePath" :src="border.filePath" :alt="border.name" loading="lazy" />
+                    <span v-else class="thumb-placeholder">无图</span>
+                  </div>
+                  <span class="card-border-name">{{ border.name }}</span>
+                  <button
+                    type="button"
+                    class="card-border-delete-btn"
+                    @click.stop="deleteCardBorder(border.id)"
+                    title="删除此边框"
+                  >×</button>
+                </div>
+              </div>
+              <p class="setting-hint" v-else>尚未导入任何边框图片。</p>
+
+              <!-- 导入按钮 -->
+              <div class="card-border-actions">
+                <button type="button" class="action-button action-outline" @click="importCardBorderImage">
+                  ＋ 导入边框图片 (PNG)
+                </button>
+              </div>
+
+              <!-- 边框预览 + 实时裁切矩形 -->
+              <div class="card-border-preview-area" v-if="activeCardBorder">
+                <p class="preview-label">边框预览 — {{ activeCardBorder.name }}</p>
+                <div class="card-border-preview-box">
+                  <div class="card-border-preview-wrap" ref="cardBorderPreviewWrap">
+                    <img
+                      :src="activeCardBorder.filePath"
+                      class="card-border-preview-img"
+                      alt="边框预览"
+                      @load="onCardBorderImageLoaded"
+                      ref="cardBorderPreviewImg"
+                    />
+                    <!-- 裁剪框虚线（坐标非空时显示） -->
+                    <div
+                      v-if="activeCardBorder.cropRect.w > 0 || activeCardBorder.cropRect.h > 0"
+                      class="crop-rect-overlay"
+                      :style="cropRectStyle"
+                    ></div>
+                    <!-- 确认后：立绘叠加区域灰色半透明遮罩 -->
+                    <div
+                      v-if="cropRectConfirmed && (activeCardBorder.cropRect.w > 0 || activeCardBorder.cropRect.h > 0)"
+                      class="portrait-overlay"
+                      :style="cropRectStyle"
+                    >
+                      <span class="portrait-overlay-label">立绘区域</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 裁切坐标输入 -->
+              <div class="card-border-coords" v-if="activeCardBorder">
+                <span class="setting-label">显示区域坐标（边框内立绘叠加位置）</span>
+                <div class="settings-grid two-column coord-grid">
+                  <label class="setting-field coord-field">
+                    <span class="coord-label">X</span>
+                    <input
+                      :value="activeCardBorder.cropRect.x"
+                      class="setting-input coord-input"
+                      type="number"
+                      inputmode="numeric"
+                      min="0"
+                      @input="updateCardBorderCoord('x', $event.target.value)"
+                    />
+                  </label>
+                  <label class="setting-field coord-field">
+                    <span class="coord-label">Y</span>
+                    <input
+                      :value="activeCardBorder.cropRect.y"
+                      class="setting-input coord-input"
+                      type="number"
+                      inputmode="numeric"
+                      min="0"
+                      @input="updateCardBorderCoord('y', $event.target.value)"
+                    />
+                  </label>
+                  <label class="setting-field coord-field">
+                    <span class="coord-label">W</span>
+                    <input
+                      :value="activeCardBorder.cropRect.w"
+                      class="setting-input coord-input"
+                      type="number"
+                      inputmode="numeric"
+                      min="0"
+                      @input="updateCardBorderCoord('w', $event.target.value)"
+                    />
+                  </label>
+                  <label class="setting-field coord-field">
+                    <span class="coord-label">H</span>
+                    <input
+                      :value="activeCardBorder.cropRect.h"
+                      class="setting-input coord-input"
+                      type="number"
+                      inputmode="numeric"
+                      min="0"
+                      @input="updateCardBorderCoord('h', $event.target.value)"
+                    />
+                  </label>
+                </div>
+                <div class="crop-confirm-actions">
+                  <button
+                    type="button"
+                    class="action-button action-strong"
+                    :disabled="activeCardBorder.cropRect.w === 0 && activeCardBorder.cropRect.h === 0"
+                    @click="confirmCropRect"
+                  >
+                    {{ cropRectConfirmed ? '已确认' : '确认坐标' }}
+                  </button>
+                  <button
+                    v-if="cropRectConfirmed"
+                    type="button"
+                    class="action-button action-outline"
+                    @click="resetCropRect"
+                  >
+                    重新调整
+                  </button>
+                </div>
+              </div>
+            </section>
           </div>
         </section>
 

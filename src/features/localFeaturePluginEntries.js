@@ -2,10 +2,16 @@ import adventureGameEntry from '../../plugins/feature-adventure-game/src/entry.j
 import cardCollectionEntry from '../../plugins/feature-card-collection/src/entry.js'
 import dormitoryEntry from '../../plugins/feature-dormitory/src/entry.js'
 import faceToFaceEntry from '../../plugins/feature-face-to-face/src/entry.js'
+import gameEntry from '../../plugins/feature-game/src/entry.js'
 import loadSaveEntry from '../../plugins/feature-load-save/src/entry.js'
 import narratorManagerEntry from '../../plugins/feature-narrator-manager/src/entry.js'
 import newGameEntry from '../../plugins/feature-new-game/src/entry.js'
 import pluginManagerEntry from '../../plugins/feature-plugin-manager/src/entry.js'
+import phoneEntry from '../../plugins/feature-phone/src/entry.js'
+import mailEntry from '../../plugins/feature-mail/src/entry.js'
+import taskEntry from '../../plugins/feature-task/src/entry.js'
+import shopEntry from '../../plugins/feature-shop/src/entry.js'
+import testEntry from '../../plugins/feature-test/src/entry.js'
 import settingsEntry from '../../plugins/feature-settings/src/entry.js'
 import worldbookEntry from '../../plugins/feature-worldbook/src/entry.js'
 import trpgEntry from '../../plugins/feature-trpg/src/entry.js'
@@ -15,6 +21,7 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   newGameEntry,
   faceToFaceEntry,
   dormitoryEntry,
+  gameEntry,
   cardCollectionEntry,
   narratorManagerEntry,
   pluginManagerEntry,
@@ -22,6 +29,11 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   worldbookEntry,
   adventureGameEntry,
   trpgEntry,
+  phoneEntry,
+  mailEntry,
+  taskEntry,
+  shopEntry,
+  testEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {

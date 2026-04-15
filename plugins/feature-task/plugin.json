@@ -1,0 +1,27 @@
+{
+  "id": "task",
+  "name": "任务",
+  "description": "任务板、任务执行与战斗系统。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "task-board",
+    "title": "任务板",
+    "icon": "\ud83d\udcdc",
+    "order": 35,
+    "variant": "tone-orange border-solid"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "task-board"
+  },
+  "storage": {
+    "namespace": "task"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}
