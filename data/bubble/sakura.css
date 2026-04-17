@@ -1,0 +1,61 @@
+/* ===== 樱花气泡 ===== */
+/* 粉白色系，适合甜美风格 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #fff0f3 0%, #fff5f9 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #ffb6c1, #ff8fab);
+  border-radius: 18px 18px 4px 18px;
+  color: #5a2e3f;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 3px 12px rgba(255, 143, 171, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.sms-bubble.user::after {
+  content: '🌸';
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #fff0f5, #fce4ec);
+  border-radius: 18px 18px 18px 4px;
+  color: #6d3a4a;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 3px 12px rgba(252, 228, 236, 0.4);
+  border: 2px solid rgba(255, 182, 193, 0.3);
+}
+
+.sms-bubble.assistant::before {
+  content: '🌷';
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #d4a0aa;
+  background: rgba(255, 255, 255, 0.6);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 182, 193, 0.4);
+}

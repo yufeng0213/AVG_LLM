@@ -1,0 +1,26 @@
+{
+  "id": "book-particle",
+  "name": "书页粒子",
+  "description": "粒子效果的魔法书，点击屏幕左右翻页。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "book",
+    "title": "魔法书",
+    "icon": "📖",
+    "order": 997
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "book"
+  },
+  "storage": {
+    "namespace": "book"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

@@ -1,0 +1,25 @@
+{
+  "id": "pronunciation",
+  "name": "发音",
+  "description": "口语发音学习，角色代入式教学，AI 生成每日课程，TTS 发音 + 录音评分。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "pronunciation",
+    "title": "发音",
+    "icon": "\ud83c\udf99\ufe0f",
+    "order": 40,
+    "variant": "tone-purple border-solid"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "pronunciation"
+  },
+  "storage": {
+    "namespace": "pronunciation"
+  },
+  "capabilities": ["storage", "worldbook"],
+  "enabledByDefault": true
+}

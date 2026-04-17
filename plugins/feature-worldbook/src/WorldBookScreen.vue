@@ -7,6 +7,7 @@ import {
   getActiveWorldBookId,
   importWorldBooks,
   loadWorldBooks,
+  loadWorldBookTitles,
   persistWorldBooks,
   setActiveWorldBookId,
 } from '../../../src/worldbook/worldBookStore'
@@ -36,7 +37,8 @@ const getBookToneClass = (book, index) => {
 }
 
 const refreshBooks = async () => {
-  worldBooks.value = await loadWorldBooks()
+  // 书架列表只加载 id、title、summary、isDefault，不加载角色/entries 等大字段
+  worldBooks.value = await loadWorldBookTitles()
 
   const storedActiveId = await getActiveWorldBookId()
   const activeExists = worldBooks.value.some((book) => book.id === storedActiveId)
@@ -62,12 +64,13 @@ const cancelNewBook = () => {
 
 const confirmNewBook = async () => {
   const title = newBookTitle.value.trim() || `新世界书 ${worldBooks.value.length + 1}`
-  const nextBook = createNewWorldBook(worldBooks.value)
+  // 加载完整数据后再新增，避免用 titles-only 数据覆盖
+  const fullBooks = await loadWorldBooks()
+  const nextBook = createNewWorldBook(fullBooks)
   nextBook.title = title
-  worldBooks.value = [...worldBooks.value, nextBook]
-  await persistWorldBooks(worldBooks.value)
-  await setActiveWorldBookId(nextBook.id)
-  activeBookId.value = nextBook.id
+  fullBooks.push(nextBook)
+  await persistWorldBooks(fullBooks)
+  await refreshBooks()
   statusMessage.value = `已新增：${title}`
   showNewBookDialog.value = false
   newBookTitle.value = ''
@@ -90,41 +93,43 @@ const cancelDelete = () => {
 
 const executeDelete = async () => {
   if (!bookToDelete.value) return
-  
-  const result = deleteWorldBook(worldBooks.value, bookToDelete.value.id)
+
+  // 删除前加载完整数据，确保 persistWorldBooks 不会覆盖其他字段
+  const fullBooks = await loadWorldBooks()
+  const result = deleteWorldBook(fullBooks, bookToDelete.value.id)
   if (result.success) {
-    worldBooks.value = result.books
-    await persistWorldBooks(worldBooks.value)
-    
-    // 如果删除的是当前激活的世界书，切换到第一本
-    if (activeBookId.value === bookToDelete.value.id) {
-      const newActiveId = worldBooks.value[0]?.id || 'default_world_book'
-      activeBookId.value = newActiveId
-      await setActiveWorldBookId(newActiveId)
-    }
-    
+    await persistWorldBooks(result.books)
+    await refreshBooks()
+
     statusMessage.value = result.message
   } else {
     statusMessage.value = result.message
   }
-  
+
   bookToDelete.value = null
   showDeleteConfirm.value = false
 }
 
-const handleExport = (book, event) => {
+const handleExport = async (book, event) => {
   event.stopPropagation()
-  const jsonStr = exportWorldBook(book)
+  // 导出需要完整数据，先加载再导出
+  const fullBooks = await loadWorldBooks()
+  const fullBook = fullBooks.find(b => b.id === book.id)
+  if (!fullBook) {
+    statusMessage.value = `导出失败：找不到世界书 ${book.title}`
+    return
+  }
+  const jsonStr = exportWorldBook(fullBook)
   const blob = new Blob([jsonStr], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${book.title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}_worldbook.json`
+  a.download = `${fullBook.title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}_worldbook.json`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
-  statusMessage.value = `已导出：${book.title}`
+  statusMessage.value = `已导出：${fullBook.title}`
 }
 
 const triggerImport = () => {
@@ -134,22 +139,38 @@ const triggerImport = () => {
 const handleFileImport = async (event) => {
   const file = event.target.files?.[0]
   if (!file) return
-  
+
   try {
-    const text = await file.text()
-    const result = importWorldBooks(text, worldBooks.value)
-    
+    // Android 兼容：优先使用 FileReader，避免 file.text() 在旧 WebView 上的问题
+    const text = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsText(file)
+    })
+
+    // 导入前加载完整数据，确保不会用 titles-only 数据覆盖
+    const fullBooks = await loadWorldBooks()
+    const result = importWorldBooks(text, fullBooks)
+
     if (result.success && result.books.length > 0) {
-      worldBooks.value = [...worldBooks.value, ...result.books]
-      await persistWorldBooks(worldBooks.value)
-      statusMessage.value = result.message
+      const allBooks = [...fullBooks, ...result.books]
+      try {
+        await persistWorldBooks(allBooks)
+        await refreshBooks()
+        statusMessage.value = result.message
+      } catch (saveError) {
+        console.warn('[WorldBook] 保存失败:', saveError)
+        statusMessage.value = `${result.message}（保存失败，数据将在下次重启后丢失）`
+      }
     } else {
       statusMessage.value = result.message
     }
   } catch (error) {
+    console.error('[WorldBook] 导入错误:', error)
     statusMessage.value = `导入失败：${error.message}`
   }
-  
+
   // 重置文件输入
   event.target.value = ''
 }

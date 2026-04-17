@@ -1,0 +1,63 @@
+/* ===== 猫咪气泡 ===== */
+/* 奶咖色系，软萌可爱 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #faf5f0 0%, #fef7f0 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #f5d5c8, #e8b4a2);
+  border-radius: 22px 22px 8px 22px;
+  color: #5a3e2b;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 3px 10px rgba(232, 180, 162, 0.35),
+              inset 0 -2px 4px rgba(0, 0, 0, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.sms-bubble.user::after {
+  content: '🐾';
+  position: absolute;
+  right: -16px;
+  top: -8px;
+  font-size: 0.75rem;
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #fdf2e9, #fae5d3);
+  border-radius: 22px 22px 22px 8px;
+  color: #6b4a32;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 3px 10px rgba(250, 229, 211, 0.4),
+              inset 0 -2px 4px rgba(0, 0, 0, 0.04);
+  border: 2px solid rgba(245, 213, 200, 0.4);
+}
+
+.sms-bubble.assistant::before {
+  content: '🐱';
+  position: absolute;
+  left: -16px;
+  top: -8px;
+  font-size: 0.75rem;
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #b09080;
+  background: rgba(255, 255, 255, 0.6);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 213, 200, 0.4);
+}

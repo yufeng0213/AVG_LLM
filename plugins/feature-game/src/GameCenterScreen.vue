@@ -245,6 +245,8 @@ watch(activeGame, (key) => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: var(--game-bg, #0a0a1a);
+  color: var(--game-text-primary, #fff);
 }
 
 /* Header */
@@ -252,9 +254,9 @@ watch(activeGame, (key) => {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  background: linear-gradient(180deg, #1a0a2e 0%, rgba(26,10,46,0.95) 100%);
+  background: var(--game-header-bg, rgba(0,0,0,0.3));
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  border-bottom: 1px solid var(--game-gold-border, rgba(255, 215, 0, 0.1));
   gap: 10px;
 }
 
@@ -264,14 +266,14 @@ watch(activeGame, (key) => {
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--game-text-primary, #fff);
   width: 40px;
   height: 40px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
-.game-center-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.game-center-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--game-text-primary, #fff); }
   .platform-android.android-portrait .game-center-back-btn {
     width: auto !important;
     height: auto !important;
@@ -293,7 +295,7 @@ watch(activeGame, (key) => {
   flex: 1;
   text-align: center;
   margin: 0;
-  color: #ffd700;
+  color: var(--game-gold, #ffd700);
   font-size: 17px;
   font-weight: 600;
   text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
@@ -303,19 +305,19 @@ watch(activeGame, (key) => {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255, 215, 0, 0.1);
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: var(--game-gold-dim, rgba(255, 215, 0, 0.1));
+  border: 1px solid var(--game-gold-border, rgba(255, 215, 0, 0.2));
   border-radius: 10px;
   padding: 6px 12px;
 }
-.game-center-coin-value { color: #ffd700; font-size: 15px; font-weight: 700; min-width: 30px; text-align: right; }
+.game-center-coin-value { color: var(--game-gold, #ffd700); font-size: 15px; font-weight: 700; min-width: 30px; text-align: right; }
 
 /* Content */
 .game-center-content {
   flex: 1;
   overflow-y: auto;
   padding: 12px 16px;
-  background: linear-gradient(180deg, rgba(15,26,46,0.95) 0%, #0a1628 100%);
+  background: var(--game-bg, #0a0a1a);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -330,7 +332,7 @@ watch(activeGame, (key) => {
 .category-title {
   font-size: 14px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--game-text-secondary, rgba(255, 255, 255, 0.6));
   padding-left: 4px;
 }
 
@@ -345,8 +347,8 @@ watch(activeGame, (key) => {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  background: linear-gradient(135deg, rgba(255,215,0,0.05), rgba(255,140,0,0.03));
-  border: 1px solid rgba(255, 215, 0, 0.12);
+  background: var(--game-card-bg, rgba(255,215,0,0.05));
+  border: 1px solid var(--game-gold-border, rgba(255, 215, 0, 0.12));
   border-radius: 14px;
   padding: 16px 8px 12px;
   cursor: pointer;
@@ -355,7 +357,7 @@ watch(activeGame, (key) => {
   justify-content: center;
 }
 .game-card:hover:not(.card-disabled) {
-  border-color: rgba(255, 215, 0, 0.35);
+  border-color: var(--game-gold-border, rgba(255, 215, 0, 0.35));
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
   transform: translateY(-2px);
 }
@@ -374,16 +376,16 @@ watch(activeGame, (key) => {
 .game-card-name {
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--game-text-primary, rgba(255, 255, 255, 0.8));
   text-align: center;
 }
 
 .game-card-fee {
   font-size: 11px;
   font-weight: 600;
-  color: #ffd700;
+  color: var(--game-gold, #ffd700);
 }
 .card-disabled .game-card-fee {
-  color: #ff6b6b;
+  color: var(--game-red, #ff6b6b);
 }
 </style>

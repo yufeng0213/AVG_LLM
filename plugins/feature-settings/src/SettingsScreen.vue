@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import ApiSettingsPanel from '../../../src/settings/ApiSettingsPanel.vue'
 import AudioSettingsPanel from '../../../src/settings/AudioSettingsPanel.vue'
 import DisplaySettingsPanel from '../../../src/settings/DisplaySettingsPanel.vue'
+import FontSettingsPanel from '../../../src/settings/FontSettingsPanel.vue'
 import ThemeSettingsPanel from '../../../src/settings/ThemeSettingsPanel.vue'
 import { isAndroid, isPortrait } from '../../../src/utils/platform.js'
 
@@ -15,6 +16,7 @@ const tabItems = [
   { id: 'audio', label: '音量', note: 'Master / BGM / SE' },
   { id: 'display', label: '画面', note: '分辨率 / 特效 / 文本速度' },
   { id: 'theme', label: '主题', note: '预设主题 / JSON 注入切换' },
+  { id: 'font', label: '字体', note: '导入字体 / 字体分配' },
   { id: 'api', label: 'API设置', note: '模型接口 / 鉴权 / 配置管理' },
 ]
 
@@ -24,6 +26,7 @@ const panelMap = {
   audio: AudioSettingsPanel,
   display: DisplaySettingsPanel,
   theme: ThemeSettingsPanel,
+  font: FontSettingsPanel,
   api: ApiSettingsPanel,
 }
 

@@ -1,0 +1,28 @@
+{
+  "id": "reader",
+  "name": "书城",
+  "description": "基于世界书角色的小说阅读器，章节体叙事。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "reader",
+    "title": "书城",
+    "icon": "\ud83d\udcdc",
+    "order": 39,
+    "variant": "tone-blue border-solid"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "reader"
+  },
+  "storage": {
+    "namespace": "reader"
+  },
+  "capabilities": [
+    "storage",
+    "worldbook"
+  ],
+  "enabledByDefault": true
+}

@@ -1,12 +1,13 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { isNative } from '../../../../src/utils/platform.js'
 import { useAvatarFrame } from '../composables/useAvatarFrame'
 import { useAvatar } from '../composables/useAvatar'
 import AvatarCropModal from './AvatarCropModal.vue'
 
 const emit = defineEmits(['close'])
-const { frames, activeFrameId, activeFrame, selectFrame, importFrame, deleteFrames } = useAvatarFrame()
-const { avatars, activeAvatarDataUrl, selectAvatar, importAvatar, deleteAvatars } = useAvatar()
+const { frames, activeFrameId, activeFrame, selectFrame, importFrame, deleteFrames, loadFrameDataUrl } = useAvatarFrame()
+const { avatars, activeAvatarId, activeAvatarDataUrl, selectAvatar, importAvatar, deleteAvatars } = useAvatar()
 
 const activeTab = ref('frame') // 'frame' | 'avatar'
 
@@ -20,6 +21,103 @@ const avatarSelectedForDeletion = ref(new Set())
 const isCropModalOpen = ref(false)
 const cropModalRef = ref(null)
 const pendingAvatarFile = ref(null)
+
+// 原生环境：异步加载图片 dataUrl
+// 为每个头像/头像框创建独立的 ref 存储 dataUrl
+const avatarDataUrls = ref({})
+const frameDataUrls = ref({})
+
+async function loadAvatarUrl(avatar) {
+  if (avatar.dataUrl) return avatar.dataUrl
+  if (avatarDataUrls.value[avatar.id]) return avatarDataUrls.value[avatar.id]
+
+  if (isNative()) {
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+    try {
+      const path = `avg_llm_avatars/${avatar.id}.png`
+      const result = await Filesystem.readFile({
+        path,
+        directory: Directory.Documents,
+        encoding: Encoding.Base64,
+      })
+      const url = `data:image/png;base64,${result.data}`
+      avatarDataUrls.value[avatar.id] = url
+      return url
+    } catch (e) {
+      console.warn('[AvatarFrameScreen] Failed to load avatar:', e)
+      return null
+    }
+  }
+  return null
+}
+
+async function loadFrameUrl(frame) {
+  if (frame.dataUrl) return frame.dataUrl
+  if (frameDataUrls.value[frame.id]) return frameDataUrls.value[frame.id]
+
+  if (isNative()) {
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+    try {
+      const ext = frame.fileType || 'png'
+      const path = `avg_llm_frames/${frame.id}.${ext}`
+      const result = await Filesystem.readFile({
+        path,
+        directory: Directory.Documents,
+        encoding: Encoding.Base64,
+      })
+      const mime = ext === 'gif' ? 'image/gif' : 'image/png'
+      const url = `data:${mime};base64,${result.data}`
+      frameDataUrls.value[frame.id] = url
+      return url
+    } catch (e) {
+      console.warn('[AvatarFrameScreen] Failed to load frame:', e)
+      return null
+    }
+  }
+  return null
+}
+
+// 获取头像的显示 URL
+function getAvatarDisplayUrl(avatar) {
+  return avatar?.dataUrl || avatarDataUrls.value[avatar?.id] || null
+}
+
+// 获取头像框的显示 URL
+function getFrameDisplayUrl(frame) {
+  return frame?.dataUrl || frameDataUrls.value[frame?.id] || null
+}
+
+// 组件挂载时：原生环境下预加载所有图片
+onMounted(async () => {
+  if (!isNative()) return
+
+  // 预加载所有头像的图片（用于列表显示）
+  const loadPromises = []
+  for (const avatar of avatars.value) {
+    if (!avatar.dataUrl) {
+      loadPromises.push(loadAvatarUrl(avatar))
+    }
+  }
+
+  // 预加载所有头像框的图片（用于列表显示）
+  for (const frame of frames.value) {
+    if (!frame.dataUrl) {
+      loadPromises.push(loadFrameUrl(frame))
+    }
+  }
+
+  // 等待所有图片加载完成
+  await Promise.all(loadPromises)
+
+  // 通过 activeAvatarId 找到当前激活头像并设置 dataUrl
+  if (activeAvatarId.value) {
+    const activeAvatar = avatars.value.find(a => a.id === activeAvatarId.value)
+    if (activeAvatar) {
+      const url = await loadAvatarUrl(activeAvatar)
+      if (url) activeAvatarDataUrl.value = url
+    }
+  }
+})
 
 // ── 头像框操作 ──
 
@@ -96,35 +194,80 @@ const handleAvatarFileImport = async (event) => {
 const handleCropConfirm = async (croppedDataUrl) => {
   isCropModalOpen.value = false
   try {
-    // 将裁剪后的 data URL 转为 Blob 再包装成 File-like 对象传给 importAvatar
-    // 但 importAvatar 期望接收 File 对象，我们需要修改接收方式
-    // 最简单的方式：直接添加头像，不走 importAvatar 的文件读取逻辑
     const base64 = croppedDataUrl.split(',')[1] || ''
     if (!base64) {
       alert('裁剪结果无效')
       return
     }
-    const avatar = {
-      id: `avatar_${Date.now()}`,
-      name: pendingAvatarFile.value?.name.replace(/\.png$/i, '') || '头像',
-      dataUrl: croppedDataUrl,
-      createdAt: Date.now(),
-    }
-    avatars.value.push(avatar)
-    activeAvatarDataUrl.value = avatar.dataUrl
-    // 持久化
-    try {
-      localStorage.setItem('dormitory:avatars', JSON.stringify({
-        avatars: avatars.value,
-        activeAvatarDataUrl: activeAvatarDataUrl.value,
-      }))
-    } catch (e) {
-      console.error('[Avatar] Failed to persist:', e)
+
+    if (isNative()) {
+      // 原生环境：保存到文件系统
+      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+      const avatarId = `avatar_${Date.now()}`
+
+      // 确保目录存在
+      try {
+        await Filesystem.mkdir({
+          path: 'avg_llm_avatars',
+          directory: Directory.Documents,
+          recursive: true,
+        })
+      } catch {
+        // 目录可能已存在
+      }
+
+      // 保存文件
+      await Filesystem.writeFile({
+        path: `avg_llm_avatars/${avatarId}.png`,
+        data: base64,
+        directory: Directory.Documents,
+        encoding: Encoding.Base64,
+      })
+
+      const avatar = {
+        id: avatarId,
+        name: pendingAvatarFile.value?.name.replace(/\.png$/i, '') || '头像',
+        dataUrl: null,
+        createdAt: Date.now(),
+      }
+      avatars.value.push(avatar)
+      activeAvatarId.value = avatarId
+      activeAvatarDataUrl.value = croppedDataUrl
+      persistAvatarsNative()
+    } else {
+      // Web / Electron 环境
+      const avatar = {
+        id: `avatar_${Date.now()}`,
+        name: pendingAvatarFile.value?.name.replace(/\.png$/i, '') || '头像',
+        dataUrl: croppedDataUrl,
+        createdAt: Date.now(),
+      }
+      avatars.value.push(avatar)
+      activeAvatarId.value = avatar.id
+      activeAvatarDataUrl.value = avatar.dataUrl
+      persistAvatarsNative()
     }
   } catch (err) {
     alert(err.message || '导入失败，请重试')
   }
   pendingAvatarFile.value = null
+}
+
+function persistAvatarsNative() {
+  try {
+    const dataToSave = {
+      avatars: avatars.value.map(a => ({
+        id: a.id,
+        name: a.name,
+        createdAt: a.createdAt,
+        ...(isNative() ? {} : { dataUrl: a.dataUrl }),
+      })),
+      activeAvatarDataUrl: isNative() ? null : activeAvatarDataUrl.value,
+    }
+    localStorage.setItem('dormitory:avatars', JSON.stringify(dataToSave))
+  } catch (e) {
+    console.error('[Avatar] Failed to persist:', e)
+  }
 }
 
 const handleCropClose = () => {
@@ -163,6 +306,10 @@ function isFrameActive(frame) {
 }
 
 function isAvatarActive(avatar) {
+  // 优先通过 ID 匹配（原生环境），回退到 dataUrl 比较（Web 环境）
+  if (activeAvatarId.value) {
+    return activeTab.value === 'avatar' && avatar.id === activeAvatarId.value
+  }
   return activeTab.value === 'avatar' && activeAvatarDataUrl.value === avatar.dataUrl
 }
 </script>
@@ -225,8 +372,8 @@ function isAvatarActive(avatar) {
               <span v-else class="avatar-frame-preview-empty">无头像</span>
               <!-- 头像框层 -->
               <img
-                v-if="activeFrame?.dataUrl"
-                :src="activeFrame.dataUrl"
+                v-if="activeFrame?.dataUrl || getFrameDisplayUrl(activeFrame)"
+                :src="activeFrame.dataUrl || getFrameDisplayUrl(activeFrame)"
                 class="avatar-frame-preview-frame"
                 alt="头像框预览"
               />
@@ -298,7 +445,7 @@ function isAvatarActive(avatar) {
                   <polyline points="2 6 5 9 10 3"/>
                 </svg>
               </span>
-              <img :src="frame.dataUrl" class="avatar-frame-item-img" :alt="frame.name" />
+              <img :src="frame.dataUrl || getFrameDisplayUrl(frame)" class="avatar-frame-item-img" :alt="frame.name" />
               <span class="avatar-frame-item-name">{{ frame.name }}</span>
             </button>
           </div>
@@ -339,7 +486,7 @@ function isAvatarActive(avatar) {
                   <polyline points="2 6 5 9 10 3"/>
                 </svg>
               </span>
-              <img :src="avatarItem.dataUrl" class="avatar-frame-item-img" :alt="avatarItem.name" />
+              <img :src="avatarItem.dataUrl || getAvatarDisplayUrl(avatarItem)" class="avatar-frame-item-img" :alt="avatarItem.name" />
               <span class="avatar-frame-item-name">{{ avatarItem.name }}</span>
             </button>
           </div>

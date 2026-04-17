@@ -1,0 +1,22 @@
+{
+  "id": "back-storage",
+  "name": "背包存储",
+  "description": "全局背包与经济存储系统。统一各 feature 的库存、经济、邮箱等持久化能力。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "back-storage",
+    "title": "背包存储",
+    "icon": "📦",
+    "order": 0
+  },
+  "entry": {
+    "type": "service",
+    "module": "./src/entry.js"
+  },
+  "action": {
+    "type": "noop"
+  },
+  "enabledByDefault": true
+}

@@ -8,6 +8,8 @@ import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStor
 import { getEnabledNarratorProfiles, loadNarratorProfiles } from '../narrator/narratorStore'
 import { kvStorage } from '../storage/index.js'
 
+defineOptions({ name: 'WorldHubScreen' })
+
 const emit = defineEmits([
   'back',
   'open-new-game',
@@ -31,6 +33,8 @@ const emit = defineEmits([
   'open-phone',
   'open-avatar',
   'open-test',
+  'open-rose',
+  'open-book',
 ])
 
 const { username, avatar: globalAvatar, avatarFrame: globalAvatarFrame, economy } = useGlobalUser()
@@ -212,6 +216,14 @@ onMounted(async () => {
         <button type="button" class="hub-scatter-btn" @click="emit('open-test')">
           <span class="hub-btn-icon">🌌</span>
           <span class="hub-btn-label">星空</span>
+        </button>
+        <button type="button" class="hub-scatter-btn" @click="emit('open-rose')">
+          <span class="hub-btn-icon">🌹</span>
+          <span class="hub-btn-label">玫瑰</span>
+        </button>
+        <button type="button" class="hub-scatter-btn" @click="emit('open-book')">
+          <span class="hub-btn-icon">📜</span>
+          <span class="hub-btn-label">魔法书</span>
         </button>
       </div>
     </section>

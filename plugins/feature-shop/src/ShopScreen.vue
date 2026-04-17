@@ -250,8 +250,8 @@ const pullIndicatorText = computed(() => {
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  background: var(--background, #0a0a0a);
-  color: var(--foreground, #ffffff);
+  background: var(--shop-bg, #0a0a1a);
+  color: var(--shop-text-primary, #ffffff);
   overflow: hidden;
 }
 
@@ -260,7 +260,7 @@ const pullIndicatorText = computed(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(15,26,46,0.95) 0%, #0a1628 100%);
+  background: var(--shop-bg, #0a1628);
 }
 
 .pull-indicator {
@@ -273,7 +273,7 @@ const pullIndicatorText = computed(() => {
 
 .pull-text {
   font-size: 0.78rem;
-  color: rgba(255, 215, 0, 0.6);
+  color: var(--shop-gold-dim, rgba(255, 215, 0, 0.6));
 }
 
 /* Header */
@@ -282,9 +282,9 @@ const pullIndicatorText = computed(() => {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: linear-gradient(180deg, #1a0a2e 0%, rgba(26,10,46,0.95) 100%);
+  background: var(--shop-header-bg, rgba(0,0,0,0.3));
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  border-bottom: 1px solid var(--shop-gold-border, rgba(255, 215, 0, 0.1));
 }
 
 .shop-back-btn {
@@ -293,7 +293,7 @@ const pullIndicatorText = computed(() => {
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--shop-text-secondary, rgba(255, 255, 255, 0.7));
   width: 40px;
   height: 40px;
   border-radius: 8px;
@@ -301,13 +301,13 @@ const pullIndicatorText = computed(() => {
   transition: all 0.2s;
   flex-shrink: 0;
 }
-.shop-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.shop-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--shop-text-primary, #fff); }
 
 .shop-title {
   margin: 0;
   font-size: 17px;
   font-weight: 600;
-  color: #ffd700;
+  color: var(--shop-gold, #ffd700);
   text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
   flex: 1;
   text-align: center;
@@ -323,11 +323,11 @@ const pullIndicatorText = computed(() => {
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 215, 0, 0.1);
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: var(--shop-gold-dim, rgba(255, 215, 0, 0.1));
+  border: 1px solid var(--shop-gold-border, rgba(255, 215, 0, 0.2));
   font-size: 0.82rem;
   font-weight: 600;
-  color: #ffd700;
+  color: var(--shop-gold, #ffd700);
 }
 
 /* Categories */
@@ -336,8 +336,8 @@ const pullIndicatorText = computed(() => {
   gap: 8px;
   padding: 12px 16px;
   overflow-x: auto;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(26, 10, 46, 0.95);
+  border-bottom: 1px solid var(--shop-border, rgba(255, 255, 255, 0.06));
+  background: var(--shop-header-bg, rgba(26, 10, 46, 0.95));
 }
 
 .shop-cat-btn {
@@ -355,14 +355,14 @@ const pullIndicatorText = computed(() => {
 }
 
 .shop-cat-btn.active {
-  background: rgba(255, 215, 0, 0.1);
-  border-color: rgba(255, 215, 0, 0.3);
-  color: #ffd700;
+  background: var(--shop-gold-dim, rgba(255, 215, 0, 0.1));
+  border-color: var(--shop-gold-border, rgba(255, 215, 0, 0.3));
+  color: var(--shop-gold, #ffd700);
 }
 
 .shop-cat-btn:hover:not(.active) {
   background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  color: var(--shop-text-primary, #fff);
 }
 
 /* Toolbar */
@@ -371,16 +371,16 @@ const pullIndicatorText = computed(() => {
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  background: linear-gradient(180deg, rgba(15,26,46,0.95) 0%, #0a1628 100%);
+  background: var(--shop-bg, #0a1628);
 }
 
 .shop-refresh-btn {
   appearance: none;
-  border: 1px solid rgba(255, 215, 0, 0.25);
+  border: 1px solid var(--shop-gold-border, rgba(255, 215, 0, 0.25));
   border-radius: 10px;
   padding: 8px 16px;
-  background: rgba(255, 215, 0, 0.08);
-  color: #ffd700;
+  background: var(--shop-gold-dim, rgba(255, 215, 0, 0.08));
+  color: var(--shop-gold, #ffd700);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -398,7 +398,7 @@ const pullIndicatorText = computed(() => {
 
 .shop-feedback {
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--shop-text-secondary, rgba(255, 255, 255, 0.55));
 }
 
 /* Grid */
@@ -422,8 +422,8 @@ const pullIndicatorText = computed(() => {
   gap: 6px;
   padding: 16px 12px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 215, 0, 0.12);
-  background: linear-gradient(135deg, rgba(255,215,0,0.05), rgba(255,140,0,0.03));
+  border: 1px solid var(--shop-gold-border, rgba(255, 215, 0, 0.12));
+  background: var(--shop-card-bg, rgba(255,215,0,0.05));
   text-align: center;
   height: 220px;
 }
@@ -435,7 +435,7 @@ const pullIndicatorText = computed(() => {
 .shop-item-name {
   font-size: 0.9rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--shop-text-primary, rgba(255, 255, 255, 0.9));
 }
 
 .shop-book-tag {
@@ -448,7 +448,7 @@ const pullIndicatorText = computed(() => {
 
 .shop-item-desc {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--shop-text-secondary, rgba(255, 255, 255, 0.4));
   line-height: 1.4;
 }
 
@@ -462,16 +462,16 @@ const pullIndicatorText = computed(() => {
 .shop-price {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #ffd700;
+  color: var(--shop-gold, #ffd700);
 }
 
 .shop-buy-btn {
   appearance: none;
-  border: 1px solid rgba(255, 215, 0, 0.25);
+  border: 1px solid var(--shop-gold-border, rgba(255, 215, 0, 0.25));
   border-radius: 8px;
   padding: 4px 14px;
-  background: rgba(255, 215, 0, 0.1);
-  color: #ffd700;
+  background: var(--shop-gold-dim, rgba(255, 215, 0, 0.1));
+  color: var(--shop-gold, #ffd700);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -491,14 +491,14 @@ const pullIndicatorText = computed(() => {
 .shop-empty {
   text-align: center;
   padding: 40px 20px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--shop-text-secondary, rgba(255, 255, 255, 0.35));
   font-size: 0.9rem;
 }
 
 .shop-empty-hint {
   margin-top: 6px;
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--shop-text-secondary, rgba(255, 255, 255, 0.2));
 }
 
 /* Toast */
@@ -510,9 +510,9 @@ const pullIndicatorText = computed(() => {
   z-index: 10001;
   padding: 10px 20px;
   border-radius: 12px;
-  background: rgba(26, 10, 46, 0.92);
-  border: 1px solid rgba(255, 215, 0, 0.2);
-  color: #ffd700;
+  background: var(--shop-header-bg, rgba(26, 10, 46, 0.92));
+  border: 1px solid var(--shop-gold-border, rgba(255, 215, 0, 0.2));
+  color: var(--shop-gold, #ffd700);
   font-size: 0.82rem;
   max-width: 80vw;
   text-align: center;

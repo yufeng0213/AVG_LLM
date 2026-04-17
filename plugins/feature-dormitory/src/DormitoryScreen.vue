@@ -11,17 +11,14 @@ import { generatePhoneSmsReply, generateDormChatReply } from '../../../src/llm'
 import { getValidatedActiveConfig, callChatCompletion } from '../../../src/llm/llmService.core.js'
 import { isAndroid } from '../../../src/utils/platform.js'
 import RedPacket from './components/RedPacket.vue'
-import MailboxScreen from '../../feature-mail/src/components/MailboxScreen.vue'
 import { createRedPacket, addRedPacket, recordSentRedPacket } from './redPacketService.js'
 import { useDormGift } from './composables/useDormGift.js'
 import { useDormDiary } from './composables/useDormDiary.js'
 import { useDormRedPacket } from './composables/useDormRedPacket.js'
 import { useDormAppointment } from './composables/useDormAppointment.js'
 import { useDormSubScene } from './composables/useDormSubScene.js'
-import AvatarFrameScreen from './components/AvatarFrameScreen.vue'
-import { useAvatarFrame } from './composables/useAvatarFrame.js'
-import { useAvatar } from './composables/useAvatar.js'
 import { useGlobalUser } from '../../../src/composables/useGlobalUser.js'
+import { useBackStorage } from '../../../plugins/feature-back-storage/src/composables/useBackStorage.js'
 
 // 子组件导入
 import NestSelectorView from './components/NestSelectorView.vue'
@@ -40,7 +37,6 @@ const DEFAULT_PORTRAIT_PATH = './data/lihui/default.png'
 const DORM_RUNTIME_STORAGE_KEY = 'avg_llm_dormitory_runtime_v1'
 const DORM_DRIFT_BOTTLE_POOL_STORAGE_KEY = 'avg_llm_dormitory_drift_bottle_pool_v1'
 const DORM_WORLD_BOOK_ECONOMY_STORAGE_KEY = 'avg_llm_dormitory_world_book_economy_v1'
-const DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY = 'avg_llm_dormitory_world_book_inventory_v1'
 const DORM_AFFECTION_MIN = 0
 const DORM_AFFECTION_MAX = 100
 const DORM_ENERGY_MIN = 0
@@ -110,7 +106,6 @@ const isLoadingBooks = ref(false)
 const isLoadingCharacters = ref(false)
 const dormRuntimeMap = ref({})
 const worldBookEconomyMap = ref({})
-const worldBookInventoryMap = ref({})
 const actionFeedback = ref('')
 const activeDormEvent = ref(null)
 const selectedSubSceneId = ref('')
@@ -195,61 +190,6 @@ const stopDragResizeTouch = () => {
 const driftBottleDraft = ref('')
 const isDormDriftPicking = ref(false)
 const driftFollowupPendingEntryId = ref('')
-
-// 信箱
-const isMailboxOpen = ref(false)
-const mailboxUnreadCount = ref(0)
-
-function refreshMailboxUnread() {
-  try {
-    const bookId = String(activeBook.value?.id || '').trim() || 'default'
-    const all = JSON.parse(localStorage.getItem('avg_llm_dormitory_mailbox_v1') || '{}')
-    const bookState = all[bookId]
-    if (bookState?.inbox) {
-      mailboxUnreadCount.value = bookState.inbox.filter(m => !m.read).length
-    } else {
-      mailboxUnreadCount.value = 0
-    }
-  } catch (e) {
-    mailboxUnreadCount.value = 0
-  }
-}
-
-const handleLaunchMailbox = () => {
-  refreshMailboxUnread()
-  isMailboxOpen.value = true
-}
-
-const handleMailboxBack = () => {
-  isMailboxOpen.value = false
-  setTimeout(refreshMailboxUnread, 300)
-}
-
-const handleMailAffectionChange = () => {
-  // 蝴蝶结邮票效果：好感度 +1
-  const bookId = String(activeBook.value?.id || '').trim()
-  if (!bookId) return
-  // TODO: 根据角色 ID 增加好感度
-}
-
-// 信箱角色列表（含好感度）
-const mailboxCharacters = computed(() => {
-  const bookId = String(activeBook.value?.id || '').trim()
-  return characterCards.value.map(card => {
-    const key = `${bookId}::${card.id}`
-    const state = dormRuntimeMap.value[key]
-    const affection = state?.affection ?? 50
-    const stageId = state?.relationshipStage || 'stranger'
-    const stage = DORM_RELATIONSHIP_STAGE_LIBRARY.find(s => s.id === stageId)
-    return {
-      id: card.id,
-      label: card.label,
-      raw: card.raw,
-      affection,
-      stageLabel: stage?.label || '陌生',
-    }
-  })
-})
 
 const portraitImageCache = ref(new Map())
 let characterPreloadToken = 0
@@ -1119,74 +1059,8 @@ const updateWorldBookEconomy = (bookId, updater) => {
   return updated
 }
 
-// 世界书级别背包系统
-const readWorldBookInventory = (bookId) => {
-  if (typeof window === 'undefined' || !window.localStorage) return []
-  try {
-    const raw = window.localStorage.getItem(DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY)
-    if (!raw) return []
-    const allInventories = JSON.parse(raw)
-    const bookInventory = allInventories[bookId]
-    return Array.isArray(bookInventory) ? bookInventory : []
-  } catch {
-    return []
-  }
-}
-
-const persistWorldBookInventory = (bookId, items) => {
-  if (typeof window === 'undefined' || !window.localStorage) return
-  try {
-    const raw = window.localStorage.getItem(DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY)
-    const allInventories = raw ? JSON.parse(raw) : {}
-    allInventories[bookId] = Array.isArray(items) ? items : []
-    window.localStorage.setItem(DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY, JSON.stringify(allInventories))
-  } catch {
-    // ignore
-  }
-}
-
-const addToWorldBookInventory = (bookId, item) => {
-  if (!bookId || !item) return
-  const current = readWorldBookInventory(bookId)
-  const newItem = {
-    ...item,
-    purchasedAt: Date.now(),
-    quantity: (item.quantity || 0) + 1,
-  }
-  // 检查是否已存在相同物品
-  const existingIndex = current.findIndex(i => i.id === item.id)
-  if (existingIndex >= 0) {
-    current[existingIndex].quantity = (current[existingIndex].quantity || 0) + 1
-  } else {
-    current.push(newItem)
-  }
-  persistWorldBookInventory(bookId, current)
-  // 更新响应式 ref 以触发 UI 更新
-  worldBookInventoryMap.value[bookId] = [...current]
-  worldBookInventoryMap.value = { ...worldBookInventoryMap.value }
-  return current
-}
-
-const removeFromWorldBookInventory = (bookId, itemId) => {
-  if (!bookId || !itemId) return
-  const current = readWorldBookInventory(bookId)
-  const filtered = current.filter(i => i.id !== itemId)
-  persistWorldBookInventory(bookId, filtered)
-  // 更新响应式 ref 以触发 UI 更新
-  worldBookInventoryMap.value[bookId] = [...filtered]
-  worldBookInventoryMap.value = { ...worldBookInventoryMap.value }
-  return filtered
-}
-
-// 当前世界书背包物品 computed
-const activeBookInventory = computed(() => {
-  const bookId = String(activeBook.value?.id || '').trim()
-  if (!bookId) return []
-  // 优先从响应式 ref 读取
-  const fromRef = worldBookInventoryMap.value[bookId]
-  if (fromRef && Array.isArray(fromRef)) return fromRef
-  return readWorldBookInventory(bookId)
-})
+// 当前背包物品（全局统一库存）
+const activeBookInventory = computed(() => backStorage.inventory.value || [])
 
 const isAndroidPlatform = computed(() => isAndroid())
 
@@ -1201,6 +1075,7 @@ const activeBook = computed(() => {
 // 有效用户身份（全局用户 + 当前世界书覆写）
 // 内联 useEffectiveUser 逻辑：从全局用户和世界书数据合成
 const globalUserForEffective = useGlobalUser()
+const backStorage = useBackStorage()
 const effectiveUser = computed(() => {
   const bookId = String(activeBook.value?.id || '').trim()
   if (!bookId) {
@@ -1794,9 +1669,6 @@ const gift = useDormGift({
   appendJournal,
   appendDormChatMessage,
   normalizeDormChatHistory,
-  readWorldBookInventory,
-  persistWorldBookInventory,
-  worldBookInventoryMap,
 })
 
 const diary = useDormDiary({
@@ -2506,27 +2378,19 @@ const handleSendDormChat = async () => {
       // 处理角色送礼物给玩家
       if (result.giftToPlayer && typeof result.giftToPlayer === 'object') {
         const giftItem = result.giftToPlayer
-        const bookId = String(activeBook.value?.id || '').trim()
+        const inventory = backStorage.inventory.value || []
 
-        // 在世界书背包里查找匹配的物品
-        const inventory = bookId ? worldBookInventoryMap.value[bookId] || [] : []
+        // 在全局背包里查找匹配的物品（按名称）
         const matchedItem = inventory.find(inv =>
           inv.name === giftItem.itemName || inv.name?.includes(giftItem.itemName) || giftItem.itemName.includes(inv.name || '')
         )
 
         if (matchedItem) {
           // 增加物品数量
-          const updatedInventory = [...inventory]
-          const idx = updatedInventory.indexOf(matchedItem)
-          updatedInventory[idx] = {
+          backStorage.addItemToInventory({
             ...matchedItem,
-            quantity: (matchedItem.quantity || 0) + (giftItem.count || 1),
-          }
-          if (bookId) {
-            worldBookInventoryMap.value[bookId] = [...updatedInventory]
-            worldBookInventoryMap.value = { ...worldBookInventoryMap.value }
-            persistWorldBookInventory(bookId, updatedInventory)
-          }
+            quantity: giftItem.count || 1,
+          })
 
           // 生成礼物卡片消息
           const giftMsg = {
@@ -2663,10 +2527,6 @@ const handleGiftAction = () => {
 }
 
 const isPolaroidScreenOpen = ref(false)
-
-const { activeFrame } = useAvatarFrame()
-const { activeAvatarDataUrl } = useAvatar()
-const isAvatarFrameScreenOpen = ref(false)
 
 const handleOutingAction = () => {
   if (!ensureActionTimeAvailable('邀请出去玩')) return
@@ -3041,10 +2901,6 @@ onMounted(async () => {
     if (economyRaw) {
       worldBookEconomyMap.value = JSON.parse(economyRaw)
     }
-    const inventoryRaw = window.localStorage.getItem(DORM_WORLD_BOOK_INVENTORY_STORAGE_KEY)
-    if (inventoryRaw) {
-      worldBookInventoryMap.value = JSON.parse(inventoryRaw)
-    }
   } catch {
     // ignore
   }
@@ -3115,7 +2971,6 @@ onBeforeUnmount(() => {
         @back="handleNestSelectorBack"
         @enter-dorm="handleEnterDormFromNest"
         @open-face-to-face="handleOpenFaceToFace"
-        @open-avatar="isAvatarFrameScreenOpen = true"
       />
 
       <!-- 角色选择视图 -->
@@ -3235,21 +3090,6 @@ onBeforeUnmount(() => {
     @close="appointment.closeAppointmentModal"
     @create="(payload) => appointment.createAppointment(payload.scheduledAt)"
     @cancel="appointment.cancelAppointment"
-  />
-
-  <!-- 头像框选择界面 -->
-  <AvatarFrameScreen
-    v-if="isAvatarFrameScreenOpen"
-    @close="isAvatarFrameScreenOpen = false"
-  />
-
-  <!-- 信箱 -->
-  <MailboxScreen
-    v-if="isMailboxOpen"
-    :characters="mailboxCharacters"
-    :world-book-id="String(activeBook?.id || 'default')"
-    @back="handleMailboxBack"
-    @mail-affection-change="handleMailAffectionChange"
   />
 </template>
 

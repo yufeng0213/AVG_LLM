@@ -7,11 +7,8 @@
 import './NestSelectorView.css'
 import { computed, onMounted, ref } from 'vue'
 import { getActiveWorldBookId, loadWorldBooks } from '../../../../src/worldbook/worldBookStore.js'
-import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
-import { useAvatar } from '../composables/useAvatar.js'
-import { useAvatarFrame } from '../composables/useAvatarFrame.js'
 
-const emit = defineEmits(['back', 'enter-dorm', 'open-face-to-face', 'open-avatar'])
+const emit = defineEmits(['back', 'enter-dorm', 'open-face-to-face'])
 
 const worldBooks = ref([])
 const activeCardIndex = ref(0)
@@ -22,14 +19,6 @@ let touchStartX = 0
 let touchStartY = 0
 let touchDeltaX = 0
 const CARD_SWIPE_THRESHOLD = 50
-
-const { username, economy } = useGlobalUser()
-const { activeAvatarDataUrl } = useAvatar()
-const { activeFrame } = useAvatarFrame()
-
-const handleAvatarClick = () => {
-  emit('open-avatar')
-}
 
 const loadBooks = async () => {
   isLoadingBooks.value = true
@@ -112,27 +101,10 @@ const handleTouchEnd = () => {
   touchDeltaX = 0
 }
 
-const goPrev = () => {
-  if (worldBooks.value.length > 1) {
-    activeCardIndex.value = prevCardIndex.value
-  }
-}
-
-const goNext = () => {
-  if (worldBooks.value.length > 1) {
-    activeCardIndex.value = nextCardIndex.value
-  }
-}
-
-const handleEnterDorm = () => {
-  if (activeWorldBook.value) {
-    emit('enter-dorm', activeWorldBook.value)
-  }
-}
-
 const handleCardClick = (index) => {
   if (index === activeCardIndex.value) {
-    handleEnterDorm()
+    // 点击当前卡片 → 进入角色选择
+    emit('enter-dorm', activeWorldBook.value)
   } else {
     activeCardIndex.value = index
   }
@@ -141,44 +113,8 @@ const handleCardClick = (index) => {
 
 <template>
   <div class="nest-selector-view">
-    <!-- 顶部返回 + 标题 -->
-    <header class="nest-header">
-      <button type="button" class="nest-back-btn" @click="emit('back')">
-        <span class="nest-back-icon">‹</span>
-        <span class="nest-back-label">返回</span>
-      </button>
-      <div class="nest-header-info">
-        <h2 class="nest-title">🛏️ 选择寝室</h2>
-        <p class="nest-subtitle">滑动切换世界书寝室</p>
-      </div>
-      <div class="nest-header-economy">
-        <span class="nest-economy-item">
-          <span class="nest-economy-icon">💰</span>
-          <span class="nest-economy-value">{{ economy.coins }}</span>
-        </span>
-        <span class="nest-economy-item">
-          <span class="nest-economy-icon">💎</span>
-          <span class="nest-economy-value">{{ economy.crystals }}</span>
-        </span>
-        <button type="button" class="nest-avatar-btn" @click="handleAvatarClick">
-          <div class="nest-avatar-wrap">
-            <img
-              v-if="activeAvatarDataUrl"
-              :src="activeAvatarDataUrl"
-              alt="头像"
-              class="nest-avatar-img"
-            />
-            <span v-else class="nest-avatar-placeholder">👤</span>
-            <img
-              v-if="activeFrame?.dataUrl"
-              :src="activeFrame.dataUrl"
-              alt=""
-              class="nest-avatar-frame-overlay"
-            />
-          </div>
-        </button>
-      </div>
-    </header>
+    <!-- 顶部占位 -->
+    <header class="nest-header"></header>
 
     <!-- 世界书卡片轮播 -->
     <section
@@ -207,14 +143,12 @@ const handleCardClick = (index) => {
             :class="getCardClass(index)"
             @click="handleCardClick(index)"
           >
-            <div class="nest-card-inner">
-              <span class="nest-card-index">{{ index + 1 }} / {{ worldBooks.length }}</span>
-              <h3 class="nest-card-title">{{ book.title }}</h3>
-              <p class="nest-card-summary">{{ book.summary || '暂无简介' }}</p>
-              <div class="nest-card-meta">
-                <span v-if="book.isDefault" class="nest-meta-chip">默认</span>
-                <span class="nest-meta-chip">点击进入</span>
-              </div>
+            <span class="nest-card-index">{{ index + 1 }} / {{ worldBooks.length }}</span>
+            <h3 class="nest-card-title">{{ book.title }}</h3>
+            <p class="nest-card-summary">{{ book.summary || '暂无简介' }}</p>
+            <div class="nest-card-meta">
+              <span v-if="book.isDefault" class="nest-meta-chip">默认</span>
+              <span class="nest-meta-chip">点击进入</span>
             </div>
           </button>
         </div>
@@ -229,25 +163,11 @@ const handleCardClick = (index) => {
             @click="activeCardIndex = index"
           />
         </div>
-
-        <!-- 左右箭头 -->
-        <button type="button" class="nest-carousel-arrow nest-arrow-left" @click="goPrev">‹</button>
-        <button type="button" class="nest-carousel-arrow nest-arrow-right" @click="goNext">›</button>
       </template>
     </section>
 
     <!-- 底部按钮区域 -->
     <footer class="nest-footer">
-      <button
-        v-if="activeWorldBook"
-        type="button"
-        class="nest-enter-btn"
-        @click="handleEnterDorm"
-      >
-        <span class="nest-enter-icon">🚪</span>
-        <span class="nest-enter-label">进入《{{ activeWorldBook.title }}》寝室</span>
-      </button>
-
       <!-- 面对面临时入口 -->
       <button type="button" class="nest-face-to-face-btn" @click="emit('open-face-to-face')">
         <span class="nest-f2f-icon">🎥</span>

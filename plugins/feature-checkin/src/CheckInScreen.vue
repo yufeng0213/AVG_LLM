@@ -265,7 +265,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(180deg, #1a0a2e 0%, #0f1a2e 50%, #0a1628 100%);
+  background: var(--checkin-bg, #0a1628);
   z-index: 10000;
   display: flex;
   flex-direction: column;
@@ -277,9 +277,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--checkin-header-bg, rgba(0, 0, 0, 0.4));
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  border-bottom: 1px solid var(--checkin-gold-border, rgba(255, 215, 0, 0.1));
   gap: 10px;
 }
 
@@ -289,20 +289,20 @@ onMounted(() => {
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.7));
   width: 40px;
   height: 40px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
-.checkin-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.checkin-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--checkin-text-primary, #fff); }
 
 .checkin-title {
   flex: 1;
   text-align: center;
   margin: 0;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   font-size: 17px;
   font-weight: 600;
   text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
@@ -312,12 +312,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255, 215, 0, 0.1);
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: var(--checkin-gold-dim, rgba(255, 215, 0, 0.1));
+  border: 1px solid var(--checkin-gold-border, rgba(255, 215, 0, 0.2));
   border-radius: 10px;
   padding: 6px 12px;
 }
-.checkin-coin-value { color: #ffd700; font-size: 15px; font-weight: 700; min-width: 30px; text-align: right; }
+.checkin-coin-value { color: var(--checkin-gold, #ffd700); font-size: 15px; font-weight: 700; min-width: 30px; text-align: right; }
 
 /* Month Nav */
 .month-nav {
@@ -326,16 +326,16 @@ onMounted(() => {
   justify-content: center;
   padding: 10px 16px;
   gap: 16px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--checkin-header-bg, rgba(0, 0, 0, 0.2));
 }
 
 .month-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
+  background: var(--checkin-card-bg, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--checkin-border, rgba(255, 255, 255, 0.1));
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.7));
   width: 36px;
   height: 36px;
   border-radius: 8px;
@@ -343,10 +343,10 @@ onMounted(() => {
   font-size: 16px;
   transition: all 0.2s;
 }
-.month-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.month-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--checkin-text-primary, #fff); }
 
 .month-label {
-  color: #fff;
+  color: var(--checkin-text-primary, #fff);
   font-size: 16px;
   font-weight: 700;
   min-width: 120px;
@@ -359,13 +359,13 @@ onMounted(() => {
   grid-template-columns: repeat(7, 1fr);
   gap: 3px;
   padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--checkin-header-bg, rgba(0, 0, 0, 0.15));
 }
 
 .cal-weekday {
   text-align: center;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.4));
   font-weight: 600;
   padding: 4px 0;
 }
@@ -377,8 +377,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--checkin-card-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--checkin-border, rgba(255, 255, 255, 0.06));
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
@@ -386,7 +386,7 @@ onMounted(() => {
 }
 .cal-day:not(.cal-padding):not(.cal-future):hover {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 215, 0, 0.3);
+  border-color: var(--checkin-gold-border, rgba(255, 215, 0, 0.3));
 }
 
 .cal-padding {
@@ -396,7 +396,7 @@ onMounted(() => {
 }
 
 .cal-today {
-  border-color: #ffd700 !important;
+  border-color: var(--checkin-gold, #ffd700) !important;
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
@@ -411,25 +411,25 @@ onMounted(() => {
 }
 
 .cal-selected {
-  border-color: #60a5fa !important;
+  border-color: var(--checkin-blue, #60a5fa) !important;
   background: rgba(96, 165, 250, 0.15);
 }
 
 .cal-day-num {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--checkin-text-primary, rgba(255, 255, 255, 0.7));
   font-weight: 600;
 }
 
 .cal-check {
   font-size: 12px;
-  color: #22c55e;
+  color: var(--checkin-green, #22c55e);
   font-weight: 700;
 }
 
 .cal-today-dot {
   font-size: 10px;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   animation: pulse-glow 1s ease infinite;
 }
 
@@ -441,7 +441,7 @@ onMounted(() => {
 /* Stats Bar */
 .stats-bar {
   padding: 10px 16px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--checkin-header-bg, rgba(0, 0, 0, 0.2));
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -455,27 +455,27 @@ onMounted(() => {
 
 .stat-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.5));
 }
 
 .stat-value {
   font-size: 12px;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   font-weight: 600;
 }
 
 .bonus-progress {
   position: relative;
   height: 16px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--checkin-card-bg, rgba(255, 255, 255, 0.05));
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--checkin-border, rgba(255, 255, 255, 0.1));
 }
 
 .bonus-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  background: linear-gradient(90deg, var(--checkin-gold, #ffd700), var(--checkin-orange, #ff8c00));
   border-radius: 8px;
   transition: width 0.5s ease;
 }
@@ -486,16 +486,16 @@ onMounted(() => {
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 9px;
-  color: #fff;
+  color: var(--checkin-text-primary, #fff);
   font-weight: 700;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .claim-bonus-btn {
   align-self: center;
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  background: linear-gradient(135deg, var(--checkin-gold, #ffd700), var(--checkin-orange, #ff8c00));
   border: none;
-  color: #1a0a2e;
+  color: var(--checkin-bg, #1a0a2e);
   font-size: 13px;
   font-weight: 700;
   padding: 6px 16px;
@@ -508,7 +508,7 @@ onMounted(() => {
 .claim-claimed {
   align-self: center;
   font-size: 12px;
-  color: #22c55e;
+  color: var(--checkin-green, #22c55e);
   font-weight: 600;
 }
 
@@ -525,7 +525,7 @@ onMounted(() => {
 
 .detail-label {
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.6));
   font-weight: 600;
 }
 
@@ -538,19 +538,19 @@ onMounted(() => {
 
 .detail-checked {
   font-size: 14px;
-  color: #22c55e;
+  color: var(--checkin-green, #22c55e);
   font-weight: 700;
 }
 
 .detail-today {
   font-size: 14px;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   font-weight: 600;
 }
 
 .detail-past {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.3));
 }
 
 .detail-rewards {
@@ -563,21 +563,21 @@ onMounted(() => {
 
 .detail-coin {
   font-size: 13px;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   font-weight: 700;
 }
 
 .detail-item {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--checkin-text-primary, rgba(255, 255, 255, 0.7));
 }
 
 /* Sign In Button */
 .sign-in-btn {
   margin-top: 8px;
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  background: linear-gradient(135deg, var(--checkin-gold, #ffd700), var(--checkin-orange, #ff8c00));
   border: none;
-  color: #1a0a2e;
+  color: var(--checkin-bg, #1a0a2e);
   font-size: 18px;
   font-weight: 800;
   padding: 12px 40px;
@@ -602,8 +602,8 @@ onMounted(() => {
 }
 
 .sign-in-done {
-  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
-  color: #fff !important;
+  background: linear-gradient(135deg, var(--checkin-green, #22c55e), #16a34a) !important;
+  color: var(--checkin-text-primary, #fff) !important;
   box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3) !important;
 }
 
@@ -623,7 +623,7 @@ onMounted(() => {
 
 .reward-card {
   background: linear-gradient(135deg, #1a1a2e, #16213e);
-  border: 2px solid rgba(255, 215, 0, 0.3);
+  border: 2px solid var(--checkin-gold-border, rgba(255, 215, 0, 0.3));
   border-radius: 20px;
   padding: 30px 36px;
   text-align: center;
@@ -645,14 +645,14 @@ onMounted(() => {
 .reward-coin {
   font-size: 36px;
   font-weight: 900;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
   margin-bottom: 8px;
 }
 
 .reward-label {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.6));
   margin-bottom: 12px;
 }
 
@@ -678,7 +678,7 @@ onMounted(() => {
 
 .reward-item-name {
   font-size: 13px;
-  color: #fff;
+  color: var(--checkin-text-primary, #fff);
   font-weight: 600;
 }
 

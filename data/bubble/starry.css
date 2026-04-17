@@ -1,0 +1,68 @@
+/* ===== 星空气泡 ===== */
+/* 深蓝紫渐变，梦幻科幻风格 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #0a0e27 0%, #1a1040 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 20px 20px 6px 20px;
+  color: #e8e0f0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4),
+              0 0 20px rgba(118, 75, 162, 0.2);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+.sms-bubble.user::after {
+  content: '✧';
+  position: absolute;
+  right: -14px;
+  top: -8px;
+  font-size: 0.9rem;
+  color: #a78bfa;
+  text-shadow: 0 0 8px rgba(167, 139, 250, 0.8);
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  border-radius: 20px 20px 20px 6px;
+  color: #c4b5fd;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 4px 15px rgba(49, 46, 129, 0.4),
+              0 0 15px rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.sms-bubble.assistant::before {
+  content: '⋆';
+  position: absolute;
+  left: -14px;
+  top: -8px;
+  font-size: 0.9rem;
+  color: #818cf8;
+  text-shadow: 0 0 8px rgba(129, 140, 248, 0.8);
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #8b85a8;
+  background: rgba(30, 27, 75, 0.6);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  letter-spacing: 0.5px;
+}

@@ -36,13 +36,25 @@ export const kvStorage = {
     }
     
     if (isNative()) {
-      const { value } = await Preferences.get({ key: fullKey })
-      if (!value) return null
       try {
-        return JSON.parse(value)
-      } catch {
-        // 兼容旧数据：如果不是有效的 JSON，返回原始字符串
-        return value
+        const { value } = await Preferences.get({ key: fullKey })
+        if (!value) return null
+        try {
+          return JSON.parse(value)
+        } catch {
+          // 兼容旧数据：如果不是有效的 JSON，返回原始字符串
+          return value
+        }
+      } catch (error) {
+        // SharedPreferences 读取失败，回退到 localStorage
+        console.warn('[kvStorage] Native storage get failed, falling back to localStorage:', error.message)
+        const localValue = localStorage.getItem(fullKey)
+        if (!localValue) return null
+        try {
+          return JSON.parse(localValue)
+        } catch {
+          return localValue
+        }
       }
     }
     
@@ -71,7 +83,13 @@ export const kvStorage = {
     }
     
     if (isNative()) {
-      await Preferences.set({ key: fullKey, value: serialized })
+      try {
+        await Preferences.set({ key: fullKey, value: serialized })
+      } catch (error) {
+        // Android SharedPreferences 可能有大小限制，回退到 localStorage
+        console.warn('[kvStorage] Native storage set failed, falling back to localStorage:', error.message)
+        localStorage.setItem(fullKey, serialized)
+      }
       return
     }
     

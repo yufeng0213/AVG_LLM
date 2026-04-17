@@ -5,6 +5,7 @@
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { kvStorage } from '../../../../src/storage/index.js'
+import { getPhoneWallpaperCache, setPhoneWallpaperCache } from './composables/usePhoneData.js'
 
 const emit = defineEmits(['open-app', 'close'])
 
@@ -27,7 +28,7 @@ const dateStr = computed(() => {
 const calendarDay = computed(() => now.value.getDate())
 const calendarMonth = computed(() => now.value.getMonth())
 
-const phoneWallpaperUrl = ref(null)
+const phoneWallpaperUrl = ref(getPhoneWallpaperCache())
 
 const homeBackground = computed(() => {
   if (phoneWallpaperUrl.value) {
@@ -42,12 +43,18 @@ const homeBackground = computed(() => {
 
 onMounted(async () => {
   timer = setInterval(() => { now.value = new Date() }, 30000)
+  // 已有内存缓存则直接显示，后台异步刷新
+  if (getPhoneWallpaperCache()) return
+
   const wpId = await kvStorage.get('phone_wallpaper_photo_id')
   if (wpId) {
     const photos = await kvStorage.get('phone_photos')
     if (photos) {
       const photo = photos.find(p => p.id === wpId)
-      if (photo) phoneWallpaperUrl.value = photo.dataUrl
+      if (photo) {
+        setPhoneWallpaperCache(photo.dataUrl)
+        phoneWallpaperUrl.value = photo.dataUrl
+      }
     }
   }
 })
@@ -70,6 +77,9 @@ const apps = [
   { id: 'calendar', name: '日历', icon: '📅', color: 'linear-gradient(135deg, #fff, #f0f0f0)', isCalendar: true },
   { id: 'brick', name: '打砖块', icon: '🏓', color: 'linear-gradient(135deg, #ff6b6b, #ee5a24)' },
   { id: 'klotski', name: '华容道', icon: '🧩', color: 'linear-gradient(135deg, #5856d6, #af52de)' },
+  { id: 'quiz', name: '陪学', icon: '📖', color: 'linear-gradient(135deg, #667eea, #764ba2)' },
+  { id: 'reader', name: '书城', icon: '📜', color: 'linear-gradient(135deg, #f5af19, #f12711)' },
+  { id: 'pronunciation', name: '发音', icon: '🎙️', color: 'linear-gradient(135deg, #f093fb, #f5576c)' },
 ]
 
 // Dock 栏

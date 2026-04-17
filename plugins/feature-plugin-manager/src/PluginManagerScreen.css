@@ -489,7 +489,7 @@
   margin: 0;
   padding: 10px 12px 12px;
   border-top: 2px dashed color-mix(in srgb, var(--accent-magenta) 60%, transparent);
-  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  font-family: var(--font-mono, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace);
   font-size: 0.72rem;
   line-height: 1.4;
   color: var(--accent-cyan);
@@ -518,7 +518,7 @@
   border: 2px solid var(--accent-cyan);
   border-radius: 12px;
   padding: 10px 12px;
-  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  font-family: var(--font-mono, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace);
   font-size: 0.73rem;
   line-height: 1.45;
   color: var(--foreground);

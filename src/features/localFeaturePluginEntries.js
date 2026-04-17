@@ -11,12 +11,16 @@ import phoneEntry from '../../plugins/feature-phone/src/entry.js'
 import mailEntry from '../../plugins/feature-mail/src/entry.js'
 import taskEntry from '../../plugins/feature-task/src/entry.js'
 import shopEntry from '../../plugins/feature-shop/src/entry.js'
+import backStorageEntry from '../../plugins/feature-back-storage/src/entry.js'
 import testEntry from '../../plugins/feature-test/src/entry.js'
+import roseParticleEntry from '../../plugins/feature-rose-particle/src/entry.js'
+import bookParticleEntry from '../../plugins/feature-book-particle/src/entry.js'
 import settingsEntry from '../../plugins/feature-settings/src/entry.js'
 import worldbookEntry from '../../plugins/feature-worldbook/src/entry.js'
 import trpgEntry from '../../plugins/feature-trpg/src/entry.js'
 
 const LOCAL_FEATURE_PLUGIN_ENTRIES = [
+  backStorageEntry,
   loadSaveEntry,
   newGameEntry,
   faceToFaceEntry,
@@ -34,6 +38,8 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   taskEntry,
   shopEntry,
   testEntry,
+  roseParticleEntry,
+  bookParticleEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {

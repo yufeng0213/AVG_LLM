@@ -5,6 +5,102 @@
    ============================================ */
 
 :root {
+  /* 手机层 — 跟随系统主题 */
+  --phone-bg: var(--background, #000);
+  --phone-bg-secondary: color-mix(in srgb, var(--background, #1c1c1e) 85%, transparent);
+  --phone-header-bg: var(--phone-bg-secondary);
+  --phone-text-primary: var(--foreground, #fff);
+  --phone-text-secondary: rgba(255, 255, 255, 0.5);
+  --phone-card-bg: rgba(255, 255, 255, 0.06);
+  --phone-border: rgba(255, 255, 255, 0.1);
+  --phone-overlay: rgba(0, 0, 0, 0.85);
+  --phone-gradient-start: var(--background, #1a1a2e);
+  --phone-gradient-end: var(--muted, #533483);
+
+  /* 手机语义色（独立于主题，保持 iOS 风格） */
+  --phone-accent-blue: #0a84ff;
+  --phone-accent-red: #ff3b30;
+  --phone-accent-green: #34c759;
+  --phone-accent-orange: #ff9500;
+
+  /* 游戏厅层 — 跟随系统主题 */
+  --game-bg: var(--background, #0a0a1a);
+  --game-text-primary: var(--foreground, #fff);
+  --game-text-secondary: rgba(255, 255, 255, 0.5);
+  --game-header-bg: rgba(0, 0, 0, 0.3);
+  --game-card-bg: rgba(255, 255, 255, 0.06);
+  --game-border: rgba(255, 255, 255, 0.1);
+  --game-gold: var(--accent-yellow, #ffd700);
+  --game-gold-dim: rgba(255, 215, 0, 0.1);
+  --game-gold-border: rgba(255, 215, 0, 0.2);
+  --game-gradient-start: var(--accent-cyan, #667eea);
+  --game-gradient-end: var(--accent-purple, #764ba2);
+  --game-green: #22c55e;
+  --game-red: #ff6b6b;
+  --game-orange: #ff8c00;
+
+  /* 任务板层 — 跟随系统主题 */
+  --task-bg: var(--background, #0a0a1a);
+  --task-text-primary: var(--foreground, #fff);
+  --task-text-secondary: rgba(255, 255, 255, 0.5);
+  --task-header-bg: rgba(0, 0, 0, 0.3);
+  --task-card-bg: rgba(255, 255, 255, 0.06);
+  --task-border: rgba(255, 255, 255, 0.1);
+  --task-gold: var(--accent-yellow, #ffd700);
+  --task-gold-dim: rgba(255, 215, 0, 0.1);
+  --task-gold-border: rgba(255, 215, 0, 0.2);
+  --task-green: #22c55e;
+  --task-red: #d94040;
+  --task-blue: #3b82f6;
+  --task-orange: #ff8c00;
+
+  /* 商店层 — 跟随系统主题 */
+  --shop-bg: var(--background, #0a0a1a);
+  --shop-text-primary: var(--foreground, #fff);
+  --shop-text-secondary: rgba(255, 255, 255, 0.5);
+  --shop-header-bg: rgba(0, 0, 0, 0.3);
+  --shop-card-bg: rgba(255, 255, 255, 0.06);
+  --shop-border: rgba(255, 255, 255, 0.1);
+  --shop-gold: var(--accent-yellow, #ffd700);
+  --shop-gold-dim: rgba(255, 215, 0, 0.1);
+  --shop-gold-border: rgba(255, 215, 0, 0.2);
+  --shop-orange: #ff8c00;
+
+  /* 签到层 — 跟随系统主题 */
+  --checkin-bg: var(--background, #0a0a1a);
+  --checkin-text-primary: var(--foreground, #fff);
+  --checkin-text-secondary: rgba(255, 255, 255, 0.5);
+  --checkin-header-bg: rgba(0, 0, 0, 0.3);
+  --checkin-card-bg: rgba(255, 255, 255, 0.06);
+  --checkin-border: rgba(255, 255, 255, 0.1);
+  --checkin-gold: var(--accent-yellow, #ffd700);
+  --checkin-gold-dim: rgba(255, 215, 0, 0.1);
+  --checkin-gold-border: rgba(255, 215, 0, 0.2);
+  --checkin-green: #22c55e;
+  --checkin-orange: #ff8c00;
+  --checkin-blue: #60a5fa;
+
+  /* 阅读器层 — 跟随系统主题 */
+  --reader-bg: var(--background, #0f0f1a);
+  --reader-text: var(--foreground, #c8c8d0);
+  --reader-header-bg: rgba(0, 0, 0, 0.2);
+  --reader-footer-bg: rgba(0, 0, 0, 0.3);
+  --reader-panel-bg: rgba(255, 255, 255, 0.04);
+  --reader-border: rgba(255, 255, 255, 0.08);
+  --reader-secondary: #8b9dc3;
+  --reader-strong: var(--foreground, #fff);
+  --reader-accent-start: var(--accent-cyan, #667eea);
+  --reader-accent-end: var(--accent-purple, #764ba2);
+
+  /* 测验层 — 跟随系统主题 */
+  --quiz-bg: var(--background, #0a0a1a);
+  --quiz-text-primary: var(--foreground, #fff);
+  --quiz-text-secondary: #8b9dc3;
+  --quiz-gradient-start: var(--accent-cyan, #667eea);
+  --quiz-gradient-end: var(--accent-purple, #764ba2);
+  --quiz-card-bg: rgba(255, 255, 255, 0.06);
+  --quiz-border: rgba(255, 255, 255, 0.1);
+
   /* 启动屏幕 */
   --launch-screen-border: none;
   --launch-screen-radius: 0;

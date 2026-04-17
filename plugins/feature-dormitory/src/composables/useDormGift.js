@@ -16,13 +16,11 @@
  * @param {Function} deps.appendJournal - 添加日记条目的函数
  * @param {Function} deps.appendDormChatMessage - 添加聊天消息的函数
  * @param {Function} deps.normalizeDormChatHistory - 规范化聊天历史的函数
- * @param {Function} deps.readWorldBookInventory - 读取背包数据
- * @param {Function} deps.persistWorldBookInventory - 保存背包数据
- * @param {import('vue').Ref} deps.worldBookInventoryMap - 背包映射 ref
  */
 
 import { ref } from 'vue'
 import { generateDormItemGiftReply } from '../../../../src/llm'
+import { useBackStorage } from '../../../feature-back-storage/src/composables/useBackStorage.js'
 
 const DORM_AFFECTION_MIN = 0
 const DORM_AFFECTION_MAX = 100
@@ -131,20 +129,9 @@ export function useDormGift(deps) {
       const { replyText, journalText, mood, affectionDelta } = result.reply
 
       // 从背包中移除物品（减少数量）
-      const bookId = String(deps.activeBook.value?.id || '').trim()
-      if (bookId && item.id) {
-        const currentInventory = deps.readWorldBookInventory(bookId)
-        const updatedInventory = currentInventory
-          .map((invItem) => {
-            if (invItem.id === item.id) {
-              return { ...invItem, quantity: Math.max(0, (invItem.quantity || 1) - 1) }
-            }
-            return invItem
-          })
-          .filter((invItem) => (invItem.quantity || 0) > 0)
-        deps.persistWorldBookInventory(bookId, updatedInventory)
-        deps.worldBookInventoryMap.value[bookId] = [...updatedInventory]
-        deps.worldBookInventoryMap.value = { ...deps.worldBookInventoryMap.value }
+      if (item.id) {
+        const backStorage = useBackStorage()
+        backStorage.removeFromInventory(item.id, 1)
       }
 
       // 更新寝室状态：好感度、日记

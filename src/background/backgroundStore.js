@@ -5,6 +5,7 @@
 
 import { ref, computed } from 'vue'
 import { kvStorage } from '../storage/index.js'
+import { isNative } from '../utils/platform.js'
 
 // 背景文件夹路径
 export const backgroundFolderPath = ref(null)
@@ -24,6 +25,7 @@ const backgroundCache = new Map()
 // 默认背景路径
 const DEFAULT_BACKGROUND = null
 const MOBILE_BACKGROUND_STORAGE_KEY = 'mobile_background_assets'
+const BACKGROUND_DIR = 'avg_llm_backgrounds'
 
 /**
  * 检查是否在 Electron 环境中
@@ -87,12 +89,16 @@ const saveMobileBackgrounds = async () => {
     const files = backgroundList.value
       .map((item, index) => normalizeBackgroundEntry(item, index))
       .filter(Boolean)
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        path: item.path,
-        label: item.label,
-      }))
+      .map((item) => {
+        // 原生环境：不保存 dataUrl，只保存文件 ID 和名称
+        const isDataUrl = isDataImageUrl(item.path)
+        return {
+          id: item.id,
+          name: item.name,
+          path: isNative() && isDataUrl ? `file:${item.id}` : item.path,
+          label: item.label,
+        }
+      })
 
     await kvStorage.set(MOBILE_BACKGROUND_STORAGE_KEY, {
       path: String(backgroundFolderPath.value || '移动端背景导入'),
@@ -101,6 +107,49 @@ const saveMobileBackgrounds = async () => {
     })
   } catch (error) {
     console.warn('保存移动端背景列表失败:', error)
+  }
+}
+
+/**
+ * 从文件系统读取背景图片为 dataUrl（原生环境）
+ */
+const loadBackgroundAsDataUrl = async (bgEntry) => {
+  if (!isNative()) return null
+
+  try {
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+
+    // 尝试读取图片文件（支持 png/jpg/webp 等常见格式）
+    const extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp']
+    for (const ext of extensions) {
+      try {
+        const path = `${BACKGROUND_DIR}/${bgEntry.id}.${ext}`
+        const result = await Filesystem.readFile({
+          path,
+          directory: Directory.Documents,
+          encoding: Encoding.Base64,
+        })
+        // 根据扩展名判断 MIME 类型
+        const mimeMap = {
+          png: 'image/png',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          webp: 'image/webp',
+          gif: 'image/gif',
+          bmp: 'image/bmp',
+        }
+        const mime = mimeMap[ext] || 'image/png'
+        return `data:${mime};base64,${result.data}`
+      } catch {
+        // 尝试下一个扩展名
+        continue
+      }
+    }
+    console.warn(`[Background] 无法找到背景文件: ${bgEntry.id}`)
+    return null
+  } catch (error) {
+    console.warn('[Background] 从文件系统读取背景失败:', error)
+    return null
   }
 }
 
@@ -147,20 +196,75 @@ export const loadBackgroundFiles = async (files, sourceLabel = '移动端背景�
   const idCounter = new Map()
   const loadedFiles = []
 
-  for (const file of imageFiles) {
-    const name = String(file?.name || `背景_${loadedFiles.length + 1}.png`)
-    const dataUrl = await readFileAsDataUrl(file)
-    const baseId = generateBackgroundId(name)
-    const seenCount = idCounter.get(baseId) || 0
-    idCounter.set(baseId, seenCount + 1)
-    const id = seenCount === 0 ? baseId : `${baseId}_${seenCount + 1}`
+  if (isNative()) {
+    // 原生环境：保存到文件系统
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
 
-    loadedFiles.push({
-      id,
-      name,
-      path: dataUrl,
-      label: generateBackgroundLabel(name),
-    })
+    // 确保目录存在
+    try {
+      await Filesystem.mkdir({
+        path: BACKGROUND_DIR,
+        directory: Directory.Documents,
+        recursive: true,
+      })
+    } catch {
+      // 目录可能已存在
+    }
+
+    for (const file of imageFiles) {
+      const name = String(file?.name || `背景_${loadedFiles.length + 1}.png`)
+      const baseId = generateBackgroundId(name)
+      const seenCount = idCounter.get(baseId) || 0
+      idCounter.set(baseId, seenCount + 1)
+      const id = seenCount === 0 ? baseId : `${baseId}_${seenCount + 1}`
+
+      // 读取为 base64 并保存到文件系统
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = () => reject(reader.error || new Error('读取文件失败'))
+        reader.readAsDataURL(file)
+      })
+
+      const base64 = dataUrl.split(',')[1] || ''
+      const ext = name.split('.').pop().toLowerCase() || 'png'
+
+      try {
+        await Filesystem.writeFile({
+          path: `${BACKGROUND_DIR}/${id}.${ext}`,
+          data: base64,
+          directory: Directory.Documents,
+          encoding: Encoding.Base64,
+        })
+      } catch (err) {
+        console.warn(`[Background] 保存文件 ${id}.${ext} 失败:`, err)
+        continue
+      }
+
+      loadedFiles.push({
+        id,
+        name,
+        path: `file:${id}`, // 原生环境：path 只是文件标识，实际图片从文件系统读取
+        label: generateBackgroundLabel(name),
+      })
+    }
+  } else {
+    // Web / Electron 环境：保留原有 dataUrl 方式
+    for (const file of imageFiles) {
+      const name = String(file?.name || `背景_${loadedFiles.length + 1}.png`)
+      const dataUrl = await readFileAsDataUrl(file)
+      const baseId = generateBackgroundId(name)
+      const seenCount = idCounter.get(baseId) || 0
+      idCounter.set(baseId, seenCount + 1)
+      const id = seenCount === 0 ? baseId : `${baseId}_${seenCount + 1}`
+
+      loadedFiles.push({
+        id,
+        name,
+        path: dataUrl,
+        label: generateBackgroundLabel(name),
+      })
+    }
   }
 
   backgroundFolderPath.value = String(sourceLabel || '移动端背景导入')
@@ -219,7 +323,7 @@ export const loadBackgroundFolder = async (folderPath = null) => {
     console.log('正在扫描背景文件夹...', folderPath || '(使用默认目录)')
     const result = await window.avgLLM.background.scanFolder(folderPath)
     console.log('扫描结果:', result)
-    
+
     if (result.success) {
       backgroundFolderPath.value = result.path
       backgroundList.value = result.files.map(file => ({
@@ -228,13 +332,13 @@ export const loadBackgroundFolder = async (folderPath = null) => {
         path: file.path,
         label: generateBackgroundLabel(file.name),
       }))
-      
+
       console.log(`已加载 ${backgroundList.value.length} 个背景图片:`, backgroundList.value.map(bg => bg.name).join(', '))
-      
+
       // 加载成功后自动加载默认背景
       await loadDefaultBackground()
     }
-    
+
     return result
   } catch (error) {
     console.error('加载背景文件夹失败:', error)
@@ -267,17 +371,30 @@ export const switchBackground = async (scene) => {
   }
 
   // 检查缓存
-  if (backgroundCache.has(backgroundFile.path)) {
-    currentBackgroundUrl.value = backgroundCache.get(backgroundFile.path)
+  if (backgroundCache.has(backgroundFile.id || backgroundFile.path)) {
+    currentBackgroundUrl.value = backgroundCache.get(backgroundFile.id || backgroundFile.path)
     currentScene.value = scene
     return { success: true }
   }
 
   if (isHttpImageUrl(backgroundFile.path)) {
-    backgroundCache.set(backgroundFile.path, backgroundFile.path)
+    backgroundCache.set(backgroundFile.id || backgroundFile.path, backgroundFile.path)
     currentBackgroundUrl.value = backgroundFile.path
     currentScene.value = scene
     return { success: true }
+  }
+
+  // 原生环境：从文件系统读取
+  if (isNative() && backgroundFile.path.startsWith('file:')) {
+    const url = await loadBackgroundAsDataUrl(backgroundFile)
+    if (url) {
+      backgroundCache.set(backgroundFile.id, url)
+      currentBackgroundUrl.value = url
+      currentScene.value = scene
+      return { success: true }
+    }
+    await loadDefaultBackground()
+    return { success: false, error: '读取背景失败' }
   }
 
   // 读取图片
@@ -285,7 +402,7 @@ export const switchBackground = async (scene) => {
     const result = await readBackgroundImage(backgroundFile.path)
     if (result.success) {
       const url = `data:${result.mimeType};base64,${result.base64}`
-      backgroundCache.set(backgroundFile.path, url)
+      backgroundCache.set(backgroundFile.id || backgroundFile.path, url)
       currentBackgroundUrl.value = url
       currentScene.value = scene
       return { success: true }
@@ -310,61 +427,72 @@ const loadDefaultBackground = async () => {
     currentBackgroundUrl.value = DEFAULT_BACKGROUND
     return
   }
-  
+
   // 查找名为 default 的背景（按多种方式匹配）
   let defaultFile = null
-  
+
   // 1. 按文件名精确匹配（default.png, default.jpg 等）
   defaultFile = backgroundList.value.find(bg => {
     const nameWithoutExt = bg.name.replace(/\.[^.]+$/, '').toLowerCase()
     return nameWithoutExt === 'default'
   })
-  
+
   // 2. 按 ID 匹配（bg_default）
   if (!defaultFile) {
     defaultFile = backgroundList.value.find(bg => bg.id === 'bg_default')
   }
-  
+
   // 3. 按文件名包含 default
   if (!defaultFile) {
     defaultFile = backgroundList.value.find(bg =>
       bg.name.toLowerCase().includes('default')
     )
   }
-  
+
   // 4. 按 ID 包含 default
   if (!defaultFile) {
     defaultFile = backgroundList.value.find(bg =>
       bg.id.includes('default')
     )
   }
-  
+
   if (!defaultFile) {
     console.log('未找到默认背景文件，可用背景:', backgroundList.value.map(bg => bg.name).join(', '))
     currentBackgroundUrl.value = DEFAULT_BACKGROUND
     return
   }
-  
+
   console.log('找到默认背景:', defaultFile.name)
-  
+
   // 检查缓存
-  if (backgroundCache.has(defaultFile.path)) {
-    currentBackgroundUrl.value = backgroundCache.get(defaultFile.path)
+  if (backgroundCache.has(defaultFile.id || defaultFile.path)) {
+    currentBackgroundUrl.value = backgroundCache.get(defaultFile.id || defaultFile.path)
     return
   }
 
   if (isHttpImageUrl(defaultFile.path)) {
-    backgroundCache.set(defaultFile.path, defaultFile.path)
+    backgroundCache.set(defaultFile.id || defaultFile.path, defaultFile.path)
     currentBackgroundUrl.value = defaultFile.path
     return
   }
-  
+
+  // 原生环境：从文件系统读取
+  if (isNative() && defaultFile.path.startsWith('file:')) {
+    const url = await loadBackgroundAsDataUrl(defaultFile)
+    if (url) {
+      backgroundCache.set(defaultFile.id, url)
+      currentBackgroundUrl.value = url
+      console.log('默认背景加载成功')
+    }
+    return
+  }
+
   // 读取默认背景图片
   try {
     const result = await readBackgroundImage(defaultFile.path)
     if (result.success) {
       const url = `data:${result.mimeType};base64,${result.base64}`
-      backgroundCache.set(defaultFile.path, url)
+      backgroundCache.set(defaultFile.id || defaultFile.path, url)
       currentBackgroundUrl.value = url
       console.log('默认背景加载成功')
     }
@@ -381,22 +509,22 @@ const loadDefaultBackground = async () => {
  */
 const findBackgroundFile = (backgroundIdOrName) => {
   if (!backgroundIdOrName) return null
-  
+
   // 先按ID精确匹配
   let found = backgroundList.value.find(bg => bg.id === backgroundIdOrName)
   if (found) return found
-  
+
   // 再按文件名匹配
   found = backgroundList.value.find(bg => bg.name === backgroundIdOrName)
   if (found) return found
-  
+
   // 按文件名模糊匹配（不含扩展名）
   const nameWithoutExt = backgroundIdOrName.replace(/\.[^.]+$/, '')
   found = backgroundList.value.find(bg => {
     const bgNameWithoutExt = bg.name.replace(/\.[^.]+$/, '')
     return bgNameWithoutExt === nameWithoutExt
   })
-  
+
   return found || null
 }
 
@@ -422,7 +550,7 @@ const readBackgroundImage = async (filePath) => {
   if (!isElectronEnv()) {
     return { success: false, error: 'NOT_ELECTRON_ENV' }
   }
-  
+
   return await window.avgLLM.background.readImage(filePath)
 }
 
@@ -486,7 +614,7 @@ export const normalizeScene = (rawScene) => {
   if (!rawScene || typeof rawScene !== 'object') {
     return null
   }
-  
+
   return {
     id: String(rawScene.id || `scene_${Date.now()}`),
     name: String(rawScene.name || ''),

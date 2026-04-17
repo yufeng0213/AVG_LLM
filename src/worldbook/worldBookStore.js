@@ -531,6 +531,9 @@ export const createCharacterSkeleton = (index = 1) => ({
   relationshipBase: createDefaultRelationshipBase(),
   voiceConfig: createDefaultCharacterVoiceConfig(),
   portraits: [],  // 新增：立绘列表
+  smsAvatar: null,  // 短信聊天专用头像（base64 dataUrl）
+  smsBg: null,  // 短信聊天背景图（base64 dataUrl 或 URL）
+  smsStickers: {},  // 短信表情包（{描述: url}）
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 })
@@ -588,6 +591,9 @@ const normalizeCharacter = (rawCharacter, index = 0) => {
     relationshipBase: normalizeRelationshipBase(rawCharacter?.relationshipBase),
     voiceConfig: normalizeCharacterVoiceConfig(rawCharacter?.voiceConfig),
     portraits: normalizePortraits(rawCharacter?.portraits),
+    smsAvatar: typeof rawCharacter?.smsAvatar === 'string' ? rawCharacter.smsAvatar : null,
+    smsBg: typeof rawCharacter?.smsBg === 'string' ? rawCharacter.smsBg : null,
+    smsStickers: rawCharacter?.smsStickers && typeof rawCharacter.smsStickers === 'object' ? rawCharacter.smsStickers : {},
     createdAt: String(rawCharacter?.createdAt || fallback.createdAt),
     updatedAt: String(rawCharacter?.updatedAt || fallback.updatedAt),
   }
@@ -757,6 +763,78 @@ const ensureDefaultWorldBook = (books) => {
   }
 
   return [createDefaultWorldBook(), ...books]
+}
+
+/**
+ * 书架级轻量加载：仅读取世界书 id、title、summary、isDefault。
+ * 用于书架列表展示，不需要角色、entries 等任何字段。
+ */
+export const loadWorldBookTitles = async () => {
+  if (typeof window === 'undefined') {
+    return [createDefaultWorldBook()]
+  }
+
+  try {
+    const parsed = await kvStorage.get(WORLD_BOOK_STORAGE_KEY)
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return [createDefaultWorldBook()]
+    }
+
+    const titlesOnly = parsed.map((rawBook, index) => {
+      const isDefault = Boolean(rawBook?.isDefault) || rawBook?.id === 'default_world_book'
+      return {
+        id: String(rawBook?.id || `world_book_${Date.now()}_${index}`),
+        title: String(rawBook?.title || (isDefault ? '默认世界书' : `世界书 ${index + 1}`)),
+        summary: String(rawBook?.summary || ''),
+        isDefault,
+      }
+    })
+
+    return sortWorldBooks(ensureDefaultWorldBook(titlesOnly))
+  } catch {
+    return [createDefaultWorldBook()]
+  }
+}
+
+/**
+ * 轻量加载：仅读取世界书 id、title、summary 和角色的基本信息。
+ * 适用于联系人列表等不需要 entries/导演事件/场景等大字段的场景。
+ */
+export const loadWorldBookSummaries = async () => {
+  if (typeof window === 'undefined') {
+    return [createDefaultWorldBook()]
+  }
+
+  try {
+    const parsed = await kvStorage.get(WORLD_BOOK_STORAGE_KEY)
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return [createDefaultWorldBook()]
+    }
+
+    const liteBooks = parsed.map((rawBook, index) => {
+      const isDefault = Boolean(rawBook?.isDefault) || rawBook?.id === 'default_world_book'
+      const chars = Array.isArray(rawBook?.characters) ? rawBook.characters : []
+      return {
+        id: String(rawBook?.id || `world_book_${Date.now()}_${index}`),
+        title: String(rawBook?.title || (isDefault ? '默认世界书' : `世界书 ${index + 1}`)),
+        summary: String(rawBook?.summary || ''),
+        isDefault,
+        characters: chars.filter(Boolean).map(c => ({
+          id: String(c?.id || ''),
+          name: String(c?.name || '未知角色'),
+          nickname: String(c?.nickname || ''),
+          identity: String(c?.identity || ''),
+          portraits: Array.isArray(c?.portraits) ? c.portraits : [],
+          smsAvatar: typeof c?.smsAvatar === 'string' ? c.smsAvatar : null,
+          smsBg: typeof c?.smsBg === 'string' ? c.smsBg : null,
+        })),
+      }
+    })
+
+    return sortWorldBooks(ensureDefaultWorldBook(liteBooks))
+  } catch {
+    return [createDefaultWorldBook()]
+  }
 }
 
 export const loadWorldBooks = async () => {

@@ -1,0 +1,26 @@
+{
+  "id": "rose-particle",
+  "name": "粒子玫瑰",
+  "description": "粒子效果的玫瑰花，点击可让花瓣飞到面前。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "rose",
+    "title": "粒子玫瑰",
+    "icon": "\ud83c\udf39",
+    "order": 998
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "rose"
+  },
+  "storage": {
+    "namespace": "rose"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

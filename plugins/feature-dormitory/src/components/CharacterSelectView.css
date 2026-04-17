@@ -1,87 +1,44 @@
-/* ========== 角色网格选择视图 ========== */
+/* ========== 角色轮播选择视图 ========== */
 .character-select-view {
   position: relative;
   width: 100%;
   height: 100dvh;
   min-height: 100vh;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   overflow: hidden;
   background: var(--background, #0a0a0a);
   color: var(--foreground, #ffffff);
 }
 
-/* ========== 顶部栏 ========== */
+/* ========== 顶部占位 ========== */
 .char-select-header {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 12px;
-  padding: 12px clamp(12px, 3vw, 20px);
-}
-
-.char-select-back-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
-  padding: 6px 10px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  transition: color 150ms ease;
-  border-radius: 8px;
-}
-
-.char-select-back-btn:hover {
-  color: var(--foreground, #ffffff);
-  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
-}
-
-.char-select-back-icon {
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.char-select-back-label {
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.char-select-header-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.char-select-title {
-  margin: 0;
-  font-size: clamp(1rem, 3vw, 1.3rem);
-  font-weight: 700;
-  text-align: center;
-}
-
-.char-select-subtitle {
-  margin: 0;
-  font-size: 0.72rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
-  text-align: center;
-}
-
-/* ========== 主体区域 ========== */
-.char-select-body {
-  position: relative;
-  z-index: 2;
-  padding: 8px clamp(12px, 3vw, 20px);
   min-height: 0;
-  overflow-y: auto;
 }
 
+/* ========== 主体轮播区域 ========== */
+.char-select-carousel {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 clamp(12px, 3vw, 20px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.char-carousel-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 空状态 */
 .char-select-empty {
   text-align: center;
   padding: 80px 20px;
@@ -95,52 +52,78 @@
   color: color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
 }
 
-/* 角色网格 */
-.char-select-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--char-grid-columns, 3), minmax(0, 1fr));
-  gap: 12px;
-  padding-bottom: 24px;
+/* ========== 角色轮播卡片 ========== */
+.char-carousel-card {
+  appearance: none;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  color: var(--foreground, #ffffff);
+  width: 70vw;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  opacity: 0.4;
+  z-index: 1;
 }
 
-.char-select-card {
-  appearance: none;
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
-  border-radius: 14px;
-  padding: 12px 8px;
-  background: color-mix(in srgb, var(--foreground, #ffffff) 4%, transparent);
-  cursor: pointer;
-  text-align: center;
-  transition: all 150ms ease;
+.char-carousel-card.char-card-active {
+  transform: translateX(-50%) scale(1);
+  opacity: 1;
+  z-index: 10;
+}
+
+.char-carousel-card.char-card-prev {
+  transform: translateX(-130%) scale(0.7);
+  opacity: 0.3;
+  z-index: 5;
+}
+
+.char-carousel-card.char-card-next {
+  transform: translateX(30%) scale(0.7);
+  opacity: 0.3;
+  z-index: 5;
+}
+
+.char-carousel-card:hover:not(.char-card-active) {
+  opacity: 0.55;
+}
+
+.char-carousel-card.char-card-active:hover {
+  opacity: 1;
+}
+
+.char-card-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  color: var(--foreground, #ffffff);
+  gap: 12px;
 }
 
-.char-select-card:hover {
-  transform: translateY(-3px);
-  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
-  border-color: color-mix(in srgb, var(--accent-cyan, #6872D9) 30%, transparent);
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-cyan, #6872D9) 10%, transparent);
+.char-card-index {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 35%, transparent);
 }
 
-.char-select-card:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.char-select-card-portrait {
+/* ========== 无边框时的立绘 ========== */
+.char-card-portrait {
   position: relative;
   width: 100%;
   aspect-ratio: 4 / 5;
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
   background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
 }
 
-.char-select-card-img {
+.char-card-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -148,77 +131,185 @@
   display: block;
 }
 
-.char-select-card-name {
-  font-size: 0.85rem;
-  font-weight: 600;
+/* ========== 有卡牌边框时的框架 ========== */
+.char-card-frame {
+  position: relative;
+  width: 100%;
+  /* aspect-ratio 由 inline style 动态设置，跟随边框原图比例 */
+  overflow: hidden;
+  background: transparent;
+}
+
+/* 立绘叠加槽位：百分比定位，相对原图坐标 */
+.portrait-slot {
+  position: absolute;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.portrait-slot .portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+}
+
+/* 边框 overlay：覆盖在立绘上方 */
+.card-border-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ========== 角色名字 ========== */
+.char-card-name {
+  margin: 0;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  font-weight: 700;
   color: var(--foreground, #ffffff);
   line-height: 1.3;
   word-break: break-word;
 }
 
-/* ========== Android 竖屏适配 ========== */
-.platform-android.android-portrait .char-select-header {
-  padding: 10px 14px;
+.char-card-hint {
+  font-size: 0.72rem;
+  color: color-mix(in srgb, var(--accent-cyan, #6872D9) 60%, transparent);
+  letter-spacing: 0.05em;
 }
 
-.platform-android.android-portrait .char-select-back-btn {
-  min-height: 44px;
-  min-width: 44px;
-  padding: 8px;
-  justify-content: center;
-}
-
-.platform-android.android-portrait .char-select-title {
-  font-size: 1.05rem;
-}
-
-.platform-android.android-portrait .char-select-subtitle {
-  font-size: 0.68rem;
-}
-
-.platform-android.android-portrait .char-select-body {
-  padding: 8px 14px;
-}
-
-.platform-android.android-portrait .char-select-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 10px;
-}
-
-.platform-android.android-portrait .char-select-card {
-  padding: 10px 6px;
+/* ========== 轮播指示器 ========== */
+.char-carousel-dots {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
   gap: 8px;
+  z-index: 15;
+}
+
+.char-carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.char-carousel-dot.active {
+  width: 20px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-cyan, #6872D9) 60%, transparent);
+}
+
+/* ========== 底部按钮 ========== */
+.char-select-footer {
+  position: relative;
+  z-index: 2;
+  padding: 16px clamp(12px, 3vw, 20px);
+  padding-bottom: calc(16px + max(env(safe-area-inset-bottom, 0px), 8px));
+}
+
+.char-enter-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #6872D9) 30%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-cyan, #6872D9) 15%, transparent),
+    color-mix(in srgb, var(--accent-magenta, #5E6AD2) 10%, transparent)
+  );
+  color: var(--foreground, #ffffff);
+  padding: clamp(14px, 2vh, 18px) 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  width: 100%;
+}
+
+.char-enter-btn:hover {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-cyan, #6872D9) 22%, transparent),
+    color-mix(in srgb, var(--accent-magenta, #5E6AD2) 16%, transparent)
+  );
+  border-color: color-mix(in srgb, var(--accent-cyan, #6872D9) 45%, transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent-cyan, #6872D9) 15%, transparent);
+}
+
+.char-enter-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.char-enter-icon {
+  font-size: 1.3rem;
+}
+
+.char-enter-label {
+  font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+  font-weight: 700;
+}
+
+/* ========== Android 竖屏适配 ========== */
+.platform-android.android-portrait .char-select-carousel {
+  padding: 0 14px;
+}
+
+.platform-android.android-portrait .char-carousel-card {
+  width: 75vw;
+  padding: 0;
+  border-radius: 0;
+}
+
+.platform-android.android-portrait .char-carousel-card.char-card-active {
+  min-height: 50vh;
+}
+
+.platform-android.android-portrait .char-card-name {
+  font-size: 0.95rem;
+}
+
+.platform-android.android-portrait .char-select-footer {
+  padding: 12px 14px;
+}
+
+.platform-android.android-portrait .char-enter-btn {
+  padding: 14px 20px;
   border-radius: 12px;
+  min-height: 52px;
 }
 
-.platform-android.android-portrait .char-select-card-portrait {
-  border-radius: 8px;
-}
-
-.platform-android.android-portrait .char-select-card-name {
-  font-size: 0.8rem;
+.platform-android.android-portrait .char-enter-label {
+  font-size: 0.95rem;
 }
 
 /* ========== 小屏幕适配 ========== */
 @media (max-width: 480px) {
-  .char-select-header {
-    padding: 10px 12px;
+  .char-carousel-card {
+    width: 75vw;
+    padding: 0;
   }
 
-  .char-select-title {
-    font-size: 0.95rem;
+  .char-card-name {
+    font-size: 0.9rem;
   }
 
-  .char-select-grid {
-    gap: 8px;
+  .char-select-footer {
+    padding: 12px;
   }
 
-  .char-select-card {
-    padding: 8px 6px;
-    gap: 8px;
-  }
-
-  .char-select-card-name {
-    font-size: 0.78rem;
+  .char-enter-btn {
+    padding: 12px 18px;
   }
 }

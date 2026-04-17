@@ -188,7 +188,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(180deg, #1a0a2e 0%, #0f1a2e 50%, #0a1628 100%);
+  background: var(--checkin-bg, #0a1628);
   z-index: 10000;
   display: flex;
   flex-direction: column;
@@ -200,9 +200,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--checkin-header-bg, rgba(0, 0, 0, 0.4));
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  border-bottom: 1px solid var(--checkin-gold-border, rgba(255, 215, 0, 0.1));
   gap: 10px;
 }
 
@@ -212,20 +212,20 @@ onMounted(() => {
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.7));
   width: 40px;
   height: 40px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
-.checkin7-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.checkin7-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--checkin-text-primary, #fff); }
 
 .checkin7-title {
   flex: 1;
   text-align: center;
   margin: 0;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   font-size: 17px;
   font-weight: 600;
   text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
@@ -235,17 +235,17 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255, 215, 0, 0.1);
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: var(--checkin-gold-dim, rgba(255, 215, 0, 0.1));
+  border: 1px solid var(--checkin-gold-border, rgba(255, 215, 0, 0.2));
   border-radius: 10px;
   padding: 6px 12px;
 }
-.checkin7-coin-value { color: #ffd700; font-size: 15px; font-weight: 700; min-width: 30px; text-align: right; }
+.checkin7-coin-value { color: var(--checkin-gold, #ffd700); font-size: 15px; font-weight: 700; min-width: 30px; text-align: right; }
 
 /* Streak Section */
 .checkin7-streak-section {
   padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--checkin-header-bg, rgba(0, 0, 0, 0.2));
 }
 
 .streak-header {
@@ -256,7 +256,7 @@ onMounted(() => {
 }
 
 .streak-text {
-  color: #fff;
+  color: var(--checkin-text-primary, #fff);
   font-size: 14px;
   font-weight: 600;
 }
@@ -284,19 +284,19 @@ onMounted(() => {
   gap: 2px;
   padding: 6px 2px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--checkin-card-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--checkin-border, rgba(255, 255, 255, 0.06));
   transition: all 0.3s;
 }
 
 .dot-day {
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.4));
 }
 
 .dot-reward {
   font-size: 10px;
-  color: rgba(255, 215, 0, 0.6);
+  color: var(--checkin-gold-dim, rgba(255, 215, 0, 0.6));
   font-weight: 600;
 }
 
@@ -314,22 +314,22 @@ onMounted(() => {
 
 .dot-done .dot-indicator,
 .dot-today-done .dot-indicator {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: #fff;
+  background: linear-gradient(135deg, var(--checkin-green, #22c55e), #16a34a);
+  color: var(--checkin-text-primary, #fff);
   box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
 }
 
 .dot-current .dot-indicator {
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #fff;
+  background: linear-gradient(135deg, var(--checkin-gold, #ffd700), var(--checkin-orange, #ff8c00));
+  color: var(--checkin-text-primary, #fff);
   box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
   animation: pulse-glow 1s ease infinite;
 }
 
 .dot-pending .dot-indicator {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--checkin-card-bg, rgba(255, 255, 255, 0.05));
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.2));
+  border: 1px solid var(--checkin-border, rgba(255, 255, 255, 0.1));
 }
 
 @keyframes pulse-glow {
@@ -355,8 +355,8 @@ onMounted(() => {
   aspect-ratio: 1;
   max-height: 320px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 140, 0, 0.05));
-  border: 2px solid rgba(255, 215, 0, 0.2);
+  background: var(--checkin-card-bg, rgba(255, 215, 0, 0.08));
+  border: 2px solid var(--checkin-gold-border, rgba(255, 215, 0, 0.2));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -367,7 +367,7 @@ onMounted(() => {
 }
 
 .sign-card:not(.is-checked):hover {
-  border-color: rgba(255, 215, 0, 0.4);
+  border-color: var(--checkin-gold-border, rgba(255, 215, 0, 0.4));
   box-shadow: 0 0 30px rgba(255, 215, 0, 0.15);
   transform: scale(1.02);
 }
@@ -375,7 +375,7 @@ onMounted(() => {
 .sign-card.is-checked {
   cursor: default;
   border-color: rgba(34, 197, 94, 0.3);
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(16, 185, 129, 0.05));
+  background: rgba(34, 197, 94, 0.08);
 }
 
 .sign-card.is-animating {
@@ -409,12 +409,12 @@ onMounted(() => {
 .card-gift-text {
   font-size: 20px;
   font-weight: 700;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
 }
 
 .card-gift-sub {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.5));
 }
 
 .card-done-icon {
@@ -424,12 +424,12 @@ onMounted(() => {
 .card-done-text {
   font-size: 18px;
   font-weight: 700;
-  color: #22c55e;
+  color: var(--checkin-green, #22c55e);
 }
 
 .card-done-sub {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.4));
 }
 
 .card-anim-content {
@@ -461,7 +461,7 @@ onMounted(() => {
 
 .reward-box {
   background: linear-gradient(135deg, #1a1a2e, #16213e);
-  border: 2px solid rgba(255, 215, 0, 0.3);
+  border: 2px solid var(--checkin-gold-border, rgba(255, 215, 0, 0.3));
   border-radius: 16px;
   padding: 20px 24px;
   text-align: center;
@@ -471,14 +471,14 @@ onMounted(() => {
 .reward-title {
   font-size: 16px;
   font-weight: 700;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   margin-bottom: 8px;
 }
 
 .reward-coins {
   font-size: 32px;
   font-weight: 900;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
   margin-bottom: 8px;
 }
@@ -506,13 +506,13 @@ onMounted(() => {
 
 .reward-item-name {
   font-size: 12px;
-  color: #fff;
+  color: var(--checkin-text-primary, #fff);
   font-weight: 600;
 }
 
 .reward-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.5));
   margin-top: 4px;
 }
 
@@ -520,8 +520,8 @@ onMounted(() => {
 .backpack-section {
   width: 100%;
   max-width: 400px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--checkin-card-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--checkin-border, rgba(255, 255, 255, 0.06));
   border-radius: 12px;
   padding: 12px;
 }
@@ -529,7 +529,7 @@ onMounted(() => {
 .backpack-title {
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.6));
   margin-bottom: 8px;
 }
 
@@ -544,8 +544,8 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--checkin-card-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--checkin-border, rgba(255, 255, 255, 0.08));
   border-radius: 10px;
   padding: 8px 12px;
   min-width: 70px;
@@ -557,13 +557,13 @@ onMounted(() => {
 
 .backpack-item-count {
   font-size: 10px;
-  color: #ffd700;
+  color: var(--checkin-gold, #ffd700);
   font-weight: 700;
 }
 
 .backpack-item-name {
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--checkin-text-secondary, rgba(255, 255, 255, 0.5));
   text-align: center;
   white-space: nowrap;
 }

@@ -4,7 +4,7 @@
   top: calc(env(safe-area-inset-top, 0px) + 56px);
   left: calc(env(safe-area-inset-left, 0px) + 10px);
   pointer-events: none;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-family: var(--font-body);
 }
 
 .xx-handheld *,

@@ -143,8 +143,8 @@ const rewardLabel = (t) => {
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  background: var(--background, #0a0a0a);
-  color: var(--foreground, #ffffff);
+  background: var(--task-bg, #0a0a1a);
+  color: var(--task-text-primary, #ffffff);
   overflow: hidden;
 }
 
@@ -154,9 +154,9 @@ const rewardLabel = (t) => {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: linear-gradient(180deg, #1a0a2e 0%, rgba(26,10,46,0.95) 100%);
+  background: var(--task-header-bg, rgba(0,0,0,0.3));
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  border-bottom: 1px solid var(--task-gold-border, rgba(255, 215, 0, 0.1));
 }
 
 .task-back-btn {
@@ -165,7 +165,7 @@ const rewardLabel = (t) => {
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--task-text-secondary, rgba(255, 255, 255, 0.7));
   width: 40px;
   height: 40px;
   border-radius: 8px;
@@ -173,13 +173,13 @@ const rewardLabel = (t) => {
   transition: all 0.2s;
   flex-shrink: 0;
 }
-.task-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.task-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--task-text-primary, #fff); }
 
 .task-title {
   margin: 0;
   font-size: 17px;
   font-weight: 600;
-  color: #ffd700;
+  color: var(--task-gold, #ffd700);
   text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
   flex: 1;
   text-align: center;
@@ -191,17 +191,17 @@ const rewardLabel = (t) => {
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  background: rgba(26, 10, 46, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--task-header-bg, rgba(26, 10, 46, 0.95));
+  border-bottom: 1px solid var(--task-border, rgba(255, 255, 255, 0.06));
 }
 
 .task-generate-btn {
   appearance: none;
-  border: 1px solid rgba(255, 215, 0, 0.25);
+  border: 1px solid var(--task-gold-border, rgba(255, 215, 0, 0.25));
   border-radius: 10px;
   padding: 8px 16px;
-  background: rgba(255, 215, 0, 0.08);
-  color: #ffd700;
+  background: var(--task-gold-dim, rgba(255, 215, 0, 0.08));
+  color: var(--task-gold, #ffd700);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -219,7 +219,7 @@ const rewardLabel = (t) => {
 
 .task-feedback {
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--task-text-secondary, rgba(255, 255, 255, 0.55));
 }
 
 /* List */
@@ -231,14 +231,14 @@ const rewardLabel = (t) => {
   overflow-y: auto;
   min-height: 0;
   flex: 1;
-  background: linear-gradient(180deg, rgba(15,26,46,0.95) 0%, #0a1628 100%);
+  background: var(--task-bg, #0a1628);
 }
 
 .task-card {
   padding: 14px 16px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 215, 0, 0.12);
-  background: linear-gradient(135deg, rgba(255,215,0,0.05), rgba(255,140,0,0.03));
+  border: 1px solid var(--task-gold-border, rgba(255, 215, 0, 0.12));
+  background: var(--task-card-bg, rgba(255,215,0,0.05));
 }
 
 .task-card-header {
@@ -252,8 +252,8 @@ const rewardLabel = (t) => {
   font-size: 0.68rem;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(255, 215, 0, 0.1);
-  color: #ffd700;
+  background: var(--task-gold-dim, rgba(255, 215, 0, 0.1));
+  color: var(--task-gold, #ffd700);
   text-transform: capitalize;
 }
 
@@ -268,20 +268,20 @@ const rewardLabel = (t) => {
 .task-status-label {
   font-size: 0.68rem;
   margin-left: auto;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--task-text-secondary, rgba(255, 255, 255, 0.4));
 }
 
 .task-name {
   margin: 0 0 4px;
   font-size: 0.95rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--task-text-primary, rgba(255, 255, 255, 0.9));
 }
 
 .task-desc {
   margin: 0 0 8px;
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--task-text-secondary, rgba(255, 255, 255, 0.5));
   line-height: 1.4;
 }
 
@@ -294,11 +294,11 @@ const rewardLabel = (t) => {
 }
 
 .task-reward-label {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--task-text-secondary, rgba(255, 255, 255, 0.4));
 }
 
 .task-reward-value {
-  color: #ffd700;
+  color: var(--task-gold, #ffd700);
   font-weight: 600;
 }
 
@@ -311,11 +311,11 @@ const rewardLabel = (t) => {
 .task-battle-btn,
 .task-claim-btn {
   appearance: none;
-  border: 1px solid rgba(255, 215, 0, 0.25);
+  border: 1px solid var(--task-gold-border, rgba(255, 215, 0, 0.25));
   border-radius: 8px;
   padding: 4px 14px;
-  background: rgba(255, 215, 0, 0.08);
-  color: #ffd700;
+  background: var(--task-gold-dim, rgba(255, 215, 0, 0.08));
+  color: var(--task-gold, #ffd700);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -349,9 +349,9 @@ const rewardLabel = (t) => {
 .task-empty {
   text-align: center;
   padding: 40px 20px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--task-text-secondary, rgba(255, 255, 255, 0.35));
   font-size: 0.9rem;
-  background: linear-gradient(180deg, rgba(15,26,46,0.95) 0%, #0a1628 100%);
+  background: var(--task-bg, #0a1628);
 }
 
 .task-empty-hint {

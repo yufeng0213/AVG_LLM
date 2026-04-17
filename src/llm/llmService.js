@@ -15,6 +15,7 @@ export {
 
 export {
   generatePhoneSmsReply,
+  generateGroupChatReply,
   generateDormChatReply,
   generatePhoneCallReply,
   generatePhoneMomentsReplies,
@@ -46,6 +47,22 @@ export {
   generateMerchantItems,
 } from './llmService.handheld'
 
+export {
+  generateQuizQuestions,
+  generateAssessmentQuestions,
+  parseUrlContent,
+  generateTeachingContent,
+  generateTeachingReply,
+  gradeAnswer,
+  calculateRating,
+} from './llmService.quiz'
+
+export {
+  generatePronunciationLesson,
+  generatePronunciationTTS,
+  parsePronunciationOutput,
+} from './llmService.pronunciation'
+
 import {
   getActiveApiConfig,
   generateStory,
@@ -57,6 +74,7 @@ import {
 } from './llmService.core'
 import {
   generatePhoneSmsReply,
+  generateGroupChatReply,
   generateDormChatReply,
   generatePhoneCallReply,
   generatePhoneMomentsReplies,
@@ -86,6 +104,21 @@ import {
   generateBedroomFurnitureItems,
   generateMerchantItems,
 } from './llmService.handheld'
+import {
+  generateQuizQuestions,
+  generateAssessmentQuestions,
+  parseUrlContent,
+  generateTeachingContent,
+  generateTeachingReply,
+  gradeAnswer,
+  calculateRating,
+} from './llmService.quiz'
+
+import {
+  generatePronunciationLesson,
+  generatePronunciationTTS,
+  parsePronunciationOutput,
+} from './llmService.pronunciation'
 
 export default {
   generateStory,
@@ -95,6 +128,7 @@ export default {
   generateCharacterSpeech,
   generateCardContent,
   generatePhoneSmsReply,
+  generateGroupChatReply,
   generateDormChatReply,
   generatePhoneCallReply,
   generatePhoneMomentsReplies,
@@ -121,4 +155,14 @@ export default {
   generateMerchantItems,
   generateBackpackUseResult,
   getActiveApiConfig,
+  generateQuizQuestions,
+  generateAssessmentQuestions,
+  parseUrlContent,
+  generateTeachingContent,
+  generateTeachingReply,
+  gradeAnswer,
+  calculateRating,
+  generatePronunciationLesson,
+  generatePronunciationTTS,
+  parsePronunciationOutput,
 }

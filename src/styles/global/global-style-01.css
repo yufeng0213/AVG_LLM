@@ -15,6 +15,7 @@
   --font-heading: 'Outfit', 'Segoe UI', sans-serif;
   --font-body: 'DM Sans', 'Segoe UI', sans-serif;
   --font-display: 'Bangers', 'Impact', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   --text-shadow-single: 2px 2px 0 var(--accent-purple);
   --text-shadow-double:
     2px 2px 0 var(--accent-purple), 4px 4px 0 var(--accent-magenta);

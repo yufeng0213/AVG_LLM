@@ -24,6 +24,7 @@ const tokenToCssVar = {
   fontHeading: '--font-heading',
   fontBody: '--font-body',
   fontDisplay: '--font-display',
+  fontMono: '--font-mono',
   radiusButton: '--radius-button',
   radiusCard: '--radius-card',
   radiusPanel: '--radius-panel',
@@ -77,6 +78,100 @@ const componentVarToCssVar = {
   metaChipRadius: '--meta-chip-radius',
   metaChipBg: '--meta-chip-bg',
   metaChipShadow: '--meta-chip-shadow',
+}
+
+/**
+ * 应用手机/阅读器/测验等子系统的派生变量。
+ * 这些变量基于核心 token 自动计算，确保子功能跟随系统主题。
+ */
+const applyDerivedVarsToDocument = (tokens) => {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  const bg = tokens.background || '#0d0d1a'
+  const fg = tokens.foreground || '#ffffff'
+  const muted = tokens.muted || '#2d1b4e'
+  const accentCyan = tokens.accentCyan || '#00f5d4'
+  const accentPurple = tokens.accentPurple || '#7b2fff'
+  const accentYellow = tokens.accentYellow || '#ffd700'
+
+  // 手机层
+  root.style.setProperty('--phone-bg', bg)
+  root.style.setProperty('--phone-bg-secondary', `color-mix(in srgb, ${bg} 85%, transparent)`)
+  root.style.setProperty('--phone-header-bg', `color-mix(in srgb, ${bg} 85%, transparent)`)
+  root.style.setProperty('--phone-text-primary', fg)
+  root.style.setProperty('--phone-text-secondary', 'rgba(255, 255, 255, 0.5)')
+  root.style.setProperty('--phone-card-bg', 'rgba(255, 255, 255, 0.06)')
+  root.style.setProperty('--phone-border', 'rgba(255, 255, 255, 0.1)')
+  root.style.setProperty('--phone-overlay', 'rgba(0, 0, 0, 0.85)')
+  root.style.setProperty('--phone-gradient-start', bg)
+  root.style.setProperty('--phone-gradient-end', muted)
+
+  // 阅读器层
+  root.style.setProperty('--reader-bg', bg)
+  root.style.setProperty('--reader-text', fg)
+  root.style.setProperty('--reader-header-bg', 'rgba(0, 0, 0, 0.2)')
+  root.style.setProperty('--reader-footer-bg', 'rgba(0, 0, 0, 0.3)')
+  root.style.setProperty('--reader-panel-bg', 'rgba(255, 255, 255, 0.04)')
+  root.style.setProperty('--reader-border', 'rgba(255, 255, 255, 0.08)')
+  root.style.setProperty('--reader-secondary', '#8b9dc3')
+  root.style.setProperty('--reader-strong', fg)
+  root.style.setProperty('--reader-accent-start', accentCyan)
+  root.style.setProperty('--reader-accent-end', accentPurple)
+
+  // 测验层
+  root.style.setProperty('--quiz-bg', bg)
+  root.style.setProperty('--quiz-text-primary', fg)
+  root.style.setProperty('--quiz-text-secondary', '#8b9dc3')
+  root.style.setProperty('--quiz-gradient-start', accentCyan)
+  root.style.setProperty('--quiz-gradient-end', accentPurple)
+  root.style.setProperty('--quiz-card-bg', 'rgba(255, 255, 255, 0.06)')
+  root.style.setProperty('--quiz-border', 'rgba(255, 255, 255, 0.1)')
+
+  // 游戏厅层
+  root.style.setProperty('--game-bg', bg)
+  root.style.setProperty('--game-text-primary', fg)
+  root.style.setProperty('--game-text-secondary', 'rgba(255, 255, 255, 0.5)')
+  root.style.setProperty('--game-header-bg', 'rgba(0, 0, 0, 0.3)')
+  root.style.setProperty('--game-card-bg', 'rgba(255, 255, 255, 0.06)')
+  root.style.setProperty('--game-border', 'rgba(255, 255, 255, 0.1)')
+  root.style.setProperty('--game-gold', accentYellow)
+  root.style.setProperty('--game-gold-dim', 'rgba(255, 215, 0, 0.1)')
+  root.style.setProperty('--game-gold-border', 'rgba(255, 215, 0, 0.2)')
+  root.style.setProperty('--game-gradient-start', accentCyan)
+  root.style.setProperty('--game-gradient-end', accentPurple)
+
+  // 任务板层
+  root.style.setProperty('--task-bg', bg)
+  root.style.setProperty('--task-text-primary', fg)
+  root.style.setProperty('--task-text-secondary', 'rgba(255, 255, 255, 0.5)')
+  root.style.setProperty('--task-header-bg', 'rgba(0, 0, 0, 0.3)')
+  root.style.setProperty('--task-card-bg', 'rgba(255, 255, 255, 0.06)')
+  root.style.setProperty('--task-border', 'rgba(255, 255, 255, 0.1)')
+  root.style.setProperty('--task-gold', accentYellow)
+  root.style.setProperty('--task-gold-dim', 'rgba(255, 215, 0, 0.1)')
+  root.style.setProperty('--task-gold-border', 'rgba(255, 215, 0, 0.2)')
+
+  // 商店层
+  root.style.setProperty('--shop-bg', bg)
+  root.style.setProperty('--shop-text-primary', fg)
+  root.style.setProperty('--shop-text-secondary', 'rgba(255, 255, 255, 0.5)')
+  root.style.setProperty('--shop-header-bg', 'rgba(0, 0, 0, 0.3)')
+  root.style.setProperty('--shop-card-bg', 'rgba(255, 255, 255, 0.06)')
+  root.style.setProperty('--shop-border', 'rgba(255, 255, 255, 0.1)')
+  root.style.setProperty('--shop-gold', accentYellow)
+  root.style.setProperty('--shop-gold-dim', 'rgba(255, 215, 0, 0.1)')
+  root.style.setProperty('--shop-gold-border', 'rgba(255, 215, 0, 0.2)')
+
+  // 签到层
+  root.style.setProperty('--checkin-bg', bg)
+  root.style.setProperty('--checkin-text-primary', fg)
+  root.style.setProperty('--checkin-text-secondary', 'rgba(255, 255, 255, 0.5)')
+  root.style.setProperty('--checkin-header-bg', 'rgba(0, 0, 0, 0.3)')
+  root.style.setProperty('--checkin-card-bg', 'rgba(255, 255, 255, 0.06)')
+  root.style.setProperty('--checkin-border', 'rgba(255, 255, 255, 0.1)')
+  root.style.setProperty('--checkin-gold', accentYellow)
+  root.style.setProperty('--checkin-gold-dim', 'rgba(255, 215, 0, 0.1)')
+  root.style.setProperty('--checkin-gold-border', 'rgba(255, 215, 0, 0.2)')
 }
 
 const sanitizeTokens = (tokens = {}) => {
@@ -245,6 +340,7 @@ export const applyThemeById = async (themeId, { persist = true } = {}) => {
 
   applyTokensToDocument(selected.tokens)
   applyComponentVarsToDocument(selected.componentVars)
+  applyDerivedVarsToDocument(selected.tokens)
   applyStyleProfileToDocument(selected.styleProfile)
 
   if (persist) {
@@ -281,6 +377,53 @@ export const initTheme = async () => {
   const applied = await applyThemeById(activeThemeId, { persist: false })
   if (applied) return applied
   return applyThemeById(fallbackTheme.id)
+}
+
+/**
+ * 初始化自定义字体：从存储恢复已导入字体，并应用字体分配。
+ */
+export const initCustomFonts = async () => {
+  if (typeof document === 'undefined') return
+
+  try {
+    const {
+      getImportedFonts,
+      getFontBinary,
+      getFontAssignments,
+    } = await import('../fonts/fontStorage.js')
+    const { restoreFontFromBuffer } = await import('../fonts/fontLoader.js')
+
+    // 恢复所有已导入字体
+    const fonts = await getImportedFonts()
+    for (const font of fonts) {
+      const buffer = await getFontBinary(font.id)
+      if (buffer) {
+        await restoreFontFromBuffer(buffer, font.familyName)
+      }
+    }
+
+    // 应用字体分配
+    const assignments = await getFontAssignments()
+    const root = document.documentElement
+    const defaults = {
+      fontHeading: "'Outfit', 'Segoe UI', sans-serif",
+      fontBody: "'DM Sans', 'Segoe UI', sans-serif",
+      fontDisplay: "'Bangers', 'Impact', sans-serif",
+    }
+    const mapping = {
+      fontHeading: '--font-heading',
+      fontBody: '--font-body',
+      fontDisplay: '--font-display',
+    }
+
+    for (const [key, cssVar] of Object.entries(mapping)) {
+      const value = assignments[key] || defaults[key]
+      root.style.setProperty(cssVar, value)
+    }
+  } catch (e) {
+    // 字体初始化失败不影响主流程，静默处理
+    console.warn('[ThemeManager] Custom fonts initialization failed:', e)
+  }
 }
 
 export const getThemeTemplate = () => {

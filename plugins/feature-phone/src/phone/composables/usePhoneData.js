@@ -3,14 +3,39 @@
  * 提供联系人分组、短信线程、通话记录的加载与持久化。
  */
 import { computed, ref } from 'vue'
-import { loadWorldBooks } from '../../../../../src/worldbook/worldBookStore.js'
+import { loadWorldBooks, loadWorldBookSummaries } from '../../../../../src/worldbook/worldBookStore.js'
 import { kvStorage } from '../../../../../src/storage/index.js'
 
 const SMS_THREADS_KEY = 'phone_sms_threads_v1'
+const SMS_SETTINGS_KEY = 'phone_sms_settings_v1'
+const GROUPS_KEY = 'phone_group_chats_v1'
+const GROUP_THREADS_KEY = 'phone_group_chat_threads_v1'
 const CALL_LOGS_KEY = 'phone_call_logs_v1'
+const CALENDAR_EVENTS_KEY = 'phone_calendar_events_v1'
+
+const DEFAULT_SMS_SETTINGS = {
+  contextMessages: 8, // 发送上下文消息数（双方完整记录）
+}
+
+// ===== 手机壁纸内存缓存 =====
+// 组件重新挂载时直接从内存读取，不需要等 IndexedDB
+let _phoneWallpaperCache = null
+
+export function getPhoneWallpaperCache() {
+  return _phoneWallpaperCache
+}
+
+export function setPhoneWallpaperCache(dataUrl) {
+  _phoneWallpaperCache = dataUrl
+}
+
+// =====
 
 const _worldBooksCache = ref([])
 let _loaded = false
+
+const _worldBooksSummaryCache = ref([])
+let _summaryLoaded = false
 
 async function ensureWorldBooks() {
   if (_loaded) return _worldBooksCache.value
@@ -24,12 +49,34 @@ async function ensureWorldBooks() {
   return _worldBooksCache.value
 }
 
+async function ensureWorldBookSummaries() {
+  if (_summaryLoaded) return _worldBooksSummaryCache.value
+  try {
+    _worldBooksSummaryCache.value = await loadWorldBookSummaries()
+    _summaryLoaded = true
+  } catch (e) {
+    console.warn('[usePhoneData] 加载世界书摘要失败:', e)
+    _worldBooksSummaryCache.value = []
+  }
+  return _worldBooksSummaryCache.value
+}
+
+/**
+ * 清除世界书缓存，用于头像更新后重新加载
+ */
+export function clearWorldBookCache() {
+  _loaded = false
+  _summaryLoaded = false
+  _worldBooksCache.value = []
+  _worldBooksSummaryCache.value = []
+}
+
 /**
  * 获取按世界书分组的联系人列表
  * @returns {Promise<Array<{ worldBookId, worldBookTitle, characters: Array }>>}
  */
 export async function getGroupedContacts() {
-  const books = await ensureWorldBooks()
+  const books = await ensureWorldBookSummaries()
   const groups = []
   for (const book of books) {
     const chars = Array.isArray(book?.characters) ? book.characters.filter(Boolean) : []
@@ -43,6 +90,8 @@ export async function getGroupedContacts() {
           nickname: c.nickname || '',
           identity: c.identity || '',
           portraits: c.portraits || [],
+          smsAvatar: c.smsAvatar || null,
+          smsBg: c.smsBg || null,
           worldBookId: book.id,
           worldBookTitle: book.title || '未命名世界书',
         })),
@@ -95,7 +144,153 @@ export function addSmsMessage(threads, contactId, role, text) {
   return thread
 }
 
-// ===== 通话记录 =====
+// ===== 短信设置 =====
+
+export async function loadSmsSettings() {
+  try {
+    const data = await kvStorage.get(SMS_SETTINGS_KEY)
+    return { ...DEFAULT_SMS_SETTINGS, ...(data || {}) }
+  } catch {
+    return { ...DEFAULT_SMS_SETTINGS }
+  }
+}
+
+export async function saveSmsSettings(settings) {
+  try {
+    await kvStorage.set(SMS_SETTINGS_KEY, settings)
+  } catch (e) {
+    console.warn('[usePhoneData] 保存短信设置失败:', e)
+  }
+}
+
+// ===== 群聊 =====
+
+/**
+ * 获取所有群聊列表
+ */
+export async function loadGroupChats() {
+  try {
+    const data = await kvStorage.get(GROUPS_KEY)
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 保存群聊列表
+ */
+export async function saveGroupChats(groups) {
+  try {
+    await kvStorage.set(GROUPS_KEY, groups)
+  } catch (e) {
+    console.warn('[usePhoneData] 保存群聊失败:', e)
+  }
+}
+
+/**
+ * 加载群聊消息线程
+ */
+export async function loadGroupThreads() {
+  try {
+    const data = await kvStorage.get(GROUP_THREADS_KEY)
+    return data || {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * 保存群聊消息线程
+ */
+export async function saveGroupThreads(threads) {
+  try {
+    await kvStorage.set(GROUP_THREADS_KEY, threads)
+  } catch (e) {
+    console.warn('[usePhoneData] 保存群聊线程失败:', e)
+  }
+}
+
+/**
+ * 获取某个群的消息线程
+ */
+export function getGroupThread(threads, groupId) {
+  return threads[groupId] || []
+}
+
+/**
+ * 添加群聊消息
+ * @param {string} role - 'user' | 'assistant'
+ * @param {string} senderName - 发送者名字（assistant 时必填）
+ * @param {string} senderId - 发送者 ID（assistant 时必填）
+ * @param {Array} mentionedNames - @ 提及的角色名列表
+ */
+export function addGroupChatMessage(threads, groupId, role, text, senderName = '', senderId = '', mentionedNames = []) {
+  const thread = threads[groupId] || []
+  thread.push({
+    id: `gcmsg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    role,
+    text,
+    senderName,
+    senderId,
+    mentionedNames,
+    timestamp: new Date().toISOString(),
+  })
+  threads[groupId] = thread
+  return thread
+}
+
+/**
+ * 根据世界书自动创建默认群聊
+ * 返回所有群聊列表（含自动创建的和用户自定义的）
+ */
+export async function ensureWorldBookGroups(existingGroups = []) {
+  const books = await ensureWorldBookSummaries()
+  const existingWbIds = new Set()
+  for (const g of existingGroups) {
+    if (g.type === 'worldbook' && g.worldBookId) {
+      existingWbIds.add(g.worldBookId)
+    }
+  }
+
+  const newGroups = [...existingGroups]
+
+  for (const book of books) {
+    if (existingWbIds.has(book.id)) continue
+    const chars = Array.isArray(book?.characters) ? book.characters.filter(Boolean) : []
+    if (chars.length === 0) continue
+
+    newGroups.unshift({
+      id: `group_wb_${book.id}`,
+      name: `${book.title || '未命名世界书'} 的群聊`,
+      type: 'worldbook',
+      worldBookId: book.id,
+      worldBookTitle: book.title || '未命名世界书',
+      members: chars.map(c => ({
+        contactId: c.id,
+        contactName: c.name || c.nickname || '未知角色',
+        worldBookId: book.id,
+        worldBookTitle: book.title || '未命名世界书',
+      })),
+      createdAt: new Date().toISOString(),
+    })
+  }
+
+  return newGroups
+}
+
+/**
+ * 创建自定义群聊
+ */
+export function createCustomGroup(groupData) {
+  return {
+    id: `group_custom_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name: groupData.name || '新群聊',
+    type: 'custom',
+    members: groupData.members || [], // [{contactId, contactName, worldBookId, worldBookTitle}]
+    createdAt: new Date().toISOString(),
+  }
+}
 
 export async function loadCallLogs() {
   try {
@@ -123,6 +318,65 @@ export function addCallLog(logs, log) {
     },
     ...logs,
   ]
+}
+
+// ===== 日历事件 =====
+
+/**
+ * 加载所有日历事件
+ * @returns {Promise<Array>} [{ id, date, time, title, description, contactName, status, createdAt }]
+ */
+export async function loadCalendarEvents() {
+  try {
+    const data = await kvStorage.get(CALENDAR_EVENTS_KEY)
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 保存所有日历事件
+ */
+export async function saveCalendarEvents(events) {
+  try {
+    await kvStorage.set(CALENDAR_EVENTS_KEY, events)
+  } catch (e) {
+    console.warn('[usePhoneData] 保存日历事件失败:', e)
+  }
+}
+
+/**
+ * 添加一个日历事件
+ */
+export async function addCalendarEvent(event) {
+  const events = await loadCalendarEvents()
+  const newEvent = {
+    id: `cal_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    date: event.date,
+    time: event.time || null,
+    title: event.title,
+    description: event.description || '',
+    contactName: event.contactName || '',
+    status: event.status || 'pending', // 'pending' | 'imported' | 'dismissed'
+    createdAt: new Date().toISOString(),
+  }
+  events.push(newEvent)
+  await saveCalendarEvents(events)
+  return newEvent
+}
+
+/**
+ * 更新日历事件状态
+ */
+export async function updateCalendarEventStatus(id, status) {
+  const events = await loadCalendarEvents()
+  const event = events.find(e => e.id === id)
+  if (event) {
+    event.status = status
+    await saveCalendarEvents(events)
+  }
+  return event
 }
 
 // ===== 时间格式化 =====

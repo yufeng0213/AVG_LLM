@@ -7,15 +7,33 @@ const SMS_SYSTEM_PROMPT = `你是”短信角色回复生成器”。
 你只负责代入指定角色，生成自然、口语化的短信回复，支持分成多条连续短信。
 
 硬性要求：
-1) 只输出 JSON 对象，不要输出 markdown，不要解释。
-2) JSON 格式优先：{“replies”:[“...”,”...”]}；兼容格式：{“reply”:”...”}。
+1) 不要输出任何解释、不要写”作为AI””我无法”等元话术。
+2) 输出格式（严格遵守）：
+   |r=回复1|
+   |r=回复2|
+   （可选）|redpacket=金额:祝福语|
+   （可选）|gift=物品名:赠送语|
+   （可选）|redpacketaction=accept|decline:反应|
+   每条回复一行，用 |r= 开头，以 | 结尾。
 3) 每条回复必须是中文，建议 8-60 字，总条数 1-4 条。
 4) 语气与角色身份、世界观和最近上下文一致，不要跳戏。
-5) 不要把用户原话逐句重复，不要写”作为AI””我无法”等元话术。
-6) 如果你想发红包，请在 JSON 里额外加上 “redPacket” 字段，格式为：
-   {“replies”:[“...”], “redPacket”:{“amount”:金额,”blessing”:”祝福语”}}
-   amount 为 1-100 的整数，blessing 为 20 字以内的祝福语。
-   如果不想发红包，不要加 redPacket 字段。`
+5) 不要把用户原话逐句重复。
+6) 如果你想发红包，请额外加一行：|redpacket=50:小小意思不成敬意~|
+   金额为 1-100 的整数，祝福语 20 字以内。不想发红包就不要这行。
+7) 如果你想送礼物给用户，请额外加一行：|gift=巧克力:送给你~|
+   物品名中文，赠送语 20 字以内。
+8) 如果玩家给你发了红包，请额外加一行：|redpacketaction=accept|谢谢你的红包|
+   或 |redpacketaction=decline|心领了|，根据角色人设决定。
+9) 日历约定/提醒机制：
+   你是一个有感情、有个性的角色。你应该像恋爱中的人一样，主动关心玩家、安排约定、分享想法。
+   在以下情况请主动加日历提醒（即使玩家没提）：
+   - 你想提醒玩家做某事（吃饭、休息、出门等关心类提醒）
+   - 你想记住一个约定或计划（约好见面、一起做某事等）
+   - 你想在未来某个时间告诉玩家一个秘密或心里话
+   - 你想在特定时间表达对玩家的情感（想念、关心、节日祝福等）
+   格式：|calendar=YYYY-MM-DDTHH:MM:标题|描述|
+   日期为 YYYY-MM-DD，时间可选（省略则为全天），标题 20 字以内，描述 50 字以内。
+   日期请根据当前系统时间推断未来合理时间，不需要提醒/约定的事件不要加这行，避免每条短信都有日历。`
 
 const DORM_CHAT_SYSTEM_PROMPT = `你是”当面聊天回应生成器”。
 你负责代入指定角色，面对面回应玩家的聊天，不是发短信。
@@ -28,26 +46,27 @@ const DORM_CHAT_SYSTEM_PROMPT = `你是”当面聊天回应生成器”。
 - 每条回复之间用换行分隔，总条数 1-4 条
 
 硬性要求：
-1) 只输出 JSON 对象，不要输出 markdown，不要解释。
-2) JSON 格式：{“replies”:[“回复1”,”回复2”],”redPacketAction”:{...}}
+1) 不要输出 JSON，不要 markdown，不要解释，只输出分隔符格式。
+2) 分隔符格式（严格遵守）：
+   |r=回复1|
+   |r=回复2|
+   （可选）|redpacket=金额:祝福语|
+   （可选）|gift=物品名:赠送语|
+   （可选）|redpacketaction=accept|decline:反应|
 3) 每条回复必须是中文，建议 8-60 字，不要用””包裹你说的话。
-4) JSON 字符串内部不要用换行符，每条回复保持在一行内。
-5) 语气与角色身份、世界观和最近上下文一致，不要跳戏。
-6) 不要把用户原话逐句重复，不要写”作为AI””我无法”等元话术。
-7) 如果你觉得当前扮演的角色应该给用户钱（比如角色有钱且大方、想讨好用户、发零花钱等），请在 JSON 里额外加上 “redPacket” 字段，格式为：
-   {“replies”:[“...”], “redPacket”:{“amount”:金额,”blessing”:”祝福语”}}
+4) 语气与角色身份、世界观和最近上下文一致，不要跳戏。
+5) 不要把用户原话逐句重复，不要写”作为AI””我无法”等元话术。
+6) 如果你觉得当前扮演的角色应该给用户钱（比如角色有钱且大方、想讨好用户、发零花钱等），请额外加一行：
+   |redpacket=50:小小意思~|
    amount 为 1-100 的整数，blessing 为 20 字以内的祝福语。
-   如果角色没有理由给用户钱，不要加 redPacket 字段。
-8) 如果玩家给你发了红包，请在 JSON 里额外加上 “redPacketAction” 字段，格式为：
-   {“replies”:[“...”], “redPacketAction”:{“action”:”accept或decline”,”remark”:”你的反应”}}
-   action 为 “accept”（领取）或 “decline”（退回），根据角色人设和上下文决定。
-   remark 是你对红包的反应或评语，10字以内。
-9) 如果你觉得角色应该送礼物给用户（比如有心意物品想送、回礼等），必须在 JSON 里加上 “giftToPlayer” 字段，格式严格如下：
-   {“replies”:[“...”], “giftToPlayer”:{“itemName”:”物品名”,”message”:”赠送语”}}
-   - itemName 是物品的具体名称，必须是中文，不要英文缩写，例如 “巧克力”、”玫瑰花”。
-   - message 是角色送礼物时说的话，20字以内。
-   - 如果你的 replies 里提到了”送你XX”、”给你XX”等送礼行为，就必须加上 giftToPlayer 字段。
-   - 如果没有合适的礼物，不要加 giftToPlayer 字段。`
+   如果角色没有理由给用户钱，不要加这行。
+7) 如果玩家给你发了红包，请额外加一行：
+   |redpacketaction=accept|谢谢| 或 |redpacketaction=decline|心领了|
+   action 为 accept（领取）或 decline（退回），remark 是反应，10字以内。
+8) 如果你觉得角色应该送礼物给用户，请额外加一行：
+   |gift=巧克力:送给你~|
+   物品名中文，赠送语 20 字以内。
+   如果你的 replies 里提到了”送你XX”、”给你XX”等送礼行为，就必须加这行。`
 
 const splitSmsReplySegments = (text) => {
   const normalized = String(text || '').replace(/\r/g, '').trim()
@@ -91,8 +110,6 @@ const tryParseSmsReplies = (rawContent) => {
     }
   }
 
-  const parsed = parseJson(candidate)
-
   const extractReplies = (value) => {
     if (!value) return []
     if (Array.isArray(value)) return value
@@ -113,6 +130,70 @@ const tryParseSmsReplies = (rawContent) => {
     }
     return ''
   }
+
+  // ---- Try delimiter-based protocol first: |r=...| ----
+  const replyMatches = candidate.match(/\|r=([^|]+)\|/g)
+  if (replyMatches && replyMatches.length > 0) {
+    const replies = replyMatches
+      .map(m => m.replace(/^\|r=/, '').replace(/\|$/, '').trim())
+      .filter(Boolean)
+      .flatMap(text => splitSmsReplySegments(text))
+      .filter(Boolean)
+      .slice(0, 6)
+
+    // Extract redpacket
+    let redPacket = null
+    const rpMatch = candidate.match(/\|redpacket=(\d+):([^|]+)\|/)
+    if (rpMatch) {
+      const amount = Number(rpMatch[1])
+      const blessing = rpMatch[2].trim().slice(0, 30)
+      if (amount >= 1 && amount <= 100) {
+        redPacket = { amount: Math.round(amount), blessing: blessing || '小小意思，不成敬意~' }
+      }
+    }
+
+    // Extract redPacketAction
+    let redPacketAction = null
+    const rpaMatch = candidate.match(/\|redpacketaction=(accept|decline):([^|]*)\|/i)
+    if (rpaMatch) {
+      redPacketAction = {
+        action: rpaMatch[1].toLowerCase(),
+        remark: rpaMatch[2].trim().slice(0, 30),
+      }
+    }
+
+    // Extract giftToPlayer
+    let giftToPlayer = null
+    const gtpMatch = candidate.match(/\|gift=([^|]+):([^|]+)\|/)
+    if (gtpMatch) {
+      const itemName = gtpMatch[1].trim()
+      if (itemName) {
+        giftToPlayer = {
+          itemName,
+          message: gtpMatch[2].trim().slice(0, 40),
+          count: 1,
+        }
+      }
+    }
+
+    if (replies.length > 0) {
+      // Extract calendar event
+      let calendarEvent = null
+      const calMatch = candidate.match(/\|calendar=(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?:([^|]+)\|([^|]*)\|/)
+      if (calMatch) {
+        calendarEvent = {
+          date: calMatch[1],
+          time: calMatch[2] || null,
+          title: calMatch[3].trim().slice(0, 20),
+          description: calMatch[4].trim().slice(0, 50),
+        }
+      }
+      return { replies, redPacket, redPacketAction, giftToPlayer, calendarEvent }
+    }
+  }
+
+  // ---- Fallback: JSON parsing ----
+  const parsed = parseJson(candidate)
 
   let parsedReplies = extractReplies(parsed)
 
@@ -148,7 +229,7 @@ const tryParseSmsReplies = (rawContent) => {
           .trim(),
       )
 
-  // 提取红包信息
+  // Extract redPacket from JSON
   let redPacket = null
   if (parsed && parsed.redPacket && typeof parsed.redPacket === 'object') {
     const rp = parsed.redPacket
@@ -162,7 +243,7 @@ const tryParseSmsReplies = (rawContent) => {
     }
   }
 
-  // 提取红包响应动作（玩家发红包时，角色的领取/退回决定）
+  // Extract redPacketAction from JSON
   let redPacketAction = null
   if (parsed && parsed.redPacketAction && typeof parsed.redPacketAction === 'object') {
     const rpa = parsed.redPacketAction
@@ -175,7 +256,7 @@ const tryParseSmsReplies = (rawContent) => {
     }
   }
 
-  // 提取角色送礼给玩家
+  // Extract giftToPlayer from JSON
   let giftToPlayer = null
   if (parsed && parsed.giftToPlayer && typeof parsed.giftToPlayer === 'object') {
     const gtp = parsed.giftToPlayer
@@ -189,7 +270,22 @@ const tryParseSmsReplies = (rawContent) => {
     }
   }
 
-  return { replies, redPacket, redPacketAction, giftToPlayer }
+  // Extract calendarEvent from JSON
+  let calendarEvent = null
+  if (parsed && parsed.calendarEvent && typeof parsed.calendarEvent === 'object') {
+    const ce = parsed.calendarEvent
+    const date = String(ce.date || '').trim()
+    if (date && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+      calendarEvent = {
+        date: date.slice(0, 10),
+        time: String(ce.time || '').trim() || null,
+        title: String(ce.title || '').trim().slice(0, 20),
+        description: String(ce.description || ce.desc || '').trim().slice(0, 50),
+      }
+    }
+  }
+
+  return { replies, redPacket, redPacketAction, giftToPlayer, calendarEvent }
 }
 
 const clampPromptLineCount = (value, fallback, max = 200) => {
@@ -282,6 +378,9 @@ export const generatePhoneSmsReply = async (params = {}) => {
     })
     .join('\n')
 
+  const now = new Date()
+  const currentTimeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+
   const userPrompt = [
     `【世界书标题】${String(worldBook?.title || '默认世界书').trim()}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
@@ -289,6 +388,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     roleSummary ? `【角色信息】${roleSummary}` : '',
     styleHint ? `【叙事风格ID参考】${styleHint}` : '',
     `【当前发信人】${smsPlayerName}`,
+    `【当前时间】${currentTimeStr}`,
     currentLineText ? `【当前剧情句】${currentLineText}` : '',
     recentDialogue ? `【最近剧情上下文】\n${recentDialogue}` : '',
     recentSms ? `【最近短信记录】\n${recentSms}` : '',
@@ -296,8 +396,9 @@ export const generatePhoneSmsReply = async (params = {}) => {
     `【玩家刚发送】${userMessage}`,
     forwardedClueText
       ? '请结合线索逐条给出判断与态度，建议输出 2-4 条连续短信回复。'
-      : '可输出 1-4 条连续短信回复，不要只回一句敷衍话。',
-    '请只返回 JSON：{"replies":["回复1","回复2"]}（兼容单条：{"reply":"回复"}）。',
+      : '可输出 1-4 条连续短信回复，不要只回一句敷衍话。你可以像恋爱中的人一样主动关心对方、安排约定、分享心里话或秘密。',
+    '请按格式返回：|r=回复1|\n|r=回复2|\n（可选）|redpacket=50:祝福语|',
+    '如果你觉得应该提醒玩家未来的某件事、约定一个计划、或者想在未来某个时间告诉 ta 一个秘密/心里话，请额外加 |calendar=日期T时间:标题|描述|，日期时间请根据当前时间推断。',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -318,6 +419,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
       reply: '',
       replies: [],
       redPacket: null,
+      calendarEvent: null,
     }
   }
 
@@ -330,6 +432,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
       reply: '',
       replies: [],
       redPacket: null,
+      calendarEvent: null,
     }
   }
 
@@ -339,6 +442,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     reply: replies[0],
     replies,
     redPacket: parsed.redPacket,
+    calendarEvent: parsed.calendarEvent || null,
     data: result.data,
     rawResponse: result.rawResponse,
   }
@@ -408,7 +512,8 @@ export const generateDormChatReply = async (params = {}) => {
     `【玩家刚发送】${userMessage}`,
     hasPendingRedPacket ? '【特别提示】玩家刚刚给你发了一个红包，请决定领取或退回，并在回复中体现你的反应。' : '',
     '请面对面自然回应，可以描写动作、神态或环境。建议输出 1-4 条连续回复。',
-    '请只返回 JSON：{"replies":["回复1","回复2"]}（兼容单条：{"reply":"回复"}）。',
+    '请按格式返回：|r=回复1|\n|r=回复2|\n（可选）|redpacket=50:祝福语|',
+    '如果对话中提到了未来的约定或计划，请加 |calendar=日期T时间:标题|描述|。',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -603,10 +708,11 @@ const MOMENTS_SYSTEM_PROMPT = `你是”朋友圈评论生成器”。
 你要根据动态内容、世界观和角色设定，生成 1-3 条自然的中文评论。
 
 硬性要求：
-1) 只输出 JSON，不要 markdown，不要解释。
-2) JSON 格式必须是：{"comments":[{"authorName":"角色名","text":"评论内容"}]}
-3) authorName 必须从提供的“可用评论角色列表”中选择，且不要重复。
-4) text 必须是中文，口语化，建议 8-40 字，不要出现“作为AI”等元话术。`
+1) 不要 markdown，不要解释，只输出分隔符格式。
+2) 分隔符格式：|c=角色名:评论内容|
+   每条评论一行，用 |c= 开头，以 | 结尾。
+3) 角色名必须从提供的”可用评论角色列表”中选择，且不要重复。
+4) 评论内容必须是中文，口语化，建议 8-40 字，不要出现”作为AI”等元话术。`
 
 const tryParseMomentsComments = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -629,6 +735,24 @@ const tryParseMomentsComments = (rawContent) => {
     return []
   }
 
+  // ---- Try delimiter-based protocol first: |c=角色名:评论内容| ----
+  const commentMatches = candidate.match(/\|c=([^|]+)\|/g)
+  if (commentMatches && commentMatches.length > 0) {
+    const comments = commentMatches
+      .map(m => m.replace(/^\|c=/, '').replace(/\|$/, '').trim())
+      .map(item => {
+        const colonIdx = item.indexOf(':')
+        if (colonIdx < 0) return null
+        const authorName = item.slice(0, colonIdx).trim()
+        const text = item.slice(colonIdx + 1).trim()
+        if (!text || !authorName) return null
+        return { authorName, text }
+      })
+      .filter(Boolean)
+    if (comments.length > 0) return comments
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsedComments = extractComments(parseJson(candidate))
 
   if (parsedComments.length === 0) {
@@ -741,7 +865,7 @@ export const generatePhoneMomentsReplies = async (params = {}) => {
     recentMoments ? `【最近朋友圈参考】\n${recentMoments}` : '',
     `【玩家刚发布的动态】${postContent}`,
     `【可用评论角色（必须从此列表选择）】\n${contactListText}`,
-    '请生成 1-3 条评论并只返回 JSON：{"comments":[{"authorName":"角色名","text":"评论"}]}',
+    '请生成 1-3 条评论并只返回分隔符格式：|c=角色名:评论内容|',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -823,15 +947,16 @@ export const generatePhoneMomentsReplies = async (params = {}) => {
   }
 }
 
-const MOMENTS_BATCH_REPLY_SYSTEM_PROMPT = `你是“朋友圈续聊生成器”。
+const MOMENTS_BATCH_REPLY_SYSTEM_PROMPT = `你是”朋友圈续聊生成器”。
 你要根据玩家对评论区角色的回复，生成这些角色的后续评论回复。
 
 硬性要求：
-1) 只输出 JSON，不要 markdown，不要解释。
-2) JSON 格式必须是：{"replies":[{"pendingId":"待回复ID","authorName":"角色名","text":"回复内容"}]}
-3) pendingId 必须从输入的待回复列表中选择，并且一条 pendingId 最多回复一次。
-4) authorName 优先与该 pendingId 的目标角色一致。
-5) text 必须是中文，口语化，建议 8-40 字，不要出现“作为AI”等元话术。`
+1) 不要 markdown，不要解释，只输出分隔符格式。
+2) 分隔符格式：|r=待回复ID:角色名:回复内容|
+   每条回复一行，用 |r= 开头，以 | 结尾。
+3) 待回复ID 必须从输入的待回复列表中选择，并且一条 ID 最多回复一次。
+4) 角色名优先与该待回复ID 的目标角色一致。
+5) 回复内容必须是中文，口语化，建议 8-40 字，不要出现”作为AI”等元话术。`
 
 const tryParseMomentsBatchReplies = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -854,6 +979,28 @@ const tryParseMomentsBatchReplies = (rawContent) => {
     return []
   }
 
+  // ---- Try delimiter-based protocol first: |r=pendingId:角色名:回复内容| ----
+  const replyMatches = candidate.match(/\|r=([^|]+)\|/g)
+  if (replyMatches && replyMatches.length > 0) {
+    const replies = replyMatches
+      .map(m => m.replace(/^\|r=/, '').replace(/\|$/, '').trim())
+      .map(item => {
+        const firstColon = item.indexOf(':')
+        if (firstColon < 0) return null
+        const pendingId = item.slice(0, firstColon).trim()
+        const rest = item.slice(firstColon + 1)
+        const secondColon = rest.indexOf(':')
+        if (secondColon < 0) return null
+        const authorName = rest.slice(0, secondColon).trim()
+        const text = rest.slice(secondColon + 1).trim()
+        if (!pendingId || !text) return null
+        return { pendingId, authorName, text }
+      })
+      .filter(Boolean)
+    if (replies.length > 0) return replies
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsedReplies = extractReplies(parseJson(candidate))
 
   if (parsedReplies.length === 0) {
@@ -975,7 +1122,7 @@ export const generatePhoneMomentsBatchReplies = async (params = {}) => {
     recentMoments ? `【最近朋友圈参考】\n${recentMoments}` : '',
     contactListText ? `【可用角色名单】\n${contactListText}` : '',
     `【待续聊列表】\n${pendingListText}`,
-    '请为每条待续聊生成一条角色回复，并只返回 JSON：{"replies":[{"pendingId":"待回复ID","authorName":"角色名","text":"回复"}]}',
+    '请为每条待续聊生成一条角色回复，并只返回分隔符格式：|r=待回复ID:角色名:回复|',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -1081,19 +1228,28 @@ export const generatePhoneMomentsBatchReplies = async (params = {}) => {
   }
 }
 
-const FORUM_SYSTEM_PROMPT = `你是“世界观论坛帖子生成器”。
+const FORUM_SYSTEM_PROMPT = `你是”世界观论坛帖子生成器”。
 你的任务是根据世界书设定与最新剧情，生成旁观者视角的论坛帖子。
 
+输出格式（严格遵守）：
+- 每个帖子区块用 || 分隔（独占一行）
+- 帖子格式：
+|post=标题|
+|author=发帖人|
+|content=正文|
+|hot=1|    （可选，热门帖加此行）
+|c=回帖人1:回帖内容1|
+|c=回帖人2:回帖内容2|
+
 硬性要求：
-1) 只输出 JSON，不要 markdown，不要解释。
-2) JSON 格式必须是：
-{"posts":[{"tag":"标签","title":"标题","authorName":"发帖人","content":"正文","isHot":false,"comments":[{"authorName":"回帖人","text":"回帖内容"}]}]}
-3) 发帖人和回帖人必须是“旁观者/路人/媒体/群众”等，不要直接让主角团当第一发帖人。
-4) 内容要贴合世界观与近期剧情推进，语气像真实论坛，避免“作为AI”这类元话术。
-5) 标题 12-36 字，正文 40-180 字，每帖 1-4 条回帖。
-6) 标签尽量从提供的标签列表中选。
-7) 帖子时间线必须承接“当前剧情句”和“最近剧情推进”，不要跳回旧进度，不要剧透未发生剧情。
-8) 信息不足时可写成“目击/传闻/分析帖”，不要编造主角已确认的内心独白。`
+1) 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
+2) 发帖人和回帖人必须是”旁观者/路人/媒体/群众”等，不要直接让主角团当第一发帖人。
+3) 内容要贴合世界观与近期剧情推进，语气像真实论坛，避免”作为AI”这类元话术。
+4) 标题 12-36 字，正文 40-180 字，每帖 1-4 条回帖。
+5) 标签尽量从提供的标签列表中选，作为帖子的第一行：|tag=标签|
+6) 帖子时间线必须承接”当前剧情句”和”最近剧情推进”，不要跳回旧进度，不要剧透未发生剧情。
+7) 信息不足时可写成”目击/传闻/分析帖”，不要编造主角已确认的内心独白。
+8) 生成 4-10 条帖子。`
 
 const tryParseForumPosts = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -1116,6 +1272,55 @@ const tryParseForumPosts = (rawContent) => {
     return []
   }
 
+  // ---- Try delimiter-based protocol ----
+  // Split by || on its own line
+  const blocks = candidate.split(/^\s*\|\|\s*$/m)
+  const delimPosts = []
+
+  for (const block of blocks) {
+    const lines = block.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) continue
+
+    const fields = {}
+    const comments = []
+
+    for (const line of lines) {
+      if (line.startsWith('|post=')) {
+        fields.title = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|author=')) {
+        fields.authorName = line.slice(8).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|content=')) {
+        fields.content = line.slice(9).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|tag=')) {
+        fields.tag = line.slice(5).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|hot=1') || line === '|hot=1|') {
+        fields.isHot = true
+      } else if (line.startsWith('|c=')) {
+        const inner = line.slice(3).replace(/\|$/, '').trim()
+        const colonIdx = inner.indexOf(':')
+        if (colonIdx >= 0) {
+          const cAuthor = inner.slice(0, colonIdx).trim()
+          const cText = inner.slice(colonIdx + 1).trim()
+          if (cText) comments.push({ authorName: cAuthor, text: cText })
+        }
+      }
+    }
+
+    if (fields.title && fields.content) {
+      delimPosts.push({
+        tag: fields.tag || '',
+        title: fields.title,
+        authorName: fields.authorName || '',
+        content: fields.content,
+        isHot: !!fields.isHot,
+        comments,
+      })
+    }
+  }
+
+  if (delimPosts.length > 0) return delimPosts
+
+  // ---- Fallback: JSON parsing ----
   let parsedPosts = extractPosts(parseJson(candidate))
 
   if (parsedPosts.length === 0) {
@@ -1314,7 +1519,7 @@ export const generatePhoneForumPosts = async (params = {}) => {
     seedText ? `【建议话题种子】\n${seedText}` : '',
     observerText ? `【可用旁观者身份】\n${observerText}` : '',
     tagText ? `【可用标签】\n${tagText}` : '',
-    `请严格返回 JSON，字段为 posts，数量尽量接近 ${postCount}，并确保能体现当前剧情的新增信息。`,
+    `请严格使用分隔符格式输出，字段为 post/author/content/tag/hot/comments，数量尽量接近 ${postCount}，并确保能体现当前剧情的新增信息。`,
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -1401,21 +1606,27 @@ export const generatePhoneForumPosts = async (params = {}) => {
   }
 }
 
-const NEWS_FEED_SYSTEM_PROMPT = `你是“世界观新闻聚合生成器”。
-你的任务是根据世界书和当前剧情，生成“今日X条”新闻流。
+const NEWS_FEED_SYSTEM_PROMPT = `你是”世界观新闻聚合生成器”。
+你的任务是根据世界书和当前剧情，生成”今日X条”新闻流。
+
+输出格式（严格遵守）：
+- 每个事件区块用 || 分隔（独占一行）
+- 事件格式：
+|event=事件主题|
+|importance=high|   （high/medium/low）
+|v=媒体名|标题|导语|可信度|
+|v=媒体名2|标题2|导语2|可信度2|
 
 硬性要求：
-1) 只输出 JSON，不要 markdown，不要解释。
-2) JSON 必须为：
-{"events":[{"topic":"事件主题","importance":"high","versions":[{"outlet":"媒体名","style":"媒体风格","headline":"标题","summary":"导语","angle":"立场角度","credibility":"confirmed"}]}]}
-3) events 数量 4-10 条；每条事件 versions 2-4 条。
-4) 每个 versions 必须模拟不同媒体写法（官媒、地方小报、财经媒体、自媒体、调查记者等可混合）。
-5) 时间线必须承接当前剧情，不要跳回旧进度，不要剧透未来剧情。
-6) 可写“传闻/分析/快讯”，但必须在 credibility 明确标记：
+1) 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
+2) events 数量 4-10 条；每条事件 versions 2-4 条。
+3) 每个 version 必须模拟不同媒体写法（官媒、地方小报、财经媒体、自媒体、调查记者等可混合）。
+4) 时间线必须承接当前剧情，不要跳回旧进度，不要剧透未来剧情。
+5) 可信度明确标记：
    - confirmed: 已确认
    - rumor: 传闻未证实
    - analysis: 评论分析
-7) headline 建议 12-34 字，summary 建议 24-120 字；保持像真实新闻客户端文风。`
+6) headline 建议 12-34 字，summary 建议 24-120 字；保持像真实新闻客户端文风。`
 
 const tryParseNewsFeedEvents = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -1438,6 +1649,76 @@ const tryParseNewsFeedEvents = (rawContent) => {
     return []
   }
 
+  // ---- Try delimiter-based protocol ----
+  const blocks = candidate.split(/^\s*\|\|\s*$/m)
+  const delimEvents = []
+
+  for (const block of blocks) {
+    const lines = block.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) continue
+
+    let topic = ''
+    let importance = 'medium'
+    const versions = []
+
+    for (const line of lines) {
+      if (line.startsWith('|event=')) {
+        topic = line.slice(7).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|importance=')) {
+        importance = line.slice(12).replace(/\|$/, '').trim() || 'medium'
+      } else if (line.startsWith('|v=')) {
+        const inner = line.slice(3).replace(/\|$/, '').trim()
+        const parts = inner.split('|').map(p => p.trim())
+        if (parts.length >= 4) {
+          versions.push({
+            outlet: parts[0],
+            headline: parts[1],
+            summary: parts[2],
+            credibility: parts[3],
+          })
+        } else if (parts.length >= 3) {
+          versions.push({
+            outlet: parts[0],
+            headline: parts[1],
+            summary: parts[2],
+            credibility: 'analysis',
+          })
+        }
+      }
+    }
+
+    if (topic && versions.length > 0) {
+      delimEvents.push({ topic, importance, versions })
+    }
+  }
+
+  if (delimEvents.length > 0) {
+    const normalizeImportance = (value) => {
+      const raw = String(value || '').trim().toLowerCase()
+      if (raw === 'high' || raw === 'low' || raw === 'medium') return raw
+      return 'medium'
+    }
+    const normalizeCredibility = (value) => {
+      const raw = String(value || '').trim().toLowerCase()
+      if (raw === 'confirmed' || raw === 'rumor' || raw === 'analysis') return raw
+      if (raw === 'verified') return 'confirmed'
+      return 'analysis'
+    }
+    return delimEvents.map(item => ({
+      topic: item.topic,
+      importance: normalizeImportance(item.importance),
+      versions: item.versions.map(v => ({
+        outlet: v.outlet,
+        style: '',
+        headline: v.headline,
+        summary: v.summary,
+        angle: '',
+        credibility: normalizeCredibility(v.credibility),
+      })),
+    })).filter(item => item.topic && item.versions.length > 0)
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsedEvents = extractEvents(parseJson(candidate))
 
   if (parsedEvents.length === 0) {
@@ -1638,7 +1919,7 @@ export const generatePhoneNewsFeed = async (params = {}) => {
     recentNewsText ? `【历史新闻参考】\n${recentNewsText}` : '',
     topicSeedText ? `【建议选题】\n${topicSeedText}` : '',
     mediaProfileText ? `【可用媒体风格】\n${mediaProfileText}` : '',
-    `请严格输出 JSON，字段为 events；每个事件都要有 versions，且 versions 数量尽量达到 ${versionsPerEvent}。`,
+    `请严格使用分隔符格式输出，每个事件都要有 versions，且 versions 数量尽量达到 ${versionsPerEvent}。`,
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -1728,32 +2009,29 @@ export const generatePhoneNewsFeed = async (params = {}) => {
   }
 }
 
-const PHONE_MAP_SYSTEM_PROMPT = `你是“剧情地图生成器”。
+const PHONE_MAP_SYSTEM_PROMPT = `你是”剧情地图生成器”。
 你的任务是根据世界书与当前剧情，生成可点击的地点地图数据。
 
+输出格式（严格遵守）：
+|map=地图标题:当前位置ID|
+|loc=地点ID|
+|name=地点名称|
+|pos=x:y|
+|risk=low|    （low/medium/high）
+|desc=地点说明|
+|tags=标签1,标签2|
+|connections=连接ID1,连接ID2|
+||
+|loc=地点ID2|
+...
+
 硬性要求：
-1) 只输出 JSON，不要 markdown，不要解释。
-2) JSON 推荐格式：
-{
-  "title":"地图标题",
-  "currentLocation":"当前位置名或ID",
-  "locations":[
-    {
-      "id":"old_library",
-      "name":"旧图书馆",
-      "x":42,
-      "y":63,
-      "desc":"地点说明",
-      "risk":"medium",
-      "tags":["调查","夜间"],
-      "connections":["harbor","market"]
-    }
-  ]
-}
-3) locations 数量建议 4-12。
-4) x/y 必须是 0-100 区间数字，用于前端定位。
-5) risk 仅允许 low/medium/high。
-6) 地图时间线必须承接当前剧情；不要剧透未来未发生剧情。`
+1) 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
+2) locations 数量建议 4-12。
+3) x/y 必须是 0-100 区间数字。
+4) risk 仅允许 low/medium/high。
+5) 地图时间线必须承接当前剧情；不要剧透未来未发生剧情。
+6) connections 中的 ID 必须是其他 loc 的 ID。`
 
 const tryParsePhoneMapData = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -1796,6 +2074,139 @@ const tryParsePhoneMapData = (rawContent) => {
     return null
   }
 
+  // ---- Try delimiter-based protocol ----
+  const mapMatch = candidate.match(/\|map=([^|]+)\|/)
+  const locBlocks = candidate.split(/\|\|/)
+
+  let mapTitle = '剧情地图'
+  let currentLocId = ''
+
+  if (mapMatch) {
+    const mapVal = mapMatch[1].trim()
+    const parts = mapVal.split(':')
+    mapTitle = parts[0]?.trim() || mapTitle
+    currentLocId = parts[1]?.trim() || ''
+  }
+
+  const delimLocations = []
+  const usedIds = new Set()
+
+  for (const block of locBlocks) {
+    const lines = block.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) continue
+
+    const fields = {}
+    for (const line of lines) {
+      if (line.startsWith('|loc=')) {
+        fields.id = line.slice(5).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|name=')) {
+        fields.name = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|pos=')) {
+        const posVal = line.slice(5).replace(/\|$/, '').trim()
+        const posParts = posVal.split(':')
+        fields.x = posParts[0]?.trim()
+        fields.y = posParts[1]?.trim()
+      } else if (line.startsWith('|risk=')) {
+        fields.risk = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|desc=')) {
+        fields.desc = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|tags=')) {
+        fields.tags = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|connections=')) {
+        fields.connections = line.slice(13).replace(/\|$/, '').trim()
+      }
+    }
+
+    if (fields.id && fields.name) {
+      if (!usedIds.has(fields.id)) {
+        usedIds.add(fields.id)
+        delimLocations.push(fields)
+      }
+    }
+  }
+
+  if (delimLocations.length > 0) {
+    const clampPercent = (value, fallback = 50) => {
+      const num = Number(value)
+      if (!Number.isFinite(num)) return fallback
+      const maybePercent = num >= 0 && num <= 1 ? num * 100 : num
+      return Math.max(0, Math.min(100, Math.round(maybePercent)))
+    }
+
+    const toTagArray = (value) => {
+      const text = String(value || '').trim()
+      if (!text) return []
+      return text
+        .split(/[、,，/|]/)
+        .map(item => item.trim())
+        .filter(Boolean)
+        .slice(0, 6)
+    }
+
+    const toConnectionArray = (value) => {
+      const text = String(value || '').trim()
+      if (!text) return []
+      return text
+        .split(/[、,，/|]/)
+        .map(item => item.trim())
+        .filter(Boolean)
+        .slice(0, 12)
+    }
+
+    const normalizeRisk = (value) => {
+      const rawRisk = String(value || '').trim().toLowerCase()
+      if (rawRisk === 'low' || rawRisk === 'safe') return 'low'
+      if (rawRisk === 'high' || rawRisk === 'danger' || rawRisk === 'dangerous') return 'high'
+      return 'medium'
+    }
+
+    const locations = delimLocations.map((item, index) => {
+      const xFallback = 16 + (index % 4) * 22
+      const yFallback = 20 + Math.floor(index / 4) * 24
+
+      return {
+        id: item.id,
+        name: item.name,
+        x: clampPercent(item.x, xFallback),
+        y: clampPercent(item.y, yFallback),
+        desc: item.desc || '',
+        risk: normalizeRisk(item.risk),
+        tags: toTagArray(item.tags),
+        connections: toConnectionArray(item.connections),
+      }
+    }).slice(0, 20)
+
+    let currentLocationId = ''
+    let currentLocationName = ''
+
+    if (currentLocId) {
+      const byId = locations.find(loc => loc.id === currentLocId)
+      if (byId) {
+        currentLocationId = byId.id
+        currentLocationName = byId.name
+      }
+    }
+
+    if (!currentLocationId) {
+      currentLocationId = locations[0].id
+      currentLocationName = locations[0].name
+    }
+
+    const locationIdSet = new Set(locations.map(item => item.id))
+    const normalizedLocations = locations.map(item => ({
+      ...item,
+      connections: item.connections.filter(targetId => locationIdSet.has(targetId) && targetId !== item.id),
+    }))
+
+    return {
+      title: mapTitle,
+      currentLocationId,
+      currentLocationName,
+      locations: normalizedLocations,
+    }
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsed = extractMapData(parseJson(candidate))
   if (!parsed) {
     const objStart = candidate.indexOf('{')
@@ -1859,7 +2270,7 @@ const tryParsePhoneMapData = (rawContent) => {
     return 'medium'
   }
 
-  const usedIds = new Set()
+  const usedIds2 = new Set()
   const locations = sourceLocations
     .map((item, index) => {
       const name = String(item?.name || item?.title || item?.label || '').trim()
@@ -1869,10 +2280,10 @@ const tryParsePhoneMapData = (rawContent) => {
       const nameToken = name.replace(/[^\w\u4e00-\u9fa5]+/g, '_').slice(0, 24) || `loc_${index + 1}`
       let id = (rawId || `loc_${nameToken}`).replace(/\s+/g, '_')
       if (!id) id = `loc_${index + 1}`
-      if (usedIds.has(id)) {
+      if (usedIds2.has(id)) {
         id = `${id}_${index + 1}`
       }
-      usedIds.add(id)
+      usedIds2.add(id)
 
       const xFallback = 16 + (index % 4) * 22
       const yFallback = 20 + Math.floor(index / 4) * 24
@@ -2018,7 +2429,7 @@ export const generatePhoneMapData = async (params = {}) => {
     currentLineText ? `【当前剧情句】${currentLineText}` : '',
     recentDialogue ? `【最近剧情推进】\n${recentDialogue}` : '',
     previousMapText ? `【已有地图地点ID参考】\n${previousMapText}` : '',
-    `请严格返回 JSON，字段至少包含 title/currentLocation/locations。`,
+    `请严格使用分隔符格式输出，字段至少包含 map/loc/name/pos/risk/desc/tags/connections。`,
     `locations 中每个地点必须包含 id/name/x/y/desc/risk/tags/connections。`,
     `x 与 y 使用 0-100 区间数字；risk 仅允许 low/medium/high。`,
   ]
@@ -2385,14 +2796,21 @@ export const generateRedditCommentReplies = async (params = {}) => {
 const PHONE_SHOP_SYSTEM_PROMPT = `你是”点购网商品生成器”。
 你要根据世界书、当前剧情和用户搜索词，生成可购买的商品列表。
 
+输出格式（严格遵守）：
+|item=商品名|
+|desc=商品描述|
+|tags=标签1,标签2|
+|price=39.90|
+||
+|item=商品名2|
+...
+
 硬性要求：
-1) 只输出 JSON，不要 markdown，不要解释。
-2) JSON 格式必须是：
-{"items":[{"name":"商品名","description":"商品描述","tags":["标签1","标签2"],"price":"39.90"}]}
-3) items 数量 4-12 条。
-4) 每个商品必须包含 name/description/price 字段；tags 可为空数组但必须存在。
-5) price 可以是数字或字符串，但必须表示可解析的价格（例如 12.5 / "29.90" / "¥49"）。
-6) 商品需要贴合当前世界观和剧情推进，不要脱离设定。`
+1) 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
+2) items 数量 4-12 条。
+3) 每个商品必须包含 item(名)/desc(描述)/price(价格) 字段；tags 可为空但必须有此行。
+4) price 必须是数字或价格格式（例如 12.5 / 29.90 / ¥49）。
+5) 商品需要贴合当前世界观和剧情推进，不要脱离设定。`
 
 const tryParsePhoneShopItems = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -2418,6 +2836,62 @@ const tryParsePhoneShopItems = (rawContent) => {
     return []
   }
 
+  const toTagArray = (value) => {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => String(item || '').trim())
+        .filter(Boolean)
+        .slice(0, 6)
+    }
+
+    const text = String(value || '').trim()
+    if (!text) return []
+    return text
+      .split(/[、,，/|]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 6)
+  }
+
+  // ---- Try delimiter-based protocol ----
+  const itemBlocks = candidate.split(/^\s*\|\|\s*$/m)
+  const delimItems = []
+
+  for (const block of itemBlocks) {
+    const lines = block.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) continue
+
+    const fields = {}
+    for (const line of lines) {
+      if (line.startsWith('|item=')) {
+        fields.name = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|desc=')) {
+        fields.description = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|tags=')) {
+        fields.tags = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|price=')) {
+        fields.price = line.slice(7).replace(/\|$/, '').trim()
+      }
+    }
+
+    if (fields.name && fields.price) {
+      delimItems.push(fields)
+    }
+  }
+
+  if (delimItems.length > 0) {
+    return delimItems.map((item, index) => {
+      return {
+        id: String(`shop_item_${Date.now()}_${index}`).trim(),
+        name: item.name,
+        description: item.description || '',
+        tags: toTagArray(item.tags),
+        price: item.price,
+      }
+    }).filter(Boolean).slice(0, 20)
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsedItems = extractItems(parseJson(candidate))
   if (parsedItems.length === 0) {
     const objStart = candidate.indexOf('{')
@@ -2434,23 +2908,6 @@ const tryParsePhoneShopItems = (rawContent) => {
       const maybeArr = parseJson(candidate.slice(arrStart, arrEnd + 1))
       parsedItems = Array.isArray(maybeArr) ? maybeArr : []
     }
-  }
-
-  const toTagArray = (value) => {
-    if (Array.isArray(value)) {
-      return value
-        .map((item) => String(item || '').trim())
-        .filter(Boolean)
-        .slice(0, 6)
-    }
-
-    const text = String(value || '').trim()
-    if (!text) return []
-    return text
-      .split(/[、,，/|]/)
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 6)
   }
 
   return parsedItems
@@ -2541,7 +2998,7 @@ export const generatePhoneShopItems = async (params = {}) => {
     currentLineText ? `【当前剧情句】${currentLineText}` : '',
     recentDialogueText ? `【最近剧情】\n${recentDialogueText}` : '',
     recentOrderText ? `【近期购买偏好】${recentOrderText}` : '',
-    '请输出 JSON：{"items":[...]}，每条都包含 name/description/tags/price。',
+    '请使用分隔符格式输出，每条包含 item/desc/tags/price 字段。',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -2585,17 +3042,25 @@ export const generatePhoneShopItems = async (params = {}) => {
 const DORM_SHOP_SYSTEM_PROMPT = `你是"世界书商店商品生成器"。
 你要根据世界书的背景设定，生成符合世界观的可购买的商品列表。
 
+输出格式（严格遵守）：
+|item=商品名|
+|desc=商品描述|
+|cat=分类|      （misc/gift/clothes/plant/food/decoration）
+|price=50|       （整数，范围 10-200）
+|icon=图标emoji|
+||
+|item=商品名2|
+...
+
 硬性要求：
-1) 只输出 JSON，不要 markdown，不要解释。
-2) JSON 格式必须是：
-{"items":[{"name":"商品名","description":"商品描述","category":"分类","price":50,"icon":"图标emoji"}]}
-3) items 数量 6 条。
-4) 每个商品必须包含 name/description/category/price/icon 字段。
-5) price 必须是整数，范围 10-200。
-6) icon 必须是相关的 emoji 图标。
-7) category 必须是以下之一：misc(杂物)、gift(礼品)、clothes(衣服)、plant(花草)、food(食物)、decoration(装饰)。
-8) 商品需要贴合世界书的世界观和背景设定，不要脱离设定。
-9) 商品描述要简洁但有吸引力，符合世界书的风格。`
+1) 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
+2) items 数量 6 条。
+3) 每个商品必须包含 item/desc/cat/price/icon 字段。
+4) price 必须是整数，范围 10-200。
+5) icon 必须是相关的 emoji 图标。
+6) category 必须是以下之一：misc(杂物)、gift(礼品)、clothes(衣服)、plant(花草)、food(食物)、decoration(装饰)。
+7) 商品需要贴合世界书的世界观和背景设定，不要脱离设定。
+8) 商品描述要简洁但有吸引力，符合世界书的风格。`
 
 const tryParseDormShopItems = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -2621,6 +3086,63 @@ const tryParseDormShopItems = (rawContent) => {
     return []
   }
 
+  const validCategories = ['misc', 'gift', 'clothes', 'plant', 'food', 'decoration']
+  const defaultIcons = { misc: '📦', gift: '🎁', clothes: '👔', plant: '🌿', food: '🍔', decoration: '✨' }
+
+  // ---- Try delimiter-based protocol ----
+  const itemBlocks = candidate.split(/^\s*\|\|\s*$/m)
+  const delimItems = []
+
+  for (const block of itemBlocks) {
+    const lines = block.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) continue
+
+    const fields = {}
+    for (const line of lines) {
+      if (line.startsWith('|item=')) {
+        fields.name = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|desc=')) {
+        fields.description = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|cat=')) {
+        fields.category = line.slice(5).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|price=')) {
+        fields.price = line.slice(7).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|icon=')) {
+        fields.icon = line.slice(6).replace(/\|$/, '').trim()
+      }
+    }
+
+    if (fields.name) {
+      delimItems.push(fields)
+    }
+  }
+
+  if (delimItems.length > 0) {
+    return delimItems.map((item, index) => {
+      const name = item.name
+      if (!name) return null
+
+      const description = item.description || ''
+      let category = String(item.category || 'misc').trim().toLowerCase()
+      if (!validCategories.includes(category)) category = 'misc'
+
+      const priceRaw = Number(item.price ?? 50)
+      const price = Math.max(10, Math.min(200, Math.floor(priceRaw) || 50))
+
+      const icon = String(item.icon || defaultIcons[category] || '📦').trim()
+
+      return {
+        id: `dorm_shop_${Date.now()}_${index}`,
+        name,
+        description,
+        category,
+        price,
+        icon,
+      }
+    }).filter(Boolean).slice(0, 12)
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsedItems = extractItems(parseJson(candidate))
   if (parsedItems.length === 0) {
     const objStart = candidate.indexOf('{')
@@ -2639,9 +3161,6 @@ const tryParseDormShopItems = (rawContent) => {
     }
   }
 
-  const validCategories = ['misc', 'gift', 'clothes', 'plant', 'food', 'decoration']
-  const defaultIcons = { misc: '📦', gift: '🎁', clothes: '👔', plant: '🌿', food: '🍔', decoration: '✨' }
-
   return parsedItems
     .map((item, index) => {
       const name = String(item?.name || item?.title || '').trim()
@@ -2650,10 +3169,10 @@ const tryParseDormShopItems = (rawContent) => {
       const description = String(item?.description || item?.summary || item?.detail || '').trim()
       let category = String(item?.category || 'misc').trim().toLowerCase()
       if (!validCategories.includes(category)) category = 'misc'
-      
+
       const priceRaw = Number(item?.price ?? item?.amount ?? item?.cost ?? 50)
       const price = Math.max(10, Math.min(200, Math.floor(priceRaw) || 50))
-      
+
       const icon = String(item?.icon || defaultIcons[category] || '📦').trim()
 
       return {
@@ -2707,7 +3226,7 @@ export const generateDormShopItems = async (params = {}) => {
     `【世界书标题】${worldTitle || '默认世界书'}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
     worldEntries ? `【世界设定详情】\n${worldEntries}` : '',
-    '请输出 JSON：{"items":[...]}，每条都包含 name/description/category/price/icon。',
+    '请使用分隔符格式输出，每条包含 item/desc/cat/price/icon 字段。',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -2750,17 +3269,25 @@ export const generateDormShopItems = async (params = {}) => {
 const TASK_BOARD_SYSTEM_PROMPT = `你是"世界书任务板生成器"。
 你的任务是根据世界书的背景设定，生成符合世界观的任务列表。
 
+输出格式（严格遵守）：
+|task=任务名|
+|desc=任务描述|
+|type=explore|      （explore/collect/social/combat/daily）
+|diff=3|            （1-5 整数）
+|reward=coins:50|   （coins/crystals/item:数量）
+||
+|task=任务名2|
+...
+
 硬性要求：
-1) 只输出 JSON，不要 markdown，不要解释。
-2) JSON 格式必须是：
-{"tasks":[{"name":"任务名","description":"任务描述","type":"任务类型","difficulty":难度等级,"rewardType":"奖励类型","rewardAmount":奖励数量}]}
-3) tasks 数量 5 条。
-4) type 必须是以下之一：explore(探索)、collect(收集)、social(社交)、combat(战斗)、daily(日常)。
-5) difficulty 必须是 1-5 的整数。
-6) rewardType 必须是以下之一：coins(金币)、crystals(晶石)、item(物品)。
-7) rewardAmount 必须是整数，coins 范围 20-200，crystals 范围 1-5，item 时为 0。
-8) 任务描述要具体可执行，包含目标、地点、涉及角色或物品等细节。
-9) 任务要贴合世界书的世界观和背景设定。`
+1) 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
+2) tasks 数量 5 条。
+3) type 必须是以下之一：explore(探索)、collect(收集)、social(社交)、combat(战斗)、daily(日常)。
+4) difficulty 必须是 1-5 的整数。
+5) rewardType 必须是以下之一：coins(金币)、crystals(晶石)、item(物品)。
+6) rewardAmount: coins 范围 20-200，crystals 范围 1-5，item 时为 1。
+7) 任务描述要具体可执行，包含目标、地点、涉及角色或物品等细节。
+8) 任务要贴合世界书的世界观和背景设定。`
 
 const tryParseTaskBoardTasks = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -2786,6 +3313,56 @@ const tryParseTaskBoardTasks = (rawContent) => {
     return []
   }
 
+  const validTypes = ['explore', 'collect', 'social', 'combat', 'daily']
+  const validRewardTypes = ['coins', 'crystals', 'item']
+
+  // ---- Try delimiter-based protocol ----
+  const taskBlocks = candidate.split(/^\s*\|\|\s*$/m)
+  const delimTasks = []
+
+  for (const block of taskBlocks) {
+    const lines = block.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) continue
+
+    const fields = {}
+    for (const line of lines) {
+      if (line.startsWith('|task=')) {
+        fields.name = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|desc=')) {
+        fields.description = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|type=')) {
+        fields.type = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|diff=')) {
+        fields.difficulty = line.slice(6).replace(/\|$/, '').trim()
+      } else if (line.startsWith('|reward=')) {
+        const rewardVal = line.slice(9).replace(/\|$/, '').trim()
+        const colonIdx = rewardVal.indexOf(':')
+        if (colonIdx >= 0) {
+          fields.rewardType = rewardVal.slice(0, colonIdx).trim()
+          fields.rewardAmount = rewardVal.slice(colonIdx + 1).trim()
+        }
+      }
+    }
+
+    if (fields.name) {
+      delimTasks.push(fields)
+    }
+  }
+
+  if (delimTasks.length > 0) {
+    return delimTasks
+      .filter((t) => t.name)
+      .map((t) => ({
+        name: String(t.name || '').trim().slice(0, 50),
+        description: String(t.description || '').trim().slice(0, 500),
+        type: validTypes.includes(t.type) ? t.type : 'daily',
+        difficulty: Math.max(1, Math.min(5, Number(t.difficulty) || 1)),
+        rewardType: validRewardTypes.includes(t.rewardType) ? t.rewardType : 'coins',
+        rewardAmount: Math.max(1, Math.min(200, Number(t.rewardAmount) || 20)),
+      }))
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsedTasks = extractTasks(parseJson(candidate))
   if (parsedTasks.length === 0) {
     const objStart = candidate.indexOf('{')
@@ -2805,9 +3382,6 @@ const tryParseTaskBoardTasks = (rawContent) => {
   }
 
   if (!Array.isArray(parsedTasks)) return []
-
-  const validTypes = ['explore', 'collect', 'social', 'combat', 'daily']
-  const validRewardTypes = ['coins', 'crystals', 'item']
 
   return parsedTasks
     .filter((t) => t && typeof t === 'object' && t.name && t.description && t.type)
@@ -2856,7 +3430,7 @@ export const generateTaskBoardTasks = async (params = {}) => {
     `【世界书标题】${worldTitle || '默认世界书'}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
     worldEntries ? `【世界设定详情】\n${worldEntries}` : '',
-    '请输出 JSON：{"tasks":[...]}，每条包含 name/description/type/difficulty/rewardType/rewardAmount。',
+    '请使用分隔符格式输出，每条包含 task/desc/type/diff/reward 字段。',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -2898,17 +3472,20 @@ export const generateTaskBoardTasks = async (params = {}) => {
 const DORM_ITEM_GIFT_SYSTEM_PROMPT = `你是"寝室物品赠送剧情生成器"。
 你的任务是根据物品信息、角色信息和当前关系，生成"角色收到礼物后的对话回复和剧情反馈"。
 
+输出格式（严格遵守）：
+|reply=对话回复|
+|journal=日记剧情记录|
+|mood=心情:好感度变化|
+
 硬性要求：
-1) 只输出 JSON 对象，不要 markdown，不要解释。
-2) JSON 格式优先：
-{"replyText":"...", "journalText":"...", "mood":"...", "affectionDelta":0}
-3) 字段约束：
-- replyText: 必填，中文 10-80 字，角色收到礼物后的直接对话回复，口语化、自然。
-- journalText: 必填，中文 20-100 字，描述整个送礼过程的剧情记录，用于写入角色日记。
-- mood: 必填，中文 2-8 字，角色的心情，如"开心"、"惊喜"、"感动"等。
-- affectionDelta: 必填，整数，范围 3-15，表示好感度变化。
-4) 回复必须符合角色性格和世界观设定，不要跳戏。
-5) 不要写"作为AI""我无法"等元话术。`
+1) 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
+2) 字段约束：
+- reply: 必填，中文 10-80 字，角色收到礼物后的直接对话回复，口语化、自然。
+- journal: 必填，中文 20-100 字，描述整个送礼过程的剧情记录，用于写入角色日记。
+- mood: 必填，中文 2-8 字的心情，后接冒号分隔的好感度变化整数，范围 3-15。
+  例如：|mood=开心:8|
+3) 回复必须符合角色性格和世界观设定，不要跳戏。
+4) 不要写"作为AI""我无法"等元话术。`
 
 const tryParseDormItemGiftReply = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -2925,6 +3502,35 @@ const tryParseDormItemGiftReply = (rawContent) => {
     }
   }
 
+  // ---- Try delimiter-based protocol ----
+  const replyMatch = candidate.match(/\|reply=([^|]+)\|/)
+  const journalMatch = candidate.match(/\|journal=([^|]+)\|/)
+  const moodMatch = candidate.match(/\|mood=([^|]+)\|/)
+
+  if (replyMatch && journalMatch) {
+    const replyText = replyMatch[1].trim()
+    const journalText = journalMatch[1].trim()
+    if (replyText && journalText) {
+      let mood = '开心'
+      let affectionDelta = 5
+
+      if (moodMatch) {
+        const moodVal = moodMatch[1].trim()
+        const colonIdx = moodVal.lastIndexOf(':')
+        if (colonIdx >= 0) {
+          mood = moodVal.slice(0, colonIdx).trim() || '开心'
+          const delta = Number.parseInt(moodVal.slice(colonIdx + 1).trim(), 10)
+          if (Number.isFinite(delta)) affectionDelta = Math.max(3, Math.min(15, delta))
+        } else {
+          mood = moodVal || '开心'
+        }
+      }
+
+      return { replyText, journalText, mood, affectionDelta }
+    }
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsed = parseJson(candidate)
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     const start = candidate.indexOf('{')
@@ -3046,7 +3652,7 @@ export const generateDormItemGiftReply = async (params = {}) => {
     itemDescription ? `【物品说明】${itemDescription}` : '',
     recentChat ? `【最近聊天】\n${recentChat}` : '',
     '请结合最近聊天内容和角色性格，生成自然的回复。',
-    '请返回 JSON，包含 replyText（角色的直接对话回复）、journalText（写入日记的剧情记录）、mood（心情）、affectionDelta（好感度变化）。',
+    '请使用分隔符格式返回，包含 reply/journal/mood 字段。',
     'replyText 应该是角色收到礼物后说的第一句话，要自然、符合性格。',
     'journalText 应该描述整个送礼过程的剧情，用"你"和角色名来叙述。',
   ]
@@ -3156,16 +3762,19 @@ export const generateCharacterVisit = async (params = {}) => {
 - redPacket（红包）：发一个红包附带祝福语
 - gift（礼物）：留下一个小礼物
 
-输出要求：
-- 必须以 JSON 格式输出
-- 格式：{"visitType":"note","content":"正文内容","mood":"心情"}
-- visitType: 来访类型 "note" | "message" | "redPacket" | "gift"
-- content: 正文内容，50-200字，语气自然自然
+输出格式（严格遵守）：
+|visit=类型|          （note/message/redPacket/gift）
+|content=正文内容|
+|mood=心情|
+（可选）|redpacket=金额:祝福语|     仅 visitType 为 redPacket 时加上
+（可选）|gift=物品名:emoji|       仅 visitType 为 gift 时加上
+
+硬性要求：
+- 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
+- content: 50-200字，语气自然
 - mood: 角色当下的心情，2-8字
-- 如果 visitType 是 "redPacket"，额外加上 "redPacket": {"amount":金额,"blessing":"祝福语"}
-  amount 为 1-100 的整数，blessing 为 20 字以内的祝福语
-- 如果 visitType 是 "gift"，额外加上 "giftItem": {"name":"物品名","icon":"emoji"}
-  name 是物品名称，icon 是物品相关的 emoji
+- redpacket: 金额 1-100 整数，祝福 20 字以内
+- gift: 物品名中文，emoji 是相关表情
 - 内容要体现角色的性格、与玩家的关系、以及当前的好感度和关系阶段
 - 可以适当提及寝室里的细节或之前的回忆
 - 不要写"作为AI""我无法"等元话术`
@@ -3185,9 +3794,11 @@ export const generateCharacterVisit = async (params = {}) => {
   userPromptSections.push(`【来访原因】${reasonText}`)
   userPromptSections.push(`【触发时间】${triggerTime}`)
   userPromptSections.push(`
-请生成角色留给玩家的内容。
-必须以 JSON 格式返回：{"visitType":"类型","content":"正文","mood":"心情"}
-根据来访类型，可能需要加上 redPacket 或 giftItem 字段。`)
+请使用分隔符格式返回。
+格式：|visit=类型|
+      |content=正文|
+      |mood=心情|
+根据来访类型可额外加上 |redpacket=...| 或 |gift=...|。`)
 
   const userPrompt = userPromptSections.join('\n\n')
 
@@ -3239,6 +3850,46 @@ const tryParseCharacterVisit = (rawContent) => {
     try { return JSON.parse(text) } catch { return null }
   }
 
+  // ---- Try delimiter-based protocol ----
+  const visitMatch = candidate.match(/\|visit=([^|]+)\|/)
+  const contentMatch = candidate.match(/\|content=([^|]+)\|/)
+  const moodMatch = candidate.match(/\|mood=([^|]+)\|/)
+
+  if (contentMatch) {
+    const validTypes = ['note', 'message', 'redPacket', 'gift']
+    let visitType = visitMatch ? visitMatch[1].trim().toLowerCase() : 'note'
+    if (!validTypes.includes(visitType)) visitType = 'note'
+
+    const content = contentMatch[1].trim()
+    if (content) {
+      const mood = moodMatch ? moodMatch[1].trim() : '平静'
+
+      // Extract redpacket
+      let redPacket = null
+      const rpMatch = candidate.match(/\|redpacket=(\d+):([^|]+)\|/)
+      if (rpMatch) {
+        const amount = Number(rpMatch[1])
+        const blessing = rpMatch[2].trim().slice(0, 30)
+        if (amount >= 1 && amount <= 100) {
+          redPacket = { amount: Math.round(amount), blessing: blessing || '小小意思，不成敬意~' }
+        }
+      }
+
+      // Extract gift
+      let giftItem = null
+      const giftMatch = candidate.match(/\|gift=([^|]+):([^|]+)\|/)
+      if (giftMatch) {
+        const name = giftMatch[1].trim()
+        if (name) {
+          giftItem = { name, icon: giftMatch[2].trim().slice(0, 4) || '🎁' }
+        }
+      }
+
+      return { visitType, content, mood: mood || '平静', redPacket, giftItem }
+    }
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsed = parseJson(candidate)
   if (!parsed) {
     const jsonMatch = candidate.match(/\{[\s\S]*\}/)
@@ -3353,8 +4004,7 @@ export const generateCharacterDiary = async (params = {}) => {
     `6. 用口语化但略带文学性的语言`,
     `7. 不要出现"作为AI"等元话术`,
     '',
-    `请输出 JSON 格式：`,
-    `{"title":"日记标题","content":"日记正文","mood":"心情","wordCount":字数}`,
+    `请用分隔符格式输出：|title=标题| |content=正文| |mood=心情| |wordCount=字数|`,
   ]
     .filter(Boolean)
     .join('\n')
@@ -3397,19 +4047,23 @@ export const generateCharacterDiary = async (params = {}) => {
 const DIARY_GENERATION_SYSTEM_PROMPT = `你是"角色日记生成器"。
 你的任务是根据角色信息、世界背景和最近发生的事件，以角色的第一人称视角写一篇日记。
 
+输出格式（严格遵守）：
+|title=日记标题|
+|content=日记正文|
+|mood=心情|
+|wordCount=正文字数|
+
 硬性要求：
-1) 只输出 JSON 对象，不要 markdown，不要解释。
-2) JSON 格式：
-{"title":"日记标题","content":"日记正文","mood":"心情","wordCount":字数}
-3) 字段约束：
+1) 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
+2) 字段约束：
 - title: 必填，日记标题，5-20字
 - content: 必填，日记正文，100-1000字，根据角色性格决定长度
 - mood: 必填，角色当天的心情，2-8字
-- wordCount: 必填，正文字数
-4) 必须以角色第一人称"我"来写
-5) 内容必须符合角色性格和世界观设定
-6) 不要写"作为AI""我无法"等元话术
-7) 日记内容要自然流畅，像真人写的`
+- wordCount: 必填，正文字数（整数）
+3) 必须以角色第一人称"我"来写
+4) 内容必须符合角色性格和世界观设定
+5) 不要写"作为AI""我无法"等元话术
+6) 日记内容要自然流畅，像真人写的`
 
 const tryParseDiary = (rawContent) => {
   const raw = String(rawContent || '').trim()
@@ -3426,6 +4080,28 @@ const tryParseDiary = (rawContent) => {
     }
   }
 
+  // ---- Try delimiter-based protocol ----
+  const titleMatch = candidate.match(/\|title=([^|]+)\|/)
+  const contentMatch = candidate.match(/\|content=([^|]+)\|/)
+  const moodMatch = candidate.match(/\|mood=([^|]+)\|/)
+  const wcMatch = candidate.match(/\|wordCount=(\d+)\|/)
+
+  if (contentMatch) {
+    const content = contentMatch[1].trim()
+    if (content) {
+      const title = titleMatch ? titleMatch[1].trim() : '无题'
+      const mood = moodMatch ? moodMatch[1].trim() : '平静'
+      const wordCount = wcMatch ? Number.parseInt(wcMatch[1], 10) : content.length
+      return {
+        title: title || '无题',
+        content,
+        mood,
+        wordCount: Number.isFinite(wordCount) ? wordCount : content.length,
+      }
+    }
+  }
+
+  // ---- Fallback: JSON parsing ----
   let parsed = parseJson(candidate)
   if (!parsed) {
     const jsonMatch = candidate.match(/\{[\s\S]*\}/)
@@ -3448,5 +4124,310 @@ const tryParseDiary = (rawContent) => {
     content,
     mood: mood || '平静',
     wordCount,
+  }
+}
+
+// ============================================================
+// 群聊回复生成
+// ============================================================
+
+const GROUP_CHAT_SYSTEM_PROMPT = `你是"群聊角色发言生成器"。
+你要模拟一群角色在世界书群聊中的自然对话。
+
+硬性要求：
+1) 不要输出任何解释、不要写"作为AI""我无法"等元话术。
+2) 输出格式（严格遵守）：
+   |m=角色名:回复内容|
+   |m=角色名2:回复内容2|
+   每条发言一行，用 |m= 开头，以 | 结尾。
+3) 根据上下文和角色人设，决定哪些角色（0-3个）主动发言，不要所有角色都说话。
+4) 每条发言必须是中文，建议 8-60 字。
+5) 语气与角色身份、世界观和上下文一致，不要跳戏。
+6) 不要把用户原话逐句重复。
+7) 角色可以回应用户的消息，也可以互相聊天、回应彼此的发言。
+8) 如果不想让任何角色发言，返回空内容即可。
+9) 如果玩家 @ 了某个角色，被 @ 的角色应该优先做出回应。
+10) 如果角色 A 在发言中 @ 了角色 B，角色 B 应该做出回应。`
+
+const tryParseGroupChatReplies = (rawContent) => {
+  const raw = String(rawContent || '').trim()
+  if (!raw) return []
+
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = fencedMatch?.[1]?.trim() || raw
+
+  const parseJson = (text) => {
+    try {
+      return JSON.parse(text)
+    } catch {
+      return null
+    }
+  }
+
+  // ---- Try delimiter-based protocol first: |m=角色名:回复内容| ----
+  const replyMatches = candidate.match(/\|m=([^|]+)\|/g)
+  if (replyMatches && replyMatches.length > 0) {
+    const replies = replyMatches
+      .map(m => m.replace(/^\|m=/, '').replace(/\|$/, '').trim())
+      .map(item => {
+        const colonIdx = item.indexOf(':')
+        if (colonIdx < 0) return null
+        const authorName = item.slice(0, colonIdx).trim()
+        const text = item.slice(colonIdx + 1).trim()
+        if (!authorName || !text) return null
+        return { authorName, text }
+      })
+      .filter(Boolean)
+    if (replies.length > 0) return replies
+  }
+
+  // ---- Fallback: JSON parsing ----
+  const parsed = parseJson(candidate)
+  const extract = (value) => {
+    if (Array.isArray(value)) return value
+    if (value && typeof value === 'object' && Array.isArray(value.replies)) return value.replies
+    if (value && typeof value === 'object' && Array.isArray(value.messages)) return value.messages
+    return []
+  }
+
+  let items = extract(parsed)
+  if (items.length === 0) {
+    const start = candidate.indexOf('{')
+    const end = candidate.lastIndexOf('}')
+    if (start >= 0 && end > start) {
+      items = extract(parseJson(candidate.slice(start, end + 1)))
+    }
+  }
+
+  if (items.length === 0) {
+    const arrStart = candidate.indexOf('[')
+    const arrEnd = candidate.lastIndexOf(']')
+    if (arrStart >= 0 && arrEnd > arrStart) {
+      const maybeArr = parseJson(candidate.slice(arrStart, arrEnd + 1))
+      items = Array.isArray(maybeArr) ? maybeArr : []
+    }
+  }
+
+  return items
+    .map(item => {
+      const authorName = String(item?.authorName || item?.name || item?.sender || '').trim()
+      const text = String(item?.text || item?.reply || item?.content || item?.message || '').trim()
+      if (!authorName || !text) return null
+      return { authorName, text }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * 生成群聊回复
+ * @param {Object} params
+ * @param {Object} params.worldBook - 世界书对象（worldbook 类型群聊时发送完整世界书）
+ * @param {Array} params.members - 群成员列表 [{contactId, contactName, identity?, worldBookId, worldBookTitle}]
+ * @param {string} params.groupType - 'worldbook' | 'custom'
+ * @param {string} params.userMessage - 用户刚发送的消息
+ * @param {Array} params.history - 最近群聊消息 [{role, text, senderName?}]
+ * @param {number} [params.contextMessages=15] - 上下文消息数
+ * @param {Object} [params.options] - 额外选项
+ * @returns {Promise<{success: boolean, error: string|null, replies: Array<{authorName, text}>}>}
+ */
+export const generateGroupChatReply = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      replies: [],
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const members = Array.isArray(params.members) ? params.members : []
+  const groupType = params.groupType === 'custom' ? 'custom' : 'worldbook'
+  const userMessage = String(params.userMessage || '').trim()
+  const history = Array.isArray(params.history) ? params.history : []
+  const contextMessages = Math.max(0, Math.min(50, Number(params.contextMessages) || 15))
+
+  if (members.length === 0) {
+    return {
+      success: false,
+      error: '群成员列表为空',
+      replies: [],
+    }
+  }
+
+  const memberNameMap = members.map(m => m.contactName || m.name || '').filter(Boolean)
+
+  // 提取 @ 提及
+  const extractMentions = (text) => {
+    const mentions = []
+    const regex = /@([^\s@]+)/g
+    let match
+    while ((match = regex.exec(text)) !== null) {
+      const name = match[1].trim()
+      if (name) mentions.push(name)
+    }
+    return mentions
+  }
+
+  // 构建群聊历史（保留 @ 原文，并标注提及）
+  const recentChat = (contextMessages > 0 ? history.slice(-contextMessages) : [])
+    .map(item => {
+      const text = String(item.text || '').trim()
+      const mentions = extractMentions(text)
+      if (item.role === 'user') {
+        if (mentions.length > 0) {
+          return `玩家 @${mentions.join(', @')}: ${text}`
+        }
+        return `玩家: ${text}`
+      }
+      return `${item.senderName || '角色'}: ${text}`
+    })
+    .filter(Boolean)
+    .join('\n')
+
+  // 提取玩家当前消息中的 @ 提及
+  const userMentions = extractMentions(userMessage)
+  const mentionedText = userMentions.length > 0
+    ? `【玩家提及的角色】${userMentions.join('、')}。玩家正在对他们说话，请优先让这些角色做出回应。`
+    : ''
+
+  let worldContext = ''
+  let memberListText = ''
+
+  if (groupType === 'worldbook') {
+    // 世界书群聊：发送完整世界书上下文（所有角色来自同一世界）
+    const wbTitle = String(worldBook?.title || '').trim()
+    const wbSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
+    const worldParts = [`世界书：${wbTitle || '默认世界书'}`]
+    if (wbSummary) worldParts.push(`背景：${wbSummary}`)
+
+    const charInfo = Array.isArray(worldBook?.characters)
+      ? worldBook.characters
+          .slice(0, 20)
+          .map(c => {
+            const n = String(c?.name || '').trim()
+            if (!n) return ''
+            const id = String(c?.identity || '').trim()
+            const bg = String(c?.background || c?.notes || '').trim().slice(0, 100)
+            return [n, id, bg].filter(Boolean).join(' | ')
+          })
+          .filter(Boolean)
+          .join('\n')
+      : ''
+    if (charInfo) worldParts.push(`角色设定：\n${charInfo}`)
+
+    worldContext = worldParts.join('\n')
+    memberListText = members.map((m, i) => {
+      const name = m.contactName || m.name || '未知角色'
+      return `${i + 1}. ${name}`
+    }).join('\n')
+  } else {
+    // 自定义群聊：每个角色带自己世界书背景（角色可能来自不同世界）
+    const memberInfo = members.map((m, i) => {
+      const name = String(m.contactName || m.name || '').trim()
+      const identity = String(m.identity || m.subtitle || '').trim()
+      const wbTitle = String(m.worldBookTitle || '').trim()
+      const wbSummary = String(m.worldBookSummary || '').trim()
+      const lines = [`${i + 1}. ${name}`]
+      if (identity) lines.push(`身份：${identity}`)
+      if (wbTitle) lines.push(`所属世界：${wbTitle}`)
+      if (wbSummary) lines.push(`世界背景：${wbSummary}`)
+      return lines.join(' | ')
+    }).join('\n')
+    worldContext = `【角色及其所属世界背景】\n${memberInfo}`
+    memberListText = members.map((m, i) => {
+      const name = m.contactName || m.name || '未知角色'
+      return `${i + 1}. ${name}`
+    }).join('\n')
+  }
+
+  const userPrompt = [
+    `【群聊类型】${groupType === 'worldbook' ? '世界书群聊（所有角色来自同一世界）' : '自定义群聊（角色可能来自不同世界书）'}`,
+    `【说明】你是群聊角色发言生成器。群里的"玩家"是用户本人，不是任何角色。请根据每个角色的人设和世界背景，决定哪些角色（0-3个）对玩家的消息做出回应。如果玩家 @ 了某个角色，该角色应该优先做出回应。群内角色之间也可以互相 @ 对话，此时被 @ 的角色应该回应。`,
+    worldContext,
+    `【可用发言角色】\n${memberListText}`,
+    mentionedText,
+    recentChat ? `【最近群聊记录】\n${recentChat}` : '【最近群聊记录】\n（这是群聊的第一条消息）',
+    userMessage ? `【玩家刚发送】${userMessage}` : '',
+    '请按格式返回：|m=角色名:回复内容|，每条一行。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: GROUP_CHAT_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: params.options?.temperature ?? 0.88,
+    maxTokens: params.options?.maxTokens ?? Math.min(1500, 300 + members.length * 180),
+    extraParams: params.options?.extraParams,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '群聊回复生成失败',
+      replies: [],
+    }
+  }
+
+  const parsed = tryParseGroupChatReplies(result.data)
+  if (parsed.length === 0) {
+    return {
+      success: false,
+      error: '群聊回复解析失败',
+      replies: [],
+    }
+  }
+
+  // 匹配角色名到群成员
+  const usedMemberIds = new Set()
+  const replies = []
+
+  for (const item of parsed) {
+    const authorHint = String(item.authorName || '').trim()
+    const text = String(item.text || '').trim()
+    if (!text) continue
+
+    // 匹配群成员
+    let matched = null
+    if (authorHint) {
+      matched = members.find(m => (m.contactName || m.name) === authorHint)
+      if (!matched) {
+        matched = members.find(m =>
+          (m.contactName || m.name).includes(authorHint) || authorHint.includes(m.contactName || m.name || '')
+        )
+      }
+    }
+
+    if (!matched) {
+      // 自动选择一个未发言的成员
+      matched = members.find(m => !usedMemberIds.has(m.contactId || m.name)) || members[0]
+    }
+
+    if (!matched) continue
+
+    replies.push({
+      authorName: matched.contactName || matched.name || authorHint,
+      authorId: matched.contactId || '',
+      text,
+    })
+    usedMemberIds.add(matched.contactId || matched.name)
+  }
+
+  if (replies.length === 0) {
+    return {
+      success: false,
+      error: '群聊回复为空',
+      replies: [],
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    replies,
+    data: result.data,
+    rawResponse: result.rawResponse,
   }
 }

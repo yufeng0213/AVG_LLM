@@ -14,7 +14,6 @@ import {
   subscribeFeaturePluginRuntimeState,
 } from './features/featurePluginRuntimeState'
 import { StatusBar, Style } from '@capacitor/status-bar'
-import { runMigration } from '../plugins/feature-dormitory/src/composables/runMigration.js'
 import GlobalMailbox from '../plugins/feature-mail/src/components/GlobalMailbox.vue'
 import CheckInScreen from '../plugins/feature-checkin/src/CheckInScreen.vue'
 import CheckIn7Screen from '../plugins/feature-checkin/src/CheckIn7Screen.vue'
@@ -308,11 +307,7 @@ const handleFeaturePluginRuntimeStateChange = (nextState) => {
 }
 
 onMounted(() => {
-  // 执行数据迁移
-  const migrationResult = runMigration()
-  if (migrationResult.ok) {
-    console.log('[App] Data migration result:', migrationResult)
-  }
+  // 数据迁移已在 feature-back-storage 模块加载时自动执行
 
   updateUiScale()
   window.addEventListener('resize', updateUiScale)
@@ -397,30 +392,34 @@ watch(activePluginScreen, (pluginScreen) => {
       :class="{ 'game-fullscreen': currentScreen === 'game' || currentScreen === 'face-to-face' || currentScreen === 'trpg' }"
       :style="{ '--ui-scale': uiScale, ...containerStyle }"
     >
-      <WorldHubScreen
-        v-if="currentScreen === 'world-hub'"
-        @open-new-game="openNewGame"
-        @open-main-story="openMainStory"
-        @open-dormitory="() => currentScreen = 'dormitory'"
-        @open-game-center="() => currentScreen = 'game-center'"
-        @open-trpg="() => currentScreen = 'trpg'"
-        @open-shop="openShop"
-        @open-task="openTask"
-        @open-checkin="openCheckIn"
-        @open-checkin7="openCheckIn7"
-        @open-mailbox="openMailbox"
-        @open-worldbook="() => currentScreen = 'worldbook-shelf'"
-        @open-card-collection="() => currentScreen = 'card-collection'"
-        @open-adventure="() => currentScreen = 'adventure-game'"
-        @open-narrator="() => currentScreen = 'narrator-manager'"
-        @open-plugin="() => currentScreen = 'plugin-manager'"
-        @open-settings="() => currentScreen = 'settings'"
-        @open-face-to-face="() => currentScreen = 'face-to-face'"
-        @open-load-save="() => currentScreen = 'load-save'"
-        @open-phone="openPhone"
-        @open-avatar="isAvatarSettingsOpen = true"
-        @open-test="openTest"
-      />
+      <keep-alive>
+        <WorldHubScreen
+          v-if="currentScreen === 'world-hub'"
+          @open-new-game="openNewGame"
+          @open-main-story="openMainStory"
+          @open-dormitory="() => currentScreen = 'dormitory'"
+          @open-game-center="() => currentScreen = 'game-center'"
+          @open-trpg="() => currentScreen = 'trpg'"
+          @open-shop="openShop"
+          @open-task="openTask"
+          @open-checkin="openCheckIn"
+          @open-checkin7="openCheckIn7"
+          @open-mailbox="openMailbox"
+          @open-worldbook="() => currentScreen = 'worldbook-shelf'"
+          @open-card-collection="() => currentScreen = 'card-collection'"
+          @open-adventure="() => currentScreen = 'adventure-game'"
+          @open-narrator="() => currentScreen = 'narrator-manager'"
+          @open-plugin="() => currentScreen = 'plugin-manager'"
+          @open-settings="() => currentScreen = 'settings'"
+          @open-face-to-face="() => currentScreen = 'face-to-face'"
+          @open-load-save="() => currentScreen = 'load-save'"
+          @open-phone="openPhone"
+          @open-avatar="isAvatarSettingsOpen = true"
+          @open-test="openTest"
+          @open-rose="() => currentScreen = 'rose'"
+          @open-book="() => currentScreen = 'book'"
+        />
+      </keep-alive>
       <StartScreen
         v-if="currentScreen === 'start'"
         :menu-items="startMenuItems"

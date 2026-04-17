@@ -18,6 +18,9 @@ import PhoneMinesweeperApp from './phone/games/PhoneMinesweeperApp.vue'
 import PhoneTetrisApp from './phone/games/PhoneTetrisApp.vue'
 import PhoneBrickApp from './phone/games/PhoneBrickApp.vue'
 import PhoneKlotskiApp from './phone/games/PhoneKlotskiApp.vue'
+import PhoneQuizApp from './phone/PhoneQuizApp.vue'
+import PhoneReaderApp from './phone/PhoneReaderApp.vue'
+import PhonePronunciationApp from './phone/PhonePronunciationApp.vue'
 
 const emit = defineEmits(['back'])
 
@@ -36,6 +39,9 @@ const APP_MAP = {
   tetris: { component: PhoneTetrisApp, icon: '🧱', name: '俄罗斯方块' },
   brick: { component: PhoneBrickApp, icon: '🏓', name: '打砖块' },
   klotski: { component: PhoneKlotskiApp, icon: '🧩', name: '华容道' },
+  quiz: { component: PhoneQuizApp, icon: '📖', name: '陪学' },
+  reader: { component: PhoneReaderApp, icon: '📜', name: '书城' },
+  pronunciation: { component: PhonePronunciationApp, icon: '🎙️', name: '发音' },
 }
 
 function openApp(appId) {

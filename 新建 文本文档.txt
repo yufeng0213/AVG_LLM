@@ -1,1 +1,31 @@
 npx cap sync android
+
+  .platform-android.android-portrait .mailbox-back-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+
+
+  和角色深度绑定的：
+  - 语音消息 - char 的 voiceConfig 已经有了，SMS 里可以直接用 TTS 把文字转语音，长按语音播放
+  - 角色状态 - 在线/离线、当前心情（可以从 LLM 回复中提取情绪）
+  - 聊天背景 - 每个 char 可以单独设置聊天背景图，更有沉浸感
+  - 消息图片 - char 可以"发图片"，从世界书的 backgroundAssets 或 portraits 里选
+
+  增强短信体验的：
+  - 收藏/星标消息 - 长按消息收藏，有收藏列表
+  - 消息搜索 - 在当前对话里搜索关键词
+  - 已发送/已读标记 - char 消息显示"已读"

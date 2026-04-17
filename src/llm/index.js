@@ -10,6 +10,7 @@ export {
   generateCharacterSpeech,
   generateCardContent,
   generatePhoneSmsReply,
+  generateGroupChatReply,
   generateDormChatReply,
   generatePhoneCallReply,
   generatePhoneMomentsReplies,
@@ -37,6 +38,16 @@ export {
   generateBedroomFurnitureItems,
   generateMerchantItems,
   getActiveApiConfig,
+  generateQuizQuestions,
+  generateAssessmentQuestions,
+  parseUrlContent,
+  generateTeachingContent,
+  generateTeachingReply,
+  gradeAnswer,
+  calculateRating,
+  generatePronunciationLesson,
+  generatePronunciationTTS,
+  parsePronunciationOutput,
 } from './llmService'
 export { buildStoryPrompt, buildQuickPrompt } from './promptGenerator'
 export {

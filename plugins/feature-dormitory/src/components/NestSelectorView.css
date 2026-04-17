@@ -11,149 +11,9 @@
   color: var(--foreground, #ffffff);
 }
 
-/* ========== 顶部栏 ========== */
+/* ========== 顶部占位 ========== */
 .nest-header {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding: 12px clamp(12px, 3vw, 20px);
-}
-
-.nest-back-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 50%, transparent);
-  padding: 6px 10px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  transition: color 150ms ease;
-  border-radius: 8px;
-}
-
-.nest-back-btn:hover {
-  color: var(--foreground, #ffffff);
-  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
-}
-
-.nest-back-icon {
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.nest-back-label {
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.nest-header-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.nest-title {
-  margin: 0;
-  font-size: clamp(1.1rem, 3vw, 1.4rem);
-  font-weight: 700;
-  text-align: center;
-}
-
-.nest-subtitle {
-  margin: 0;
-  font-size: 0.72rem;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
-  text-align: center;
-}
-
-.nest-header-economy {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.nest-economy-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.nest-economy-icon {
-  font-size: 0.9rem;
-}
-
-.nest-economy-value {
-  font-family: var(--font-mono, 'Courier New', monospace);
-  font-size: 0.82rem;
-}
-
-/* 头像按钮 */
-.nest-avatar-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: transform 150ms ease;
-  flex-shrink: 0;
-}
-
-.nest-avatar-btn:hover {
-  transform: scale(1.08);
-}
-
-.nest-avatar-btn:active {
-  transform: scale(0.95);
-}
-
-.nest-avatar-wrap {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  overflow: visible;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
-}
-
-.nest-avatar-img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-}
-
-.nest-avatar-placeholder {
-  font-size: 0.9rem;
-}
-
-.nest-avatar-frame-overlay {
-  position: absolute;
-  inset: -3px;
-  width: calc(100% + 6px);
-  height: calc(100% + 6px);
-  pointer-events: none;
-  border-radius: 50%;
-  object-fit: contain;
+  min-height: 0;
 }
 
 /* ========== 轮播区域 ========== */
@@ -166,6 +26,17 @@
   padding: 0 clamp(12px, 3vw, 20px);
   min-height: 0;
   overflow: hidden;
+}
+
+/* 磨砂玻璃底：渐变光晕让 blur 效果可见 */
+.nest-carousel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent-cyan, #6872D9) 18%, transparent), transparent 70%),
+              radial-gradient(ellipse at 20% 80%, color-mix(in srgb, var(--accent-magenta, #5E6AD2) 12%, transparent), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .nest-carousel-track {
@@ -195,80 +66,79 @@
 /* 轮播卡片 */
 .nest-carousel-card {
   appearance: none;
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 20px;
-  padding: 32px 28px;
-  background: color-mix(in srgb, var(--foreground, #ffffff) 4%, transparent);
+  overflow: hidden;
+  padding: 32px 24px;
   cursor: pointer;
   transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
-  color: var(--foreground, #ffffff);
-  width: 85%;
-  max-width: 400px;
+  color: #1a1a2e;
+  width: 70vw;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
   position: absolute;
   left: 50%;
-  transform: translateX(-50%) scale(0.85);
-  opacity: 0.5;
+  transform: translateX(-50%) scale(0.8);
+  opacity: 0.35;
   z-index: 1;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .nest-carousel-card.nest-card-active {
   transform: translateX(-50%) scale(1);
   opacity: 1;
   z-index: 10;
-  border-color: color-mix(in srgb, var(--accent-cyan, #6872D9) 35%, transparent);
-  background: color-mix(in srgb, var(--accent-cyan, #6872D9) 8%, transparent);
-  box-shadow: 0 8px 32px color-mix(in srgb, var(--accent-cyan, #6872D9) 15%, transparent);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #1a1a2e;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35), 0 0 60px color-mix(in srgb, var(--accent-cyan, #6872D9) 12%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .nest-carousel-card.nest-card-prev {
-  transform: translateX(-130%) scale(0.75);
-  opacity: 0.35;
+  transform: translateX(-130%) scale(0.7);
+  opacity: 0.25;
   z-index: 5;
 }
 
 .nest-carousel-card.nest-card-next {
-  transform: translateX(30%) scale(0.75);
-  opacity: 0.35;
+  transform: translateX(30%) scale(0.7);
+  opacity: 0.25;
   z-index: 5;
 }
 
 .nest-carousel-card:hover:not(.nest-card-active) {
-  opacity: 0.6;
-}
-
-.nest-carousel-card.nest-card-active:hover {
-  background: color-mix(in srgb, var(--accent-cyan, #6872D9) 12%, transparent);
-}
-
-/* 卡片内部内容 */
-.nest-card-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
+  opacity: 0.5;
 }
 
 .nest-card-index {
   margin: 0;
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 35%, transparent);
+  color: rgba(40, 40, 60, 0.5);
 }
 
 .nest-card-title {
   margin: 0;
-  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  font-size: clamp(1.5rem, 5vw, 2rem);
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.25;
+  color: #1a1a2e;
 }
 
 .nest-card-summary {
   margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.6;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(30, 30, 50, 0.75);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -288,17 +158,17 @@
   align-items: center;
   padding: 4px 12px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
-  background: color-mix(in srgb, var(--foreground, #ffffff) 4%, transparent);
+  border: 1px solid rgba(30, 30, 50, 0.15);
+  background: rgba(30, 30, 50, 0.08);
   font-size: 0.7rem;
   font-weight: 500;
-  color: color-mix(in srgb, var(--foreground, #ffffff) 55%, transparent);
+  color: rgba(30, 30, 50, 0.7);
 }
 
 .nest-card-active .nest-meta-chip:last-child {
-  border-color: color-mix(in srgb, var(--accent-cyan, #6872D9) 30%, transparent);
-  background: color-mix(in srgb, var(--accent-cyan, #6872D9) 12%, transparent);
-  color: color-mix(in srgb, var(--foreground, #ffffff) 80%, transparent);
+  border-color: rgba(30, 30, 50, 0.25);
+  background: rgba(30, 30, 50, 0.12);
+  color: rgba(20, 20, 40, 0.9);
 }
 
 /* 轮播指示器 */
@@ -327,40 +197,6 @@
   background: color-mix(in srgb, var(--accent-cyan, #6872D9) 60%, transparent);
 }
 
-/* 左右箭头 */
-.nest-carousel-arrow {
-  appearance: none;
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 15%, transparent);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--foreground, #ffffff);
-  background: color-mix(in srgb, var(--background, #0a0a0a) 60%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  cursor: pointer;
-  transition: all 150ms ease;
-  z-index: 15;
-}
-
-.nest-carousel-arrow:hover {
-  background: color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
-  border-color: color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
-}
-
-.nest-arrow-left {
-  left: 0;
-}
-
-.nest-arrow-right {
-  right: 0;
-}
-
 /* ========== 底部区域 ========== */
 .nest-footer {
   position: relative;
@@ -370,51 +206,6 @@
   gap: 10px;
   padding: 16px clamp(12px, 3vw, 20px);
   padding-bottom: calc(16px + max(env(safe-area-inset-bottom, 0px), 8px));
-}
-
-/* 进入寝室大按钮 */
-.nest-enter-btn {
-  appearance: none;
-  border: 1px solid color-mix(in srgb, var(--accent-cyan, #6872D9) 30%, transparent);
-  border-radius: 14px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent-cyan, #6872D9) 15%, transparent),
-    color-mix(in srgb, var(--accent-magenta, #5E6AD2) 10%, transparent)
-  );
-  color: var(--foreground, #ffffff);
-  padding: clamp(14px, 2vh, 18px) 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  cursor: pointer;
-  transition: all 150ms ease;
-  width: 100%;
-}
-
-.nest-enter-btn:hover {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent-cyan, #6872D9) 22%, transparent),
-    color-mix(in srgb, var(--accent-magenta, #5E6AD2) 16%, transparent)
-  );
-  border-color: color-mix(in srgb, var(--accent-cyan, #6872D9) 45%, transparent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent-cyan, #6872D9) 15%, transparent);
-}
-
-.nest-enter-btn:active {
-  transform: translateY(0) scale(0.99);
-}
-
-.nest-enter-icon {
-  font-size: 1.4rem;
-}
-
-.nest-enter-label {
-  font-size: clamp(1rem, 2.5vw, 1.15rem);
-  font-weight: 700;
 }
 
 /* 面对面按钮 */
@@ -462,55 +253,18 @@
 }
 
 /* ========== Android 竖屏适配 ========== */
-.platform-android.android-portrait .nest-header {
-  padding: 10px 14px;
-  gap: 8px;
-}
-
-.platform-android.android-portrait .nest-back-btn {
-  min-height: 44px;
-  min-width: 44px;
-  padding: 8px;
-  justify-content: center;
-}
-
-.platform-android.android-portrait .nest-title {
-  font-size: 1.1rem;
-}
-
-.platform-android.android-portrait .nest-subtitle {
-  font-size: 0.68rem;
-}
-
-.platform-android.android-portrait .nest-economy-item {
-  padding: 3px 6px;
-  font-size: 0.75rem;
-}
-
-.platform-android.android-portrait .nest-economy-icon {
-  font-size: 0.8rem;
-}
-
-.platform-android.android-portrait .nest-economy-value {
-  font-size: 0.78rem;
-}
-
 .platform-android.android-portrait .nest-carousel {
   padding: 0 14px;
 }
 
 .platform-android.android-portrait .nest-carousel-card {
-  width: 88%;
-  padding: 24px 20px;
+  width: 75vw;
+  min-height: 300px;
   border-radius: 16px;
 }
 
-.platform-android.android-portrait .nest-carousel-card.nest-card-active {
-  min-height: 45vh;
-}
-
 .platform-android.android-portrait .nest-card-title {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
 }
 
 .platform-android.android-portrait .nest-card-summary {
@@ -518,25 +272,9 @@
   -webkit-line-clamp: 2;
 }
 
-.platform-android.android-portrait .nest-carousel-arrow {
-  width: 32px;
-  height: 32px;
-  font-size: 1.2rem;
-}
-
 .platform-android.android-portrait .nest-footer {
   padding: 12px 14px;
   gap: 8px;
-}
-
-.platform-android.android-portrait .nest-enter-btn {
-  padding: 14px 20px;
-  border-radius: 12px;
-  min-height: 52px;
-}
-
-.platform-android.android-portrait .nest-enter-label {
-  font-size: 1rem;
 }
 
 .platform-android.android-portrait .nest-face-to-face-btn {
@@ -555,66 +293,16 @@
 
 /* ========== 小屏幕适配 ========== */
 @media (max-width: 480px) {
-  .nest-header {
-    padding: 10px 12px;
-    gap: 8px;
-  }
-
-  .nest-header-info {
-    gap: 1px;
-  }
-
-  .nest-title {
-    font-size: 1rem;
-  }
-
-  .nest-economy-item {
-    padding: 3px 6px;
-    font-size: 0.75rem;
-  }
-
   .nest-carousel-card {
-    width: 90%;
-    padding: 24px 20px;
-  }
-
-  .nest-card-title {
-    font-size: 1.2rem;
-  }
-
-  .nest-carousel-arrow {
-    width: 32px;
-    height: 32px;
-    font-size: 1.2rem;
+    width: 75vw;
+    border-radius: 16px;
   }
 
   .nest-footer {
     padding: 12px;
   }
 
-  .nest-enter-btn {
-    padding: 12px 18px;
-  }
-
   .nest-f2f-hint {
     display: none;
-  }
-
-    .platform-android.android-portrait .nest-carousel-arrow {
-    width: auto !important;
-    height: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    max-width: none !important;
-    max-height: none !important;
-    flex: none !important;
-    font-size: 1.1rem !important;
-    padding: 6px 10px !important;
-    box-sizing: border-box !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 8px !important;
-    white-space: nowrap !important;
   }
 }

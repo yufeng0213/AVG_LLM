@@ -5,6 +5,7 @@
  */
 import { onMounted, ref } from 'vue'
 import { kvStorage } from '../../../../src/storage/index.js'
+import { setPhoneWallpaperCache } from './composables/usePhoneData.js'
 import PhonePhotosViewer from './PhonePhotosViewer.vue'
 
 const emit = defineEmits(['back'])
@@ -80,10 +81,11 @@ async function deletePhoto(photo) {
   photos.value = photos.value.filter(p => p.id !== photo.id)
   await kvStorage.set(STORAGE_KEY, photos.value)
 
-  // 如果删除的是手机壁纸，清空壁纸引用
+  // 如果删除的是手机壁纸，清空壁纸引用和缓存
   const wpId = await kvStorage.get('phone_wallpaper_photo_id')
   if (wpId === photo.id) {
     await kvStorage.set('phone_wallpaper_photo_id', null)
+    setPhoneWallpaperCache(null)
   }
 }
 

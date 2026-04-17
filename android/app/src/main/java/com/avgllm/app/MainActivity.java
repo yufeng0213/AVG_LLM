@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.view.View;
 import android.view.WindowManager;
 import android.content.pm.ActivityInfo;
+import android.content.SharedPreferences;
 import android.util.Log;
 import com.getcapacitor.BridgeActivity;
 import androidx.core.graphics.Insets;
@@ -15,19 +16,86 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.view.ViewCompat;
 
 public class MainActivity extends BridgeActivity {
-    private static final String TAG = "AVGLayoutDebug";
-    
+    private static final String TAG = "MainActivity";
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(CardImportPlugin.class);
+        registerPlugin(IcsCalendarPlugin.class);
+        registerPlugin(MicrophonePermissionPlugin.class);
+        // 在 Capacitor Bridge 初始化之前清理 SharedPreferences 中的大尺寸 base64 数据
+        // 防止 OOM：Bridge 在 JS→Native 传递时会序列化整个 SharedPreferences
+        cleanOomCausingData();
         super.onCreate(savedInstanceState);
-        
+
         // 启动时应用系统栏样式并锁定竖屏
         applyStandardSystemUi();
         enablePortraitMode();
         scheduleInsetsDebug("onCreate");
     }
-    
+
+    /**
+     * 清理 SharedPreferences 中的大尺寸 base64 图片数据
+     * 这些数据应迁移到文件系统存储，避免 Capacitor Bridge 序列化时 OOM
+     */
+    private void cleanOomCausingData() {
+        // Capacitor Preferences 使用的 SharedPreferences 文件名
+        String[] prefNames = {"CapacitorStorage", "com.avgllm.app_preferences"};
+        // 已知包含 base64 图片数据的 key
+        String[] imageKeys = {
+            "avg_llm_dormitory:avatars",
+            "avg_llm_dormitory:avatarFrames",
+            "avg_llm_mobile_background_assets",
+        };
+
+        for (String prefName : prefNames) {
+            SharedPreferences prefs;
+            try {
+                prefs = getSharedPreferences(prefName, MODE_PRIVATE);
+            } catch (OutOfMemoryError e) {
+                // SharedPreferences 加载失败（可能文件太大），直接删除 XML 文件
+                Log.e(TAG, "SharedPreferences 加载 OOM，直接删除文件: " + prefName);
+                try {
+                    getSharedPreferences(prefName, MODE_PRIVATE).edit().clear().apply();
+                } catch (OutOfMemoryError e2) {
+                    // 仍然 OOM，直接删除文件
+                    java.io.File prefsDir = getSharedPreferencesDir();
+                    java.io.File prefsFile = new java.io.File(prefsDir, prefName + ".xml");
+                    if (prefsFile.exists()) {
+                        prefsFile.delete();
+                        Log.i(TAG, "已删除 SharedPreferences 文件: " + prefName);
+                    }
+                }
+                continue;
+            }
+
+            // 安全检查：用 contains() 判断 key 是否存在，避免 getString() 读入大字符串
+            boolean needsCleaning = false;
+            for (String key : imageKeys) {
+                if (prefs.contains(key)) {
+                    needsCleaning = true;
+                    break;
+                }
+            }
+            if (!needsCleaning) continue;
+
+            // 直接清理
+            SharedPreferences.Editor editor = prefs.edit();
+            for (String key : imageKeys) {
+                editor.remove(key);
+            }
+            editor.apply();
+            Log.i(TAG, "已清理 SharedPreferences: " + prefName);
+        }
+    }
+
+    /**
+     * 获取 SharedPreferences 文件目录
+     */
+    private java.io.File getSharedPreferencesDir() {
+        return new java.io.File(getApplicationInfo().dataDir, "shared_prefs");
+    }
+
     /**
      * 启用标准系统栏模式
      * 始终显示顶部状态栏（时间/信号/电量）
@@ -58,14 +126,14 @@ public class MainActivity extends BridgeActivity {
 
         scheduleInsetsDebug("applyStandardSystemUi");
     }
-    
+
     /**
      * 启用竖屏模式
      */
     private void enablePortraitMode() {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
     }
-    
+
     @Override
 
     public void onWindowFocusChanged(boolean hasFocus) {

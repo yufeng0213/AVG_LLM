@@ -5,6 +5,7 @@
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { kvStorage } from '../../../../src/storage/index.js'
+import { getPhoneWallpaperCache, setPhoneWallpaperCache } from './composables/usePhoneData.js'
 
 const props = defineProps({
   photos: { type: Array, default: () => [] },
@@ -82,12 +83,14 @@ async function setPhoneWallpaper() {
   if (!currentPhoto.value) return
   await kvStorage.set('phone_wallpaper_photo_id', currentPhoto.value.id)
   phoneWallpaperId.value = currentPhoto.value.id
+  setPhoneWallpaperCache(currentPhoto.value.dataUrl)
 }
 
 // 取消手机壁纸
 async function unsetPhoneWallpaper() {
   await kvStorage.set('phone_wallpaper_photo_id', null)
   phoneWallpaperId.value = null
+  setPhoneWallpaperCache(null)
 }
 
 // 设为世界壁纸
