@@ -1,0 +1,22 @@
+{
+  "id": "electric-storm",
+  "name": "Electric Storm",
+  "description": "Lightning blue and white, high energy. Thunder crack with electric blue arcs.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#060810",
+    "foreground": "#e0e8ff",
+    "muted": "#3a4a7a",
+    "accentMagenta": "#8090ff",
+    "accentCyan": "#60e0ff",
+    "accentYellow": "#e0e860",
+    "accentOrange": "#6090ff",
+    "accentPurple": "#7060e0",
+    "fontHeading": "'Inter', system-ui, sans-serif",
+    "fontBody": "system-ui, sans-serif",
+    "fontDisplay": "'Inter', system-ui, sans-serif",
+    "radiusButton": "4px",
+    "radiusCard": "8px",
+    "radiusPanel": "8px"
+  }
+}

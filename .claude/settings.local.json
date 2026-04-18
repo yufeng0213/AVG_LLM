@@ -41,7 +41,17 @@
       "Bash(lsof -ti:5174)",
       "Bash(lsof -ti:5175)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(taskkill //F //IM vite.exe)"
+      "Bash(taskkill //F //IM vite.exe)",
+      "Bash(timeout 15 pnpm dev)",
+      "Bash(jobs -l)",
+      "Bash(find:*)",
+      "Bash(pnpm add:*)",
+      "WebSearch",
+      "Bash(cd E:\\\\\\\\avg_llm)",
+      "Bash(npx cap:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep:*)"
     ]
   }
 }

@@ -18,6 +18,7 @@ import GlobalMailbox from '../plugins/feature-mail/src/components/GlobalMailbox.
 import CheckInScreen from '../plugins/feature-checkin/src/CheckInScreen.vue'
 import CheckIn7Screen from '../plugins/feature-checkin/src/CheckIn7Screen.vue'
 import AvatarFrameScreen from '../plugins/feature-dormitory/src/components/AvatarFrameScreen.vue'
+import MusicPlayerScreen from '../plugins/feature-music-player/src/MusicPlayerScreen.vue'
 
 // PC 端设计基准分辨率（16:9 横屏比例）
 const DESIGN_WIDTH = 1920
@@ -95,6 +96,27 @@ const scheduleAndroidLayoutDebug = (source = 'unknown') => {
   })
 }
 
+/**
+ * 获取 Android 状态栏高度并注入 CSS 变量 --safe-area-inset-top
+ * 使 WebView 内容能正确避开刘海/相机区域
+ * （主要靠 MainActivity.java 原生注入，此函数为备用）
+ */
+const injectAndroidSafeAreaInsets = async () => {
+  if (!isAndroidPlatform.value) return
+
+  try {
+    const info = await StatusBar.getInfo()
+    if (info?.height) {
+      document.documentElement.style.setProperty('--safe-area-inset-top', `${info.height}px`)
+      document.documentElement.style.setProperty('--safe-area-inset-bottom', '0px')
+      document.documentElement.style.setProperty('--safe-area-inset-left', '0px')
+      document.documentElement.style.setProperty('--safe-area-inset-right', '0px')
+    }
+  } catch {
+    // 非原生环境或插件不可用时忽略
+  }
+}
+
 const applyAndroidStatusBarStyle = async () => {
   if (!isAndroidPlatform.value) return
 
@@ -103,6 +125,8 @@ const applyAndroidStatusBarStyle = async () => {
     await StatusBar.setStyle({ style: Style.Light })
     await StatusBar.setBackgroundColor({ color: '#0d0d1a' })
     await StatusBar.show()
+    // 状态栏显示后注入高度
+    await injectAndroidSafeAreaInsets()
   } catch {
     // 非原生环境或插件不可用时忽略
   }
@@ -200,6 +224,7 @@ const isMailboxOpen = ref(false)
 const isCheckInOpen = ref(false)
 const isCheckIn7Open = ref(false)
 const isAvatarSettingsOpen = ref(false)
+const isMusicPlayerOpen = ref(true)
 
 const openMainStory = () => {
   // TODO: 打开主线入口界面（MainStoryEntry）
@@ -465,6 +490,12 @@ watch(activePluginScreen, (pluginScreen) => {
     <AvatarFrameScreen
       v-if="isAvatarSettingsOpen"
       @close="isAvatarSettingsOpen = false"
+    />
+
+    <!-- 音乐播放器（全局悬浮，始终挂载） -->
+    <MusicPlayerScreen
+      v-show="isMusicPlayerOpen"
+      @close="isMusicPlayerOpen = false"
     />
   </div>
 </template>

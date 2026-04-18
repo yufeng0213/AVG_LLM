@@ -3,7 +3,7 @@
  * PhoneScreen.vue - 全屏路由版手机界面
  * 管理 iOS 风格主屏和各子 App 的切换。
  */
-import { computed, ref } from 'vue'
+import { computed, provide, ref } from 'vue'
 import './phone/styles/phone-screen.css'
 import PhoneHomeScreen from './phone/PhoneHomeScreen.vue'
 import PhoneSmsApp from './phone/PhoneSmsApp.vue'
@@ -21,10 +21,44 @@ import PhoneKlotskiApp from './phone/games/PhoneKlotskiApp.vue'
 import PhoneQuizApp from './phone/PhoneQuizApp.vue'
 import PhoneReaderApp from './phone/PhoneReaderApp.vue'
 import PhonePronunciationApp from './phone/PhonePronunciationApp.vue'
+import { useOfflinePush } from './phone/composables/useOfflinePush.js'
 
 const emit = defineEmits(['back'])
 
 const currentApp = ref(null)
+
+// ===== 离线推送 =====
+const pushNotification = ref(null) // { contactName, text, contactId, timestamp }
+
+function handleNewPushMessage({ contact, text }) {
+  pushNotification.value = {
+    contactName: contact.name,
+    text,
+    contactId: contact.id,
+    timestamp: Date.now(),
+  }
+  // 10 秒后自动清除
+  setTimeout(() => {
+    if (pushNotification.value) pushNotification.value = null
+  }, 10000)
+}
+
+function handleNotificationClick(contactId) {
+  pushNotification.value = null
+  if (contactId) {
+    currentApp.value = 'sms'
+  }
+}
+
+const { isPushEnabled, notificationPermission } = useOfflinePush({
+  onNewMessage: handleNewPushMessage,
+  onNotificationClick: handleNotificationClick,
+})
+
+// 提供给子组件
+provide('pushNotification', pushNotification)
+
+// =====
 
 const APP_MAP = {
   sms: { component: PhoneSmsApp, icon: '💬', name: '短信' },
@@ -78,5 +112,15 @@ const appName = computed(() => APP_MAP[currentApp.value]?.name || '')
       :name="appName"
       @back="closeApp"
     />
+
+    <!-- 推送通知浮层 -->
+    <div v-if="pushNotification" class="push-notification-toast" @click="handleNotificationClick(pushNotification.contactId)">
+      <div class="push-notification-icon">&#x1F4AC;</div>
+      <div class="push-notification-body">
+        <div class="push-notification-sender">{{ pushNotification.contactName }}</div>
+        <div class="push-notification-text">{{ pushNotification.text }}</div>
+      </div>
+      <button class="push-notification-close" @click.stop="pushNotification = null">×</button>
+    </div>
   </div>
 </template>

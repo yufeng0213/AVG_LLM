@@ -1,0 +1,22 @@
+{
+  "id": "ink-wash",
+  "name": "Ink Wash",
+  "description": "Chinese ink painting, monochrome with subtle warm tones. Watercolor elegance on rice paper.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#f5f0e8",
+    "foreground": "#2a2020",
+    "muted": "#8a7a6a",
+    "accentMagenta": "#6a5a50",
+    "accentCyan": "#5a6a6a",
+    "accentYellow": "#b0a080",
+    "accentOrange": "#8a6a40",
+    "accentPurple": "#5a4a50",
+    "fontHeading": "'STKaiti', 'KaiTi', serif",
+    "fontBody": "'STSong', 'SimSun', serif",
+    "fontDisplay": "'STKaiti', 'KaiTi', serif",
+    "radiusButton": "6px",
+    "radiusCard": "8px",
+    "radiusPanel": "8px"
+  }
+}

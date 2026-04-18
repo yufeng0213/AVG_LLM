@@ -1,0 +1,70 @@
+/* ===== 黑客气泡 ===== */
+/* 终端绿字系，矩阵入侵 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #000a00 0%, #001000 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: #001a00;
+  border-radius: 2px;
+  color: #00ff41;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.3);
+  border: 1px solid #003300;
+  font-family: var(--font-mono, 'Consolas', monospace);
+  text-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+}
+
+.sms-bubble.user::after {
+  content: '>_';
+  position: absolute;
+  right: -18px;
+  top: -6px;
+  font-size: 0.65rem;
+  color: #00ff41;
+  font-family: var(--font-mono, monospace);
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: #000d00;
+  border-radius: 2px;
+  color: #00cc33;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 0 4px rgba(0, 204, 51, 0.15);
+  border: 1px solid #002200;
+  font-family: var(--font-mono, 'Consolas', monospace);
+  text-shadow: 0 0 3px rgba(0, 204, 51, 0.3);
+}
+
+.sms-bubble.assistant::before {
+  content: '[!]';
+  position: absolute;
+  left: -20px;
+  top: -6px;
+  font-size: 0.6rem;
+  color: #00aa28;
+  font-family: var(--font-mono, monospace);
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.65rem;
+  color: #008020;
+  background: rgba(0, 10, 0, 0.7);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 1px;
+  border: 1px solid #003300;
+  font-family: var(--font-mono, 'Consolas', monospace);
+}

@@ -18,6 +18,37 @@ npx cap sync android
     white-space: nowrap !important;
   }
 
+.platform-android.android-portrait .music-float {
+  background: linear-gradient(180deg, rgba(30, 30, 35, 0.94) 0%, rgba(18, 18, 22, 0.96) 100%) !important;
+  backdrop-filter: blur(40px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.settings-toggle {
+  -webkit-appearance: none;
+  appearance: none;
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  cursor: pointer;
+  width: 24px;
+  height: 24px ;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  min-width: 0;
+  min-height: 0;
+}
+
+
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+
+http://music.163.com/song/media/outer/url?id=1916030565.mp3
 
   和角色深度绑定的：
   - 语音消息 - char 的 voiceConfig 已经有了，SMS 里可以直接用 TTS 把文字转语音，长按语音播放

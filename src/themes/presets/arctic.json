@@ -1,0 +1,22 @@
+{
+  "id": "arctic",
+  "name": "Arctic",
+  "description": "Clean ice white and pale blue, minimal and cold. Crisp winter clarity with icy transparency.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#f0f8ff",
+    "foreground": "#1a2a3a",
+    "muted": "#7a9aaa",
+    "accentMagenta": "#a0c8d8",
+    "accentCyan": "#60c8e0",
+    "accentYellow": "#e0e8c0",
+    "accentOrange": "#c0a070",
+    "accentPurple": "#8090a8",
+    "fontHeading": "'Inter', system-ui, sans-serif",
+    "fontBody": "system-ui, sans-serif",
+    "fontDisplay": "'Inter', system-ui, sans-serif",
+    "radiusButton": "12px",
+    "radiusCard": "16px",
+    "radiusPanel": "16px"
+  }
+}

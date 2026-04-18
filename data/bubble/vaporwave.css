@@ -1,0 +1,68 @@
+/* ===== 蒸汽波气泡 ===== */
+/* Vaporwave：粉紫霓虹，复古未来主义 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #1a0a2e 0%, #16082a 50%, #0f0520 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #ff71ce, #b967ff);
+  border-radius: 4px 20px 4px 20px;
+  color: #1a0a2e;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 0 12px rgba(255, 113, 206, 0.5),
+              0 0 24px rgba(185, 103, 255, 0.2);
+  border: 1px solid rgba(255, 150, 220, 0.4);
+  font-family: var(--font-mono, 'Consolas', monospace);
+}
+
+.sms-bubble.user::after {
+  content: '🌺';
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #1a0a2e, #0f0520);
+  border-radius: 20px 4px 20px 4px;
+  color: #c9a0ff;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 0 8px rgba(185, 103, 255, 0.3),
+              0 0 16px rgba(0, 239, 255, 0.1);
+  border: 1px solid rgba(100, 60, 180, 0.3);
+  font-family: var(--font-mono, 'Consolas', monospace);
+}
+
+.sms-bubble.assistant::before {
+  content: '💿';
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.65rem;
+  color: #00efcf;
+  background: rgba(15, 5, 32, 0.7);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 239, 207, 0.3);
+  font-family: var(--font-mono, 'Consolas', monospace);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}

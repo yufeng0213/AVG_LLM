@@ -1,0 +1,334 @@
+/* ============================================
+   GOLDEN AGE THEME
+   Art deco luxury gold and black
+   ============================================ */
+
+:root[data-theme-style='golden-age'] body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+:root[data-theme-style='golden-age'] body::before {
+  opacity: 1;
+  mix-blend-mode: normal;
+  background:
+    linear-gradient(135deg, rgba(255, 215, 0, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 0%, rgba(232, 200, 64, 0.06) 0%, transparent 50%);
+}
+
+:root[data-theme-style='golden-age'] body::after {
+  opacity: 1;
+  mix-blend-mode: normal;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 215, 0, 0.02) 0px,
+      rgba(255, 215, 0, 0.02) 1px,
+      transparent 1px,
+      transparent 40px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 215, 0, 0.02) 0px,
+      rgba(255, 215, 0, 0.02) 1px,
+      transparent 1px,
+      transparent 40px
+    );
+}
+
+:root[data-theme-style='golden-age'] .panel-title,
+:root[data-theme-style='golden-age'] .settings-title,
+:root[data-theme-style='golden-age'] .hero-title-main,
+:root[data-theme-style='golden-age'] .menu-button-text,
+:root[data-theme-style='golden-age'] .nav-main,
+:root[data-theme-style='golden-age'] .preview-title {
+  font-family: var(--font-heading);
+  color: var(--foreground);
+  letter-spacing: 0.08em;
+}
+
+:root[data-theme-style='golden-age'] .launch-screen {
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 0;
+  background: var(--surface-panel);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.05);
+}
+
+:root[data-theme-style='golden-age'] .launch-screen::before {
+  opacity: 0.03;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 215, 0, 0.08) 0px,
+      rgba(255, 215, 0, 0.08) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+}
+
+:root[data-theme-style='golden-age'] .massive-word {
+  color: color-mix(in srgb, var(--accent-yellow) 12%, transparent);
+  opacity: 0.1;
+}
+
+:root[data-theme-style='golden-age'] .hero-tag {
+  border: 1px solid var(--accent-yellow);
+  border-radius: 0;
+  background: rgba(255, 215, 0, 0.08);
+  color: var(--accent-yellow);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='golden-age'] .hero-title-gradient,
+:root[data-theme-style='golden-age'] .title-gradient {
+  background: linear-gradient(90deg, #e8c840 0%, #ffd700 30%, #c0a040 60%, #ffd700 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gold-shimmer 4s ease-in-out infinite;
+}
+
+@keyframes gold-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+:root[data-theme-style='golden-age'] .menu-panel {
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 0;
+  background: rgba(10, 8, 8, 0.85);
+}
+
+:root[data-theme-style='golden-age'] .menu-panel::before {
+  opacity: 0.02;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 215, 0, 0.06) 0px,
+      rgba(255, 215, 0, 0.06) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+}
+
+:root[data-theme-style='golden-age'] .menu-button {
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent-yellow);
+  letter-spacing: 0.05em;
+}
+
+:root[data-theme-style='golden-age'] .menu-button:hover {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.15);
+}
+
+:root[data-theme-style='golden-age'] .tone-magenta {
+  background: linear-gradient(135deg, rgba(212, 168, 48, 0.3), rgba(160, 128, 32, 0.2));
+}
+
+:root[data-theme-style='golden-age'] .tone-cyan {
+  background: linear-gradient(135deg, rgba(192, 160, 64, 0.3), rgba(200, 160, 96, 0.2));
+}
+
+:root[data-theme-style='golden-age'] .tone-orange {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(200, 144, 48, 0.3));
+}
+
+:root[data-theme-style='golden-age'] .meta-chip {
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 0;
+  background: rgba(255, 215, 0, 0.06);
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .settings-screen {
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 0;
+  background: var(--surface-panel);
+}
+
+:root[data-theme-style='golden-age'] .settings-screen::before {
+  opacity: 0.02;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 215, 0, 0.06) 0px,
+      rgba(255, 215, 0, 0.06) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+}
+
+:root[data-theme-style='golden-age'] .settings-bg-word {
+  color: color-mix(in srgb, var(--accent-yellow) 8%, transparent);
+  opacity: 0.08;
+}
+
+:root[data-theme-style='golden-age'] .back-button {
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 0;
+  color: var(--accent-yellow);
+  background: transparent;
+}
+
+:root[data-theme-style='golden-age'] .settings-tag {
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 0;
+  background: rgba(255, 215, 0, 0.05);
+  color: var(--muted);
+}
+
+:root[data-theme-style='golden-age'] .settings-nav {
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 0;
+  background: rgba(10, 8, 8, 0.5);
+}
+
+:root[data-theme-style='golden-age'] .settings-nav-item {
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='golden-age'] .settings-nav-item.active {
+  border-color: var(--accent-yellow);
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .settings-content {
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  border-radius: 0;
+  background: rgba(10, 8, 8, 0.4);
+}
+
+:root[data-theme-style='golden-age'] .setting-field {
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  border-radius: 0;
+}
+
+:root[data-theme-style='golden-age'] .setting-input,
+:root[data-theme-style='golden-age'] .setting-select,
+:root[data-theme-style='golden-age'] .setting-textarea {
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 0;
+  color: var(--accent-yellow);
+  background: rgba(255, 215, 0, 0.04);
+}
+
+:root[data-theme-style='golden-age'] .setting-input:focus-visible {
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 4px rgba(255, 215, 0, 0.2);
+}
+
+:root[data-theme-style='golden-age'] .setting-checkbox-row {
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  border-radius: 0;
+  background: rgba(255, 215, 0, 0.04);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='golden-age'] .setting-checkbox {
+  accent-color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .setting-status-chip {
+  border: 1px solid var(--accent-yellow);
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .action-button {
+  border: 1px solid var(--accent-yellow);
+  border-radius: 0;
+  background: var(--accent-yellow);
+  color: #0a0808;
+}
+
+:root[data-theme-style='golden-age'] .action-button.action-outline {
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  background: transparent;
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .theme-preview-card {
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 0;
+}
+
+:root[data-theme-style='golden-age'] .theme-preview-card.active {
+  border-color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .worldbook-screen,
+:root[data-theme-style='golden-age'] .worldbook-editor-screen {
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 0;
+  background: var(--surface-panel);
+}
+
+:root[data-theme-style='golden-age'] .worldbook-tag,
+:root[data-theme-style='golden-age'] .worldbook-editor-tag {
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  background: rgba(255, 215, 0, 0.06);
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .worldbook-editor-tab {
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='golden-age'] .worldbook-editor-tab.active {
+  border-color: var(--accent-yellow);
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .worldbook-book-spine {
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 0;
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .worldbook-entry-item {
+  border: 1px solid rgba(255, 215, 0, 0.1);
+  border-radius: 0;
+  color: var(--muted);
+}
+
+:root[data-theme-style='golden-age'] .worldbook-entry-item.active {
+  border-color: var(--accent-yellow);
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .game-screen {
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 0;
+  background: var(--background);
+}
+
+:root[data-theme-style='golden-age'] .hud-chip {
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  background: rgba(255, 215, 0, 0.06);
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='golden-age'] .scene-gradient {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 215, 0, 0.06) 0%, transparent 50%),
+    var(--background);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme-style='golden-age'] .hero-title-gradient,
+  :root[data-theme-style='golden-age'] .title-gradient {
+    animation: none !important;
+  }
+}

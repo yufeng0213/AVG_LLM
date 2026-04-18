@@ -159,6 +159,8 @@ function handleDeepen(params) {
 .quiz-app {
   position: fixed;
   inset: 0;
+  padding-top: var(--safe-area-inset-top, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, 0px);
   z-index: 10001;
   display: flex;
   flex-direction: column;

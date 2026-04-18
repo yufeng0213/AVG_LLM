@@ -241,6 +241,8 @@ watch(activeGame, (key) => {
   left: 0;
   right: 0;
   bottom: 0;
+  padding-top: var(--safe-area-inset-top, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, 0px);
   z-index: 10000;
   overflow: hidden;
   display: flex;

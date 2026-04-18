@@ -182,8 +182,8 @@
 .menu-anchor {
   position: absolute;
   z-index: 8;
-  top: calc(14px + env(safe-area-inset-top));
-  left: calc(14px + env(safe-area-inset-left));
+  top: calc(14px + var(--safe-area-inset-top, 0px));
+  left: calc(14px + var(--safe-area-inset-left, 0px));
   display: grid;
   gap: 10px;
   max-width: min(92vw, 360px);
@@ -226,7 +226,7 @@
   border-radius: 14px;
   background: color-mix(in srgb, #000 66%, transparent);
   backdrop-filter: blur(8px);
-  max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 88px);
+  max-height: calc(100vh - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px) - 88px);
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -491,9 +491,9 @@
   pointer-events: none;
   padding:
     24px
-    calc(18px + env(safe-area-inset-right))
-    calc(18px + env(safe-area-inset-bottom))
-    calc(18px + env(safe-area-inset-left));
+    calc(18px + var(--safe-area-inset-right, 0px))
+    calc(18px + var(--safe-area-inset-bottom, 0px))
+    calc(18px + var(--safe-area-inset-left, 0px));
 }
 
  .ftf-dialogue-box {
@@ -542,13 +542,13 @@
 
 @media (max-width: 768px) {
   .menu-anchor {
-    top: calc(10px + env(safe-area-inset-top));
-    left: calc(10px + env(safe-area-inset-left));
+    top: calc(10px + var(--safe-area-inset-top, 0px));
+    left: calc(10px + var(--safe-area-inset-left, 0px));
   }
 
   .menu-panel {
     width: min(94vw, 340px);
-    max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 74px);
+    max-height: calc(100vh - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px) - 74px);
   }
 
   .back-button,
@@ -564,9 +564,9 @@
   .ftf-dialogue-overlay {
     padding:
       14px
-      calc(10px + env(safe-area-inset-right))
-      calc(10px + env(safe-area-inset-bottom))
-      calc(10px + env(safe-area-inset-left));
+      calc(10px + var(--safe-area-inset-right, 0px))
+      calc(10px + var(--safe-area-inset-bottom, 0px))
+      calc(10px + var(--safe-area-inset-left, 0px));
   }
 
   .ftf-dialogue-box {

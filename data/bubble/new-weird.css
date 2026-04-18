@@ -1,0 +1,70 @@
+/* ===== 新怪谈气泡 ===== */
+/* 抽象不安系，不可名状 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #1a1a1a 0%, #2a1a1a 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #3d2b1a, #2a1a0d);
+  border-radius: 12px 24px 8px 20px;
+  color: #d4a76a;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5),
+              inset 0 0 12px rgba(212, 167, 106, 0.05);
+  border: 1px dashed rgba(212, 167, 106, 0.25);
+}
+
+.sms-bubble.user::after {
+  content: '🌀';
+  position: absolute;
+  right: -16px;
+  top: -8px;
+  font-size: 0.7rem;
+  animation: spin 4s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #1a1a2a, #0d0d1a);
+  border-radius: 24px 12px 20px 8px;
+  color: #8a7a6a;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6),
+              inset 0 0 16px rgba(138, 122, 106, 0.03);
+  border: 1px dotted rgba(138, 122, 106, 0.2);
+}
+
+.sms-bubble.assistant::before {
+  content: '◉';
+  position: absolute;
+  left: -16px;
+  top: -8px;
+  font-size: 0.75rem;
+  color: #6a5a4a;
+  text-shadow: 0 0 6px rgba(138, 122, 106, 0.5);
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #5a4a3a;
+  background: rgba(26, 26, 26, 0.6);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 50%;
+  border: 1px dotted rgba(90, 74, 58, 0.3);
+}

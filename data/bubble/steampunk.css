@@ -1,0 +1,64 @@
+/* ===== 蒸汽朋克气泡 ===== */
+/* 铜管齿轮系，维多利亚机械风 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #2a1f14 0%, #1f1710 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #b87333, #8b5e3c);
+  border-radius: 6px;
+  color: #f5e6d3;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border: 2px solid #6b4a2a;
+}
+
+.sms-bubble.user::after {
+  content: '⚙️';
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #1f1710, #14100d);
+  border-radius: 6px;
+  color: #d4b896;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5),
+              inset 0 0 8px rgba(184, 115, 51, 0.08);
+  border: 2px solid #4a3520;
+}
+
+.sms-bubble.assistant::before {
+  content: '🔧';
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #8a7060;
+  background: rgba(42, 31, 20, 0.7);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 4px;
+  border: 1px solid #5a4530;
+  font-family: var(--font-mono, monospace);
+}

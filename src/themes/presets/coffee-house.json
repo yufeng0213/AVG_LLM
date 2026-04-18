@@ -1,0 +1,22 @@
+{
+  "id": "coffee-house",
+  "name": "Coffee House",
+  "description": "Warm brown and cream, cozy and inviting. Your favorite corner caf\u00e9 with fresh espresso.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#1a1410",
+    "foreground": "#e0c8a0",
+    "muted": "#7a6a50",
+    "accentMagenta": "#c0a080",
+    "accentCyan": "#a0b090",
+    "accentYellow": "#d8c080",
+    "accentOrange": "#b08050",
+    "accentPurple": "#907060",
+    "fontHeading": "'Georgia', serif",
+    "fontBody": "system-ui, sans-serif",
+    "fontDisplay": "'Georgia', serif",
+    "radiusButton": "10px",
+    "radiusCard": "14px",
+    "radiusPanel": "14px"
+  }
+}

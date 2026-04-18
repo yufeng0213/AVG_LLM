@@ -1,0 +1,312 @@
+/* ============================================
+   PIXEL DREAMS THEME
+   8-bit retro gaming palette
+   ============================================ */
+
+:root[data-theme-style='pixel-dreams'] body {
+  color: var(--foreground);
+  background: var(--background);
+  image-rendering: pixelated;
+}
+
+:root[data-theme-style='pixel-dreams'] body::before {
+  opacity: 1;
+  mix-blend-mode: normal;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.08) 0px,
+      rgba(0, 0, 0, 0.08) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+  pointer-events: none;
+}
+
+:root[data-theme-style='pixel-dreams'] body::after {
+  opacity: 0.03;
+  background:
+    radial-gradient(circle, rgba(255, 0, 255, 0.2) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+:root[data-theme-style='pixel-dreams'] .panel-title,
+:root[data-theme-style='pixel-dreams'] .settings-title,
+:root[data-theme-style='pixel-dreams'] .hero-title-main,
+:root[data-theme-style='pixel-dreams'] .menu-button-text,
+:root[data-theme-style='pixel-dreams'] .nav-main,
+:root[data-theme-style='pixel-dreams'] .preview-title {
+  font-family: var(--font-mono, 'Press Start 2P', monospace);
+  color: var(--foreground);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .launch-screen {
+  border: 4px solid rgba(255, 0, 255, 0.4);
+  border-radius: 0;
+  background: var(--background);
+  box-shadow: 0 0 16px rgba(0, 255, 255, 0.1);
+}
+
+:root[data-theme-style='pixel-dreams'] .massive-word {
+  color: color-mix(in srgb, var(--accent-yellow) 15%, transparent);
+  opacity: 0.1;
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .floating-shape {
+  image-rendering: pixelated;
+  filter: none;
+}
+
+:root[data-theme-style='pixel-dreams'] .hero-tag {
+  border: 2px solid var(--accent-yellow);
+  border-radius: 0;
+  background: rgba(255, 255, 0, 0.1);
+  color: var(--accent-yellow);
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .hero-title-gradient,
+:root[data-theme-style='pixel-dreams'] .title-gradient {
+  background: linear-gradient(90deg, #ff00ff, #00ffff, #ffff00, #ff8800);
+  background-size: 400% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: pixel-rainbow 3s steps(8) infinite;
+}
+
+@keyframes pixel-rainbow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 400% 50%; }
+}
+
+:root[data-theme-style='pixel-dreams'] .menu-panel {
+  border: 4px solid rgba(0, 255, 255, 0.3);
+  border-radius: 0;
+  background: rgba(15, 15, 35, 0.9);
+}
+
+:root[data-theme-style='pixel-dreams'] .menu-button {
+  border: 2px solid var(--accent-magenta);
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+  image-rendering: pixelated;
+}
+
+:root[data-theme-style='pixel-dreams'] .menu-button:hover {
+  background: var(--accent-magenta);
+  color: var(--background);
+  box-shadow: 0 0 8px rgba(255, 0, 255, 0.5);
+}
+
+:root[data-theme-style='pixel-dreams'] .tone-magenta {
+  background: var(--accent-magenta);
+}
+
+:root[data-theme-style='pixel-dreams'] .tone-cyan {
+  background: var(--accent-cyan);
+}
+
+:root[data-theme-style='pixel-dreams'] .tone-orange {
+  background: var(--accent-yellow);
+}
+
+:root[data-theme-style='pixel-dreams'] .meta-chip {
+  border: 2px solid rgba(255, 0, 255, 0.3);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .settings-screen {
+  border: 4px solid rgba(0, 255, 255, 0.3);
+  border-radius: 0;
+  background: var(--background);
+}
+
+:root[data-theme-style='pixel-dreams'] .settings-bg-word {
+  color: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
+  opacity: 0.08;
+}
+
+:root[data-theme-style='pixel-dreams'] .back-button {
+  border: 2px solid var(--accent-cyan);
+  border-radius: 0;
+  color: var(--accent-cyan);
+  background: transparent;
+}
+
+:root[data-theme-style='pixel-dreams'] .settings-tag {
+  border: 2px solid rgba(255, 0, 255, 0.2);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .settings-nav {
+  border: 2px solid rgba(0, 255, 255, 0.2);
+  border-radius: 0;
+  background: transparent;
+}
+
+:root[data-theme-style='pixel-dreams'] .settings-nav-item {
+  border: 2px solid rgba(255, 0, 255, 0.15);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .settings-nav-item.active {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 255, 255, 0.1);
+  color: var(--accent-cyan);
+}
+
+:root[data-theme-style='pixel-dreams'] .settings-content {
+  border: 2px solid rgba(0, 255, 255, 0.15);
+  border-radius: 0;
+  background: transparent;
+}
+
+:root[data-theme-style='pixel-dreams'] .setting-field {
+  border: 2px solid rgba(255, 0, 255, 0.15);
+  border-radius: 0;
+}
+
+:root[data-theme-style='pixel-dreams'] .setting-label {
+  color: var(--foreground);
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .setting-input,
+:root[data-theme-style='pixel-dreams'] .setting-select,
+:root[data-theme-style='pixel-dreams'] .setting-textarea {
+  border: 2px solid rgba(0, 255, 255, 0.3);
+  border-radius: 0;
+  color: var(--foreground);
+  background: rgba(0, 255, 255, 0.05);
+  font-family: var(--font-mono, monospace);
+  caret-color: var(--accent-cyan);
+}
+
+:root[data-theme-style='pixel-dreams'] .setting-input:focus-visible {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 4px rgba(0, 255, 255, 0.4);
+}
+
+:root[data-theme-style='pixel-dreams'] .setting-checkbox-row {
+  border: 2px solid rgba(255, 0, 255, 0.15);
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground);
+}
+
+:root[data-theme-style='pixel-dreams'] .setting-checkbox {
+  accent-color: var(--accent-magenta);
+}
+
+:root[data-theme-style='pixel-dreams'] .setting-status-chip {
+  border: 2px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .action-button {
+  border: 2px solid var(--accent-magenta);
+  border-radius: 0;
+  background: var(--accent-magenta);
+  color: var(--background);
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .action-button.action-outline {
+  border: 2px solid var(--accent-cyan);
+  background: transparent;
+  color: var(--accent-cyan);
+}
+
+:root[data-theme-style='pixel-dreams'] .theme-preview-card {
+  border: 2px solid rgba(255, 0, 255, 0.2);
+  border-radius: 0;
+}
+
+:root[data-theme-style='pixel-dreams'] .theme-preview-card.active {
+  border-color: var(--accent-cyan);
+}
+
+:root[data-theme-style='pixel-dreams'] .worldbook-screen,
+:root[data-theme-style='pixel-dreams'] .worldbook-editor-screen {
+  border: 4px solid rgba(0, 255, 255, 0.2);
+  border-radius: 0;
+  background: var(--background);
+}
+
+:root[data-theme-style='pixel-dreams'] .worldbook-tag,
+:root[data-theme-style='pixel-dreams'] .worldbook-editor-tag {
+  border: 2px solid var(--accent-yellow);
+  border-radius: 0;
+  background: rgba(255, 255, 0, 0.1);
+  color: var(--accent-yellow);
+  text-transform: uppercase;
+}
+
+:root[data-theme-style='pixel-dreams'] .worldbook-editor-tab {
+  border: 2px solid rgba(255, 0, 255, 0.15);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='pixel-dreams'] .worldbook-editor-tab.active {
+  border-color: var(--accent-magenta);
+  color: var(--accent-magenta);
+}
+
+:root[data-theme-style='pixel-dreams'] .worldbook-book-spine {
+  border: 2px solid rgba(0, 255, 255, 0.2);
+  border-radius: 0;
+  color: var(--foreground);
+}
+
+:root[data-theme-style='pixel-dreams'] .worldbook-entry-item {
+  border: 2px solid rgba(255, 0, 255, 0.1);
+  border-radius: 0;
+  color: var(--muted);
+}
+
+:root[data-theme-style='pixel-dreams'] .worldbook-entry-item.active {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+:root[data-theme-style='pixel-dreams'] .game-screen {
+  border: 4px solid var(--accent-magenta);
+  border-radius: 0;
+  background: var(--background);
+}
+
+:root[data-theme-style='pixel-dreams'] .hud-chip {
+  border: 2px solid var(--accent-yellow);
+  border-radius: 0;
+  color: var(--accent-yellow);
+}
+
+:root[data-theme-style='pixel-dreams'] .scene-gradient {
+  background: var(--background);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme-style='pixel-dreams'] .hero-title-gradient,
+  :root[data-theme-style='pixel-dreams'] .title-gradient {
+    animation: none !important;
+  }
+}

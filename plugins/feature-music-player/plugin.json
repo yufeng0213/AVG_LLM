@@ -1,0 +1,25 @@
+{
+  "id": "music-player",
+  "name": "音乐播放器",
+  "description": "全屏音乐播放器，支持歌词、可视化效果、歌单解析、本地导入。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "music-player",
+    "title": "音乐播放器",
+    "icon": "🎵",
+    "order": 40,
+    "variant": "tone-purple border-solid"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "music-player"
+  },
+  "storage": {
+    "namespace": "music-player"
+  },
+  "capabilities": ["storage"],
+  "enabledByDefault": true
+}

@@ -1,0 +1,22 @@
+{
+  "id": "royal-velvet",
+  "name": "Royal Velvet",
+  "description": "Deep purple and gold, regal luxury. Imperial majesty with velvet depth.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#0a0414",
+    "foreground": "#d0a8e0",
+    "muted": "#5a3a6a",
+    "accentMagenta": "#b060d0",
+    "accentCyan": "#c0a060",
+    "accentYellow": "#e8c040",
+    "accentOrange": "#d08040",
+    "accentPurple": "#8040c0",
+    "fontHeading": "'Playfair Display', 'Georgia', serif",
+    "fontBody": "'Georgia', serif",
+    "fontDisplay": "'Playfair Display', serif",
+    "radiusButton": "8px",
+    "radiusCard": "12px",
+    "radiusPanel": "12px"
+  }
+}

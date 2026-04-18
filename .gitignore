@@ -8,7 +8,7 @@ out/
 release/
 coverage/
 *.tsbuildinfo
-
+.data
 # Logs
 logs/
 *.log

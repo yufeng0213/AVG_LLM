@@ -1,0 +1,63 @@
+/* ===== 海洋气泡 ===== */
+/* 深海幽蓝，水波荡漾 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #001428 0%, #001a33 50%, #001020 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #0077b6, #005f8a);
+  border-radius: 18px 18px 6px 18px;
+  color: #e0f4ff;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 4px 12px rgba(0, 119, 182, 0.4),
+              0 0 2px rgba(0, 180, 216, 0.3);
+  border: 1px solid rgba(0, 150, 200, 0.3);
+}
+
+.sms-bubble.user::after {
+  content: '🐚';
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #001830, #001020);
+  border-radius: 18px 18px 18px 6px;
+  color: #70b8d8;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4),
+              inset 0 0 10px rgba(0, 119, 182, 0.08);
+  border: 1px solid rgba(0, 80, 120, 0.2);
+}
+
+.sms-bubble.assistant::before {
+  content: '🌊';
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #005a80;
+  background: rgba(0, 20, 40, 0.5);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 80, 120, 0.15);
+}

@@ -92,6 +92,8 @@ export async function getGroupedContacts() {
           portraits: c.portraits || [],
           smsAvatar: c.smsAvatar || null,
           smsBg: c.smsBg || null,
+          smsStickers: c.smsStickers || {},
+          voiceConfig: c.voiceConfig || { enabled: false, voiceId: '' },
           worldBookId: book.id,
           worldBookTitle: book.title || '未命名世界书',
         })),

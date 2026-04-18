@@ -120,10 +120,10 @@ const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七
       <!-- 应用网格 -->
       <div class="app-grid">
         <div v-for="app in apps" :key="app.id" class="app-icon" @click="emit('open-app', app.id)">
-          <button type="button" class="app-icon-btn" :style="{ background: app.color }">
+          <button type="button" class="app-icon-btn">
             <template v-if="app.isCalendar">
-              <span style="font-size:0.6rem;color:#ff3b30;font-weight:700;position:absolute;top:4px;">{{ months[calendarMonth].slice(0, 1) }}</span>
-              <span style="font-size:1.4rem;font-weight:300;color:#1c1c1e;margin-top:6px;">{{ calendarDay }}</span>
+              <span style="font-size:0.6rem;color:rgba(255,255,255,0.9);font-weight:700;position:absolute;top:4px;">{{ months[calendarMonth].slice(0, 1) }}</span>
+              <span style="font-size:1.4rem;font-weight:300;color:rgba(255,255,255,0.95);margin-top:6px;">{{ calendarDay }}</span>
             </template>
             <template v-else>
               {{ app.icon }}
@@ -146,7 +146,7 @@ const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七
         </button>
       </div>
       <div v-for="app in dockApps.slice(1)" :key="app.id" class="app-icon" @click="emit('open-app', app.id)">
-        <button type="button" class="app-icon-btn" :style="{ background: app.color }">
+        <button type="button" class="app-icon-btn">
           {{ app.icon }}
         </button>
       </div>

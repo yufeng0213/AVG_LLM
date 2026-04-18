@@ -3,8 +3,10 @@ import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { generateCharacterSpeech, generateFaceToFaceJointDialogues } from '../../../src/llm'
 import { getActiveWorldBookId, loadWorldBooks } from '../../../src/worldbook/worldBookStore'
+import { isAndroid } from '../../../src/utils/platform.js'
 
 const emit = defineEmits(['back'])
+const isAndroidPlatform = isAndroid()
 
 const screenRef = ref(null)
 const videoInputRef = ref(null)
@@ -2601,7 +2603,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main ref="screenRef" class="face-to-face-screen" role="main">
+  <main ref="screenRef" class="face-to-face-screen" :class="{ 'platform-android': isAndroidPlatform, 'android-portrait': isAndroidPlatform }" role="main">
     <input
       ref="videoInputRef"
       type="file"

@@ -18,6 +18,7 @@ import bookParticleEntry from '../../plugins/feature-book-particle/src/entry.js'
 import settingsEntry from '../../plugins/feature-settings/src/entry.js'
 import worldbookEntry from '../../plugins/feature-worldbook/src/entry.js'
 import trpgEntry from '../../plugins/feature-trpg/src/entry.js'
+import musicPlayerEntry from '../../plugins/feature-music-player/src/entry.js'
 
 const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   backStorageEntry,
@@ -40,6 +41,7 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   testEntry,
   roseParticleEntry,
   bookParticleEntry,
+  musicPlayerEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {

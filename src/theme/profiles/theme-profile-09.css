@@ -1,0 +1,298 @@
+/* ============================================
+   EMBER THEME
+   Volcanic dark with red/orange glow
+   ============================================ */
+
+:root[data-theme-style='ember'] body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+:root[data-theme-style='ember'] body::before {
+  opacity: 1;
+  mix-blend-mode: normal;
+  background:
+    radial-gradient(ellipse at 50% 90%, rgba(255, 69, 0, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 70%, rgba(255, 168, 0, 0.12) 0%, transparent 40%);
+  animation: ember-glow 5s ease-in-out infinite alternate;
+}
+
+:root[data-theme-style='ember'] body::after {
+  opacity: 0.04;
+  background:
+    radial-gradient(circle, rgba(255, 69, 0, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+:root[data-theme-style='ember'] .panel-title,
+:root[data-theme-style='ember'] .settings-title,
+:root[data-theme-style='ember'] .hero-title-main,
+:root[data-theme-style='ember'] .menu-button-text,
+:root[data-theme-style='ember'] .nav-main,
+:root[data-theme-style='ember'] .preview-title {
+  color: var(--foreground);
+  text-shadow: 0 0 6px rgba(255, 69, 0, 0.3);
+}
+
+:root[data-theme-style='ember'] .launch-screen {
+  border: 1px solid rgba(255, 69, 0, 0.25);
+  border-radius: 8px;
+  background: var(--surface-panel);
+  box-shadow: 0 0 24px rgba(255, 69, 0, 0.08);
+}
+
+:root[data-theme-style='ember'] .massive-word {
+  color: color-mix(in srgb, var(--accent-orange) 10%, transparent);
+  opacity: 0.15;
+}
+
+:root[data-theme-style='ember'] .floating-shape {
+  filter: drop-shadow(0 0 10px rgba(255, 69, 0, 0.3));
+}
+
+:root[data-theme-style='ember'] .hero-tag {
+  border: 1px solid var(--accent-orange);
+  border-radius: 6px;
+  background: rgba(255, 69, 0, 0.1);
+  color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .hero-title-gradient,
+:root[data-theme-style='ember'] .title-gradient {
+  background: linear-gradient(90deg, #ff4500 0%, #ffa800 50%, #ff3040 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ember-shift 5s ease-in-out infinite;
+}
+
+@keyframes ember-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+:root[data-theme-style='ember'] .menu-panel {
+  border: 1px solid rgba(255, 69, 0, 0.15);
+  border-radius: 8px;
+  background: rgba(13, 6, 4, 0.85);
+}
+
+:root[data-theme-style='ember'] .menu-button {
+  border: 1px solid rgba(255, 69, 0, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 69, 0, 0.06);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='ember'] .menu-button:hover {
+  border-color: var(--accent-yellow);
+  background: rgba(255, 168, 0, 0.1);
+  box-shadow: 0 0 12px rgba(255, 168, 0, 0.15);
+}
+
+:root[data-theme-style='ember'] .tone-magenta {
+  background: linear-gradient(135deg, rgba(255, 48, 64, 0.3), rgba(192, 48, 32, 0.2));
+}
+
+:root[data-theme-style='ember'] .tone-cyan {
+  background: linear-gradient(135deg, rgba(255, 107, 61, 0.3), rgba(255, 168, 0, 0.2));
+}
+
+:root[data-theme-style='ember'] .tone-orange {
+  background: linear-gradient(135deg, rgba(255, 168, 0, 0.4), rgba(255, 69, 0, 0.3));
+}
+
+:root[data-theme-style='ember'] .meta-chip {
+  border: 1px solid rgba(255, 69, 0, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 69, 0, 0.06);
+  color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .settings-screen {
+  border: 1px solid rgba(255, 69, 0, 0.2);
+  border-radius: 8px;
+  background: var(--surface-panel);
+}
+
+:root[data-theme-style='ember'] .settings-bg-word {
+  color: color-mix(in srgb, var(--accent-orange) 8%, transparent);
+  opacity: 0.12;
+}
+
+:root[data-theme-style='ember'] .back-button {
+  border: 1px solid rgba(255, 69, 0, 0.25);
+  border-radius: 6px;
+  color: var(--accent-orange);
+  background: rgba(255, 69, 0, 0.05);
+}
+
+:root[data-theme-style='ember'] .settings-tag {
+  border: 1px solid rgba(255, 69, 0, 0.15);
+  border-radius: 4px;
+  background: rgba(255, 69, 0, 0.04);
+  color: var(--muted);
+}
+
+:root[data-theme-style='ember'] .settings-nav {
+  border: 1px solid rgba(255, 69, 0, 0.12);
+  border-radius: 8px;
+  background: rgba(13, 6, 4, 0.6);
+}
+
+:root[data-theme-style='ember'] .settings-nav-item {
+  border: 1px solid rgba(255, 69, 0, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 69, 0, 0.03);
+  color: var(--muted);
+}
+
+:root[data-theme-style='ember'] .settings-nav-item.active {
+  border-color: var(--accent-orange);
+  background: rgba(255, 69, 0, 0.12);
+  color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .settings-content {
+  border: 1px solid rgba(255, 69, 0, 0.1);
+  border-radius: 8px;
+  background: rgba(13, 6, 4, 0.4);
+}
+
+:root[data-theme-style='ember'] .setting-field {
+  border: 1px solid rgba(255, 69, 0, 0.1);
+  border-radius: 6px;
+}
+
+:root[data-theme-style='ember'] .setting-input,
+:root[data-theme-style='ember'] .setting-select,
+:root[data-theme-style='ember'] .setting-textarea {
+  border: 1px solid rgba(255, 69, 0, 0.2);
+  border-radius: 6px;
+  color: var(--foreground);
+  background: rgba(255, 69, 0, 0.05);
+}
+
+:root[data-theme-style='ember'] .setting-input:focus-visible,
+:root[data-theme-style='ember'] .setting-select:focus-visible,
+:root[data-theme-style='ember'] .setting-textarea:focus-visible {
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 6px rgba(255, 168, 0, 0.2);
+}
+
+:root[data-theme-style='ember'] .setting-checkbox-row {
+  border: 1px solid rgba(255, 69, 0, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 69, 0, 0.04);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='ember'] .setting-checkbox {
+  accent-color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .setting-status-chip {
+  border: 1px solid var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .action-button {
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ff4500, #ffa800);
+  color: #0d0604;
+}
+
+:root[data-theme-style='ember'] .action-button.action-outline {
+  border: 1px solid var(--accent-orange);
+  background: transparent;
+  color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .theme-preview-card {
+  border: 1px solid rgba(255, 69, 0, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 69, 0, 0.04);
+}
+
+:root[data-theme-style='ember'] .theme-preview-card.active {
+  border-color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .worldbook-screen,
+:root[data-theme-style='ember'] .worldbook-editor-screen {
+  border: 1px solid rgba(255, 69, 0, 0.15);
+  border-radius: 8px;
+  background: var(--surface-panel);
+}
+
+:root[data-theme-style='ember'] .worldbook-tag,
+:root[data-theme-style='ember'] .worldbook-editor-tag {
+  border: 1px solid rgba(255, 69, 0, 0.2);
+  background: rgba(255, 69, 0, 0.06);
+  color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .worldbook-editor-tab {
+  border: 1px solid rgba(255, 69, 0, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 69, 0, 0.04);
+  color: var(--muted);
+}
+
+:root[data-theme-style='ember'] .worldbook-editor-tab.active {
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .worldbook-book-spine {
+  border: 1px solid rgba(255, 69, 0, 0.15);
+  border-radius: 6px;
+  color: var(--foreground);
+}
+
+:root[data-theme-style='ember'] .worldbook-entry-item {
+  border: 1px solid rgba(255, 69, 0, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 69, 0, 0.03);
+  color: var(--muted);
+}
+
+:root[data-theme-style='ember'] .worldbook-entry-item.active {
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .game-screen {
+  border: 1px solid rgba(255, 69, 0, 0.15);
+  border-radius: 8px;
+  background: var(--background);
+}
+
+:root[data-theme-style='ember'] .hud-chip {
+  border: 1px solid rgba(255, 69, 0, 0.2);
+  background: rgba(255, 69, 0, 0.08);
+  color: var(--accent-orange);
+}
+
+:root[data-theme-style='ember'] .scene-gradient {
+  background:
+    radial-gradient(ellipse at 50% 90%, rgba(255, 69, 0, 0.15) 0%, transparent 50%),
+    linear-gradient(180deg, var(--background) 0%, rgba(13, 6, 4, 0.95) 100%);
+}
+
+@keyframes ember-glow {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme-style='ember'] body::before {
+    animation: none !important;
+  }
+  :root[data-theme-style='ember'] .hero-title-gradient,
+  :root[data-theme-style='ember'] .title-gradient {
+    animation: none !important;
+  }
+}

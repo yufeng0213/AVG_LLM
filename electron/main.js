@@ -1144,6 +1144,72 @@ app.whenReady().then(() => {
     }
   })
 
+  // ========== 网易云音乐 API 代理（解决 CORS 问题）==========
+
+  ipcMain.handle('netease:fetch-song-detail', async (_event, songId) => {
+    if (!songId) return { success: false, error: 'Invalid song ID' }
+    try {
+      const response = await fetch(`https://music.163.com/api/song/detail/?id=${songId}&ids=[${songId}]`, {
+        headers: { 'Referer': 'https://music.163.com/' },
+      })
+      if (!response.ok) return { success: false, error: `HTTP ${response.status}` }
+      const data = await response.json()
+      if (data.songs?.[0]) {
+        const song = data.songs[0]
+        return {
+          success: true,
+          data: {
+            name: song.name,
+            artist: song.artists?.map(a => a.name).join(', ') || '',
+            album: song.album?.name || '',
+            cover: song.album?.picUrl || '',
+          }
+        }
+      }
+      return { success: false, error: 'Song not found' }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('netease:fetch-lyrics', async (_event, songId) => {
+    if (!songId) return { success: false, error: 'Invalid song ID' }
+    try {
+      const response = await fetch(`https://music.163.com/api/song/lyric?id=${songId}&lv=1&kv=1&tv=-1`, {
+        headers: { 'Referer': 'https://music.163.com/' },
+      })
+      if (!response.ok) return { success: false, error: `HTTP ${response.status}` }
+      const data = await response.json()
+      return { success: true, lrc: data.lrc?.lyric || '' }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('netease:fetch-playlist', async (_event, playlistId) => {
+    if (!playlistId) return { success: false, error: 'Invalid playlist ID' }
+    try {
+      const response = await fetch(`https://music.163.com/api/playlist/detail?id=${playlistId}`, {
+        headers: { 'Referer': 'https://music.163.com/' },
+      })
+      if (!response.ok) return { success: false, error: `HTTP ${response.status}` }
+      const data = await response.json()
+      if (data.result?.tracks?.length) {
+        const tracks = data.result.tracks.map(song => ({
+          id: String(song.id),
+          name: song.name,
+          artist: song.artists?.map(a => a.name).join(', ') || '',
+          album: song.album?.name || '',
+          cover: song.album?.picUrl || '',
+        }))
+        return { success: true, data: tracks }
+      }
+      return { success: false, error: 'Playlist empty or not found' }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+
   // ========== ComfyUI 代理请求（解决 CORS 问题）==========
   
   // 检查 ComfyUI 服务是否可用

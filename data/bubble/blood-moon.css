@@ -1,0 +1,63 @@
+/* ===== 血月气泡 ===== */
+/* 暗红不祥，血色满月的压抑 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #0a0505 0%, #100808 50%, #0d0606 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #8b0000, #6b0000);
+  border-radius: 12px 4px 12px 4px;
+  color: #f0d0d0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 0 16px rgba(139, 0, 0, 0.6),
+              0 2px 8px rgba(0, 0, 0, 0.8);
+  border: 1px solid #4a0000;
+}
+
+.sms-bubble.user::after {
+  content: '🩸';
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #120808, #0a0404);
+  border-radius: 4px 12px 4px 12px;
+  color: #a07070;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 0 12px rgba(100, 0, 0, 0.4),
+              inset 0 0 10px rgba(139, 0, 0, 0.1);
+  border: 1px solid #2a0000;
+}
+
+.sms-bubble.assistant::before {
+  content: '🌑';
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #6a3030;
+  background: rgba(10, 5, 5, 0.7);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 6px;
+  border: 1px solid #2a0000;
+}

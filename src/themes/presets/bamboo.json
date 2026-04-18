@@ -1,0 +1,22 @@
+{
+  "id": "bamboo",
+  "name": "Bamboo",
+  "description": "Zen bamboo green and warm wood. Serene Japanese garden calm.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#0f1410",
+    "foreground": "#c0d0a0",
+    "muted": "#4a5a3a",
+    "accentMagenta": "#a0b060",
+    "accentCyan": "#80c080",
+    "accentYellow": "#d0d080",
+    "accentOrange": "#b09050",
+    "accentPurple": "#608050",
+    "fontHeading": "'STKaiti', 'KaiTi', serif",
+    "fontBody": "system-ui, sans-serif",
+    "fontDisplay": "'STKaiti', 'KaiTi', serif",
+    "radiusButton": "8px",
+    "radiusCard": "12px",
+    "radiusPanel": "12px"
+  }
+}

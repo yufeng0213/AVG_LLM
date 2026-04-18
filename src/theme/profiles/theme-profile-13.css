@@ -1,0 +1,302 @@
+/* ============================================
+   PHANTOM THEME
+   Ghostly grayscale, ethereal minimal
+   ============================================ */
+
+:root[data-theme-style='phantom'] body {
+  color: var(--foreground);
+  background: var(--background);
+  filter: saturate(0.3);
+}
+
+:root[data-theme-style='phantom'] body::before {
+  opacity: 0.5;
+  mix-blend-mode: normal;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(176, 176, 176, 0.04) 0%, transparent 60%);
+}
+
+:root[data-theme-style='phantom'] body::after {
+  opacity: 0;
+}
+
+:root[data-theme-style='phantom'] .panel-title,
+:root[data-theme-style='phantom'] .settings-title,
+:root[data-theme-style='phantom'] .hero-title-main,
+:root[data-theme-style='phantom'] .menu-button-text,
+:root[data-theme-style='phantom'] .nav-main,
+:root[data-theme-style='phantom'] .preview-title {
+  color: var(--foreground);
+}
+
+:root[data-theme-style='phantom'] .panel-description,
+:root[data-theme-style='phantom'] .hero-subtitle,
+:root[data-theme-style='phantom'] .nav-note {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+:root[data-theme-style='phantom'] .launch-screen {
+  border: 1px solid rgba(176, 176, 176, 0.1);
+  border-radius: 4px;
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(8px);
+}
+
+:root[data-theme-style='phantom'] .massive-word {
+  color: color-mix(in srgb, var(--foreground) 5%, transparent);
+  opacity: 0.05;
+}
+
+:root[data-theme-style='phantom'] .floating-shape {
+  filter: grayscale(1) opacity(0.3);
+}
+
+:root[data-theme-style='phantom'] .hero-tag {
+  border: 1px solid rgba(176, 176, 176, 0.2);
+  border-radius: 4px;
+  background: rgba(176, 176, 176, 0.05);
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .hero-title-gradient,
+:root[data-theme-style='phantom'] .title-gradient {
+  background: linear-gradient(90deg, #b0b0b0 0%, #e0e0e0 50%, #b0b0b0 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: phantom-fade 6s ease-in-out infinite;
+}
+
+@keyframes phantom-fade {
+  0%, 100% { background-position: 0% 50%; opacity: 0.8; }
+  50% { background-position: 100% 50%; opacity: 1; }
+}
+
+:root[data-theme-style='phantom'] .menu-panel {
+  border: 1px solid rgba(176, 176, 176, 0.08);
+  border-radius: 4px;
+  background: rgba(10, 10, 10, 0.5);
+}
+
+:root[data-theme-style='phantom'] .menu-button {
+  border: 1px solid rgba(176, 176, 176, 0.15);
+  border-radius: 4px;
+  background: rgba(176, 176, 176, 0.03);
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+:root[data-theme-style='phantom'] .menu-button:hover {
+  border-color: rgba(176, 176, 176, 0.3);
+  color: var(--foreground);
+  opacity: 1;
+}
+
+:root[data-theme-style='phantom'] .tone-magenta {
+  background: rgba(144, 144, 144, 0.2);
+}
+
+:root[data-theme-style='phantom'] .tone-cyan {
+  background: rgba(128, 128, 128, 0.15);
+}
+
+:root[data-theme-style='phantom'] .tone-orange {
+  background: rgba(160, 160, 160, 0.2);
+}
+
+:root[data-theme-style='phantom'] .menu-button-desc {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+:root[data-theme-style='phantom'] .meta-chip {
+  border: 1px solid rgba(176, 176, 176, 0.12);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .settings-screen {
+  border: 1px solid rgba(176, 176, 176, 0.08);
+  border-radius: 4px;
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+:root[data-theme-style='phantom'] .settings-bg-word {
+  color: color-mix(in srgb, var(--foreground) 3%, transparent);
+  opacity: 0.03;
+}
+
+:root[data-theme-style='phantom'] .back-button {
+  border: 1px solid rgba(176, 176, 176, 0.15);
+  border-radius: 4px;
+  color: var(--muted);
+  background: transparent;
+}
+
+:root[data-theme-style='phantom'] .settings-tag {
+  border: 1px solid rgba(176, 176, 176, 0.1);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .settings-nav {
+  border: 1px solid rgba(176, 176, 176, 0.06);
+  border-radius: 4px;
+  background: transparent;
+}
+
+:root[data-theme-style='phantom'] .settings-nav-item {
+  border: 1px solid rgba(176, 176, 176, 0.06);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .settings-nav-item.active {
+  border-color: rgba(176, 176, 176, 0.3);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='phantom'] .settings-content {
+  border: 1px solid rgba(176, 176, 176, 0.06);
+  border-radius: 4px;
+  background: transparent;
+}
+
+:root[data-theme-style='phantom'] .setting-field {
+  border: 1px solid rgba(176, 176, 176, 0.06);
+  border-radius: 4px;
+}
+
+:root[data-theme-style='phantom'] .setting-input,
+:root[data-theme-style='phantom'] .setting-select,
+:root[data-theme-style='phantom'] .setting-textarea {
+  border: 1px solid rgba(176, 176, 176, 0.12);
+  border-radius: 4px;
+  color: var(--foreground);
+  background: rgba(176, 176, 176, 0.03);
+}
+
+:root[data-theme-style='phantom'] .setting-input:focus-visible {
+  border-color: rgba(176, 176, 176, 0.3);
+}
+
+:root[data-theme-style='phantom'] .setting-checkbox-row {
+  border: 1px solid rgba(176, 176, 176, 0.06);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .setting-checkbox {
+  accent-color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .setting-status-chip {
+  border: 1px solid rgba(176, 176, 176, 0.2);
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .action-button {
+  border: 1px solid rgba(176, 176, 176, 0.3);
+  border-radius: 4px;
+  background: rgba(176, 176, 176, 0.1);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='phantom'] .action-button.action-outline {
+  border: 1px solid rgba(176, 176, 176, 0.15);
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .action-button.action-ghost {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+:root[data-theme-style='phantom'] .theme-preview-card {
+  border: 1px solid rgba(176, 176, 176, 0.1);
+  border-radius: 4px;
+  background: rgba(176, 176, 176, 0.03);
+}
+
+:root[data-theme-style='phantom'] .theme-preview-card.active {
+  border-color: rgba(176, 176, 176, 0.3);
+}
+
+:root[data-theme-style='phantom'] .worldbook-screen,
+:root[data-theme-style='phantom'] .worldbook-editor-screen {
+  border: 1px solid rgba(176, 176, 176, 0.08);
+  border-radius: 4px;
+  background: rgba(10, 10, 10, 0.6);
+}
+
+:root[data-theme-style='phantom'] .worldbook-tag,
+:root[data-theme-style='phantom'] .worldbook-editor-tag {
+  border: 1px solid rgba(176, 176, 176, 0.12);
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .worldbook-editor-tab {
+  border: 1px solid rgba(176, 176, 176, 0.08);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .worldbook-editor-tab.active {
+  border-color: rgba(176, 176, 176, 0.3);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='phantom'] .worldbook-book-spine {
+  border: 1px solid rgba(176, 176, 176, 0.1);
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .worldbook-entry-item {
+  border: 1px solid rgba(176, 176, 176, 0.06);
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .worldbook-entry-item.active {
+  border-color: rgba(176, 176, 176, 0.25);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='phantom'] .game-screen {
+  border: 1px solid rgba(176, 176, 176, 0.08);
+  border-radius: 4px;
+  background: var(--background);
+}
+
+:root[data-theme-style='phantom'] .hud-chip {
+  border: 1px solid rgba(176, 176, 176, 0.15);
+  background: transparent;
+  color: var(--muted);
+}
+
+:root[data-theme-style='phantom'] .scene-gradient {
+  background: var(--background);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme-style='phantom'] body {
+    filter: saturate(0.3) !important;
+  }
+  :root[data-theme-style='phantom'] .hero-title-gradient,
+  :root[data-theme-style='phantom'] .title-gradient {
+    animation: none !important;
+  }
+}

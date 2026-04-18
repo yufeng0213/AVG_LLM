@@ -1,0 +1,370 @@
+/* ============================================
+   SAKURA THEME
+   Japanese cherry blossom, soft pink/warm white
+   ============================================ */
+
+:root[data-theme-style='sakura'] body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+:root[data-theme-style='sakura'] body::before {
+  opacity: 1;
+  mix-blend-mode: normal;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(232, 138, 176, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(245, 230, 192, 0.1) 0%, transparent 50%);
+  animation: sakura-fall 8s ease-in-out infinite;
+}
+
+:root[data-theme-style='sakura'] body::after {
+  opacity: 1;
+  mix-blend-mode: normal;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(232, 138, 176, 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+:root[data-theme-style='sakura'] .panel-title,
+:root[data-theme-style='sakura'] .settings-title,
+:root[data-theme-style='sakura'] .hero-title-main,
+:root[data-theme-style='sakura'] .menu-button-text,
+:root[data-theme-style='sakura'] .nav-main,
+:root[data-theme-style='sakura'] .preview-title {
+  font-family: var(--font-heading);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='sakura'] .panel-description,
+:root[data-theme-style='sakura'] .hero-subtitle,
+:root[data-theme-style='sakura'] .nav-note {
+  color: var(--muted);
+}
+
+:root[data-theme-style='sakura'] .launch-screen {
+  border: 1px solid rgba(232, 138, 176, 0.2);
+  border-radius: 24px;
+  background: rgba(253, 245, 245, 0.85);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(232, 138, 176, 0.1);
+}
+
+:root[data-theme-style='sakura'] .massive-word {
+  color: color-mix(in srgb, var(--accent-magenta) 12%, transparent);
+  opacity: 0.15;
+}
+
+:root[data-theme-style='sakura'] .floating-shape {
+  filter: drop-shadow(0 4px 8px rgba(232, 138, 176, 0.15));
+}
+
+:root[data-theme-style='sakura'] .hero-tag {
+  border: 1px solid rgba(232, 138, 176, 0.3);
+  border-radius: 16px;
+  background: rgba(232, 138, 176, 0.08);
+  color: var(--accent-magenta);
+}
+
+:root[data-theme-style='sakura'] .hero-title-gradient,
+:root[data-theme-style='sakura'] .title-gradient {
+  background: linear-gradient(90deg, #e88ab0 0%, #c8a0c0 50%, #f5e6c0 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: sakura-gradient 6s ease-in-out infinite;
+}
+
+@keyframes sakura-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+:root[data-theme-style='sakura'] .menu-panel {
+  border: 1px solid rgba(232, 138, 176, 0.15);
+  border-radius: 20px;
+  background: rgba(253, 245, 245, 0.7);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(232, 138, 176, 0.06);
+}
+
+:root[data-theme-style='sakura'] .menu-heading {
+  color: var(--foreground);
+}
+
+:root[data-theme-style='sakura'] .menu-button {
+  border: 1px solid rgba(232, 138, 176, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='sakura'] .menu-button:hover {
+  background: rgba(232, 138, 176, 0.15);
+  border-color: var(--accent-magenta);
+  box-shadow: 0 4px 12px rgba(232, 138, 176, 0.12);
+}
+
+:root[data-theme-style='sakura'] .tone-magenta {
+  background: linear-gradient(135deg, rgba(232, 138, 176, 0.3), rgba(200, 160, 192, 0.2));
+}
+
+:root[data-theme-style='sakura'] .tone-cyan {
+  background: linear-gradient(135deg, rgba(136, 200, 184, 0.3), rgba(136, 200, 184, 0.15));
+}
+
+:root[data-theme-style='sakura'] .tone-orange {
+  background: linear-gradient(135deg, rgba(240, 176, 128, 0.3), rgba(245, 230, 192, 0.2));
+}
+
+:root[data-theme-style='sakura'] .menu-button-desc {
+  color: var(--muted);
+}
+
+:root[data-theme-style='sakura'] .meta-chip {
+  border: 1px solid rgba(232, 138, 176, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--muted);
+}
+
+:root[data-theme-style='sakura'] .settings-screen {
+  border: 1px solid rgba(232, 138, 176, 0.15);
+  border-radius: 20px;
+  background: rgba(253, 245, 245, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+:root[data-theme-style='sakura'] .settings-bg-word {
+  color: color-mix(in srgb, var(--accent-magenta) 8%, transparent);
+  opacity: 0.1;
+}
+
+:root[data-theme-style='sakura'] .back-button {
+  border: 1px solid rgba(232, 138, 176, 0.25);
+  border-radius: 14px;
+  color: var(--accent-magenta);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+:root[data-theme-style='sakura'] .settings-tag {
+  border: 1px solid rgba(232, 138, 176, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
+}
+
+:root[data-theme-style='sakura'] .settings-nav {
+  border: 1px solid rgba(232, 138, 176, 0.12);
+  border-radius: 16px;
+  background: rgba(253, 245, 245, 0.6);
+}
+
+:root[data-theme-style='sakura'] .settings-nav-item {
+  border: 1px solid rgba(232, 138, 176, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
+}
+
+:root[data-theme-style='sakura'] .settings-nav-item.active {
+  border-color: var(--accent-magenta);
+  background: linear-gradient(135deg, rgba(232, 138, 176, 0.2), rgba(200, 160, 192, 0.15));
+  color: var(--accent-magenta);
+}
+
+:root[data-theme-style='sakura'] .settings-content {
+  border: 1px solid rgba(232, 138, 176, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+:root[data-theme-style='sakura'] .setting-field {
+  border: 1px solid rgba(232, 138, 176, 0.12);
+  border-radius: 12px;
+}
+
+:root[data-theme-style='sakura'] .setting-label {
+  color: var(--foreground);
+}
+
+:root[data-theme-style='sakura'] .setting-input,
+:root[data-theme-style='sakura'] .setting-select,
+:root[data-theme-style='sakura'] .setting-textarea {
+  border: 1px solid rgba(232, 138, 176, 0.2);
+  border-radius: 12px;
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:root[data-theme-style='sakura'] .setting-input:focus-visible,
+:root[data-theme-style='sakura'] .setting-select:focus-visible,
+:root[data-theme-style='sakura'] .setting-textarea:focus-visible {
+  border-color: var(--accent-magenta);
+  box-shadow: 0 0 0 3px rgba(232, 138, 176, 0.15);
+}
+
+:root[data-theme-style='sakura'] .setting-checkbox-row {
+  border: 1px solid rgba(232, 138, 176, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='sakura'] .setting-checkbox {
+  accent-color: var(--accent-magenta);
+}
+
+:root[data-theme-style='sakura'] .setting-status-chip {
+  border: 1px solid rgba(232, 138, 176, 0.25);
+  color: var(--accent-magenta);
+}
+
+:root[data-theme-style='sakura'] .action-button {
+  border: none;
+  border-radius: 14px;
+  color: #4a2a3a;
+  background: linear-gradient(135deg, #e88ab0, #c8a0c0);
+  box-shadow: 0 4px 12px rgba(232, 138, 176, 0.2);
+}
+
+:root[data-theme-style='sakura'] .action-button.action-outline {
+  border: 1px solid rgba(232, 138, 176, 0.3);
+  background: transparent;
+  color: var(--accent-magenta);
+}
+
+:root[data-theme-style='sakura'] .action-button.action-ghost {
+  border: 1px solid rgba(232, 138, 176, 0.2);
+  background: rgba(232, 138, 176, 0.06);
+  color: var(--foreground);
+}
+
+:root[data-theme-style='sakura'] .theme-preview-card {
+  border: 1px solid rgba(232, 138, 176, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:root[data-theme-style='sakura'] .theme-preview-card.active {
+  border-color: var(--accent-magenta);
+}
+
+:root[data-theme-style='sakura'] .worldbook-screen,
+:root[data-theme-style='sakura'] .worldbook-editor-screen {
+  border: 1px solid rgba(232, 138, 176, 0.15);
+  border-radius: 20px;
+  background: rgba(253, 245, 245, 0.8);
+}
+
+:root[data-theme-style='sakura'] .worldbook-bg-word,
+:root[data-theme-style='sakura'] .worldbook-editor-bg-word {
+  color: color-mix(in srgb, var(--accent-magenta) 8%, transparent);
+  opacity: 0.1;
+}
+
+:root[data-theme-style='sakura'] .worldbook-tag,
+:root[data-theme-style='sakura'] .worldbook-editor-tag {
+  border: 1px solid rgba(232, 138, 176, 0.2);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--muted);
+}
+
+:root[data-theme-style='sakura'] .worldbook-editor-tab {
+  border: 1px solid rgba(232, 138, 176, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
+}
+
+:root[data-theme-style='sakura'] .worldbook-editor-tab.active {
+  border-color: var(--accent-magenta);
+  color: var(--accent-magenta);
+  background: rgba(232, 138, 176, 0.1);
+}
+
+:root[data-theme-style='sakura'] .worldbook-shelf-zone {
+  border: 1px solid rgba(232, 138, 176, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+:root[data-theme-style='sakura'] .worldbook-add-button {
+  border: 1px solid var(--accent-magenta);
+  color: var(--accent-magenta);
+  background: rgba(232, 138, 176, 0.08);
+}
+
+:root[data-theme-style='sakura'] .worldbook-book-spine {
+  border: 1px solid rgba(232, 138, 176, 0.15);
+  border-radius: 10px;
+  color: var(--foreground);
+}
+
+:root[data-theme-style='sakura'] .worldbook-book-spine.active {
+  border-color: var(--accent-magenta);
+}
+
+:root[data-theme-style='sakura'] .worldbook-entry-nav {
+  border: 1px solid rgba(232, 138, 176, 0.12);
+  border-radius: 16px;
+  background: rgba(253, 245, 245, 0.6);
+}
+
+:root[data-theme-style='sakura'] .worldbook-entry-item {
+  border: 1px solid rgba(232, 138, 176, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
+}
+
+:root[data-theme-style='sakura'] .worldbook-entry-item.active {
+  border-color: var(--accent-magenta);
+  color: var(--accent-magenta);
+  background: rgba(232, 138, 176, 0.08);
+}
+
+:root[data-theme-style='sakura'] .game-screen {
+  border: 1px solid rgba(232, 138, 176, 0.15);
+  border-radius: 20px;
+  background: var(--background);
+}
+
+:root[data-theme-style='sakura'] .game-bg-word {
+  color: color-mix(in srgb, var(--accent-magenta) 6%, transparent);
+  opacity: 0.08;
+}
+
+:root[data-theme-style='sakura'] .hud-chip {
+  border: 1px solid rgba(232, 138, 176, 0.2);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--accent-magenta);
+}
+
+:root[data-theme-style='sakura'] .scene-gradient {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(232, 138, 176, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(245, 230, 192, 0.1) 0%, transparent 50%),
+    linear-gradient(180deg, var(--background) 0%, rgba(253, 245, 245, 0.95) 100%);
+}
+
+@keyframes sakura-fall {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1deg); }
+}
+
+@keyframes sakura-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme-style='sakura'] body::before,
+  :root[data-theme-style='sakura'] body::after {
+    animation: none !important;
+  }
+  :root[data-theme-style='sakura'] .hero-title-gradient,
+  :root[data-theme-style='sakura'] .title-gradient {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "candy-shop",
+  "name": "Candy Shop",
+  "description": "Bright saturated candy colors, playful and fun. Sugar rush aesthetic.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#1a0a20",
+    "foreground": "#ff80b0",
+    "muted": "#8a3060",
+    "accentMagenta": "#ff40a0",
+    "accentCyan": "#40e8d0",
+    "accentYellow": "#ffe040",
+    "accentOrange": "#ff8030",
+    "accentPurple": "#c060ff",
+    "fontHeading": "'Comic Neue', 'Nunito', sans-serif",
+    "fontBody": "'Nunito', system-ui, sans-serif",
+    "fontDisplay": "'Comic Neue', sans-serif",
+    "radiusButton": "20px",
+    "radiusCard": "24px",
+    "radiusPanel": "24px"
+  }
+}

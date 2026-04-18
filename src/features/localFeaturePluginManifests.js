@@ -20,6 +20,7 @@ import backStorageManifest from '../../plugins/feature-back-storage/plugin.json'
 import testManifest from '../../plugins/feature-test/plugin.json'
 import roseParticleManifest from '../../plugins/feature-rose-particle/plugin.json'
 import bookParticleManifest from '../../plugins/feature-book-particle/plugin.json'
+import musicPlayerManifest from '../../plugins/feature-music-player/plugin.json'
 
 const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   loadSaveManifest,
@@ -43,6 +44,7 @@ const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   testManifest,
   roseParticleManifest,
   bookParticleManifest,
+  musicPlayerManifest,
 ]
 
 export const getLocalFeaturePluginManifests = () => {

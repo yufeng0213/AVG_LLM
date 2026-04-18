@@ -2,6 +2,26 @@ import dopamineMax from '../themes/presets/dopamine-max.json'
 import clayHiFi from '../themes/presets/clay-hifi.json'
 import linearModern from '../themes/presets/linear-modern.json'
 import iosGlass from '../themes/presets/ios-glass.json'
+import neonDistrict from '../themes/presets/neon-district.json'
+import sakura from '../themes/presets/sakura.json'
+import ember from '../themes/presets/ember.json'
+import pixelDreams from '../themes/presets/pixel-dreams.json'
+import aurora from '../themes/presets/aurora.json'
+import goldenAge from '../themes/presets/golden-age.json'
+import phantom from '../themes/presets/phantom.json'
+import forestWhisper from '../themes/presets/forest-whisper.json'
+import arctic from '../themes/presets/arctic.json'
+import lavenderMist from '../themes/presets/lavender-mist.json'
+import deepSea from '../themes/presets/deep-sea.json'
+import candyShop from '../themes/presets/candy-shop.json'
+import desertSun from '../themes/presets/desert-sun.json'
+import inkWash from '../themes/presets/ink-wash.json'
+import royalVelvet from '../themes/presets/royal-velvet.json'
+import coffeeHouse from '../themes/presets/coffee-house.json'
+import midnightStar from '../themes/presets/midnight-star.json'
+import roseGarden from '../themes/presets/rose-garden.json'
+import electricStorm from '../themes/presets/electric-storm.json'
+import bamboo from '../themes/presets/bamboo.json'
 import { kvStorage } from '../storage/index.js'
 
 const ACTIVE_THEME_KEY = 'active_theme'
@@ -9,7 +29,12 @@ const CUSTOM_THEMES_KEY = 'custom_themes'
 const EXTERNAL_THEMES_KEY = 'external_themes'
 const DEFAULT_STYLE_PROFILE = 'dopamine-max'
 
-const presetThemes = [dopamineMax, clayHiFi, linearModern, iosGlass]
+const presetThemes = [
+  dopamineMax, clayHiFi, linearModern, iosGlass,
+  neonDistrict, sakura, ember, pixelDreams, aurora, goldenAge, phantom,
+  forestWhisper, arctic, lavenderMist, deepSea, candyShop,
+  desertSun, inkWash, royalVelvet, coffeeHouse, midnightStar, roseGarden, electricStorm, bamboo
+]
 const fallbackTheme = presetThemes[0]
 
 const tokenToCssVar = {

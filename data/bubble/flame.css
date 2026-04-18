@@ -1,0 +1,63 @@
+/* ===== 火焰气泡 ===== */
+/* 炽热燃烧，橙红跃动 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #1a0800 0%, #200c00 50%, #180a00 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #e85d04, #d00000);
+  border-radius: 12px 18px 8px 14px;
+  color: #fff5e0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 0 16px rgba(232, 93, 4, 0.5),
+              0 4px 8px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 120, 0, 0.4);
+}
+
+.sms-bubble.user::after {
+  content: '🔥';
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #1a0a00, #120600);
+  border-radius: 18px 12px 14px 8px;
+  color: #d08050;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 0 10px rgba(208, 0, 0, 0.3),
+              inset 0 0 10px rgba(232, 93, 4, 0.08);
+  border: 1px solid rgba(120, 40, 0, 0.2);
+}
+
+.sms-bubble.assistant::before {
+  content: '💥';
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #a05020;
+  background: rgba(26, 8, 0, 0.6);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 40, 0, 0.15);
+}

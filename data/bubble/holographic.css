@@ -1,0 +1,71 @@
+/* ===== 全息气泡 ===== */
+/* 镭射幻彩，光折射的斑斓 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #0a0a12 0%, #0f0f1a 50%, #0a0a15 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #ff006e, #8338ec, #3a86ff);
+  background-size: 200% 200%;
+  animation: holo-shift 4s ease-in-out infinite;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 0 20px rgba(131, 56, 236, 0.4),
+              0 0 40px rgba(255, 0, 110, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@keyframes holo-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.sms-bubble.user::after {
+  content: '💎';
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, rgba(131, 56, 236, 0.15), rgba(58, 134, 255, 0.1));
+  border-radius: 14px;
+  color: #b0a0d8;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 0 12px rgba(131, 56, 236, 0.2),
+              inset 0 0 12px rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(131, 56, 236, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+.sms-bubble.assistant::before {
+  content: '✨';
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #6a5a8a;
+  background: rgba(10, 10, 18, 0.5);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(131, 56, 236, 0.15);
+}

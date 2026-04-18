@@ -32,6 +32,7 @@ public class MainActivity extends BridgeActivity {
         applyStandardSystemUi();
         enablePortraitMode();
         scheduleInsetsDebug("onCreate");
+        injectSafeAreaCssVariables();
     }
 
     /**
@@ -142,6 +143,7 @@ public class MainActivity extends BridgeActivity {
             // 重新获得焦点时，确保系统栏可见
             applyStandardSystemUi();
             scheduleInsetsDebug("onWindowFocusChanged(hasFocus=true)");
+            injectSafeAreaCssVariables();
         }
     }
 
@@ -150,6 +152,41 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         applyStandardSystemUi();
         scheduleInsetsDebug("onResume");
+        injectSafeAreaCssVariables();
+    }
+
+    /**
+     * 通过 JS 注入 CSS 自定义属性，传递系统栏安全距离
+     * 让 WebView 中的内容区域能正确避开刘海/导航条
+     */
+    private void injectSafeAreaCssVariables() {
+        View decorView = getWindow().getDecorView();
+        if (decorView == null) return;
+
+        ViewCompat.setOnApplyWindowInsetsListener(decorView, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            if (systemBars.top > 0 || systemBars.bottom > 0 || systemBars.left > 0 || systemBars.right > 0) {
+                String js = String.format(
+                    "document.documentElement.style.setProperty('--safe-area-inset-top','%dpx');" +
+                    "document.documentElement.style.setProperty('--safe-area-inset-bottom','%dpx');" +
+                    "document.documentElement.style.setProperty('--safe-area-inset-left','%dpx');" +
+                    "document.documentElement.style.setProperty('--safe-area-inset-right','%dpx');",
+                    systemBars.top,
+                    systemBars.bottom,
+                    systemBars.left,
+                    systemBars.right
+                );
+                try {
+                    com.getcapacitor.Bridge bridge = getBridge();
+                    if (bridge != null && bridge.getWebView() != null) {
+                        bridge.getWebView().evaluateJavascript(js, null);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "injectSafeAreaCssVariables failed: " + e.getMessage(), e);
+                }
+            }
+            return ViewCompat.onApplyWindowInsets(v, insets);
+        });
     }
 
     private void scheduleInsetsDebug(String source) {

@@ -827,6 +827,8 @@ export const loadWorldBookSummaries = async () => {
           portraits: Array.isArray(c?.portraits) ? c.portraits : [],
           smsAvatar: typeof c?.smsAvatar === 'string' ? c.smsAvatar : null,
           smsBg: typeof c?.smsBg === 'string' ? c.smsBg : null,
+          smsStickers: c?.smsStickers && typeof c.smsStickers === 'object' ? c.smsStickers : {},
+          voiceConfig: c?.voiceConfig && typeof c.voiceConfig === 'object' ? c.voiceConfig : { enabled: false, voiceId: '' },
         })),
       }
     })

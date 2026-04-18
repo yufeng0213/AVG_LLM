@@ -43,7 +43,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px clamp(12px, 3vw, 24px);
+  padding-top: max(12px, var(--safe-area-inset-top, 12px));
+  padding-bottom: 8px;
+  padding-left: clamp(12px, 3vw, 24px);
+  padding-right: clamp(12px, 3vw, 24px);
 }
 
 .world-hub-user {
@@ -242,7 +245,7 @@
   position: relative;
   z-index: 2;
   padding: clamp(12px, 3vh, 24px) clamp(12px, 3vw, 24px);
-  padding-bottom: calc(clamp(12px, 3vh, 24px) + max(env(safe-area-inset-bottom, 0px), 8px));
+  padding-bottom: calc(clamp(12px, 3vh, 24px) + max(var(--safe-area-inset-bottom, 0px), 8px));
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -586,7 +589,10 @@
 }
 
 .platform-android.android-portrait .world-hub-header {
-  padding: 10px 14px;
+  padding-top: max(10px, var(--safe-area-inset-top, 10px));
+  padding-bottom: 6px;
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
 .platform-android.android-portrait .world-hub-avatar {
@@ -629,7 +635,7 @@
 
 .platform-android.android-portrait .world-hub-footer {
   padding: 14px;
-  padding-bottom: calc(14px + max(env(safe-area-inset-bottom, 0px), 8px));
+  padding-bottom: calc(14px + max(var(--safe-area-inset-bottom, 0px), 8px));
   gap: 8px;
 }
 

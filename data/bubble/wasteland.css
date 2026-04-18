@@ -1,0 +1,61 @@
+/* ===== 废土气泡 ===== */
+/* 锈蚀废土系，末日的粗糙 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #1a1510 0%, #12100d 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #8a6a3a, #6b4a2a);
+  border-radius: 10px 6px 12px 8px;
+  color: #d4c0a0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  border: 1px solid #5a4a3a;
+}
+
+.sms-bubble.user::after {
+  content: '☢️';
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #1f1a14, #141210);
+  border-radius: 8px 10px 8px 12px;
+  color: #9a8a7a;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  border: 1px solid #3a3530;
+}
+
+.sms-bubble.assistant::before {
+  content: '🔩';
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #6a5a4a;
+  background: rgba(26, 21, 16, 0.6);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 8px;
+  border: 1px solid #3a3530;
+}

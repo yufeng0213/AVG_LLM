@@ -9,8 +9,8 @@
 }
 
 .trpg-screen.platform-android {
-  padding-top: env(safe-area-inset-top, 0);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-top: var(--safe-area-inset-top, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, 0px);
 }
 
 /* Android竖屏适配 */

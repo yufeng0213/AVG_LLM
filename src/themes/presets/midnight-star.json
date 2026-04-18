@@ -1,0 +1,22 @@
+{
+  "id": "midnight-star",
+  "name": "Midnight Star",
+  "description": "Dark blue with silver starlight. Clear night sky contemplation.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#06060e",
+    "foreground": "#c0c8d8",
+    "muted": "#3a4a5a",
+    "accentMagenta": "#8080a0",
+    "accentCyan": "#60b0d0",
+    "accentYellow": "#a0b0c0",
+    "accentOrange": "#708890",
+    "accentPurple": "#6068a0",
+    "fontHeading": "'Inter', system-ui, sans-serif",
+    "fontBody": "system-ui, sans-serif",
+    "fontDisplay": "'Inter', system-ui, sans-serif",
+    "radiusButton": "8px",
+    "radiusCard": "12px",
+    "radiusPanel": "12px"
+  }
+}

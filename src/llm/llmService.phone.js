@@ -33,7 +33,15 @@ const SMS_SYSTEM_PROMPT = `你是”短信角色回复生成器”。
    - 你想在特定时间表达对玩家的情感（想念、关心、节日祝福等）
    格式：|calendar=YYYY-MM-DDTHH:MM:标题|描述|
    日期为 YYYY-MM-DD，时间可选（省略则为全天），标题 20 字以内，描述 50 字以内。
-   日期请根据当前系统时间推断未来合理时间，不需要提醒/约定的事件不要加这行，避免每条短信都有日历。`
+   日期请根据当前系统时间推断未来合理时间，不需要提醒/约定的事件不要加这行，避免每条短信都有日历。
+10) 表情包机制：如果你想发表情包，请在回复内容中使用 [sticker:描述] 格式，
+    描述必须严格匹配【可用表情包】中列出的名称。不要凭空创造不存在的表情。
+    例如：|r=[sticker:开心] 收到你的消息真高兴！|
+    表情包可以单独成行，也可以和文字混排。
+11) 语音消息机制：如果你想用语音说话，请加一行：|voice=happy:你好呀~|
+    情绪必须是以下之一：happy, sad, angry, shy, surprised, thinking, neutral, excited, worried
+    文字内容不要加引号，直接写中文。例如：|voice=happy:收到你的消息真高兴|
+    不要加多余的符号，直接写文字。`
 
 const DORM_CHAT_SYSTEM_PROMPT = `你是”当面聊天回应生成器”。
 你负责代入指定角色，面对面回应玩家的聊天，不是发短信。
@@ -177,6 +185,19 @@ const tryParseSmsReplies = (rawContent) => {
     }
 
     if (replies.length > 0) {
+      // Extract voice messages
+      let voiceMessages = []
+      const voiceMatch = candidate.matchAll(/\|voice=([a-z]+):([^|]+)\|/gi)
+      for (const m of voiceMatch) {
+        const emotion = m[1].trim().toLowerCase()
+        let text = m[2].trim()
+        // 去掉首尾引号（"..." / '...' / 「...」 / 『...』）
+        text = text.replace(/^[""'「『]+|[""'」』]+$/g, '')
+        if (text && ['happy','sad','angry','shy','surprised','thinking','neutral','excited','worried'].includes(emotion)) {
+          voiceMessages.push({ voiceText: text, voiceEmotion: emotion })
+        }
+      }
+
       // Extract calendar event
       let calendarEvent = null
       const calMatch = candidate.match(/\|calendar=(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?:([^|]+)\|([^|]*)\|/)
@@ -188,7 +209,7 @@ const tryParseSmsReplies = (rawContent) => {
           description: calMatch[4].trim().slice(0, 50),
         }
       }
-      return { replies, redPacket, redPacketAction, giftToPlayer, calendarEvent }
+      return { replies, redPacket, redPacketAction, giftToPlayer, calendarEvent, voiceMessages }
     }
   }
 
@@ -350,6 +371,11 @@ export const generatePhoneSmsReply = async (params = {}) => {
     .filter(Boolean)
     .join('\n')
 
+  const stickerList = Array.isArray(params.options?.stickerList) ? params.options.stickerList : []
+  const stickerText = stickerList.length > 0
+    ? `【可用表情包】${stickerList.join('、')}（想发表情时用 [sticker:描述] 格式）`
+    : ''
+
   const recentDialogue = (dialogueHistoryLimit > 0 ? dialogueHistory.slice(-dialogueHistoryLimit) : [])
     .map((line) => `${String(line?.speaker || '旁白')}: ${String(line?.text || '').trim()}`)
     .filter(Boolean)
@@ -393,6 +419,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     recentDialogue ? `【最近剧情上下文】\n${recentDialogue}` : '',
     recentSms ? `【最近短信记录】\n${recentSms}` : '',
     forwardedClueText ? `【本次转发线索】\n${forwardedClueText}` : '',
+    stickerText ? stickerText : '',
     `【玩家刚发送】${userMessage}`,
     forwardedClueText
       ? '请结合线索逐条给出判断与态度，建议输出 2-4 条连续短信回复。'
@@ -420,6 +447,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
       replies: [],
       redPacket: null,
       calendarEvent: null,
+      voiceMessages: [],
     }
   }
 
@@ -433,6 +461,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
       replies: [],
       redPacket: null,
       calendarEvent: null,
+      voiceMessages: [],
     }
   }
 
@@ -443,6 +472,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     replies,
     redPacket: parsed.redPacket,
     calendarEvent: parsed.calendarEvent || null,
+    voiceMessages: parsed.voiceMessages || [],
     data: result.data,
     rawResponse: result.rawResponse,
   }

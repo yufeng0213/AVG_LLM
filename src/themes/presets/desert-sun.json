@@ -1,0 +1,22 @@
+{
+  "id": "desert-sun",
+  "name": "Desert Sun",
+  "description": "Warm Sahara tones. Golden sand, hot winds, and endless dunes.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#1a1210",
+    "foreground": "#f0c080",
+    "muted": "#8a6a40",
+    "accentMagenta": "#d08060",
+    "accentCyan": "#c0a060",
+    "accentYellow": "#f0d040",
+    "accentOrange": "#e88020",
+    "accentPurple": "#a06040",
+    "fontHeading": "'Georgia', serif",
+    "fontBody": "system-ui, sans-serif",
+    "fontDisplay": "'Georgia', serif",
+    "radiusButton": "8px",
+    "radiusCard": "12px",
+    "radiusPanel": "12px"
+  }
+}

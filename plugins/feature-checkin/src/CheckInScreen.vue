@@ -265,6 +265,8 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
+  padding-top: var(--safe-area-inset-top, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, 0px);
   background: var(--checkin-bg, #0a1628);
   z-index: 10000;
   display: flex;

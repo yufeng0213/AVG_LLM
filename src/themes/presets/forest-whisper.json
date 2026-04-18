@@ -1,0 +1,22 @@
+{
+  "id": "forest-whisper",
+  "name": "Forest Whisper",
+  "description": "Deep forest green with natural earth tones. Tranquil woodland atmosphere with organic warmth.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#0a1a0a",
+    "foreground": "#c8e8c0",
+    "muted": "#3a6a30",
+    "accentMagenta": "#a08060",
+    "accentCyan": "#40c8a0",
+    "accentYellow": "#c8c040",
+    "accentOrange": "#80a030",
+    "accentPurple": "#608050",
+    "fontHeading": "'Georgia', serif",
+    "fontBody": "system-ui, sans-serif",
+    "fontDisplay": "'Georgia', serif",
+    "radiusButton": "12px",
+    "radiusCard": "16px",
+    "radiusPanel": "16px"
+  }
+}

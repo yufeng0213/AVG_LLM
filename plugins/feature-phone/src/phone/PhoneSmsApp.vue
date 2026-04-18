@@ -28,6 +28,7 @@ import {
   clearWorldBookCache,
 } from './composables/usePhoneData.js'
 import { generatePhoneSmsReply, generateGroupChatReply } from '../../../../src/llm/index.js'
+import { generateCharacterSpeech } from '../../../../src/llm/llmService.core.js'
 import { kvStorage } from '../../../../src/storage/index.js'
 import { generateIcsContent } from './utils/generateIcsContent.js'
 import { openCalendarImport } from './services/calendarBridge.js'
@@ -95,6 +96,15 @@ const calendarEventImporting = ref(false)
 
 // 短信通用设置
 const smsContextMessages = ref(8)
+
+// 表情包
+const showStickerPanel = ref(false)
+const showStickerImport = ref(false)
+const stickerImportText = ref('')
+
+// 语音消息
+const playingVoiceId = ref(null)
+const voiceShownText = ref(new Set()) // 显示文字的语音消息 ID 集合
 
 // 短信头像裁剪
 const showAvatarCrop = ref(false)
@@ -331,6 +341,155 @@ function scrollToBottom() {
   }
 }
 
+// ===== 表情包 =====
+
+// 获取当前联系人的表情包列表
+function getAvailableStickers() {
+  const stickers = selectedContact.value?.smsStickers || {}
+  return Object.entries(stickers)
+}
+
+// 插入表情到输入框
+function insertSticker(desc) {
+  smsDraft.value += `[sticker:${desc}]`
+  showStickerPanel.value = false
+}
+
+// 导入表情包
+async function handleStickerImport() {
+  const raw = stickerImportText.value.trim()
+  if (!raw) return
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return
+    }
+
+    if (!selectedContact.value) return
+    const charId = selectedContact.value.id
+    const worldBookId = selectedContact.value.worldBookId
+
+    const books = await loadWorldBooks()
+    const book = books.find(b => b.id === worldBookId)
+    if (!book) return
+
+    const char = book.characters?.find(c => c.id === charId)
+    if (!char) return
+
+    // 合并已有表情
+    char.smsStickers = { ...char.smsStickers, ...parsed }
+    char.updatedAt = new Date().toISOString()
+
+    await persistWorldBooks(books)
+    clearWorldBookCache()
+
+    // 更新内存
+    selectedContact.value.smsStickers = char.smsStickers
+    stickerImportText.value = ''
+  } catch (e) {
+    console.warn('[PhoneSmsApp] 导入表情包失败:', e)
+  }
+}
+
+// ===== 语音消息 =====
+
+// 播放语音消息
+async function playVoiceMessage(msg) {
+  if (playingVoiceId.value === msg.id) return // 正在播放中，不重复
+
+  // 停止当前播放
+  if (window._smsVoiceAudio) {
+    window._smsVoiceAudio.pause()
+    window._smsVoiceAudio = null
+    playingVoiceId.value = null
+  }
+
+  try {
+    let audioUrl = msg.ttsAudioUrl
+    if (!audioUrl) {
+      // 首次播放：调用 TTS
+      const voiceConfig = selectedContact.value?.voiceConfig || {}
+      const result = await generateCharacterSpeech({
+        text: msg.voiceText,
+        emotion: msg.voiceEmotion || 'neutral',
+        voiceConfig: voiceConfig.voiceId ? voiceConfig : null,
+      })
+
+      if (!result.success || !result.audioBytes) {
+        console.warn('[PhoneSmsApp] TTS 生成失败:', result.error)
+        return
+      }
+
+      const blob = new Blob([result.audioBytes], { type: result.mimeType || 'audio/mp3' })
+      audioUrl = URL.createObjectURL(blob)
+      msg.ttsAudioUrl = audioUrl
+      // 保存线程以缓存 URL
+      await saveSmsThreads(smsThreads.value)
+    }
+
+    playingVoiceId.value = msg.id
+    const audio = new Audio(audioUrl)
+    window._smsVoiceAudio = audio
+
+    audio.onended = () => {
+      playingVoiceId.value = null
+      window._smsVoiceAudio = null
+    }
+
+    audio.onerror = () => {
+      playingVoiceId.value = null
+      window._smsVoiceAudio = null
+    }
+
+    await audio.play()
+  } catch (e) {
+    console.warn('[PhoneSmsApp] 播放语音失败:', e)
+    playingVoiceId.value = null
+    window._smsVoiceAudio = null
+  }
+}
+
+// 停止播放
+function stopVoicePlayback() {
+  if (window._smsVoiceAudio) {
+    window._smsVoiceAudio.pause()
+    window._smsVoiceAudio = null
+    playingVoiceId.value = null
+  }
+}
+
+// 计算语音时长（秒）
+function getVoiceDuration(msg) {
+  const textLen = msg.voiceText?.length || 0
+  // 粗略估算：中文约 4 字/秒，快速
+  return Math.max(1, Math.ceil(textLen / 4))
+}
+
+// 长按语音消息显示/隐藏文字
+let voiceLongPressTimer = null
+
+function startVoiceLongPress(e, msg) {
+  voiceLongPressTimer = setTimeout(() => {
+    const set = new Set(voiceShownText.value)
+    if (set.has(msg.id)) {
+      set.delete(msg.id)
+    } else {
+      set.add(msg.id)
+    }
+    voiceShownText.value = set
+    voiceLongPressTimer = null
+  }, 500)
+}
+
+function cancelVoiceLongPress() {
+  if (voiceLongPressTimer) {
+    clearTimeout(voiceLongPressTimer)
+    voiceLongPressTimer = null
+  }
+}
+
+// 发送消息（支持表情）
 async function handleSendSms() {
   const text = smsDraft.value.trim()
   if (!text || !selectedContact.value || smsLoading.value) return
@@ -350,6 +509,9 @@ async function handleSendSms() {
       identity: contact.identity || contact.nickname || '',
     }
 
+    // 获取表情包列表
+    const stickers = getAvailableStickers()
+
     const thread = getSmsThread(smsThreads.value, contact.id)
     const history = thread
       .slice(-smsContextMessages.value)
@@ -358,12 +520,15 @@ async function handleSendSms() {
         text: m.text,
       }))
 
+    // 传递表情包信息
+    const stickerList = stickers.map(([desc, url]) => desc)
+
     const result = await generatePhoneSmsReply({
       worldBook: book || { id: contact.worldBookId, title: contact.worldBookTitle, characters: [] },
       contact: contactForLlm,
       userMessage: text,
       history,
-      options: { historyLimit: smsContextMessages.value, maxTokens: 300 },
+      options: { historyLimit: smsContextMessages.value, maxTokens: 300, stickerList },
     })
 
     if (result.success && result.replies && result.replies.length > 0) {
@@ -372,6 +537,24 @@ async function handleSendSms() {
           addSmsMessage(smsThreads.value, contact.id, 'assistant', reply.trim())
         }
       }
+
+      // 处理语音消息
+      if (result.voiceMessages && result.voiceMessages.length > 0) {
+        for (const vm of result.voiceMessages) {
+          const thread = smsThreads.value[contact.id] || []
+          thread.push({
+            id: `sms_vmsg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            role: 'assistant',
+            msgType: 'voice',
+            voiceText: vm.voiceText,
+            voiceEmotion: vm.voiceEmotion,
+            ttsAudioUrl: null,
+            timestamp: new Date().toISOString(),
+          })
+          smsThreads.value[contact.id] = thread
+        }
+      }
+
       await saveSmsThreads(smsThreads.value)
       nextTick(() => scrollToBottom())
 
@@ -445,7 +628,7 @@ const threadMessages = computed(() => {
       result.push({ type: 'time', text: msgDate, id: 'time-' + msg.timestamp })
       lastDate = msgDate
     }
-    result.push({ ...msg, type: 'message', id: msg.timestamp })
+    result.push({ ...msg, type: 'message', dateKey: msg.timestamp })
   }
   return result
 })
@@ -622,6 +805,34 @@ function getAllMembersForCreate() {
 
 function isMemberSelected(contactId) {
   return createGroupMembers.value.some(m => m.contactId === contactId)
+}
+
+// 渲染带表情包的文本（解析 [sticker:描述] 为 img）
+function renderStickerText(text) {
+  if (!text) return ''
+  const stickers = selectedContact.value?.smsStickers || {}
+  const stickerRegex = /\[sticker:([^\]]+)\]/g
+  const parts = []
+  let lastIndex = 0
+  let match
+  while ((match = stickerRegex.exec(text)) !== null) {
+    // 添加表情之前的纯文本
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', text: text.slice(lastIndex, match.index) })
+    }
+    const desc = match[1]
+    const url = stickers[desc]
+    if (url) {
+      parts.push({ type: 'sticker', desc, url })
+    } else {
+      parts.push({ type: 'text', text: match[0] })
+    }
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', text: text.slice(lastIndex) })
+  }
+  return parts
 }
 
 // 渲染带 @ 高亮的文本
@@ -1067,8 +1278,36 @@ function getGroupSenderAvatar(senderId) {
           <div v-if="!threadMessages || threadMessages.filter(m => m.type === 'message').length === 0" class="phone-loading">
             发送消息开始与 {{ selectedContact.name }} 对话
           </div>
-          <template v-for="(item, idx) in threadMessages" :key="item.id || 'time-' + idx">
+          <template v-for="(item, idx) in threadMessages" :key="item.id || item.dateKey || idx">
             <div v-if="item.type === 'time'" class="sms-time">{{ item.text }}</div>
+            <!-- 语音消息 -->
+            <div v-else-if="item.msgType === 'voice'" class="sms-msg-row" :class="item.role">
+              <div class="sms-msg-avatar">
+                <img v-if="item.role === 'assistant' && getCharAvatar(selectedContact)" :src="getCharAvatar(selectedContact)" />
+                <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
+              </div>
+              <div class="sms-voice-wrapper">
+                <div
+                  class="sms-bubble sms-voice-bubble"
+                  :class="[item.role, { playing: playingVoiceId === item.id }]"
+                  @click="playVoiceMessage(item)"
+                  @touchstart="startVoiceLongPress($event, item)"
+                  @touchend="cancelVoiceLongPress"
+                  @touchcancel="cancelVoiceLongPress"
+                >
+                  <span class="voice-icon">{{ playingVoiceId === item.id ? '🔊' : '🎙️' }}</span>
+                  <span class="voice-wave">{{ playingVoiceId === item.id ? '▂▃▅▇' : '~~~~' }}</span>
+                  <span class="voice-duration">{{ getVoiceDuration(item) }}s</span>
+                  <span class="voice-hint">长按看文字</span>
+                </div>
+                <!-- 长按显示的文字，QQ引用样式 -->
+                <div v-if="voiceShownText.has(item.id)" class="voice-text-quote">
+                  <span class="voice-quote-icon">💬</span>
+                  <span class="voice-quote-text">{{ item.voiceText }}</span>
+                </div>
+              </div>
+            </div>
+            <!-- 文字消息 -->
             <div v-else class="sms-msg-row" :class="item.role">
               <div class="sms-msg-avatar">
                 <img v-if="item.role === 'assistant' && getCharAvatar(selectedContact)" :src="getCharAvatar(selectedContact)" />
@@ -1079,7 +1318,10 @@ function getGroupSenderAvatar(senderId) {
                 class="sms-bubble"
                 :class="item.role"
               >
-                {{ item.text }}
+                <template v-for="part in renderStickerText(item.text)" :key="part.desc || part.text">
+                  <img v-if="part.type === 'sticker'" class="sms-sticker-img" :src="part.url" :alt="part.desc" />
+                  <span v-else>{{ part.text }}</span>
+                </template>
               </div>
             </div>
           </template>
@@ -1099,6 +1341,15 @@ function getGroupSenderAvatar(senderId) {
           />
           <button
             type="button"
+            class="sms-sticker-btn"
+            :class="{ active: showStickerPanel }"
+            @click="showStickerPanel = !showStickerPanel"
+            title="表情包"
+          >
+            😀
+          </button>
+          <button
+            type="button"
             class="sms-send-btn"
             :disabled="!smsDraft.trim() || smsLoading"
             @click="handleSendSms"
@@ -1108,6 +1359,44 @@ function getGroupSenderAvatar(senderId) {
         </div>
       </div>
     </template>
+
+    <!-- ====== 表情包面板 ====== -->
+    <div v-if="showStickerPanel" class="sticker-panel-overlay" @click.self="showStickerPanel = false">
+      <div class="sticker-panel">
+        <div class="sticker-panel-header">
+          <span>表情包</span>
+          <button class="sticker-import-toggle" @click="showStickerImport = !showStickerImport">
+            {{ showStickerImport ? '关闭' : '+ 导入' }}
+          </button>
+        </div>
+        <!-- 导入区域 -->
+        <div v-if="showStickerImport" class="sticker-import-body">
+          <textarea
+            v-model="stickerImportText"
+            class="sticker-import-textarea"
+            placeholder='{"开心": "https://xxx/happy.png", "难过": "https://xxx/sad.png"}'
+            rows="4"
+          />
+          <div class="sticker-import-actions">
+            <button class="sticker-import-apply" @click="handleStickerImport">导入</button>
+          </div>
+        </div>
+        <!-- 表情网格 -->
+        <div class="sticker-grid">
+          <div v-if="getAvailableStickers().length === 0" class="sticker-empty">
+            暂无表情，点击右上角导入添加
+          </div>
+          <div
+            v-for="[desc, url] in getAvailableStickers()"
+            :key="desc"
+            class="sticker-item"
+            @click="insertSticker(desc)"
+          >
+            <img :src="url" :alt="desc" />
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ====== 群聊线程 ====== -->
     <template v-else-if="selectedGroup">
@@ -1478,7 +1767,11 @@ function getGroupSenderAvatar(senderId) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .sms-msg-avatar img {
@@ -1494,21 +1787,27 @@ function getGroupSenderAvatar(senderId) {
 
 .sms-tab {
   flex: 1;
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
   padding: 6px;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  color: rgba(255, 255, 255, 0.6);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .sms-tab.active {
-  background: var(--phone-accent-blue, #0a84ff);
+  background: rgba(10, 132, 255, 0.25);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(10, 132, 255, 0.4);
   color: #fff;
-  border-color: var(--phone-accent-blue, #0a84ff);
+  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.3);
 }
 
 /* ===== 群聊相关 ===== */
@@ -1523,13 +1822,16 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .group-create-btn {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   padding: 3px 10px;
-  color: var(--phone-accent-blue, #0a84ff);
+  color: #0a84ff;
   font-size: 0.78rem;
   cursor: pointer;
+  transition: background 0.15s;
 }
 
 .group-avatar {
@@ -1546,9 +1848,11 @@ function getGroupSenderAvatar(senderId) {
 
 .group-name-input {
   width: 100%;
-  background: var(--phone-bg, #000);
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   padding: 10px 12px;
   color: var(--phone-text-primary, #fff);
   font-size: 0.88rem;
@@ -1557,7 +1861,7 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .group-name-input:focus {
-  border-color: var(--phone-accent-blue, #0a84ff);
+  border-color: rgba(10, 132, 255, 0.5);
 }
 
 .wb-member-section {
@@ -1567,9 +1871,11 @@ function getGroupSenderAvatar(senderId) {
 .wb-toggle-btn {
   width: 100%;
   text-align: left;
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.04));
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 6px 10px;
   color: var(--phone-text-primary, #fff);
   font-size: 0.82rem;
@@ -1578,11 +1884,11 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .wb-toggle-btn:hover {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .wb-toggle-btn.expanded {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .wb-member-list {
@@ -1647,9 +1953,11 @@ function getGroupSenderAvatar(senderId) {
 .chat-bg-preview {
   width: 100%;
   height: 80px;
-  border-radius: 8px;
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.06));
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   background-size: cover;
   background-position: center;
   display: flex;
@@ -1672,10 +1980,12 @@ function getGroupSenderAvatar(senderId) {
 
 .chat-bg-btn {
   padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.06));
-  color: var(--phone-accent-blue, #0a84ff);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #0a84ff;
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -1684,7 +1994,7 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .chat-bg-btn:hover {
-  background: var(--phone-border, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .chat-bg-btn input {
@@ -1698,9 +2008,11 @@ function getGroupSenderAvatar(senderId) {
 
 .chat-bg-url-input {
   flex: 1;
-  background: var(--phone-bg, #000);
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   padding: 8px 12px;
   color: var(--phone-text-primary, #fff);
   font-size: 0.82rem;
@@ -1708,15 +2020,17 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .chat-bg-url-input:focus {
-  border-color: var(--phone-accent-blue, #0a84ff);
+  border-color: rgba(10, 132, 255, 0.5);
 }
 
 .chat-bg-url-btn {
   padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--phone-accent-blue, #0a84ff);
-  background: rgba(10, 132, 255, 0.15);
-  color: var(--phone-accent-blue, #0a84ff);
+  border-radius: 10px;
+  border: 1px solid rgba(10, 132, 255, 0.4);
+  background: rgba(10, 132, 255, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #0a84ff;
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -1724,9 +2038,166 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .chat-bg-clear-btn {
-  color: var(--phone-accent-orange, #ff9500);
+  color: #ff9500;
   border-color: rgba(255, 149, 0, 0.3);
   background: rgba(255, 149, 0, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ===== 表情包按钮 ===== */
+.sms-sticker-btn {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sms-sticker-btn:hover {
+  background: var(--phone-card-bg, rgba(255, 255, 255, 0.1));
+}
+
+.sms-sticker-btn.active {
+  background: rgba(10, 132, 255, 0.15);
+}
+
+/* ===== 表情包图片 ===== */
+.sms-sticker-img {
+  display: inline-block;
+  max-width: 120px;
+  max-height: 120px;
+  vertical-align: bottom;
+  border-radius: 4px;
+}
+
+/* ===== 表情包面板 ===== */
+.sticker-panel-overlay {
+  position: absolute;
+  bottom: 60px;
+  left: 8px;
+  right: 8px;
+  z-index: 15;
+}
+
+.sticker-panel {
+  background: rgba(28, 28, 30, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.sticker-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--phone-text-primary, #fff);
+}
+
+.sticker-import-toggle {
+  background: none;
+  border: none;
+  color: var(--phone-accent-blue, #0a84ff);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.sticker-import-body {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+}
+
+.sticker-import-textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--phone-text-primary, #fff);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.sticker-import-textarea:focus {
+  border-color: rgba(10, 132, 255, 0.5);
+}
+
+.sticker-import-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.sticker-import-apply {
+  padding: 6px 16px;
+  background: rgba(10, 132, 255, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(10, 132, 255, 0.4);
+  border-radius: 10px;
+  color: #0a84ff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.sticker-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  width: 60px;
+  height: 60px;
+  cursor: pointer;
+  transition: background 0.15s;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sticker-item:hover {
+  background: rgba(10, 132, 255, 0.2);
+}
+
+.sticker-item img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.sticker-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 20px;
+  font-size: 0.78rem;
+  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
 }
 
 /* @ 提及高亮 */
@@ -1769,10 +2240,14 @@ function getGroupSenderAvatar(senderId) {
 .group-info-container {
   width: 100%;
   max-height: 85vh;
-  background: var(--phone-bg, #000);
-  border-radius: 16px 16px 0 0;
+  background: rgba(28, 28, 30, 0.9);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
   overflow-y: auto;
   padding-bottom: max(16px, env(safe-area-inset-bottom));
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.4);
 }
 
 /* 顶部群名称 */
@@ -1787,13 +2262,17 @@ function getGroupSenderAvatar(senderId) {
 .group-avatar-large {
   width: 56px;
   height: 56px;
-  border-radius: 12px;
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.8rem;
   margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .group-info-title {
@@ -1845,8 +2324,11 @@ function getGroupSenderAvatar(senderId) {
 .member-grid-avatar {
   width: 44px;
   height: 44px;
-  border-radius: 8px;
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.1));
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1854,10 +2336,11 @@ function getGroupSenderAvatar(senderId) {
   font-weight: 600;
   color: var(--phone-text-primary, #fff);
   transition: opacity 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .member-grid-avatar.add-avatar {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.06));
+  background: rgba(255, 255, 255, 0.06);
   font-size: 1.2rem;
   color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
   font-weight: 400;
@@ -1901,8 +2384,11 @@ function getGroupSenderAvatar(senderId) {
 /* 管理成员面板 */
 .manage-members-panel {
   margin: 0 16px 16px;
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.04));
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   overflow: hidden;
 }
 
@@ -1946,12 +2432,14 @@ function getGroupSenderAvatar(senderId) {
 .action-btn {
   flex: 1;
   padding: 12px;
-  border-radius: 10px;
-  border: none;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .action-btn:active {
@@ -1960,12 +2448,12 @@ function getGroupSenderAvatar(senderId) {
 
 .action-btn.delete-btn {
   background: rgba(255, 59, 48, 0.15);
-  color: var(--phone-accent-red, #ff3b30);
-  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: #ff3b30;
+  border-color: rgba(255, 59, 48, 0.3);
 }
 
 .action-btn.close-btn {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.08);
   color: var(--phone-text-primary, #fff);
 }
 
@@ -2007,9 +2495,11 @@ function getGroupSenderAvatar(senderId) {
   bottom: 100%;
   left: 0;
   right: 0;
-  background: var(--phone-bg-secondary, #1c1c1e);
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  border-radius: 10px;
+  background: rgba(28, 28, 30, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
   max-height: 160px;
   overflow-y: auto;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
@@ -2088,12 +2578,15 @@ function getGroupSenderAvatar(senderId) {
   width: 100%;
   max-width: 400px;
   max-height: 80vh;
-  background: var(--phone-bg-secondary, #1c1c1e);
-  border-radius: 16px;
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.1));
+  background: rgba(28, 28, 30, 0.85);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .settings-header {
@@ -2150,9 +2643,11 @@ function getGroupSenderAvatar(senderId) {
 
 .context-messages-input {
   width: 80px;
-  background: var(--phone-bg, #000);
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   padding: 8px 12px;
   color: var(--phone-text-primary, #fff);
   font-size: 0.9rem;
@@ -2162,7 +2657,7 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .context-messages-input:focus {
-  border-color: var(--phone-accent-blue, #0a84ff);
+  border-color: rgba(10, 132, 255, 0.5);
 }
 
 .context-messages-input::-webkit-outer-spin-button,
@@ -2184,9 +2679,11 @@ function getGroupSenderAvatar(senderId) {
   width: 100%;
   min-height: 200px;
   max-height: 40vh;
-  background: var(--phone-bg, #000);
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
   padding: 12px;
   color: var(--phone-text-primary, #fff);
   font-family: var(--font-mono, 'Consolas', 'Monaco', monospace);
@@ -2199,7 +2696,7 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .css-editor:focus {
-  border-color: var(--phone-accent-blue, #0a84ff);
+  border-color: rgba(10, 132, 255, 0.5);
 }
 
 .settings-actions {
@@ -2214,10 +2711,12 @@ function getGroupSenderAvatar(senderId) {
   align-items: center;
   justify-content: center;
   padding: 8px 16px;
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  border-radius: 8px;
-  color: var(--phone-accent-blue, #0a84ff);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #0a84ff;
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -2225,7 +2724,7 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .import-btn:hover {
-  background: var(--phone-border, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .import-btn input {
@@ -2234,10 +2733,12 @@ function getGroupSenderAvatar(senderId) {
 
 .reset-btn {
   padding: 8px 16px;
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--phone-border, rgba(255, 255, 255, 0.15));
-  border-radius: 8px;
-  color: var(--phone-accent-orange, #ff9500);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #ff9500;
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -2245,14 +2746,17 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .reset-btn:hover {
-  background: var(--phone-border, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .css-hint {
   margin-top: 14px;
   padding: 10px 12px;
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.04));
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
   font-size: 0.75rem;
   color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
   line-height: 1.6;
@@ -2285,14 +2789,17 @@ function getGroupSenderAvatar(senderId) {
 .apply-btn {
   flex: 1;
   padding: 10px;
-  background: linear-gradient(135deg, var(--phone-accent-blue, #0a84ff), #5856d6);
-  border: none;
-  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.35), rgba(88, 86, 214, 0.35));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(10, 132, 255, 0.4);
+  border-radius: 12px;
   color: var(--phone-text-primary, #fff);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s;
+  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.25);
 }
 
 .apply-btn:hover {
@@ -2333,6 +2840,105 @@ function getGroupSenderAvatar(senderId) {
     white-space: nowrap !important;
   }
 
+  /* Android backdrop-filter 补偿：加高 background opacity 补偿缺失的毛玻璃 */
+  .platform-android.android-portrait .sms-tab {
+    background: rgba(255, 255, 255, 0.18) !important;
+  }
+  .platform-android.android-portrait .sms-tab.active {
+    background: rgba(10, 132, 255, 0.35) !important;
+  }
+  .platform-android.android-portrait .sms-bubble-settings-panel {
+    background: rgba(28, 28, 30, 0.95) !important;
+  }
+  .platform-android.android-portrait .group-info-container {
+    background: rgba(28, 28, 30, 0.97) !important;
+  }
+  .platform-android.android-portrait .apply-btn {
+    background: linear-gradient(135deg, rgba(10, 132, 255, 0.5), rgba(88, 86, 214, 0.5)) !important;
+  }
+  .platform-android.android-portrait .import-btn,
+  .platform-android.android-portrait .reset-btn {
+    background: rgba(255, 255, 255, 0.14) !important;
+  }
+  .platform-android.android-portrait .css-editor {
+    background: rgba(0, 0, 0, 0.5) !important;
+  }
+  .platform-android.android-portrait .sticker-panel {
+    background: rgba(28, 28, 30, 0.95) !important;
+  }
+  .platform-android.android-portrait .mention-dropdown {
+    background: rgba(28, 28, 30, 0.97) !important;
+  }
+  .platform-android.android-portrait .chat-bg-preview {
+    background: rgba(255, 255, 255, 0.14) !important;
+  }
+  .platform-android.android-portrait .chat-bg-btn {
+    background: rgba(255, 255, 255, 0.14) !important;
+  }
+  .platform-android.android-portrait .chat-bg-url-input,
+  .platform-android.android-portrait .group-name-input,
+  .platform-android.android-portrait .sticker-import-textarea,
+  .platform-android.android-portrait .context-messages-input {
+    background: rgba(0, 0, 0, 0.5) !important;
+  }
+  .platform-android.android-portrait .chat-bg-url-btn,
+  .platform-android.android-portrait .sticker-import-apply {
+    background: rgba(10, 132, 255, 0.35) !important;
+  }
+  .platform-android.android-portrait .sticker-item {
+    background: rgba(255, 255, 255, 0.14) !important;
+  }
+  .platform-android.android-portrait .manage-members-panel {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+  .platform-android.android-portrait .css-hint {
+    background: rgba(255, 255, 255, 0.08) !important;
+  }
+  .platform-android.android-portrait .calendar-modal {
+    background: rgba(28, 28, 30, 0.97) !important;
+  }
+  .platform-android.android-portrait .calendar-modal-btn-dismiss {
+    background: rgba(255, 255, 255, 0.16) !important;
+  }
+  .platform-android.android-portrait .calendar-modal-btn-import {
+    background: rgba(74, 144, 217, 0.45) !important;
+  }
+  .platform-android.android-portrait .action-btn.close-btn {
+    background: rgba(255, 255, 255, 0.16) !important;
+  }
+  .platform-android.android-portrait .action-btn.delete-btn {
+    background: rgba(255, 59, 48, 0.25) !important;
+  }
+  .platform-android.android-portrait .group-avatar-large,
+  .platform-android.android-portrait .member-grid-avatar {
+    background: rgba(255, 255, 255, 0.18) !important;
+  }
+  .platform-android.android-portrait .member-grid-avatar.add-avatar,
+  .platform-android.android-portrait .sticker-item {
+    background: rgba(255, 255, 255, 0.14) !important;
+  }
+  .platform-android.android-portrait .wb-toggle-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+  .platform-android.android-portrait .wb-toggle-btn.expanded {
+    background: rgba(255, 255, 255, 0.18) !important;
+  }
+  .platform-android.android-portrait .sms-msg-avatar {
+    background: rgba(255, 255, 255, 0.18) !important;
+  }
+  .platform-android.android-portrait .chat-bg-clear-btn {
+    background: rgba(255, 149, 0, 0.2) !important;
+  }
+  .platform-android.android-portrait .sms-input {
+    background: rgba(255, 255, 255, 0.14) !important;
+  }
+  .platform-android.android-portrait .sms-input-bar {
+    background: rgba(28, 28, 30, 0.97) !important;
+  }
+  .platform-android.android-portrait .sms-send-btn {
+    background: rgba(10, 132, 255, 0.45) !important;
+  }
+
 /* ===== 日历事件弹窗 ===== */
 .calendar-modal-overlay {
   position: fixed;
@@ -2358,10 +2964,14 @@ function getGroupSenderAvatar(senderId) {
 .calendar-modal {
   width: 100%;
   max-width: 420px;
-  background: var(--phone-bg, #1a1a2e);
-  border-radius: 16px 16px 0 0;
+  background: rgba(28, 28, 30, 0.9);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px 20px 0 0;
   padding-bottom: env(safe-area-inset-bottom, 16px);
   animation: slideUp 0.3s ease;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .calendar-modal-header {
@@ -2428,12 +3038,132 @@ function getGroupSenderAvatar(senderId) {
 }
 
 .calendar-modal-btn-dismiss {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--phone-text-primary, #fff);
 }
 
 .calendar-modal-btn-import {
-  background: var(--phone-accent, #4a90d9);
+  background: rgba(74, 144, 217, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(74, 144, 217, 0.5);
   color: #fff;
+}
+
+/* ===== 语音消息气泡 ===== */
+.sms-voice-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+}
+
+.sms-voice-bubble {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 10px 16px !important;
+  min-width: 120px;
+  user-select: none;
+  position: relative;
+}
+
+.sms-voice-bubble > * {
+  color: inherit;
+}
+
+.sms-voice-bubble:active {
+  opacity: 0.8;
+}
+
+.sms-voice-bubble.playing {
+  animation: voice-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(0, 212, 255, 0); }
+}
+
+.voice-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.voice-wave {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  opacity: 0.5;
+}
+
+.sms-voice-bubble.playing .voice-wave {
+  opacity: 0.8;
+}
+
+.voice-duration {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.4;
+}
+
+.voice-hint {
+  font-size: 0.65rem;
+  opacity: 0.3;
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+}
+
+/* 语音文字引用（QQ风格）— 颜色跟随消息角色 */
+.sms-app .sms-msg-row.user .voice-text-quote {
+  color: #5a3e2b !important;
+  background: rgba(252, 182, 159, 0.15);
+  border-left: 3px solid #fcb69f;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  animation: fade-in 0.2s ease;
+}
+
+.sms-app .sms-msg-row.assistant .voice-text-quote {
+  color: #1b4a5e !important;
+  background: rgba(178, 235, 242, 0.2);
+  border-left: 3px solid #b2ebf2;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  animation: fade-in 0.2s ease;
+}
+
+.sms-app .sms-msg-row.user .voice-text-quote .voice-quote-text {
+  color: inherit !important;
+}
+
+.sms-app .sms-msg-row.assistant .voice-text-quote .voice-quote-text {
+  color: inherit !important;
+}
+
+.sms-app .sms-msg-row.user .voice-text-quote .voice-quote-icon {
+  color: inherit !important;
+}
+
+.sms-app .sms-msg-row.assistant .voice-text-quote .voice-quote-icon {
+  color: inherit !important;
+}
+
+.voice-text-quote .voice-quote-icon {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
+.voice-text-quote .voice-quote-text {
+  line-height: 1.5;
+  word-break: break-word;
 }
 </style>

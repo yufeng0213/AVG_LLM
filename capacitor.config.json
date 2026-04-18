@@ -10,9 +10,6 @@
     "allowMixedContent": true
   },
   "plugins": {
-    "Filesystem": {
-      "directory": "DOCUMENTS"
-    },
     "StatusBar": {
       "style": "LIGHT",
       "overlaysWebView": false,
@@ -21,6 +18,9 @@
     "LocalNotifications": {
       "smallIcon": "ic_notification",
       "largeIcon": "ic_notification"
+    },
+    "CapacitorHttp": {
+      "enabled": true
     }
   }
 }

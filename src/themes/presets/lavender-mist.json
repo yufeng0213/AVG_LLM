@@ -1,0 +1,22 @@
+{
+  "id": "lavender-mist",
+  "name": "Lavender Mist",
+  "description": "Soft purple haze, calming and dreamy. Gentle lavender fields at twilight.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#14101f",
+    "foreground": "#c8b8e0",
+    "muted": "#5a4a6a",
+    "accentMagenta": "#b890d0",
+    "accentCyan": "#80a0c0",
+    "accentYellow": "#c0a0d0",
+    "accentOrange": "#c080a0",
+    "accentPurple": "#8a50c0",
+    "fontHeading": "'Inter', system-ui, sans-serif",
+    "fontBody": "system-ui, sans-serif",
+    "fontDisplay": "'Inter', system-ui, sans-serif",
+    "radiusButton": "14px",
+    "radiusCard": "20px",
+    "radiusPanel": "20px"
+  }
+}

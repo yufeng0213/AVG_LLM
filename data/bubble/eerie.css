@@ -1,0 +1,66 @@
+/* ===== 诡异气泡 ===== */
+/* 暗紫荧光系，阴森诡异 */
+
+.sms-messages {
+  background: linear-gradient(180deg, #0d0d0d 0%, #1a0a2e 100%);
+  padding: 12px 6px;
+}
+
+.sms-bubble.user {
+  position: relative;
+  background: linear-gradient(135deg, #2d1b69, #1a0a3e);
+  border-radius: 16px 16px 4px 16px;
+  color: #b388ff;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 40px 6px 8px;
+  box-shadow: 0 0 12px rgba(179, 136, 255, 0.3),
+              0 0 24px rgba(179, 136, 255, 0.1);
+  border: 1px solid rgba(179, 136, 255, 0.2);
+}
+
+.sms-bubble.user::after {
+  content: '👁️';
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+  filter: drop-shadow(0 0 4px rgba(179, 136, 255, 0.8));
+}
+
+.sms-bubble.assistant {
+  position: relative;
+  background: linear-gradient(135deg, #1a0a2e, #0d0d1a);
+  border-radius: 16px 16px 16px 4px;
+  color: #7c4dff;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 40px;
+  box-shadow: 0 0 15px rgba(124, 77, 255, 0.25),
+              inset 0 0 8px rgba(124, 77, 255, 0.05);
+  border: 1px solid rgba(124, 77, 255, 0.15);
+}
+
+.sms-bubble.assistant::before {
+  content: '💀';
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  font-size: 0.7rem;
+  filter: drop-shadow(0 0 4px rgba(124, 77, 255, 0.8));
+}
+
+.sms-time {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #6a4a8a;
+  background: rgba(13, 13, 13, 0.7);
+  display: inline-block;
+  margin: 12px auto;
+  padding: 4px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 77, 255, 0.2);
+  text-shadow: 0 0 8px rgba(124, 77, 255, 0.4);
+}

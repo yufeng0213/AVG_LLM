@@ -1,0 +1,22 @@
+{
+  "id": "deep-sea",
+  "name": "Deep Sea",
+  "description": "Abyssal ocean navy and teal. The mysterious beauty of the deep ocean floor.",
+  "styleProfile": "dopamine-max",
+  "tokens": {
+    "background": "#060e1a",
+    "foreground": "#80c0d8",
+    "muted": "#1a3a5a",
+    "accentMagenta": "#4080b0",
+    "accentCyan": "#20d0d0",
+    "accentYellow": "#80b860",
+    "accentOrange": "#3090a0",
+    "accentPurple": "#3050a0",
+    "fontHeading": "'Inter', system-ui, sans-serif",
+    "fontBody": "system-ui, sans-serif",
+    "fontDisplay": "'Inter', system-ui, sans-serif",
+    "radiusButton": "16px",
+    "radiusCard": "20px",
+    "radiusPanel": "20px"
+  }
+}

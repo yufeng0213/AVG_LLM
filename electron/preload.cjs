@@ -64,6 +64,11 @@ const bridgeApi = {
     getImage: (serverUrl, filename, subfolder, type) =>
       ipcRenderer.invoke('comfyui:get-image', serverUrl, filename, subfolder, type),
   },
+  netease: {
+    fetchSongDetail: (songId) => ipcRenderer.invoke('netease:fetch-song-detail', songId),
+    fetchLyrics: (songId) => ipcRenderer.invoke('netease:fetch-lyrics', songId),
+    fetchPlaylist: (playlistId) => ipcRenderer.invoke('netease:fetch-playlist', playlistId),
+  },
 }
 
 try {

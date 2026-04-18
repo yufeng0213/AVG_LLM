@@ -7,6 +7,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { loadWorldBooks } from '../../../src/worldbook/worldBookStore.js'
 import TRPGPanel from './TRPGPanel.vue'
 import { useGlobalUser } from '../../../src/composables/useGlobalUser.js'
+import { getPlatform, isAndroid } from '../../../src/utils/platform.js'
+
+const platform = getPlatform()
+const isAndroidPlatform = isAndroid()
 
 const emit = defineEmits(['back'])
 
@@ -84,7 +88,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="trpg-screen">
+  <div class="trpg-screen" :class="{ 'platform-android': isAndroidPlatform, 'android-portrait': isAndroidPlatform }">
     <!-- 顶部返回 + 标题 -->
     <header class="trpg-screen-header">
       <button type="button" class="trpg-screen-back-btn" @click="handleClose">
@@ -168,6 +172,8 @@ defineExpose({
 .trpg-screen {
   position: fixed;
   inset: 0;
+  padding-top: var(--safe-area-inset-top, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, 0px);
   z-index: 10000;
   display: flex;
   flex-direction: column;
