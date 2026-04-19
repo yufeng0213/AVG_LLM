@@ -9,6 +9,7 @@ export {
   generateMiniTheater,
   generateCharacterSpeech,
   generateCardContent,
+  generateStoryTicket,
   generatePhoneSmsReply,
   generateGroupChatReply,
   generateDormChatReply,
@@ -52,6 +53,8 @@ export {
 export { buildStoryPrompt, buildQuickPrompt } from './promptGenerator'
 export {
   parseStoryContent,
+  parseStoryTicketContent,
+  countChineseChars,
   validateDialogue,
   toGameScript,
   extractHighlightCharacters,

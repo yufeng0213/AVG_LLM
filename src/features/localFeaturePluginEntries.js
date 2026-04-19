@@ -19,6 +19,9 @@ import settingsEntry from '../../plugins/feature-settings/src/entry.js'
 import worldbookEntry from '../../plugins/feature-worldbook/src/entry.js'
 import trpgEntry from '../../plugins/feature-trpg/src/entry.js'
 import musicPlayerEntry from '../../plugins/feature-music-player/src/entry.js'
+import hourglassEntry from '../../plugins/feature-hourglass/src/entry.js'
+import mobiusParticleEntry from '../../plugins/feature-mobius-particle/src/entry.js'
+import mascotEntry from '../../plugins/feature-mascot/src/entry.js'
 
 const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   backStorageEntry,
@@ -42,6 +45,9 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   roseParticleEntry,
   bookParticleEntry,
   musicPlayerEntry,
+  hourglassEntry,
+  mobiusParticleEntry,
+  mascotEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {

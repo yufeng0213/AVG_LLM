@@ -1,0 +1,26 @@
+{
+  "id": "hourglass",
+  "name": "沙漏粒子",
+  "description": "粒子效果的沙漏，点击屏幕可翻转沙漏。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "hourglass",
+    "title": "沙漏",
+    "icon": "\u23F3",
+    "order": 996
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "hourglass"
+  },
+  "storage": {
+    "namespace": "hourglass"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

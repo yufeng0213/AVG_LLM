@@ -638,8 +638,127 @@ export const extractChoices = (dialogue) => {
   return dialogue.choices
 }
 
+/**
+ * 解析剧情券返回的自定义协议内容（|s=|e=|t=|d=|h=|sc=|）
+ * @param {string} content - LLM 返回的原始内容
+ * @returns {Object} 解析结果
+ */
+export const parseStoryTicketContent = (content) => {
+  if (!content || typeof content !== 'string') {
+    return {
+      success: false,
+      error: '内容为空或格式错误',
+      dialogues: [],
+      rawContent: content,
+    }
+  }
+
+  const lines = content.split('\n').map(l => l.trim()).filter(Boolean)
+  const dialogues = []
+  let sceneBuffer = null
+
+  for (const line of lines) {
+    // 结束标记
+    if (line === '|END|' || line === '|end|') break
+
+    // 场景切换标记 |sc=场景ID|场景名称|
+    const scMatch = line.match(/^\|sc=([^|]*)\|([^|]*)\|$/)
+    if (scMatch) {
+      sceneBuffer = {
+        id: scMatch[1].trim(),
+        name: scMatch[2].trim(),
+      }
+      continue
+    }
+
+    // 对话行 |s=说话者|e=情绪|t=内容|d=时间|h=高光|
+    if (line.startsWith('|s=')) {
+      const parsed = parseTicketLine(line, dialogues.length)
+      if (parsed) {
+        if (sceneBuffer) {
+          parsed.scene = sceneBuffer
+          sceneBuffer = null
+        }
+        dialogues.push(parsed)
+      }
+    }
+  }
+
+  if (dialogues.length === 0) {
+    return {
+      success: false,
+      error: '未能解析到任何对话条目',
+      dialogues: [],
+      rawContent: content,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    dialogues,
+    rawContent: content,
+  }
+}
+
+/**
+ * 解析单行剧情券协议
+ */
+const parseTicketLine = (line, index) => {
+  // 使用正则逐字段提取
+  const fields = {}
+  // 移除首尾 |
+  const inner = line.replace(/^\|/, '').replace(/\|$/, '')
+  const segments = inner.split('|')
+
+  for (const seg of segments) {
+    const eqIdx = seg.indexOf('=')
+    if (eqIdx === -1) continue
+    const key = seg.substring(0, eqIdx).trim()
+    const val = seg.substring(eqIdx + 1).trim()
+    if (key && val) fields[key] = val
+  }
+
+  const text = fields.t || fields.text
+  if (!text) return null
+
+  const storyTime = fields.d || fields.storyTime || ''
+  const speaker = normalizeSpeaker(fields.s || fields.speaker)
+  const emotion = normalizeEmotion(fields.e || fields.emotion)
+  const highlight = normalizeHighlight(fields.h || fields.highlight)
+
+  return {
+    id: `ticket_dialogue_${Date.now()}_${index}`,
+    speaker,
+    emotion,
+    text,
+    highlight,
+    storyTime,
+    choices: null,
+    scene: null,
+    metadata: {
+      rawSpeaker: fields.s || '',
+      rawEmotion: fields.e || '',
+      rawStoryTime: fields.d || '',
+      rawScene: null,
+    },
+  }
+}
+
+/**
+ * 计算剧情内容中的中文字数（不含标记符号）
+ * @param {string} content - 原始内容
+ * @returns {number} 中文字数
+ */
+export const countChineseChars = (content) => {
+  if (!content) return 0
+  const matches = content.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g)
+  return matches ? matches.length : 0
+}
+
 export default {
   parseStoryContent,
+  parseStoryTicketContent,
   validateDialogue,
   toGameScript,
   extractHighlightCharacters,
@@ -647,4 +766,5 @@ export default {
   createDialogueSummary,
   hasChoices,
   extractChoices,
+  countChineseChars,
 }

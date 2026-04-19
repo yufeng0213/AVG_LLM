@@ -19,14 +19,57 @@ const DEFAULT_SMS_SETTINGS = {
 
 // ===== 手机壁纸内存缓存 =====
 // 组件重新挂载时直接从内存读取，不需要等 IndexedDB
+// 格式: string (图片 dataUrl) | { dataUrl, isVideo: true } (视频) | null
 let _phoneWallpaperCache = null
 
 export function getPhoneWallpaperCache() {
   return _phoneWallpaperCache
 }
 
-export function setPhoneWallpaperCache(dataUrl) {
-  _phoneWallpaperCache = dataUrl
+export function setPhoneWallpaperCache(data) {
+  _phoneWallpaperCache = data
+}
+
+/**
+ * 获取缓存的壁纸数据 URL
+ */
+export function getPhoneWallpaperUrl() {
+  const cached = _phoneWallpaperCache
+  if (!cached) return null
+  if (typeof cached === 'string') return cached
+  if (cached.dataUrl) return cached.dataUrl
+  return null
+}
+
+/**
+ * 判断缓存的壁纸是否为视频
+ */
+export function isPhoneWallpaperVideo() {
+  const cached = _phoneWallpaperCache
+  if (!cached) return false
+  if (typeof cached === 'string') return false
+  return !!cached.isVideo
+}
+
+// ===== 世界壁纸内存缓存 =====
+// 格式: { dataUrl, isVideo: true } | { dataUrl, isVideo: false } | null
+let _worldWallpaperCache = null
+
+export function getWorldWallpaperCache() {
+  return _worldWallpaperCache
+}
+
+export function setWorldWallpaperCache(data) {
+  _worldWallpaperCache = data
+}
+
+export function getWorldWallpaperUrl() {
+  if (!_worldWallpaperCache || !_worldWallpaperCache.dataUrl) return null
+  return _worldWallpaperCache.dataUrl
+}
+
+export function isWorldWallpaperVideo() {
+  return !!_worldWallpaperCache?.isVideo
 }
 
 // =====

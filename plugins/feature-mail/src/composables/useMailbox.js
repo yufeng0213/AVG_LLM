@@ -4,6 +4,7 @@
 
 import { ref, computed } from 'vue'
 import { callChatCompletion, getActiveApiConfig } from '../../../../src/llm/llmService.core.js'
+import { resolvePrompt } from '../../../../src/llm/promptRegistry.js'
 
 const STORAGE_KEY_INBOX = 'avg_llm_dormitory_mailbox_v1'
 const STORAGE_KEY_PENDING = 'avg_llm_dormitory_mail_pending_v1'
@@ -362,18 +363,12 @@ export function useMailbox() {
     const stampCfg = STAMP_CONFIG[mail.stamp] || STAMP_CONFIG.stamp_normal
     const stampBonus = stampCfg.promptBonus || ''
 
-    const systemPrompt = `你是「${charName}」。你收到了一封来自用户的信，请以${charName}的身份回信。
+    const basePrompt = (await resolvePrompt('mail:reply')).replace(/\{\{charName\}\}/g, charName)
+    const systemPrompt = `${basePrompt}
 
 ${charPersona ? '角色设定：\n' + charPersona : ''}
 
-${stampBonus ? '邮票特殊效果：\n' + stampBonus : ''}
-
-要求：
-1. 语气要自然、亲切，像朋友之间的书信
-2. 回信长度 50~200 字
-3. 只输出回信正文，不要加标题、解释或格式化标记
-4. 不要使用列表、markdown 等格式
-5. 用中文回复`
+${stampBonus ? '邮票特殊效果：\n' + stampBonus : ''}`
 
     const userPrompt = `你收到了这封信：
 """

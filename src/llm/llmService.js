@@ -11,6 +11,7 @@ export {
   generateMiniTheater,
   generateCharacterSpeech,
   generateCardContent,
+  generateStoryTicket,
 } from './llmService.core'
 
 export {

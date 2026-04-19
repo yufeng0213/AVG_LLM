@@ -27,27 +27,38 @@ async function handleFileChange(e) {
   if (files.length === 0) return
   importing.value = true
 
-  const imageFiles = files.filter(f => /^image\/(png|jpeg|gif|webp|bmp)$/.test(f.type))
-  if (imageFiles.length === 0) {
-    alert('请选择 PNG、JPG、GIF、WebP 或 BMP 图片')
+  const imageType = /^image\/(png|jpeg|gif|webp|bmp)$/
+  const videoType = /^video\/(mp4|webm)$/
+  const mediaFiles = files.filter(f => imageType.test(f.type) || videoType.test(f.type))
+  if (mediaFiles.length === 0) {
+    alert('请选择 PNG、JPG、GIF、WebP、BMP 图片或 MP4、WebM 视频')
     importing.value = false
     e.target.value = ''
     return
   }
 
-  const maxSize = 15 * 1024 * 1024 // 15MB
-  for (const file of imageFiles) {
-    if (file.size > maxSize) {
-      alert(`文件 ${file.name} 超过 15MB，已跳过`)
-      continue
+  const imageMaxSize = 15 * 1024 * 1024 // 15MB
+  const videoMaxSize = 30 * 1024 * 1024 // 30MB
+  const skipped = []
+  for (const file of mediaFiles) {
+    const max = videoType.test(file.type) ? videoMaxSize : imageMaxSize
+    if (file.size > max) {
+      skipped.push(file.name)
     }
   }
+  if (skipped.length > 0) {
+    alert(skipped.map(n => `文件 ${n} 超过大小限制，已跳过`).join('\n'))
+  }
 
-  const validFiles = imageFiles.filter(f => f.size <= maxSize)
+  const validFiles = mediaFiles.filter(f => {
+    const isVideo = videoType.test(f.type)
+    return f.size <= (isVideo ? videoMaxSize : imageMaxSize)
+  })
   const promises = validFiles.map(file => {
     return new Promise((resolve) => {
       const reader = new FileReader()
       reader.onload = () => {
+        const isVideo = videoType.test(file.type)
         resolve({
           id: `photo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           name: file.name,
@@ -55,6 +66,7 @@ async function handleFileChange(e) {
           mimeType: file.type,
           size: file.size,
           createdAt: new Date().toISOString(),
+          isVideo,
         })
       }
       reader.readAsDataURL(file)
@@ -114,7 +126,7 @@ function triggerImport() {
         <input
           ref="fileInput"
           type="file"
-          accept="image/png,image/jpeg,image/gif,image/webp,image/bmp"
+          accept="image/png,image/jpeg,image/gif,image/webp,image/bmp,video/mp4,video/webm"
           multiple
           style="display:none"
           @change="handleFileChange"
@@ -126,10 +138,13 @@ function triggerImport() {
         v-for="(photo, idx) in photos"
         :key="photo.id"
         class="photo-thumb"
+        :class="{ 'photo-thumb-video': photo.isVideo }"
         @click="openViewer(idx)"
       >
-        <img :src="photo.dataUrl" :alt="photo.name" />
+        <img v-if="!photo.isVideo" :src="photo.dataUrl" :alt="photo.name" />
+        <video v-else :src="photo.dataUrl" muted preload="metadata" class="photo-thumb-video-el" />
         <span class="photo-thumb-badge" @click.stop="deletePhoto(photo)">×</span>
+        <span v-if="photo.isVideo" class="photo-thumb-play-icon">▶</span>
       </div>
     </div>
 

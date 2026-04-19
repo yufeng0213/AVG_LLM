@@ -3,32 +3,7 @@
  * 生成小说章节，使用分隔符协议（非 JSON）。
  */
 import { callChatCompletion, getValidatedActiveConfig } from './llmService.core.js'
-
-// ===== System Prompt =====
-
-const READER_SYSTEM_PROMPT = `你是一个专业的小说作家，以叙事者的视角讲述故事。
-
-写作要求：
-1. 使用小说叙事体，不是对话剧本格式
-2. 包含环境描写、人物描写、心理活动
-3. 对话自然融入叙述中
-4. 每章有起承转合，结尾留有悬念或自然过渡
-5. 支持 Markdown 格式（可以用 **加粗**、*斜体* 等）
-6. 叙事风格要统一，保持角色的性格一致性
-
-输出格式（必须严格遵守）：
-
-|title=章节标题|
-章节正文内容...
-
-|end|
-|suggestions=下一章方向A|下一章方向B|下一章方向C|
-
-说明：
-- |title=...| 之间是章节标题
-- |end| 标记正文结束
-- |suggestions=A|B|C| 是 3 个下一章建议方向，用 | 分隔
-- 不要输出任何其他内容，不要输出 JSON`
+import { resolvePrompt } from './promptRegistry.js'
 
 // ===== 解析函数 =====
 
@@ -137,7 +112,7 @@ export async function generateFirstChapter(params = {}) {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: READER_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('reader:chapter'),
     userPrompt,
     temperature: 0.8,
     maxTokens: 6000,
@@ -195,7 +170,7 @@ export async function generateNextChapter(params = {}) {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: READER_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('reader:chapter'),
     userPrompt,
     temperature: 0.8,
     maxTokens: 6000,

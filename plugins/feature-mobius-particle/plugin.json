@@ -1,0 +1,23 @@
+{
+  "id": "mobius-particle",
+  "name": "莫比乌斯环",
+  "runtime": "local",
+  "apiVersion": 1,
+  "version": "0.1.0",
+  "menu": {
+    "key": "mobius",
+    "title": "莫比乌斯环",
+    "icon": "\ud83d\udd04",
+    "order": 997
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "mobius"
+  },
+  "storage": {
+    "namespace": "mobius"
+  },
+  "capabilities": ["storage"],
+  "enabledByDefault": true
+}

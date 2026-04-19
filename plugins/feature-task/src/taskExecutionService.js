@@ -4,6 +4,7 @@
  */
 
 import { callChatCompletion, getValidatedActiveConfig } from '../../../src/llm/llmService.core.js'
+import { resolvePrompt } from '../../../src/llm/promptRegistry.js'
 
 /**
  * 调用LLM生成任务执行开场
@@ -27,14 +28,7 @@ export const generateTaskExecutionOpening = async ({ task, characterRoles, world
 【世界书标题】${worldBook.title || ''}
 【世界背景】${worldBook.summary || worldBook.entries?.overview || ''}` : ''
 
-  const systemPrompt = `你是一位任务执行主持人（Game Master）。玩家需要通过角色扮演的方式完成一个任务。
-你负责创建沉浸式的任务开场场景，引导参与者进入情境。
-要求：
-1. 根据任务描述创造一个引人入胜的开场
-2. 让所有参与角色自然地出现在场景中
-3. 暗示完成任务的关键步骤或挑战
-4. 结尾留出玩家行动的空间
-5. 回复控制在150-200字`
+  const systemPrompt = await resolvePrompt('task:opening')
 
   const userPrompt = `任务名称：${task.name}
 任务类型：${task.type}
@@ -102,13 +96,7 @@ export const processTaskAction = async ({ task, characterRoles, messageHistory, 
   const results = []
 
   // 第一步：生成目标角色的第一人称回应
-  const characterSystemPrompt = `你是任务执行中的角色回应者。你需要以${targetCharName}的身份，用第一人称（"我"）来回应玩家（User）的行动。
-严格按该角色的性格、背景和任务身份来表现。
-你的回应应该包含：
-1. 对玩家行动的反应和感受
-2. 你自己采取的行动或说出的话
-3. 保持角色一致性
-回复控制在150字以内。只输出角色视角的内容，不要写GM叙事。`
+  const characterSystemPrompt = await resolvePrompt('task:character_response')
 
   const characterUserPrompt = `任务：${task.name} - ${task.description}
 
@@ -156,14 +144,7 @@ ${historyContext || '（暂无）'}
   // 把刚生成的角色回应加入历史上下文
   const updatedHistory = `${historyContext}\n${targetCharName}：${results[0].content}`
 
-  const gmSystemPrompt = `你是任务执行主持人（Game Master）。根据玩家和目标角色的行动，描述故事的发展和任务进度的变化。
-你需要：
-1. 描述双方行动交织后产生的结果
-2. 推动任务情境向前发展
-3. 适当制造挑战、意外或转折
-4. 暗示下一步可能的方向
-5. 回复控制在200字以内
-用第三人称叙事，不要代替玩家或角色说话。`
+  const gmSystemPrompt = await resolvePrompt('task:gm_progress')
 
   const gmUserPrompt = `任务：${task.name} - ${task.description}
 
@@ -228,9 +209,7 @@ export const checkTaskCompletable = async ({ task, characterRoles, messageHistor
     return `${msg.characterName}：${msg.content}`
   }).join('\n')
 
-  const systemPrompt = `你是一位任务评审主持人。根据任务描述和对话历史，判断玩家是否已经完成了足够的行动来提交这个任务。
-只返回JSON格式，不要其他内容：
-{"completable": true或false, "summary": "任务完成情况摘要（50字以内）"}`
+  const systemPrompt = await resolvePrompt('task:completion_check')
 
   const userPrompt = `任务名称：${task.name}
 任务描述：${task.description}

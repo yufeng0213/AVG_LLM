@@ -69,11 +69,22 @@ const bridgeApi = {
     fetchLyrics: (songId) => ipcRenderer.invoke('netease:fetch-lyrics', songId),
     fetchPlaylist: (playlistId) => ipcRenderer.invoke('netease:fetch-playlist', playlistId),
   },
+  mascot: {
+    create: () => ipcRenderer.invoke('mascot:create'),
+    destroy: () => ipcRenderer.invoke('mascot:destroy'),
+    show: () => ipcRenderer.invoke('mascot:show'),
+    hide: () => ipcRenderer.invoke('mascot:hide'),
+    updateState: (state) => ipcRenderer.invoke('mascot:update-state', state),
+    command: (command, payload) => ipcRenderer.invoke('mascot:command', command, payload),
+  },
 }
 
 try {
   contextBridge.exposeInMainWorld('avgLLM', bridgeApi)
+  // Also expose as electronAPI for platform detection (isElectron checks window.electronAPI)
+  contextBridge.exposeInMainWorld('electronAPI', { isElectron: true })
 } catch {
   // Fallback for non-isolated contexts during troubleshooting.
   window.avgLLM = bridgeApi
+  window.electronAPI = { isElectron: true }
 }

@@ -9,15 +9,11 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { getGroupedContacts, getWorldBookById, loadSmsThreads, saveSmsThreads, addSmsMessage } from './usePhoneData.js'
 import { generatePhoneSmsReply } from '../../../../../src/llm/index.js'
+import { resolvePrompt } from '../../../../../src/llm/promptRegistry.js'
 
 // 推送间隔范围（毫秒）：测试用 1 分钟
 const MIN_INTERVAL = 5 * 60 * 1000
 const MAX_INTERVAL = 20 * 60 * 1000
-
-// 推送提示词前缀（让 LLM 知道这是角色主动发起的对话）
-const SPONTANEOUS_PROMPT = `这是你主动给玩家发消息，不是回复。
-请像日常聊天一样自然地开场，可以分享你的想法、关心玩家、或者随便聊聊。
-语气要自然、不刻意，不要太长，20-50字即可。`
 
 export function useOfflinePush({ onNewMessage, onNotificationClick }) {
   let timer = null
@@ -100,10 +96,12 @@ export function useOfflinePush({ onNewMessage, onNotificationClick }) {
       identity: contact.identity || contact.nickname || '',
     }
 
+    const spontaneousPrompt = await resolvePrompt('phone_offline:spontaneous')
+
     const result = await generatePhoneSmsReply({
       worldBook: book,
       contact: contactForLlm,
-      userMessage: SPONTANEOUS_PROMPT,
+      userMessage: spontaneousPrompt,
       history: [], // 主动发起，不带历史
       options: { historyLimit: 0, maxTokens: 200 },
     })

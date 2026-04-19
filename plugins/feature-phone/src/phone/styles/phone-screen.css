@@ -971,6 +971,26 @@
   opacity: 1;
 }
 
+/* 视频缩略图 */
+.photo-thumb-video-el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-thumb-play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* Photo Viewer Overlay */
 .photos-viewer-overlay {
   position: fixed;
@@ -1058,6 +1078,32 @@
   max-height: 100%;
   object-fit: contain;
   border-radius: 4px;
+}
+
+/* 视频在查看器中 */
+.viewer-video {
+  max-width: 90vw;
+  max-height: 70vh;
+  object-fit: contain;
+}
+.phone-home-video-wallpaper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.phone-home {
+  position: relative;
+  overflow: hidden;
+}
+
+.phone-home > *:not(.phone-home-video-wallpaper) {
+  position: relative;
+  z-index: 1;
 }
 
 .viewer-info {
@@ -2462,7 +2508,9 @@
   .platform-android.android-portrait .chat-bg-url-btn,
   .platform-android.android-portrait .apply-btn,
   .platform-android.android-portrait .sms-sticker-btn,
-  .platform-android.android-portrait .push-notification-close {
+  .platform-android.android-portrait .push-notification-close,
+  .platform-android.android-portrait .viewer-close,
+  .platform-android.android-portrait .viewer-nav {
     width: auto !important;
     height: auto !important;
     min-width: 0 !important;

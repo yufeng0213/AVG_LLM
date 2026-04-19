@@ -51,7 +51,14 @@
       "Bash(npx cap:*)",
       "Bash(npm uninstall:*)",
       "Bash(xargs grep:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(taskkill /F /IM electron.exe)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(exit 0)",
+      "Bash(xargs cat:*)",
+      "Bash(npm list:*)",
+      "Bash(curl -s http://localhost:5173/src/mascot-overlay/index.html)",
+      "Bash(curl -s http://localhost:5173/src/mascot-overlay/main.js)"
     ]
   }
 }

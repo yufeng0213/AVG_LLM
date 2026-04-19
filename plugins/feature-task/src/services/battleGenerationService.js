@@ -5,6 +5,7 @@
  */
 
 import { callChatCompletion, getValidatedActiveConfig } from '../../../../src/llm/llmService.core.js'
+import { resolvePrompt } from '../../../../src/llm/promptRegistry.js'
 
 /**
  * 调用 LLM 生成完整战斗数据
@@ -32,58 +33,7 @@ export const generateBattleData = async ({ task, selectedCharacters, worldBook, 
     return `${index + 1}. ${char.name}（${char.identity || '未知身份'}）${personality.mbti ? 'MBTI:' + personality.mbti : ''} ${dimText}`
   }).join('\n')
 
-  const systemPrompt = `你是"AVG战斗设计师"。根据提供的世界书背景、任务信息、角色资料，生成三场战斗的数据。
-使用紧凑键值格式返回，不要返回其他内容，不要 markdown 代码块。
-
-【格式说明】
-1. 队伍成员用 [T:name|isPlayer|hp|maxHp|at|df|sp|cr|cd|pos] 定义
-   - isPlayer: 1表示玩家, 0表示NPC
-   - 属性范围: hp 200-2000, at 30-200, df 10-100, sp 5-50, cr 0.05-0.3, cd 1.5-2.0
-2. 技能用 <S:skillId|name|icon|type|target|dmgType|multiplier|cooldown|hitCount|description>
-   - 下一行用 fx: 描述特效，格式: fx:type@chance@duration@value (多个用逗号分隔)
-   - 无特效写 fx:
-3. 每场战斗用 [W:waveIndex|isBoss] 定义
-   - 下一行用 story: 描述背景剧情
-   - 然后列出该波次的敌人 [E:name|hp|maxHp|at|df|sp|cr|cd|pos]
-   - Boss 的 isBoss=1，普通波 isBoss=0
-   - 波次结束后用 [D:dropId|name|icon|category|effectType|value|dmgType|targetMode|usageCount|description] 列出掉落
-4. 最后用 [G:整体背景故事] 结束
-
-【字段取值】
-- type: attack(攻击), heal(治疗), buff(增益), debuff(减益)
-- target: single, all, front, back, random, self
-- dmgType: physical, fire, poison, ice, lightning, dark, none
-- multiplier(技能倍率): 攻击技能取 0.8-2.0；治疗技能取 1.0-3.0（治疗量 = multiplier × 施法者攻击力）；buff/debuff 技能可设为 0
-- effect type: poison, burn, bleed, stun, defenseDown, attackUp, healOverTime, shield
-- effect value: 伤害类为正数(伤害值)，debuff类负数表示降低的属性值
-- category: consumable
-- effectType(道具): heal, damage, buff, cure, cure_all, debuff_cleanse
-- targetMode(道具): self, ally_single, ally_all, enemy_single, enemy_all
-
-【战斗设计规则】
-1. 共三场战斗，第一场和第二场是普通战斗（各至少3个小怪），第三场是 Boss 战（1个Boss + 至少3个小怪）
-2. 怪物的属性要与队伍实力匹配，难度递增
-3. 怪物需要有黑暗地牢风格的命名
-4. 每场战斗有一段背景剧情（50-100字）
-5. 我方队员分配 2-4 个技能，包含物理和元素类型
-6. Boss 的属性应为普通怪物的 2-3 倍
-7. 小怪属性范围: hp 100-500, at 20-80, df 5-40, sp 3-30
-8. 每场战斗掉落 2-4 个道具
-9. 队伍中必须包含一个玩家角色（isPlayer=1），名字来自用户信息
-
-【示例】
-[T:林川|1|hp|350|350|60|25|22|0.08|1.6|0]
-<S:skill_lin_1|热锅猛炒|🔥|attack|single|physical|1.0|0|1|用炽热的锅铲进行物理攻击，概率附加烧伤>
-  fx:burn@0.3@2@15
-
-[W:0|0]
-story:后厨的储藏室传来异响...
-[E:腐化洗碗工|180|180|35|12|14|0.05|1.5|0]
-<S:enemy_wash|污秽泼溅|💦|attack|single|poison|0.9|0|1|泼洒腐蚀性液体>
-  fx:poison@0.4@2@10
-[D:drop_w1_1|生命药水|🧪|consumable|heal|60||self|1|恢复60点生命值]
-
-[G:在这个任务中，你的队伍需要面对三波敌人的挑战...]`
+  const systemPrompt = await resolvePrompt('task:battle')
 
   const userPrompt = `世界书标题：${worldBook?.title || '未命名'}
 世界书概述：${worldBook?.summary || worldBook?.entries?.overview || '无'}

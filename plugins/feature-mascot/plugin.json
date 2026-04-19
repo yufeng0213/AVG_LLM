@@ -1,0 +1,25 @@
+{
+  "id": "feature-mascot",
+  "name": "桌宠",
+  "description": "可拖拽的GIF桌宠，带有气泡对话和长按交互。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "mascot",
+    "title": "桌宠",
+    "icon": "\ud83e\udd8b",
+    "order": 999,
+    "variant": "tone-cyan border-solid tilt-left"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "mascot"
+  },
+  "storage": {
+    "namespace": "mascot"
+  },
+  "capabilities": ["storage"],
+  "enabledByDefault": false
+}

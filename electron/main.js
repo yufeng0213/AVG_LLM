@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promises as fsPromises } from 'node:fs'
+import { setWindowTopMost } from './mascot-topmost.cjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -10,6 +11,123 @@ const isDev = !app.isPackaged
 const DEFAULT_WINDOW_SETTINGS = {
   resolution: '1280x720',
   windowMode: 'windowed',
+}
+
+// ==================== Mascot Window ====================
+let mascotWindow = null
+let mascotAlwaysOnTopTimer = null
+
+const createMascotWindow = () => {
+  if (mascotWindow && !mascotWindow.isDestroyed()) return
+
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const workArea = primaryDisplay.workArea
+
+  // 窗口覆盖整个工作区，这样 translate3d 坐标直接对应屏幕坐标
+  const width = workArea.width
+  const height = workArea.height
+  const x = workArea.x
+  const y = workArea.y
+
+  console.log('[Mascot] Creating window:', { width, height, x, y })
+
+  mascotWindow = new BrowserWindow({
+    width,
+    height,
+    x,
+    y,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    hasShadow: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-mascot.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  })
+
+  // ready-to-show 后显示窗口
+  mascotWindow.once('ready-to-show', () => {
+    console.log('[Mascot] ready-to-show, showing window')
+    if (mascotWindow && !mascotWindow.isDestroyed()) {
+      mascotWindow.webContents.openDevTools({ mode: 'detach' })
+      mascotWindow.show()
+      mascotWindow.setIgnoreMouseEvents(true, { forward: true })
+    }
+  })
+
+  // 延迟设置系统级置顶
+  setTimeout(() => {
+    if (mascotWindow && !mascotWindow.isDestroyed()) {
+      setWindowTopMost(mascotWindow, true).then((ok) => {
+        console.log('[Mascot] Win32 setWindowTopMost result:', ok, 'isAlwaysOnTop:', mascotWindow.isAlwaysOnTop())
+      })
+    }
+  }, 2000)
+
+  // 窗口失焦时重新确保置顶
+  mascotWindow.on('blur', () => {
+    if (mascotWindow && !mascotWindow.isDestroyed()) {
+      mascotWindow.setAlwaysOnTop(true, 'normal')
+      setWindowTopMost(mascotWindow, true).catch(() => {})
+    }
+  })
+
+  // 定期刷新置顶状态
+  mascotAlwaysOnTopTimer = setInterval(() => {
+    if (mascotWindow && !mascotWindow.isDestroyed()) {
+      mascotWindow.setAlwaysOnTop(true, 'normal')
+      setWindowTopMost(mascotWindow, true).catch(() => {})
+    } else {
+      clearInterval(mascotAlwaysOnTopTimer)
+      mascotAlwaysOnTopTimer = null
+    }
+  }, 1000)
+
+  if (isDev) {
+    mascotWindow.loadURL('http://localhost:5173/src/mascot-overlay/index.html')
+    console.log('[Mascot] Loading dev URL')
+  } else {
+    const prodPath = path.join(__dirname, '../dist/src/mascot-overlay/index.html')
+    console.log('[Mascot] Loading production URL:', prodPath)
+    mascotWindow.loadFile(prodPath)
+  }
+}
+
+const destroyMascotWindow = () => {
+  if (mascotAlwaysOnTopTimer) {
+    clearInterval(mascotAlwaysOnTopTimer)
+    mascotAlwaysOnTopTimer = null
+  }
+  if (mascotWindow && !mascotWindow.isDestroyed()) {
+    mascotWindow.close()
+    mascotWindow = null
+  }
+}
+
+const showMascotWindow = () => {
+  if (mascotWindow && !mascotWindow.isDestroyed()) {
+    mascotWindow.setAlwaysOnTop(true, 'normal')
+    mascotWindow.show()
+    setWindowTopMost(mascotWindow, true).catch(() => {})
+  }
+}
+
+const hideMascotWindow = () => {
+  if (mascotWindow && !mascotWindow.isDestroyed()) {
+    mascotWindow.hide()
+  }
+}
+
+const sendToMascotWindow = (channel, data) => {
+  if (mascotWindow && !mascotWindow.isDestroyed()) {
+    mascotWindow.webContents.send(channel, data)
+  }
 }
 
 // 存档和备份目录名称
@@ -1345,7 +1463,62 @@ app.whenReady().then(() => {
     }
   })
 
+  // ==================== Mascot Window IPC ====================
+
+  ipcMain.handle('mascot:create', () => {
+    createMascotWindow()
+    return { ok: true }
+  })
+
+  ipcMain.handle('mascot:destroy', () => {
+    destroyMascotWindow()
+    return { ok: true }
+  })
+
+  ipcMain.handle('mascot:show', () => {
+    showMascotWindow()
+    return { ok: true }
+  })
+
+  ipcMain.handle('mascot:hide', () => {
+    hideMascotWindow()
+    return { ok: true }
+  })
+
+  ipcMain.handle('mascot:update-state', (_event, state) => {
+    sendToMascotWindow('mascot-state', state)
+    return { ok: true }
+  })
+
+  ipcMain.handle('mascot:command', (_event, command, payload) => {
+    sendToMascotWindow('mascot-command', { command, payload })
+    return { ok: true }
+  })
+
+  ipcMain.handle('mascot:set-ignore-mouse', (_event, ignore) => {
+    if (mascotWindow && !mascotWindow.isDestroyed()) {
+      mascotWindow.setIgnoreMouseEvents(ignore, { forward: true })
+    }
+    return { ok: true }
+  })
+
   createWindow()
+
+  // 当主窗口获得焦点时，确保桌宠窗口仍然置顶
+  mainWindow.on('focus', () => {
+    if (mascotWindow && !mascotWindow.isDestroyed()) {
+      mascotWindow.setAlwaysOnTop(true, 'normal')
+      setWindowTopMost(mascotWindow, true).catch(() => {})
+    }
+  })
+
+  // 任何浏览器窗口获得焦点时都确保桌宠置顶
+  app.on('browser-window-focus', (_event, win) => {
+    if (mascotWindow && !mascotWindow.isDestroyed()) {
+      mascotWindow.setAlwaysOnTop(true, 'normal')
+      setWindowTopMost(mascotWindow, true).catch(() => {})
+    }
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

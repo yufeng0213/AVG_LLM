@@ -3,28 +3,7 @@
  * 使用自定义协议格式（非 JSON），类似 reader 的 |key=value| 模式。
  */
 import { callChatCompletion, getValidatedActiveConfig, generateCharacterSpeech } from './llmService.core.js'
-
-// ===== 系统提示词 =====
-
-const PRONUNCIATION_SYSTEM_PROMPT = `你是"口语发音学习"课程内容生成器。你将以讲师角色的身份进行教学。
-
-严格遵循以下输出格式，不要输出任何额外说明：
-
-|intro|
-以讲师角色的口吻进行课程开场讲解（2-4句，代入角色身份）。
-|/intro|
-|word=单词文本|音标或拼音|中文释义|
-|word=单词文本|音标或拼音|中文释义|
-（与主题相关的常用词汇）
-|sentence=完整句子|整句注音或音标|中文翻译|
-|sentence=完整句子|整句注音或音标|中文翻译|
-（由易到难的实用句子）
-
-注意：
-- 发音标注使用标准 IPA 音标或对应语言注音系统
-- 句子应从简单到难排列
-- 不要使用任何 JSON、Markdown 或其他格式
-- 单词和句子数量以用户请求为准`
+import { resolvePrompt } from './promptRegistry.js'
 
 // ===== 解析器 =====
 
@@ -157,7 +136,7 @@ export async function generatePronunciationLesson(params = {}) {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: PRONUNCIATION_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('pronunciation:lesson'),
     userPrompt,
     temperature: 0.75,
     maxTokens: 3000,

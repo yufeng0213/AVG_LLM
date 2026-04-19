@@ -21,6 +21,9 @@ import testManifest from '../../plugins/feature-test/plugin.json'
 import roseParticleManifest from '../../plugins/feature-rose-particle/plugin.json'
 import bookParticleManifest from '../../plugins/feature-book-particle/plugin.json'
 import musicPlayerManifest from '../../plugins/feature-music-player/plugin.json'
+import hourglassManifest from '../../plugins/feature-hourglass/plugin.json'
+import mobiusParticleManifest from '../../plugins/feature-mobius-particle/plugin.json'
+import mascotManifest from '../../plugins/feature-mascot/plugin.json'
 
 const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   loadSaveManifest,
@@ -45,6 +48,9 @@ const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   roseParticleManifest,
   bookParticleManifest,
   musicPlayerManifest,
+  hourglassManifest,
+  mobiusParticleManifest,
+  mascotManifest,
 ]
 
 export const getLocalFeaturePluginManifests = () => {

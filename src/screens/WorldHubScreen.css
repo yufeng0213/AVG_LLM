@@ -22,6 +22,17 @@
   z-index: 0;
 }
 
+/* 视频壁纸背景 */
+.world-hub-video-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .world-hub-overlay {
   position: absolute;
   inset: 0;
@@ -41,18 +52,14 @@
   position: relative;
   z-index: 2;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 16px;
   padding-top: max(12px, var(--safe-area-inset-top, 12px));
-  padding-bottom: 8px;
+  padding-bottom: 24px;
   padding-left: clamp(12px, 3vw, 24px);
   padding-right: clamp(12px, 3vw, 24px);
-}
-
-.world-hub-user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .world-hub-avatar-wrap {
@@ -60,6 +67,7 @@
   cursor: pointer;
   border-radius: 50%;
   transition: transform 150ms ease;
+  margin-top: 0;
 }
 
 .world-hub-avatar-wrap:hover {
@@ -70,10 +78,36 @@
   transform: scale(0.96);
 }
 
+.world-hub-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 8px;
+  height: 26px;
+  line-height: 26px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 2px solid color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+}
+
+.top-bar-sep {
+  width: 1px;
+  height: 18px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
+  flex-shrink: 0;
+}
+
 .world-hub-avatar {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   overflow: visible;
   display: flex;
@@ -92,15 +126,15 @@
 }
 
 .world-hub-avatar-placeholder {
-  font-size: 1.4rem;
+  font-size: 2.1rem;
   line-height: 1;
 }
 
 .world-hub-avatar-frame-img {
   position: absolute;
-  inset: -4px;
-  width: calc(100% + 8px);
-  height: calc(100% + 8px);
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
   pointer-events: none;
   border-radius: 50%;
   object-fit: contain;
@@ -114,25 +148,27 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .world-hub-economy {
   display: flex;
   gap: 8px;
-  margin-left: auto;
 }
 
 .economy-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  padding: 0 10px;
+  border-radius: 12px;
+  background: transparent !important;
+  border: none !important;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--foreground, #ffffff);
+  line-height: 1;
+  height: auto;
 }
 
 .economy-icon {
@@ -143,6 +179,7 @@
 .economy-value {
   font-family: var(--font-mono, 'Courier New', monospace);
   font-size: 0.9rem;
+  line-height: 1;
 }
 
 .world-hub-settings-btn {
@@ -201,43 +238,90 @@
   margin-left: auto;
 }
 
-/* 散落按钮 */
+/* 散落按钮 — 菱形背景 */
 .hub-scatter-btn {
   appearance: none;
-  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--background, #0a0a0a) 60%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border: none;
+  background: transparent;
   color: var(--foreground, #ffffff);
-  padding: 10px 16px;
+  padding: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 2px;
   cursor: pointer;
-  transition: all 150ms ease;
-  white-space: nowrap;
-  min-width: fit-content;
+  position: relative;
+  width: 72px;
+  height: 72px;
+  transition: transform 150ms ease;
+}
+
+/* 菱形背景 */
+.hub-scatter-btn::before {
+  content: '';
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent),
+              0 0 20px 4px color-mix(in srgb, var(--foreground, #ffffff) 4%, transparent);
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  z-index: 0;
 }
 
 .hub-scatter-btn:hover {
-  background: color-mix(in srgb, var(--foreground, #ffffff) 14%, transparent);
-  border-color: color-mix(in srgb, var(--foreground, #ffffff) 20%, transparent);
   transform: translateY(-1px);
 }
 
+.hub-scatter-btn:hover::before {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 25%, transparent);
+  border-color: color-mix(in srgb, var(--foreground, #ffffff) 35%, transparent);
+  box-shadow: 0 0 12px 3px color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent),
+              0 0 24px 6px color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
+}
+
 .hub-scatter-btn:active {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.96);
+}
+
+/* 图标和文字在菱形上方 */
+.hub-btn-icon,
+.hub-png-icon {
+  position: relative;
+  z-index: 1;
 }
 
 .hub-btn-icon {
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   line-height: 1;
+  margin-top: 2px;
+}
+
+.hub-png-icon {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+  display: block;
+  line-height: 1;
+  margin-top: 2px;
 }
 
 .hub-btn-label {
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 85%, transparent);
+  text-shadow: 0 1px 4px color-mix(in srgb, var(--foreground, #ffffff) 30%, transparent),
+               0 0 8px color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  margin-top: 2px;
 }
 
 /* ========== 底部区域 ========== */
@@ -590,14 +674,22 @@
 
 .platform-android.android-portrait .world-hub-header {
   padding-top: max(10px, var(--safe-area-inset-top, 10px));
-  padding-bottom: 6px;
+  padding-bottom: 20px;
   padding-left: 14px;
   padding-right: 14px;
 }
 
+.platform-android.android-portrait .world-hub-avatar-wrap {
+  margin-top: 0;
+}
+
+.platform-android.android-portrait .world-hub-top-bar {
+  gap: 8px;
+}
+
 .platform-android.android-portrait .world-hub-avatar {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
 }
 
 .platform-android.android-portrait .world-hub-username {
@@ -620,17 +712,41 @@
 }
 
 .platform-android.android-portrait .hub-scatter-btn {
-  padding: 8px 14px;
-  border-radius: 12px;
-  min-height: 44px;
+  width: 64px;
+  height: 64px;
+}
+
+.platform-android.android-portrait .hub-scatter-btn::before {
+  width: 42px;
+  height: 42px;
+  background: rgba(255, 255, 255, 0.50) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.15),
+              0 0 20px 4px rgba(255, 255, 255, 0.08) !important;
+}
+
+.platform-android.android-portrait .hub-scatter-btn:hover::before {
+  background: rgba(255, 255, 255, 0.60) !important;
+  border-color: rgba(255, 255, 255, 0.65) !important;
+  box-shadow: 0 0 12px 3px rgba(255, 255, 255, 0.20),
+              0 0 24px 6px rgba(255, 255, 255, 0.10) !important;
 }
 
 .platform-android.android-portrait .hub-btn-icon {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+}
+
+.platform-android.android-portrait .hub-png-icon {
+  width: 1.8rem;
+  height: 1.8rem;
 }
 
 .platform-android.android-portrait .hub-btn-label {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85) !important;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.30),
+               0 0 8px rgba(255, 255, 255, 0.10) !important;
 }
 
 .platform-android.android-portrait .world-hub-footer {
@@ -666,13 +782,17 @@
 /* ========== 小屏幕适配 ========== */
 @media (max-width: 480px) {
   .world-hub-header {
-    padding: 10px 12px;
+    padding: 10px 12px 20px;
     gap: 8px;
   }
 
+  .world-hub-avatar-wrap {
+    margin-top: 0;
+  }
+
   .world-hub-avatar {
-    width: 40px;
-    height: 40px;
+    width: 60px;
+    height: 60px;
   }
 
   .world-hub-username {
@@ -699,15 +819,29 @@
   }
 
   .hub-scatter-btn {
-    padding: 8px 12px;
+    width: 64px;
+    height: 64px;
+  }
+
+  .hub-scatter-btn::before {
+    width: 44px;
+    height: 44px;
   }
 
   .hub-btn-icon {
-    font-size: 1.1rem;
+    font-size: 1.3rem;
+  }
+
+  .hub-png-icon {
+    width: 1.8rem;
+    height: 1.8rem;
   }
 
   .hub-btn-label {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-shadow: 0 1px 4px color-mix(in srgb, var(--foreground, #ffffff) 30%, transparent),
+                 0 0 8px color-mix(in srgb, var(--foreground, #ffffff) 10%, transparent);
   }
 
   .world-hub-footer {
@@ -746,4 +880,84 @@
     border-radius: 8px !important;
     white-space: nowrap !important;
   }
+}
+
+/* ========== 粒子菜单 ========== */
+.particle-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.particle-dialog {
+  width: min(92vw, 480px);
+  display: flex;
+  flex-direction: column;
+  background: var(--background, #0a0a0a);
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 12%, transparent);
+  border-radius: 18px;
+  overflow: hidden;
+  color: var(--foreground, #ffffff);
+}
+
+.particle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+}
+
+.particle-item {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 3%, transparent);
+  color: var(--foreground, #ffffff);
+  cursor: pointer;
+  transition: all 150ms ease;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.particle-item:hover {
+  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
+}
+
+.particle-icon {
+  flex-shrink: 0;
+  font-size: 1.8rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--foreground, #ffffff) 6%, transparent);
+}
+
+.particle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.particle-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.particle-desc {
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--foreground, #ffffff) 45%, transparent);
 }

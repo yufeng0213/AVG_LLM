@@ -4,6 +4,7 @@
  */
 
 import { kvStorage } from '../storage/index.js'
+import { resolvePrompt } from './promptRegistry.js'
 
 // 存储 key 常量
 const CONFIG_STORAGE_KEY = 'api_configs'
@@ -455,24 +456,13 @@ export const generateStory = async (prompt, options = {}) => {
 
   return callChatCompletion({
     config: validated.config,
-    systemPrompt: getSystemPrompt(),
+    systemPrompt: await getSystemPrompt(),
     userPrompt: prompt,
     temperature: options.temperature || 0.8,
     maxTokens: options.maxTokens || 2000,
     extraParams: options.extraParams,
   })
 }
-
-const FACE_TO_FACE_JOINT_DIALOGUE_SYSTEM_PROMPT = `你是“角色关节点点击台词生成器”。
-你会收到世界书信息和一个角色设定，然后为人体关节点生成“被点击时说的话”。
-
-硬性要求：
-1) 只输出 JSON 对象，不要 markdown，不要解释。
-2) JSON 格式必须为：
-{"jointDialogues":{"nose":"...","left_shoulder":"..."}}
-3) key 必须使用传入的关节ID（snake_case），不能新增无关字段。
-4) 每句台词 6-36 字，中文口语化，不要出现“作为AI”等元话术。
-5) 语气必须贴合该角色的性格、身份、背景。`
 
 const FACE_TO_FACE_DEFAULT_JOINT_IDS = [
   'nose',
@@ -739,7 +729,7 @@ export const generateFaceToFaceJointDialogues = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: FACE_TO_FACE_JOINT_DIALOGUE_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('core:face_to_face_joint'),
     userPrompt,
     temperature,
     maxTokens,
@@ -775,19 +765,6 @@ export const generateFaceToFaceJointDialogues = async (params = {}) => {
     rawResponse: result.rawResponse,
   }
 }
-
-const CG_PROMPT_SYSTEM_PROMPT = `你是“AVG 场景生图提示词生成器”。
-你将读取世界书、角色外貌设定和近期剧情，然后输出可直接用于生图模型的提示词。
-
-硬性要求：
-1) 只输出 JSON 对象，不要 markdown，不要解释。
-2) JSON 格式必须为：
-{"positivePrompt":"...","positivePromptZh":"...","negativePrompt":"...","sceneSummary":"..."}
-3) positivePrompt 用于直接生图，建议关键词表达清晰（中英皆可）。
-4) positivePromptZh 必须是中文可读版提示词，方便用户手工修改，内容和 positivePrompt 对齐。
-5) negativePrompt 必须包含避免低质/畸形/文字水印等关键词。
-6) sceneSummary 用中文，30-120 字，总结当前画面瞬间。
-7) 不要输出违法或露骨内容。`
 
 const clampCgContextLineCount = (value, fallback = 24) => {
   const parsed = Number.parseInt(String(value), 10)
@@ -1069,7 +1046,7 @@ export const generateCgPrompt = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: CG_PROMPT_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('core:cg_prompt'),
     userPrompt,
     temperature,
     maxTokens,
@@ -1103,17 +1080,6 @@ export const generateCgPrompt = async (params = {}) => {
     rawResponse: result.rawResponse,
   }
 }
-
-const MINI_THEATER_SYSTEM_PROMPT = `你是“AVG 小剧场生成器”。
-你的任务是生成一段与主线无直接推进关系的短篇小剧场。
-
-硬性要求：
-1) 只输出 JSON，不要 markdown，不要解释。
-2) JSON 结构必须为：
-{"title":"小剧场标题","theme":"本次主题","dialogues":[{"speaker":"说话者","emotion":"default","text":"台词"}]}
-3) dialogues 至少 3 条，建议 4-8 条。
-4) 小剧场应与主线“解耦”，可写旁支人物、街谈巷议、回忆片段、背景插曲等，但世界观要兼容。
-5) 不要输出 choices 字段，不要要求玩家交互。`
 
 const clampMiniTheaterLineCount = (value, fallback = 6) => {
   const parsed = Number.parseInt(String(value), 10)
@@ -1326,7 +1292,7 @@ export const generateMiniTheater = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: MINI_THEATER_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('core:mini_theater'),
     userPrompt,
     temperature,
     maxTokens,
@@ -1369,50 +1335,11 @@ export const generateMiniTheater = async (params = {}) => {
 
 /**
  * 获取系统提示词
- * @returns {string} 系统提示词
+ * @returns {Promise<string>} 系统提示词
  */
 const getSystemPrompt = () => {
-  return `你是专业的 AVG 剧情生成助手。你只输出可直接被程序解析的剧情 JSON。
-
-输出协议（必须遵守）：
-1) 只输出 JSON 数组，不要 markdown，不要解释，不要前后缀文本。
-2) 每条对话使用紧凑键：
-   - s: 说话者（必须是已定义角色或"旁白"）
-   - e: 表情（default/happy/angry/sad/surprised/fear/disgust/neutral/shy/thinking/sleepy/excited/worried/confident）
-   - t: 对话文本
-   - h: 高亮（0/1 或 false/true）
-   - d: 剧情时间（必填）
-3) 每次生成的最后一条都必须添加 c 选项对象：
-   c={"p":"提示语","o":[{"t":"选项文案","a":"action_id"}],"i":1}
-4) 可选场景切换：sc={"id":"场景ID","name":"场景名"}
-
-强制规则：
-- 每条对话都必须有 t 和 d。
-- d 在同一世界内保持一致纪年风格。
-- 本次生成最后一条 d 必须相对当前剧情时间前进（不能不变、不能回退）。
-- c 必须出现在最后一条，o 至少 2 项，i 必须为 1。
-- 输出尽量紧凑，减少无意义空格和换行。`
+  return resolvePrompt('core:story_generation')
 }
-
-/**
- * 小卡片生成系统提示词
- */
-const CARD_SYSTEM_PROMPT = `你是"AVG 剧情小卡片生成器"。
-你将根据卡片模板、世界书人物和背景、以及当前剧情，生成一张符合风格的小卡片内容。
-
-硬性要求：
-1) 只输出 JSON 对象，不要 markdown，不要解释。
-2) JSON 格式必须符合卡片模板定义的变量结构。
-3) 内容要紧密结合当前剧情和人物关系。
-4) 保持卡片风格的一致性（如赛博朋克、古风、现代等）。
-5) 内容要有情感深度，能引发玩家共鸣。
-6) 不要输出违法或露骨内容。
-
-重要格式说明：
-- 所有字段值必须是字符串类型，不能是嵌套对象或数组。
-- 例如：如果模板有 title、content、footer 字段，输出格式应为：
-  {"title": "标题文本", "content": "正文内容", "footer": "页脚文本"}
-- 不要输出嵌套结构，如 {"content": {"text": "xxx"}} 是错误的格式。`
 
 /**
  * 生成小卡片内容
@@ -1455,7 +1382,7 @@ export const generateCardContent = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: CARD_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('core:card_generation'),
     userPrompt,
     temperature: options.temperature || 0.9, // 卡片生成需要更多创意
     maxTokens: options.maxTokens || 1500,
@@ -1689,6 +1616,126 @@ const parseCardData = (rawContent, cardConfig) => {
   return {
     [mainContentKey]: raw,
     _raw: raw,
+  }
+}
+
+/**
+ * 生成剧情券完整剧情（一次性生成，不少于 10000 字）
+ * @param {Object} params
+ * @param {Object} params.worldBook - 世界书数据
+ * @param {string} params.targetCharacter - 目标角色名（寝室主人）
+ * @param {string} params.customTheme - 自定义主题（可选，不提供则由LLM决定）
+ * @param {Array} params.characters - 可用角色列表
+ * @param {Object} params.options - 可选配置
+ * @returns {Promise<Object>} 生成结果，包含 dialogues 数组和 rawResponse
+ */
+export const generateStoryTicket = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      dialogues: [],
+      rawResponse: null,
+    }
+  }
+
+  const { worldBook, targetCharacter, customTheme, characters = [], options = {} } = params
+
+  if (!targetCharacter) {
+    return {
+      success: false,
+      error: '未指定目标角色',
+      dialogues: [],
+      rawResponse: null,
+    }
+  }
+
+  // 构建用户提示词
+  const worldBookSummary = buildWorldBookSummary(worldBook)
+  const charList = characters.length > 0
+    ? characters.map(c => typeof c === 'string' ? c : c.name).join('、')
+    : '无额外角色信息'
+
+  const themeDirective = customTheme
+    ? `\n【剧情主题】${customTheme}`
+    : '\n【剧情主题】由你自由决定，但需与角色性格和世界观契合'
+
+  const userPrompt = `现在开始生成一段寝室专属剧情。
+
+${worldBookSummary}
+
+【目标角色】${targetCharacter}（剧情发生在该角色的寝室）
+【可用角色】${charList}
+${themeDirective}
+
+重要：请输出不少于 1000 字的完整剧情（纯中文内容，不含标记符号）。
+使用剧情券自定义协议格式输出，详见系统提示词。`
+
+  const systemPrompt = await resolvePrompt('core:story_ticket')
+  const maxTokens = options.maxTokens || 8000
+  const minWordCount = options.minWordCount || 1000
+
+  // 第一次生成
+  let allContent = ''
+  let attempts = 0
+  const maxAttempts = 3
+
+  do {
+    attempts++
+    const result = await callChatCompletion({
+      config: validated.config,
+      systemPrompt,
+      userPrompt: attempts === 1
+        ? userPrompt
+        : `${userPrompt}\n\n上次生成的内容字数不足，请在上次的基础上继续生成更多剧情，确保总字数达到 ${minWordCount} 字。`,
+      temperature: options.temperature || 0.8,
+      maxTokens,
+      extraParams: options.extraParams,
+      timeout: 300000, // 5分钟超时
+    })
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || '剧情生成失败',
+        dialogues: [],
+        rawResponse: result.rawResponse,
+      }
+    }
+
+    const rawText = typeof result.data === 'string' ? result.data : String(result.data || '')
+    allContent = rawText
+
+    const { countChineseChars } = await import('./storyParser.js')
+    const charCount = countChineseChars(rawText)
+    console.log(`[StoryTicket] 第 ${attempts} 次生成完成，中文字数：${charCount} / ${minWordCount}`)
+
+    if (charCount >= minWordCount) {
+      break
+    }
+
+    // 字数不够，继续循环生成
+  } while (attempts < maxAttempts)
+
+  // 解析自定义协议
+  const { parseStoryTicketContent } = await import('./storyParser.js')
+  const parsed = parseStoryTicketContent(allContent)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error || '剧情内容解析失败',
+      dialogues: [],
+      rawResponse: allContent,
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    dialogues: parsed.dialogues,
+    rawResponse: allContent,
   }
 }
 

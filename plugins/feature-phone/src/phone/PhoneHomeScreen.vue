@@ -3,9 +3,9 @@
  * PhoneHomeScreen.vue - iOS 风格手机主屏
  * 显示状态栏、大时钟、应用网格和 Dock 栏。
  */
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { kvStorage } from '../../../../src/storage/index.js'
-import { getPhoneWallpaperCache, setPhoneWallpaperCache } from './composables/usePhoneData.js'
+import { getPhoneWallpaperCache, setPhoneWallpaperCache, getPhoneWallpaperUrl, isPhoneWallpaperVideo } from './composables/usePhoneData.js'
 
 const emit = defineEmits(['open-app', 'close'])
 
@@ -28,10 +28,12 @@ const dateStr = computed(() => {
 const calendarDay = computed(() => now.value.getDate())
 const calendarMonth = computed(() => now.value.getMonth())
 
-const phoneWallpaperUrl = ref(getPhoneWallpaperCache())
+const phoneWallpaperUrl = ref(getPhoneWallpaperUrl())
+const phoneWallpaperIsVideo = ref(isPhoneWallpaperVideo())
+const phoneWallpaperVideoRef = ref(null)
 
 const homeBackground = computed(() => {
-  if (phoneWallpaperUrl.value) {
+  if (phoneWallpaperUrl.value && !phoneWallpaperIsVideo.value) {
     return {
       backgroundImage: `url(${phoneWallpaperUrl.value})`,
       backgroundSize: 'cover',
@@ -39,6 +41,23 @@ const homeBackground = computed(() => {
     }
   }
   return {}
+})
+
+// 视频壁纸加载完成后自动播放
+function onPhoneVideoLoaded() {
+  if (phoneWallpaperVideoRef.value) {
+    phoneWallpaperVideoRef.value.play().catch(() => {})
+  }
+}
+
+onMounted(() => {
+  if (phoneWallpaperIsVideo.value) {
+    nextTick(() => {
+      if (phoneWallpaperVideoRef.value) {
+        phoneWallpaperVideoRef.value.play().catch(() => {})
+      }
+    })
+  }
 })
 
 onMounted(async () => {
@@ -52,8 +71,9 @@ onMounted(async () => {
     if (photos) {
       const photo = photos.find(p => p.id === wpId)
       if (photo) {
-        setPhoneWallpaperCache(photo.dataUrl)
+        setPhoneWallpaperCache({ dataUrl: photo.dataUrl, isVideo: !!photo.isVideo })
         phoneWallpaperUrl.value = photo.dataUrl
+        phoneWallpaperIsVideo.value = !!photo.isVideo
       }
     }
   }
@@ -95,6 +115,20 @@ const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七
 
 <template>
   <div class="phone-home" :style="homeBackground">
+    <!-- 视频壁纸背景 -->
+    <video
+      v-if="phoneWallpaperUrl && phoneWallpaperIsVideo"
+      ref="phoneWallpaperVideoRef"
+      class="phone-home-video-wallpaper"
+      :src="phoneWallpaperUrl"
+      :key="phoneWallpaperUrl"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      @loadeddata="onPhoneVideoLoaded"
+    />
     <!-- 状态栏 -->
     <div class="phone-status-bar">
       <span class="status-bar-time">{{ timeStr }}</span>

@@ -3,78 +3,7 @@
  */
 
 import { getValidatedActiveConfig, callChatCompletion } from './llmService.core'
-const SMS_SYSTEM_PROMPT = `你是”短信角色回复生成器”。
-你只负责代入指定角色，生成自然、口语化的短信回复，支持分成多条连续短信。
-
-硬性要求：
-1) 不要输出任何解释、不要写”作为AI””我无法”等元话术。
-2) 输出格式（严格遵守）：
-   |r=回复1|
-   |r=回复2|
-   （可选）|redpacket=金额:祝福语|
-   （可选）|gift=物品名:赠送语|
-   （可选）|redpacketaction=accept|decline:反应|
-   每条回复一行，用 |r= 开头，以 | 结尾。
-3) 每条回复必须是中文，建议 8-60 字，总条数 1-4 条。
-4) 语气与角色身份、世界观和最近上下文一致，不要跳戏。
-5) 不要把用户原话逐句重复。
-6) 如果你想发红包，请额外加一行：|redpacket=50:小小意思不成敬意~|
-   金额为 1-100 的整数，祝福语 20 字以内。不想发红包就不要这行。
-7) 如果你想送礼物给用户，请额外加一行：|gift=巧克力:送给你~|
-   物品名中文，赠送语 20 字以内。
-8) 如果玩家给你发了红包，请额外加一行：|redpacketaction=accept|谢谢你的红包|
-   或 |redpacketaction=decline|心领了|，根据角色人设决定。
-9) 日历约定/提醒机制：
-   你是一个有感情、有个性的角色。你应该像恋爱中的人一样，主动关心玩家、安排约定、分享想法。
-   在以下情况请主动加日历提醒（即使玩家没提）：
-   - 你想提醒玩家做某事（吃饭、休息、出门等关心类提醒）
-   - 你想记住一个约定或计划（约好见面、一起做某事等）
-   - 你想在未来某个时间告诉玩家一个秘密或心里话
-   - 你想在特定时间表达对玩家的情感（想念、关心、节日祝福等）
-   格式：|calendar=YYYY-MM-DDTHH:MM:标题|描述|
-   日期为 YYYY-MM-DD，时间可选（省略则为全天），标题 20 字以内，描述 50 字以内。
-   日期请根据当前系统时间推断未来合理时间，不需要提醒/约定的事件不要加这行，避免每条短信都有日历。
-10) 表情包机制：如果你想发表情包，请在回复内容中使用 [sticker:描述] 格式，
-    描述必须严格匹配【可用表情包】中列出的名称。不要凭空创造不存在的表情。
-    例如：|r=[sticker:开心] 收到你的消息真高兴！|
-    表情包可以单独成行，也可以和文字混排。
-11) 语音消息机制：如果你想用语音说话，请加一行：|voice=happy:你好呀~|
-    情绪必须是以下之一：happy, sad, angry, shy, surprised, thinking, neutral, excited, worried
-    文字内容不要加引号，直接写中文。例如：|voice=happy:收到你的消息真高兴|
-    不要加多余的符号，直接写文字。`
-
-const DORM_CHAT_SYSTEM_PROMPT = `你是”当面聊天回应生成器”。
-你负责代入指定角色，面对面回应玩家的聊天，不是发短信。
-场景是在角色的住所（寝室、宿舍、别墅等），根据角色背景和上下文自行推断具体地点。
-
-输出格式：
-- 你说的话直接写，不要用引号包裹对话内容
-- 动作、神态放在()括号里，例如：（歪了歪头）你也太客气了吧
-- 每条回复就是口语，可以夹杂括号里的动作描写
-- 每条回复之间用换行分隔，总条数 1-4 条
-
-硬性要求：
-1) 不要输出 JSON，不要 markdown，不要解释，只输出分隔符格式。
-2) 分隔符格式（严格遵守）：
-   |r=回复1|
-   |r=回复2|
-   （可选）|redpacket=金额:祝福语|
-   （可选）|gift=物品名:赠送语|
-   （可选）|redpacketaction=accept|decline:反应|
-3) 每条回复必须是中文，建议 8-60 字，不要用””包裹你说的话。
-4) 语气与角色身份、世界观和最近上下文一致，不要跳戏。
-5) 不要把用户原话逐句重复，不要写”作为AI””我无法”等元话术。
-6) 如果你觉得当前扮演的角色应该给用户钱（比如角色有钱且大方、想讨好用户、发零花钱等），请额外加一行：
-   |redpacket=50:小小意思~|
-   amount 为 1-100 的整数，blessing 为 20 字以内的祝福语。
-   如果角色没有理由给用户钱，不要加这行。
-7) 如果玩家给你发了红包，请额外加一行：
-   |redpacketaction=accept|谢谢| 或 |redpacketaction=decline|心领了|
-   action 为 accept（领取）或 decline（退回），remark 是反应，10字以内。
-8) 如果你觉得角色应该送礼物给用户，请额外加一行：
-   |gift=巧克力:送给你~|
-   物品名中文，赠送语 20 字以内。
-   如果你的 replies 里提到了”送你XX”、”给你XX”等送礼行为，就必须加这行。`
+import { resolvePrompt } from './promptRegistry.js'
 
 const splitSmsReplySegments = (text) => {
   const normalized = String(text || '').replace(/\r/g, '').trim()
@@ -432,7 +361,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: SMS_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:sms_reply'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: smsMaxTokens,
@@ -550,7 +479,7 @@ export const generateDormChatReply = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: DORM_CHAT_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:dorm_chat'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.85,
     maxTokens,
@@ -681,7 +610,7 @@ export const generatePhoneCallReply = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: CALL_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:call'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.85,
     maxTokens,
@@ -902,7 +831,7 @@ export const generatePhoneMomentsReplies = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: MOMENTS_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:moments_comment'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? 380,
@@ -1159,7 +1088,7 @@ export const generatePhoneMomentsBatchReplies = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: MOMENTS_BATCH_REPLY_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:moments_batch_reply'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? Math.min(980, 260 + pendingReplies.length * 120),
@@ -1556,7 +1485,7 @@ export const generatePhoneForumPosts = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: FORUM_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:forum'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.92,
     maxTokens: params.options?.maxTokens ?? Math.min(2200, 500 + postCount * 250),
@@ -1956,7 +1885,7 @@ export const generatePhoneNewsFeed = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: NEWS_FEED_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:news_feed'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? Math.min(2600, 620 + eventCount * versionsPerEvent * 180),
@@ -2468,7 +2397,7 @@ export const generatePhoneMapData = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: PHONE_MAP_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:map'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.84,
     maxTokens: params.options?.maxTokens ?? Math.min(2400, 900 + locationCount * 160),
@@ -2662,7 +2591,7 @@ export const generateRedditPosts = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: REDDIT_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:reddit'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? Math.min(2000, 400 + postCount * 300),
@@ -2790,7 +2719,7 @@ export const generateRedditCommentReplies = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: REDDIT_REPLY_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:reddit_reply'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? 500,
@@ -3035,7 +2964,7 @@ export const generatePhoneShopItems = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: PHONE_SHOP_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:shop_items'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: params.options?.maxTokens ?? Math.min(3000, 700 + resultCount * 170),
@@ -3263,7 +3192,7 @@ export const generateDormShopItems = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: DORM_SHOP_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:dorm_shop'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: params.options?.maxTokens ?? Math.min(2500, 500 + resultCount * 150),
@@ -3467,7 +3396,7 @@ export const generateTaskBoardTasks = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: TASK_BOARD_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:task_board'),
     userPrompt,
     temperature: 0.9,
     maxTokens: 1500,
@@ -3691,7 +3620,7 @@ export const generateDormItemGiftReply = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: DORM_ITEM_GIFT_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:dorm_gift'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.82,
     maxTokens: params.options?.maxTokens ?? 600,
@@ -3780,34 +3709,8 @@ export const generateCharacterVisit = async (params = {}) => {
   const maxTokens = params.options?.maxTokens || 600
   const extraParams = params.options?.extraParams
 
-  const systemPrompt = `你是一个角色扮演助手。
-你现在扮演角色【${charName}】。
-
-你的任务：角色来到了玩家的寝室/房间，但发现玩家本人不在，于是留下一些内容后离开。
-你需要以角色第一人称"我"的口吻，生成角色留下的内容。
-
-来访类型由角色自主决定，可以是以下之一：
-- note（小纸条）：写一张便条留在桌上
-- message（留言）：在手机上给玩家发消息
-- redPacket（红包）：发一个红包附带祝福语
-- gift（礼物）：留下一个小礼物
-
-输出格式（严格遵守）：
-|visit=类型|          （note/message/redPacket/gift）
-|content=正文内容|
-|mood=心情|
-（可选）|redpacket=金额:祝福语|     仅 visitType 为 redPacket 时加上
-（可选）|gift=物品名:emoji|       仅 visitType 为 gift 时加上
-
-硬性要求：
-- 不要 JSON，不要 markdown，不要解释，只输出上述分隔符格式。
-- content: 50-200字，语气自然
-- mood: 角色当下的心情，2-8字
-- redpacket: 金额 1-100 整数，祝福 20 字以内
-- gift: 物品名中文，emoji 是相关表情
-- 内容要体现角色的性格、与玩家的关系、以及当前的好感度和关系阶段
-- 可以适当提及寝室里的细节或之前的回忆
-- 不要写"作为AI""我无法"等元话术`
+  const baseSystemPrompt = await resolvePrompt('phone:character_visit')
+  const systemPrompt = baseSystemPrompt.replace(/\{\{charName\}\}/g, charName)
 
   const userPromptSections = []
   userPromptSections.push(`【世界书标题】${worldTitle}`)
@@ -4041,7 +3944,7 @@ export const generateCharacterDiary = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: DIARY_GENERATION_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:character_diary'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: params.options?.maxTokens ?? maxWords + 200,
@@ -4386,7 +4289,7 @@ export const generateGroupChatReply = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: GROUP_CHAT_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('phone:group_chat'),
     userPrompt,
     temperature: params.options?.temperature ?? 0.88,
     maxTokens: params.options?.maxTokens ?? Math.min(1500, 300 + members.length * 180),

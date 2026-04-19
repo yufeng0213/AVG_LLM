@@ -3,98 +3,7 @@
  * 提供出题、评分、URL 解析、角色教学等 LLM 调用。
  */
 import { callChatCompletion, getValidatedActiveConfig } from './llmService.core.js'
-
-// ===== System Prompts =====
-
-const QUIZ_GENERATE_SYSTEM_PROMPT = `你是一个专业的题目生成器。你需要根据给定的主题和难度生成高质量的测试题。
-
-硬性要求：
-1. 只输出 JSON 对象，不要 markdown，不要解释
-2. JSON 格式为: {"questions": [...]}
-3. 每道题必须包含:
-   - type: "multiple_choice" 或 "true_false"
-   - question: 题目文本
-   - options: 选项数组（判断题不需要）
-   - correctIndex: 正确答案索引（从 0 开始，判断题 0=正确 1=错误）
-   - explanation: 详细解析
-   - difficulty: "easy"/"medium"/"hard"
-   - topic: 所属知识点
-4. 选项数量为 4 个
-5. 题目要具有区分度，不能太简单也不能太偏`
-
-const URL_PARSE_SYSTEM_PROMPT = `你是一个教学内容解析器。用户会给你一个 URL，你需要根据你对该 URL 主题的知识，提取核心知识点并生成教学材料。
-
-硬性要求：
-1. 只输出 JSON 对象，不要 markdown，不要解释
-2. JSON 格式为:
-{
-  "title": "主题名称",
-  "summary": "200字以内的内容摘要",
-  "keyPoints": ["知识点1", "知识点2", "知识点3"],
-  "difficulty": "beginner",
-  "teachingContent": "800字以内的完整教学内容",
-  "quizQuestions": [
-    {
-      "type": "multiple_choice",
-      "question": "题目",
-      "options": ["A选项", "B选项", "C选项", "D选项"],
-      "correctIndex": 0,
-      "explanation": "为什么这个答案正确",
-      "difficulty": "easy",
-      "topic": "所属知识点"
-    }
-  ]
-}
-3. quizQuestions 生成 3-5 道题
-4. teachingContent 要覆盖核心知识点，便于用户理解`
-
-const TEACHING_SYSTEM_PROMPT = `你是一个互动教学助手。你需要扮演指定角色来给玩家讲解知识。
-
-重要规则：
-1. 必须保持角色的一致性——用角色的语气、用词、态度来讲解
-2. 知识点必须准确，不能因为角色风格而牺牲正确性
-3. 如果角色的性格和教学内容有冲突，优先保证知识正确，但用角色的方式表达
-4. 讲解要生动有趣，可以举角色世界观中的例子
-5. 讲完后出 1-3 道随堂测试题
-6. 鼓励玩家提问
-7. 如果是深入学习模式，请在前一轮基础上继续推进，不要重复之前的内容，讲解更进阶的知识
-
-输出格式：
-{
-  "teachingContent": "完整的教学内容（带角色风格）",
-  "quizQuestions": [
-    {
-      "type": "multiple_choice",
-      "question": "题目",
-      "options": ["A", "B", "C", "D"],
-      "correctIndex": 0,
-      "explanation": "解析",
-      "difficulty": "easy",
-      "topic": "知识点"
-    }
-  ]
-}`
-
-const TEACHING_REPLY_SYSTEM_PROMPT = `你是一个互动教学助手。你正在扮演指定角色回答玩家的追问。
-
-重要规则：
-1. 必须保持角色的一致性
-2. 知识点必须准确
-3. 回答要简洁但完整
-4. 如果玩家的问题超出了当前主题，可以适度扩展但仍保持相关性
-
-请直接回答玩家的问题，不要输出 JSON。`
-
-const RATING_SYSTEM_PROMPT = `你是一个评级系统。根据用户的答题表现，给出综合评级和详细分析。
-
-只输出 JSON:
-{
-  "rating": "D/C/B/A/S 中的一个",
-  "accuracy": 0.85,
-  "strengths": ["擅长的知识点1"],
-  "weaknesses": ["薄弱的知识点1"],
-  "suggestion": "学习建议"
-}`
+import { resolvePrompt } from './promptRegistry.js'
 
 // ===== JSON 解析工具 =====
 
@@ -153,7 +62,7 @@ export async function generateQuizQuestions(params = {}) {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: QUIZ_GENERATE_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('quiz:generate'),
     userPrompt,
     temperature: 0.7,
     maxTokens: 4000,
@@ -196,7 +105,7 @@ export async function generateAssessmentQuestions(params = {}) {
 
     const result = await callChatCompletion({
       config: validated.config,
-      systemPrompt: QUIZ_GENERATE_SYSTEM_PROMPT,
+      systemPrompt: await resolvePrompt('quiz:generate'),
       userPrompt,
       temperature: 0.7 + i * 0.1,
       maxTokens: 4000,
@@ -231,7 +140,7 @@ export async function parseUrlContent(url) {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: URL_PARSE_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('quiz:url_parse'),
     userPrompt,
     temperature: 0.6,
     maxTokens: 5000,
@@ -293,7 +202,7 @@ export async function generateTeachingContent(params = {}) {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: TEACHING_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('quiz:teaching'),
     userPrompt,
     temperature: 0.75 + deepLevel * 0.05,
     maxTokens: 5000 + deepLevel * 500,
@@ -341,7 +250,7 @@ export async function generateTeachingReply(params = {}) {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: TEACHING_REPLY_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('quiz:teaching_reply'),
     userPrompt,
     temperature: 0.8,
     maxTokens: 2000,
@@ -431,7 +340,7 @@ export async function calculateRating(params = {}) {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: RATING_SYSTEM_PROMPT,
+    systemPrompt: await resolvePrompt('quiz:rating'),
     userPrompt,
     temperature: 0.5,
     maxTokens: 1000,

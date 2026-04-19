@@ -26,6 +26,9 @@ import CharacterSelectView from './components/CharacterSelectView.vue'
 import CharacterRoomView from './components/CharacterRoomView.vue'
 import DriftBottlePanel from './components/DriftBottlePanel.vue'
 import AppointmentModal from './components/AppointmentModal.vue'
+import StoryTicketGenScreen from '../../../src/components/StoryTicketGenScreen.vue'
+import StoryTicketArchiveList from '../../../src/components/StoryTicketArchiveList.vue'
+import StoryTicketViewerScreen from '../../../src/components/StoryTicketViewerScreen.vue'
 
 const emit = defineEmits(['back', 'open-face-to-face'])
 
@@ -1671,6 +1674,53 @@ const gift = useDormGift({
   normalizeDormChatHistory,
 })
 
+// ===== 剧情券 Composable =====
+const showStoryTicketGen = ref(false)
+const showStoryTicketArchiveList = ref(false)
+const showStoryTicketViewer = ref(false)
+const storyTicketViewArchive = ref(null)
+
+function handleUseDormItem(item) {
+  // 判断是否为剧情券（通过名称识别）
+  const itemName = (item.name || '').trim()
+  if (itemName.includes('剧情券') || itemName.includes('story_ticket')) {
+    // 消耗一张剧情券
+    backStorage.removeFromInventory(item.id, 1)
+
+    // 记录到 journal
+    const charName = selectedCharacter.value?.label || item.targetCharacter || '未知角色'
+    const currentState = { ...selectedDormState.value }
+    currentState.journal = appendJournal(
+      currentState.journal,
+      `${charName}使用了剧情券，一段专属剧情正在生成中...`,
+      'item',
+    )
+    updateSelectedDormState(currentState)
+
+    // 打开剧情券生成界面
+    showStoryTicketGen.value = true
+    return
+  }
+}
+
+function handleStoryTicketBack() {
+  showStoryTicketGen.value = false
+  showStoryTicketArchiveList.value = false
+  showStoryTicketViewer.value = false
+  storyTicketViewArchive.value = null
+}
+
+function handleStoryTicketViewArchive(archive) {
+  showStoryTicketGen.value = false
+  showStoryTicketArchiveList.value = false
+  storyTicketViewArchive.value = archive
+  showStoryTicketViewer.value = true
+}
+
+function handleOpenStoryTicketArchives() {
+  showStoryTicketArchiveList.value = true
+}
+
 const diary = useDormDiary({
   selectedCharacter,
   selectedDormState,
@@ -3050,6 +3100,7 @@ onBeforeUnmount(() => {
           @run-dorm-sub-scene-activity="handleRunDormSubSceneActivity"
           @advance-dorm-day="handleAdvanceDormDay"
           @gift-dorm-item="gift.handleGiftDormItem"
+          @use-dorm-item="handleUseDormItem"
           @throw-drift-bottle="handleThrowDormDriftBottle"
           @pick-drift-bottle="handlePickDormDriftBottle"
           @ask-drift-follow-up="handleAskDormDriftBottleFollowUp"
@@ -3090,6 +3141,31 @@ onBeforeUnmount(() => {
     @close="appointment.closeAppointmentModal"
     @create="(payload) => appointment.createAppointment(payload.scheduledAt)"
     @cancel="appointment.cancelAppointment"
+  />
+
+  <!-- 剧情券生成界面 -->
+  <StoryTicketGenScreen
+    v-if="showStoryTicketGen"
+    :target-character="selectedCharacter?.label || '角色'"
+    :world-book="activeBook"
+    :characters="activeBook?.characters || []"
+    @back="handleStoryTicketBack"
+    @view-archive="handleStoryTicketViewArchive"
+  />
+
+  <!-- 剧情券存档列表 -->
+  <StoryTicketArchiveList
+    v-if="showStoryTicketArchiveList"
+    @back="handleStoryTicketBack"
+    @view-archive="handleStoryTicketViewArchive"
+    @new-story="showStoryTicketArchiveList = false; showStoryTicketGen = true"
+  />
+
+  <!-- 剧情券查看/重播界面 -->
+  <StoryTicketViewerScreen
+    v-if="showStoryTicketViewer"
+    :archive="storyTicketViewArchive"
+    @back="handleStoryTicketBack"
   />
 </template>
 

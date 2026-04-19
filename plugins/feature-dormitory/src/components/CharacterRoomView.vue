@@ -326,6 +326,7 @@ const emit = defineEmits([
   'run-dorm-sub-scene-activity',
   'advance-dorm-day',
   'gift-dorm-item',
+  'use-dorm-item',
   'throw-drift-bottle',
   'pick-drift-bottle',
   'ask-drift-follow-up',
@@ -391,6 +392,10 @@ function handleAdvanceDay() {
 
 function handleGiftItem(item) {
   emit('gift-dorm-item', item)
+}
+
+function handleUseItem(item) {
+  emit('use-dorm-item', item)
 }
 
 function handleThrowBottle() {
@@ -636,6 +641,7 @@ function formatVisitTime(timestamp) {
             v-if="activeDormOverlayPanelId === 'backpack'"
             :backpack-items="activeBookInventory"
             @close="handleCloseOverlayPanel"
+            @use-item="handleUseItem"
             @give-item="handleGiftItem"
           />
 

@@ -5,7 +5,7 @@
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { kvStorage } from '../../../../src/storage/index.js'
-import { getPhoneWallpaperCache, setPhoneWallpaperCache } from './composables/usePhoneData.js'
+import { getPhoneWallpaperCache, setPhoneWallpaperCache, getWorldWallpaperCache, setWorldWallpaperCache as setWorldWallpaperCacheData } from './composables/usePhoneData.js'
 
 const props = defineProps({
   photos: { type: Array, default: () => [] },
@@ -83,7 +83,7 @@ async function setPhoneWallpaper() {
   if (!currentPhoto.value) return
   await kvStorage.set('phone_wallpaper_photo_id', currentPhoto.value.id)
   phoneWallpaperId.value = currentPhoto.value.id
-  setPhoneWallpaperCache(currentPhoto.value.dataUrl)
+  setPhoneWallpaperCache({ dataUrl: currentPhoto.value.dataUrl, isVideo: !!currentPhoto.value.isVideo })
 }
 
 // 取消手机壁纸
@@ -96,22 +96,22 @@ async function unsetPhoneWallpaper() {
 // 设为世界壁纸
 async function setWorldWallpaper() {
   if (!currentPhoto.value) return
-  await kvStorage.set('worldhub_wallpaper', {
+  const data = {
     photoId: currentPhoto.value.id,
     dataUrl: currentPhoto.value.dataUrl,
     name: currentPhoto.value.name,
-  })
-  worldWallpaper.value = {
-    photoId: currentPhoto.value.id,
-    dataUrl: currentPhoto.value.dataUrl,
-    name: currentPhoto.value.name,
+    isVideo: !!currentPhoto.value.isVideo,
   }
+  await kvStorage.set('worldhub_wallpaper', data)
+  worldWallpaper.value = data
+  setWorldWallpaperCacheData(data)
 }
 
 // 恢复世界壁纸默认
 async function restoreWorldWallpaperDefault() {
   await kvStorage.set('worldhub_wallpaper', null)
   worldWallpaper.value = null
+  setWorldWallpaperCacheData(null)
 }
 
 const isPhoneWallpaper = computed(() => phoneWallpaperId.value === currentPhoto.value?.id)
@@ -160,7 +160,22 @@ const isWorldWallpaper = computed(() => worldWallpaper.value?.photoId === curren
 
         <!-- 大图 -->
         <div class="viewer-image-wrap">
-          <img v-if="currentPhoto" :src="currentPhoto.dataUrl" :alt="currentPhoto.name" class="viewer-image" />
+          <img
+            v-if="currentPhoto && !currentPhoto.isVideo"
+            :src="currentPhoto.dataUrl"
+            :alt="currentPhoto.name"
+            class="viewer-image"
+          />
+          <video
+            v-else-if="currentPhoto && currentPhoto.isVideo"
+            :src="currentPhoto.dataUrl"
+            class="viewer-image viewer-video"
+            controls
+            autoplay
+            muted
+            loop
+            playsinline
+          />
         </div>
 
         <!-- 文件名 + 页码 -->

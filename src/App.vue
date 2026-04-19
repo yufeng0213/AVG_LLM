@@ -1,9 +1,9 @@
 ﻿<script setup>
-import { onBeforeUnmount, onMounted, ref, computed, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, computed, watch, nextTick } from 'vue'
 import GameScreen from './screens/GameScreen.vue'
 import StartScreen from './screens/StartScreen.vue'
 import WorldHubScreen from './screens/WorldHubScreen.vue'
-import { getPlatform, isMobileDevice, isNative, isAndroid } from './utils/platform'
+import { getPlatform, isMobileDevice, isNative, isAndroid, isElectron } from './utils/platform'
 import { buildStartMenuRegistry, resolveStartMenuAction } from './features/startMenuRegistry'
 import { getLocalFeaturePluginManifests } from './features/localFeaturePluginManifests'
 import { getLocalFeaturePluginEntries } from './features/localFeaturePluginEntries'
@@ -19,6 +19,13 @@ import CheckInScreen from '../plugins/feature-checkin/src/CheckInScreen.vue'
 import CheckIn7Screen from '../plugins/feature-checkin/src/CheckIn7Screen.vue'
 import AvatarFrameScreen from '../plugins/feature-dormitory/src/components/AvatarFrameScreen.vue'
 import MusicPlayerScreen from '../plugins/feature-music-player/src/MusicPlayerScreen.vue'
+import Mascot from '../plugins/feature-mascot/src/Mascot.vue'
+import { useMascotStorage } from '../plugins/feature-mascot/src/composables/useMascotStorage.js'
+import {
+  createOverlay,
+  loadOverlayUrl,
+  setOverlayMascotData,
+} from '../plugins/feature-mascot/src/composables/useMascotOverlayAndroid.js'
 
 // PC 端设计基准分辨率（16:9 横屏比例）
 const DESIGN_WIDTH = 1920
@@ -39,6 +46,7 @@ const platform = computed(() => getPlatform())
 const isMobile = computed(() => isMobileDevice())
 const isNativeApp = computed(() => isNative())
 const isAndroidPlatform = computed(() => isAndroid())
+const isElectronPlatform = computed(() => isElectron())
 const logAndroidLayoutSnapshot = async (source = 'unknown') => {
   if (!isAndroidPlatform.value) return
 
@@ -172,6 +180,8 @@ const startMenuActionMap = computed(() => {
 const openScreenByKey = (screenKey) => {
   const next = String(screenKey || '').trim()
   if (!next) return
+  // 桌宠不是路由页面，是悬浮层，不导航到
+  if (next === 'mascot') return
   currentScreen.value = next
 }
 
@@ -182,6 +192,14 @@ const handleStartMenuAction = (payload) => {
   const action = payload?.action && typeof payload.action === 'object'
     ? payload.action
     : resolveStartMenuAction(startMenuActionMap.value, itemId)
+  // 桌宠点击菜单时：没有GIF则弹出导入，有GIF则不做操作（已悬浮显示）
+  if (itemId === 'feature-mascot') {
+    const { openImporter } = useMascotStorage()
+    if (!mascotHasGif.value) {
+      openImporter()
+    }
+    return
+  }
   if (action.type === 'screen') {
     openScreenByKey(action.screen)
     return
@@ -225,6 +243,24 @@ const isCheckInOpen = ref(false)
 const isCheckIn7Open = ref(false)
 const isAvatarSettingsOpen = ref(false)
 const isMusicPlayerOpen = ref(true)
+
+const isMascotEnabled = computed(() => {
+  const manifest = featurePluginManifestById.value.get('feature-mascot')
+  if (!manifest) return false
+  const runtimeState = featurePluginRuntimeState.value
+  const hasOverride = Object.prototype.hasOwnProperty.call(runtimeState, 'feature-mascot')
+  if (hasOverride) return Boolean(runtimeState['feature-mascot'])
+  return manifest.enabledByDefault !== false
+})
+
+const { mascotState: mascotStorageState, loadGifDataUrl } = useMascotStorage()
+const mascotHasGif = computed(() => !!mascotStorageState.value?.gifData)
+
+const featurePluginManifestById = computed(() => {
+  const map = new Map()
+  localFeaturePluginManifests.forEach((p) => map.set(p.id, p))
+  return map
+})
 
 const openMainStory = () => {
   // TODO: 打开主线入口界面（MainStoryEntry）
@@ -408,6 +444,158 @@ watch(activePluginScreen, (pluginScreen) => {
     currentScreen.value = 'world-hub'
   }
 })
+
+// Electron 下通过独立窗口实现系统级桌宠覆盖层
+let mascotOverlayReady = false
+
+const ensureMascotOverlay = async () => {
+  if (!isElectron() || !window.avgLLM?.mascot) return
+  // 不检查 GIF 是否存在，启用时就创建窗口（没 GIF 时显示占位符）
+  if (!mascotOverlayReady) {
+    await window.avgLLM.mascot.create()
+    mascotOverlayReady = true
+  }
+  window.avgLLM.mascot.show()
+}
+
+const hideMascotOverlay = () => {
+  if (!isElectron() || !window.avgLLM?.mascot || !mascotOverlayReady) return
+  window.avgLLM.mascot.hide()
+}
+
+// Android 系统级悬浮窗
+let androidOverlayReady = false
+
+const getMascotScreenRect = () => {
+  // mascot uses Teleport to body with position: fixed + translate3d(x,y,0)
+  // Query the actual DOM element to get its real rendered size and position
+  const mascotEls = document.querySelectorAll('body > .mascot')
+  let mascotEl = null
+  for (let i = 0; i < mascotEls.length; i++) {
+    const el = mascotEls[i]
+    if (el.offsetWidth > 0 || el.offsetHeight > 0) {
+      mascotEl = el
+      break
+    }
+  }
+  if (mascotEl) {
+    const rect = mascotEl.getBoundingClientRect()
+    const dpr = window.devicePixelRatio || 1
+    const screenX = Math.round(rect.left * dpr)
+    const screenY = Math.round(rect.top * dpr)
+    const screenW = Math.round(rect.width * dpr)
+    const screenH = Math.round(rect.height * dpr)
+    console.log('[App] Mascot rect: css=', rect.left, rect.top, rect.width, rect.height,
+      'dpr=', dpr, '=> screenX=', screenX, 'screenY=', screenY, 'size=', screenW, screenH)
+    return { x: screenX, y: screenY, width: screenW, height: screenH }
+  }
+
+  // Fallback
+  const cssX = mascotStorageState.value.x
+  const cssY = mascotStorageState.value.y
+  const dpr = window.devicePixelRatio || 1
+  return { x: Math.round(cssX * dpr), y: Math.round(cssY * dpr), width: 80, height: 80 }
+}
+
+const ensureAndroidMascotOverlay = async () => {
+  if (!isAndroidPlatform.value) return
+  console.log('[App] Starting Android system overlay...')
+
+  try {
+    // Wait longer for DOM and mascot element to settle at correct position
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    if (androidOverlayReady) {
+      console.log('[App] Android overlay already ready, restarting...')
+      await createOverlay()
+    }
+
+    // 获取 mascot 元素的实际屏幕位置
+    const rect = getMascotScreenRect()
+
+    mascotStorageState.value.visible = true
+
+    let gifDataUrl = ''
+    if (mascotStorageState.value.gifData) {
+      gifDataUrl = mascotStorageState.value.gifData.dataUrl || await loadGifDataUrl() || ''
+      console.log('[App] GIF dataUrl loaded:', gifDataUrl ? `length=${gifDataUrl.length}` : 'empty')
+    } else {
+      console.log('[App] No GIF data in storage')
+    }
+
+    const overlayData = {
+      x: rect.x,
+      y: rect.y,
+      overlayWidth: rect.width,
+      overlayHeight: rect.height,
+      visible: true,
+      gifData: mascotStorageState.value.gifData
+        ? { ...mascotStorageState.value.gifData, dataUrl: gifDataUrl }
+        : null,
+    }
+    await setOverlayMascotData(overlayData)
+
+    await createOverlay()
+
+    const url = import.meta.env.DEV
+      ? 'http://10.0.2.2:5173/src/mascot-overlay/index.html'
+      : 'file:///android_asset/public/src/mascot-overlay/index.html'
+
+    console.log('[App] Loading overlay URL:', url)
+    await loadOverlayUrl(url)
+    androidOverlayReady = true
+    console.log('[App] Android system overlay started')
+  } catch (e) {
+    console.error('[App] Failed to start Android system overlay:', e)
+  }
+}
+
+const hideAndroidMascotOverlay = () => {
+  if (!isAndroidPlatform.value) return
+  console.log('[App] Hiding Android system overlay...')
+  // Android 下不做 destroy，服务保持运行
+}
+
+// 启用状态变化
+watch(isMascotEnabled, (enabled) => {
+  if (enabled) {
+    ensureMascotOverlay()
+    ensureAndroidMascotOverlay()
+  } else {
+    hideMascotOverlay()
+    hideAndroidMascotOverlay()
+  }
+}, { immediate: true })
+
+// 通知 mascot 窗口状态变化（Electron + Android）
+// Only watch gifData and visible, not x/y position changes from dragging.
+// x/y is handled by the overlay itself via AndroidOverlay.updatePosition().
+watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorageState.value.visible }), async (state) => {
+  if (isElectron() && window.avgLLM?.mascot && mascotOverlayReady) {
+    window.avgLLM.mascot.updateState({
+      x: mascotStorageState.value.x,
+      y: mascotStorageState.value.y,
+      visible: state.visible,
+      gifData: state.gifData,
+    })
+  }
+  if (isAndroidPlatform.value && androidOverlayReady && state.gifData) {
+    try {
+      const dpr = window.devicePixelRatio || 1
+      await setOverlayMascotData({
+        x: Math.round(mascotStorageState.value.x * dpr),
+        y: Math.round(mascotStorageState.value.y * dpr),
+        visible: state.visible,
+        gifData: state.gifData
+          ? { ...state.gifData, dataUrl: state.gifData.dataUrl || await loadGifDataUrl() || '' }
+          : null,
+      })
+    } catch (e) {
+      console.warn('[App] Failed to update Android overlay mascot data:', e)
+    }
+  }
+}, { deep: true })
 </script>
 
 <template>
@@ -443,6 +631,8 @@ watch(activePluginScreen, (pluginScreen) => {
           @open-test="openTest"
           @open-rose="() => currentScreen = 'rose'"
           @open-book="() => currentScreen = 'book'"
+          @open-hourglass="() => currentScreen = 'hourglass'"
+          @open-mobius="() => currentScreen = 'mobius'"
         />
       </keep-alive>
       <StartScreen
@@ -497,6 +687,9 @@ watch(activePluginScreen, (pluginScreen) => {
       v-show="isMusicPlayerOpen"
       @close="isMusicPlayerOpen = false"
     />
+
+    <!-- 桌宠：Electron 下用独立覆盖层窗口，非 Electron 下用内嵌组件 -->
+    <Mascot v-if="isMascotEnabled && !isElectronPlatform" />
   </div>
 </template>
 

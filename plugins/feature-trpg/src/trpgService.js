@@ -4,6 +4,7 @@
  */
 
 import { callChatCompletion, getValidatedActiveConfig } from '../../../src/llm/llmService.core.js'
+import { resolvePrompt } from '../../../src/llm/promptRegistry.js'
 
 const TRPG_STORAGE_KEY = 'avg_llm_trpg_session_v1'
 const TRPG_DEFAULT_TOPICS = [
@@ -134,14 +135,7 @@ export const assignCharacterRoles = async (characters, topic, userName = 'User')
 
   const characterList = worldChars.map((c, i) => `${i + 1}. ${c.label}${c.description ? ` - ${c.description}` : ''}`).join('\n')
 
-  const systemPrompt = `你是一位专业的TRPG（桌上角色扮演游戏）主持人。你擅长为各种主题的跑团游戏分配角色身份。
-请根据提供的跑团主题和角色列表，为每个角色分配一个适合的跑团身份/职业/角色。
-注意：有一个名为 "${userName}" 的角色是玩家自身，不需要你分配身份，你只需要为其他角色分配。
-要求：
-1. 每个角色都要有独特的身份
-2. 身份要符合跑团主题的氛围
-3. 给每个角色一个简短的背景描述
-4. 返回JSON格式的结果`
+  const systemPrompt = await resolvePrompt('trpg:role_assign')
 
   const userPrompt = `跑团主题：${topic || generateRandomTopic()}
 
@@ -260,13 +254,7 @@ export const generateOpening = async (topic, characterRoles) => {
 
   const roleSummary = characterRoles.map((r) => `${r.characterName}（${r.trpgRole}）- ${r.roleDescription}`).join('\n')
 
-  const systemPrompt = `你是一位经验丰富的TRPG主持人（Game Master）。你擅长创造沉浸式的游戏开场，能够迅速将玩家带入情境。
-请用生动但简洁的语言描述跑团的开场场景，让所有角色都进入情境中。
-要求：
-1. 营造氛围
-2. 让所有角色自然地出现在场景中
-3. 暗示即将发生的事件
-4. 结尾留下一个让玩家行动的钩子`
+  const systemPrompt = await resolvePrompt('trpg:opening')
 
   const userPrompt = `跑团主题：${topic}
 
@@ -329,15 +317,7 @@ export const processPlayerAction = async (topic, characterRoles, messageHistory,
 
   if (isSelectedUser) {
     // 玩家选择 User：只描述 User 自己的行动结果和其他角色的反应
-    systemPrompt = `你是一位TRPG主持人（Game Master）。玩家选择了"User"角色行动。
-你需要：
-1. 描述 User 行动的直接结果和环境变化
-2. 根据其他角色的性格、背景和世界书设定，描述他们对此的反应和行动
-3. 保持故事的连贯性和趣味性
-4. 适当制造紧张感和悬念
-5. 给玩家继续行动的机会
-
-注意：User 的行动由玩家直接控制，你只需要描述行动结果和其他世界书角色的反应。世界书角色会根据各自的人格和背景独立行动。回复控制在200字以内。`
+    systemPrompt = await resolvePrompt('trpg:player_action_user')
 
     userPrompt = `跑团主题：${topic}
 
@@ -357,13 +337,7 @@ User的行动：${playerAction}
     const selectedRole = characterRoles.find((r) => r.characterId === selectedCharacterId)
     const selectedCharName = selectedRole ? `${selectedRole.characterName}（${selectedRole.trpgRole}）` : '未知角色'
 
-    systemPrompt = `你是一位TRPG主持人（Game Master）。玩家选择了一个世界书角色来行动。
-你需要以该角色的口吻，用第一人称（"我"）来描述TA的行动和话语。
-要求：
-1. 严格按照该角色的性格、背景和跑团身份来描述
-2. 用第一人称表达，如"我观察了一下周围..."、"我觉得我们应该..."
-3. 保持角色一致性，让角色的言行符合其设定
-4. 回复控制在150字以内`
+    systemPrompt = await resolvePrompt('trpg:player_action_char')
 
     userPrompt = `跑团主题：${topic}
 
@@ -411,12 +385,7 @@ export const generateRandomTopicByLLM = async () => {
     return generateRandomTopic()
   }
 
-  const systemPrompt = `你是一个创意助手，请生成一些有趣的TRPG跑团主题。
-要求：
-1. 主题要有冒险性和探索性
-2. 适合多人参与
-3. 有神秘元素或未知事件
-4. 返回一个简短的主题名称（10字以内）`
+  const systemPrompt = await resolvePrompt('trpg:random_topic')
 
   const userPrompt = '请生成一个有趣的TRPG跑团主题，只需要主题名称，不要解释。'
 
