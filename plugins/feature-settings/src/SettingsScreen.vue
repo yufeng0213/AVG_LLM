@@ -6,6 +6,7 @@ import DisplaySettingsPanel from '../../../src/settings/DisplaySettingsPanel.vue
 import FontSettingsPanel from '../../../src/settings/FontSettingsPanel.vue'
 import PromptSettingsPanel from '../../../src/settings/PromptSettingsPanel.vue'
 import ThemeSettingsPanel from '../../../src/settings/ThemeSettingsPanel.vue'
+import WidgetSettingsPanel from '../../../src/settings/WidgetSettingsPanel.vue'
 import { isAndroid, isPortrait } from '../../../src/utils/platform.js'
 
 const emit = defineEmits(['back'])
@@ -18,6 +19,7 @@ const tabItems = [
   { id: 'display', label: '画面', note: '分辨率 / 特效 / 文本速度' },
   { id: 'theme', label: '主题', note: '预设主题 / JSON 注入切换' },
   { id: 'font', label: '字体', note: '导入字体 / 字体分配' },
+  { id: 'widget', label: 'Widget', note: 'Android桌面小部件背景风格' },
   { id: 'api', label: 'API设置', note: '模型接口 / 鉴权 / 配置管理' },
   { id: 'prompt', label: 'Prompt', note: '自定义 LLM 提示词' },
 ]
@@ -29,6 +31,7 @@ const panelMap = {
   display: DisplaySettingsPanel,
   theme: ThemeSettingsPanel,
   font: FontSettingsPanel,
+  widget: WidgetSettingsPanel,
   api: ApiSettingsPanel,
   prompt: PromptSettingsPanel,
 }

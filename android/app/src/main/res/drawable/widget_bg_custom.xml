@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget背景选择：PNG取景框（用户自定义素材占位）
+     用户可替换此文件为PNG：widget_bg_custom.png
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#0A0A12" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <!-- 占位提示边框 -->
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="1dp" android:color="#FF6600" />
+            <corners android:radius="8dp" />
+            <solid android:color="#00000000" />
+        </shape>
+    </item>
+</layer-list>

@@ -27,6 +27,7 @@ export {
   generateCharacterDiary,
   generateRedditPosts,
   generateRedditCommentReplies,
+  generateCharacterSchedule,
   generateBackpackUseResult,
   generateHandheldBrickLevel,
   generateHandheldPetProfile,

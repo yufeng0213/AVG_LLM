@@ -8,7 +8,6 @@ import { kvStorage } from '../storage/index.js'
 import {
   generatePhoneForumPosts,
   generatePhoneMapData,
-  generatePhoneNewsFeed,
   generatePhoneMomentsBatchReplies,
   generatePhoneMomentsReplies,
   generatePhoneShopItems,
@@ -38,7 +37,6 @@ const PHONE_POSITION_STORAGE_KEY = 'phone-position'
 const SMS_STORAGE_PREFIX = 'phone-sms-threads'
 const MOMENTS_STORAGE_PREFIX = 'phone-moments-feed'
 const FORUM_STORAGE_PREFIX = 'phone-forum-posts'
-const NEWS_STORAGE_PREFIX = 'phone-news-events'
 const MAP_STORAGE_PREFIX = 'phone-map-data'
 const ALERT_STORAGE_PREFIX = 'phone-alerts'
 const CLUE_STORAGE_PREFIX = 'phone-clues'
@@ -52,13 +50,11 @@ const MAX_SHOP_RESULTS = 16
 const MAX_SHOP_ORDERS = 80
 const DEFAULT_WALLET_BALANCE_CENTS = 500000
 const DEFAULT_PHONE_SETTINGS = Object.freeze({
-  newsRefreshCooldownSec: 45,
   forumRefreshCooldownSec: 45,
   smsHistoryLineCount: 24,
   smsDialogueLineCount: 12,
   smsMaxTokens: 1200,
 })
-const NEWS_CHANNELS = ['推荐', '热点', '传闻', '深度', '最新']
 
 const FALLBACK_CONTACTS = [
   { id: 'fallback_mom', name: '妈妈', subtitle: '138-0000-0001' },
@@ -72,7 +68,6 @@ const apps = [
   { id: 'messages', name: '短信', icon: '💬', color: '#2196F3' },
   { id: 'moments', name: '朋友圈', icon: '🫧', color: '#18b887' },
   { id: 'forum', name: '论坛', icon: '🧵', color: '#ff9f0a' },
-  { id: 'news', name: '今日X条', icon: '📰', color: '#4169e1' },
   { id: 'map', name: '地图', icon: '🗺️', color: '#3a8dff' },
   { id: 'shop', name: '点购网', icon: '🛍️', color: '#ff6f61' },
   { id: 'wallet', name: '余额', icon: '💳', color: '#1f89f7' },
@@ -154,12 +149,6 @@ const forumStorageKey = computed(() => {
   const worldId = String(props.worldBook?.id || 'default_world_book').trim() || 'default_world_book'
   const saveSlotId = String(props.saveSlotId || 'session_default').trim() || 'session_default'
   return `${FORUM_STORAGE_PREFIX}:${worldId}:${saveSlotId}`
-})
-
-const newsStorageKey = computed(() => {
-  const worldId = String(props.worldBook?.id || 'default_world_book').trim() || 'default_world_book'
-  const saveSlotId = String(props.saveSlotId || 'session_default').trim() || 'session_default'
-  return `${NEWS_STORAGE_PREFIX}:${worldId}:${saveSlotId}`
 })
 
 const mapStorageKey = computed(() => {
@@ -256,14 +245,6 @@ const isForumThreadView = ref(false)
 const selectedForumPostId = ref('')
 const lastForumRefreshAt = ref(0)
 
-const newsEvents = ref([])
-const newsError = ref('')
-const isRefreshingNews = ref(false)
-const isNewsDetailView = ref(false)
-const selectedNewsEventId = ref('')
-const selectedNewsVersionIndex = ref(0)
-const selectedNewsChannel = ref(NEWS_CHANNELS[0])
-const lastNewsRefreshAt = ref(0)
 const mapData = ref(null)
 const mapError = ref('')
 const isRefreshingMap = ref(false)
@@ -310,84 +291,12 @@ const selectedForumPost = computed(() => {
   return forumPosts.value.find((post) => post.id === selectedForumPostId.value) || null
 })
 
-const selectedNewsEvent = computed(() => {
-  if (!selectedNewsEventId.value) return null
-  return newsEvents.value.find((event) => event.id === selectedNewsEventId.value) || null
-})
-
-const selectedNewsVersion = computed(() => {
-  const event = selectedNewsEvent.value
-  if (!event || !Array.isArray(event.versions) || event.versions.length === 0) return null
-  const safeIndex = Math.max(0, Math.min(selectedNewsVersionIndex.value, event.versions.length - 1))
-  return event.versions[safeIndex] || null
-})
-
 const mapLocations = computed(() => (Array.isArray(mapData.value?.locations) ? mapData.value.locations : []))
 const selectedMapNode = computed(() => {
   if (mapLocations.value.length === 0) return null
   const selectedId = String(selectedMapNodeId.value || '').trim()
   if (!selectedId) return mapLocations.value[0]
   return mapLocations.value.find((item) => item.id === selectedId) || mapLocations.value[0]
-})
-
-const getNewsPrimaryVersion = (event) => {
-  if (!event || !Array.isArray(event.versions) || event.versions.length === 0) return null
-  return event.versions[0] || null
-}
-
-const getNewsEventTimestamp = (event) => {
-  const raw = getNewsPrimaryVersion(event)?.timestamp || event?.timestamp
-  const parsed = new Date(raw)
-  const time = parsed.getTime()
-  return Number.isNaN(time) ? 0 : time
-}
-
-const getNewsImportanceRank = (importance) => {
-  if (importance === 'high') return 3
-  if (importance === 'medium') return 2
-  return 1
-}
-
-const isNewsRumorEvent = (event) => {
-  return Array.isArray(event?.versions)
-    ? event.versions.some((version) => version?.credibility === 'rumor')
-    : false
-}
-
-const isNewsDeepEvent = (event) => {
-  if (!Array.isArray(event?.versions)) return false
-  return event.versions.length >= 3 || event.versions.some((version) => version?.credibility === 'analysis')
-}
-
-const newsEventsForList = computed(() => {
-  const baseList = [...newsEvents.value]
-  const channel = selectedNewsChannel.value
-  const sortByTimeline = (a, b) => getNewsEventTimestamp(b) - getNewsEventTimestamp(a)
-  const sortByHotness = (a, b) => {
-    const rankDiff = getNewsImportanceRank(b?.importance) - getNewsImportanceRank(a?.importance)
-    return rankDiff !== 0 ? rankDiff : sortByTimeline(a, b)
-  }
-
-  if (channel === '热点') {
-    const hotOnly = baseList.filter((event) => event?.importance === 'high')
-    return (hotOnly.length > 0 ? hotOnly : baseList).sort(sortByHotness)
-  }
-
-  if (channel === '传闻') {
-    const rumorOnly = baseList.filter((event) => isNewsRumorEvent(event))
-    return (rumorOnly.length > 0 ? rumorOnly : baseList).sort(sortByTimeline)
-  }
-
-  if (channel === '深度') {
-    const deepOnly = baseList.filter((event) => isNewsDeepEvent(event))
-    return (deepOnly.length > 0 ? deepOnly : baseList).sort(sortByTimeline)
-  }
-
-  if (channel === '最新') {
-    return baseList.sort(sortByTimeline)
-  }
-
-  return baseList.sort(sortByHotness)
 })
 
 const unreadAlertCount = computed(() =>
@@ -440,7 +349,6 @@ const clampSmsMaxTokens = (value, fallback = 1200) => {
 const normalizePhoneSettings = (raw) => {
   const source = raw && typeof raw === 'object' ? raw : {}
   return {
-    newsRefreshCooldownSec: clampCooldownSec(source.newsRefreshCooldownSec ?? DEFAULT_PHONE_SETTINGS.newsRefreshCooldownSec),
     forumRefreshCooldownSec: clampCooldownSec(source.forumRefreshCooldownSec ?? DEFAULT_PHONE_SETTINGS.forumRefreshCooldownSec),
     smsHistoryLineCount: clampSmsContextLineCount(
       source.smsHistoryLineCount ?? DEFAULT_PHONE_SETTINGS.smsHistoryLineCount,
@@ -796,7 +704,6 @@ const handleBuyShopItem = async (item) => {
   }
 }
 
-const newsRefreshCooldownMs = computed(() => clampCooldownSec(phoneSettings.value.newsRefreshCooldownSec) * 1000)
 const forumRefreshCooldownMs = computed(() => clampCooldownSec(phoneSettings.value.forumRefreshCooldownSec) * 1000)
 
 const momentsPendingInitCount = computed(() =>
@@ -986,7 +893,7 @@ const loadPhoneSettings = async () => {
 }
 
 const updatePhoneRefreshCooldown = async (field, value) => {
-  if (field !== 'newsRefreshCooldownSec' && field !== 'forumRefreshCooldownSec') return
+  if (field !== 'forumRefreshCooldownSec') return
   phoneSettings.value = {
     ...phoneSettings.value,
     [field]: clampCooldownSec(value),
@@ -1188,20 +1095,6 @@ const handleDeleteCurrentClue = async () => {
   showClueList()
 }
 
-const addClueFromNewsEvent = async (event) => {
-  if (!event?.id) return
-  const primary = getNewsPrimaryVersion(event)
-  await addClue({
-    sourceType: 'news',
-    sourceId: String(event.id),
-    dedupeKey: `news:${event.id}`,
-    title: String(primary?.headline || event.topic || '').trim(),
-    summary: String(primary?.summary || event.topic || '').trim(),
-    tags: [String(event.topic || '').trim(), String(primary?.outlet || '').trim()].filter(Boolean),
-    timestamp: event.timestamp || primary?.timestamp || new Date().toISOString(),
-  })
-}
-
 const addClueFromForumPost = async (post) => {
   if (!post?.id) return
   await addClue({
@@ -1239,19 +1132,6 @@ const jumpByAlert = async (alertItem) => {
     }
     if (sourceId && forumPosts.value.some((item) => item.id === sourceId)) {
       openForumPost(sourceId)
-    }
-    return
-  }
-
-  if (sourceApp === 'news') {
-    currentApp.value = 'news'
-    newsError.value = ''
-    isNewsDetailView.value = false
-    if (newsEvents.value.length === 0) {
-      await handleRefreshNews()
-    }
-    if (sourceId && newsEvents.value.some((item) => item.id === sourceId)) {
-      openNewsEvent(sourceId)
     }
     return
   }
@@ -1766,90 +1646,6 @@ const normalizeForumPosts = (rawPosts) => {
     .filter(Boolean)
 }
 
-const NEWS_MEDIA_POOL = [
-  { name: '晨星快报', style: '都市快讯，信息密度高，标题直接' },
-  { name: '群岛观察', style: '深度调查，重证据与线索串联' },
-  { name: '边境财经', style: '财经视角，关注资源与价格波动' },
-  { name: '晚潮评论', style: '评论社论，强调观点冲突' },
-  { name: '街角小报', style: '市井八卦，语气活泼但夹杂传闻' },
-  { name: '公共频道', style: '公信力口吻，偏官方播报' },
-  { name: '自由撰稿人联盟', style: '独立媒体，兼顾见闻与质疑' },
-]
-
-const normalizeNewsCredibility = (value) => {
-  const raw = String(value || '').trim().toLowerCase()
-  if (raw === 'confirmed' || raw === 'rumor' || raw === 'analysis') return raw
-  if (raw === 'verified') return 'confirmed'
-  return 'analysis'
-}
-
-const formatNewsCredibilityLabel = (value) => {
-  if (value === 'confirmed') return '已证实'
-  if (value === 'rumor') return '传闻'
-  return '分析'
-}
-
-const normalizeNewsImportance = (value) => {
-  const raw = String(value || '').trim().toLowerCase()
-  if (raw === 'high' || raw === 'medium' || raw === 'low') return raw
-  return 'medium'
-}
-
-const formatNewsImportanceLabel = (value) => {
-  if (value === 'high') return '高'
-  if (value === 'low') return '低'
-  return '中'
-}
-
-const normalizeNewsVersion = (rawItem, index = 0) => {
-  const headline = String(rawItem?.headline || rawItem?.title || '').trim()
-  const summary = String(rawItem?.summary || rawItem?.lead || rawItem?.content || '').trim()
-  if (!headline || !summary) return null
-
-  const fallbackMedia = NEWS_MEDIA_POOL[index % NEWS_MEDIA_POOL.length]
-  const outlet = String(rawItem?.outlet || rawItem?.media || fallbackMedia?.name || `媒体${index + 1}`).trim() || `媒体${index + 1}`
-  const style = String(rawItem?.style || rawItem?.tone || fallbackMedia?.style || '').trim()
-  const angle = String(rawItem?.angle || rawItem?.stance || '').trim()
-
-  return {
-    id: String(rawItem?.id || `news_ver_${Date.now()}_${index}`),
-    outlet,
-    style,
-    headline,
-    summary,
-    angle,
-    credibility: normalizeNewsCredibility(rawItem?.credibility || rawItem?.status),
-    timestamp: String(rawItem?.timestamp || new Date().toISOString()),
-  }
-}
-
-const normalizeNewsEvent = (rawItem, index = 0) => {
-  const topic = String(rawItem?.topic || rawItem?.event || rawItem?.eventTitle || '').trim()
-  if (!topic) return null
-
-  const versions = Array.isArray(rawItem?.versions)
-    ? rawItem.versions
-        .map((version, versionIndex) => normalizeNewsVersion(version, versionIndex))
-        .filter(Boolean)
-    : []
-  if (versions.length === 0) return null
-
-  return {
-    id: String(rawItem?.id || `news_event_${Date.now()}_${index}`),
-    topic,
-    importance: normalizeNewsImportance(rawItem?.importance),
-    timestamp: String(rawItem?.timestamp || versions[0]?.timestamp || new Date().toISOString()),
-    versions,
-  }
-}
-
-const normalizeNewsEvents = (rawEvents) => {
-  if (!Array.isArray(rawEvents)) return []
-  return rawEvents
-    .map((item, index) => normalizeNewsEvent(item, index))
-    .filter(Boolean)
-}
-
 const resolveMapSceneNameFromLine = () => {
   const currentSceneName = String(props.currentLine?.sceneName || '').trim()
   if (currentSceneName) return currentSceneName
@@ -2230,40 +2026,6 @@ const loadForumPosts = async () => {
   }
 }
 
-const persistNewsEvents = async () => {
-  try {
-    await kvStorage.set(newsStorageKey.value, newsEvents.value)
-  } catch {
-    // no-op
-  }
-}
-
-const ensureNewsSelection = () => {
-  if (newsEvents.value.length === 0) {
-    selectedNewsEventId.value = ''
-    selectedNewsVersionIndex.value = 0
-    isNewsDetailView.value = false
-    return
-  }
-
-  const exists = newsEvents.value.some((item) => item.id === selectedNewsEventId.value)
-  if (!exists) {
-    selectedNewsEventId.value = newsEvents.value[0].id
-    selectedNewsVersionIndex.value = 0
-  }
-}
-
-const loadNewsEvents = async () => {
-  try {
-    const raw = await kvStorage.get(newsStorageKey.value)
-    newsEvents.value = normalizeNewsEvents(raw)
-  } catch {
-    newsEvents.value = []
-  } finally {
-    ensureNewsSelection()
-  }
-}
-
 const collectForumTopicSeeds = () => {
   const topicSet = new Set()
   const pushTopic = (value) => {
@@ -2340,83 +2102,6 @@ const buildForumRefreshContext = () => {
   return { topicSeeds, observerCandidates }
 }
 
-const collectNewsTopicSeeds = () => {
-  const topicSet = new Set()
-  const pushTopic = (value) => {
-    const topic = toSnippet(value, 24)
-    if (topic) topicSet.add(topic)
-  }
-
-  pushTopic(props.currentLine?.text)
-  pushTopic(props.currentLine?.sceneName)
-  if (props.currentLine?.speaker && props.currentLine?.speaker !== '旁白') {
-    pushTopic(`${props.currentLine.speaker}相关新进展`)
-  }
-
-  const recentDialogue = Array.isArray(props.dialogueHistory) ? props.dialogueHistory.slice(-12) : []
-  recentDialogue.forEach((line) => {
-    pushTopic(line?.text)
-    if (line?.speaker && line.speaker !== '旁白') {
-      pushTopic(`${line.speaker}动向`)
-    }
-  })
-
-  const scenes = Array.isArray(props.worldBook?.scenes) ? props.worldBook.scenes : []
-  scenes.slice(0, 10).forEach((scene) => {
-    pushTopic(scene?.name)
-    pushTopic(scene?.description)
-  })
-
-  const chars = Array.isArray(props.worldBook?.characters) ? props.worldBook.characters : []
-  chars.slice(0, 10).forEach((char) => {
-    pushTopic(`${char?.name || ''}相关消息`)
-    pushTopic(char?.identity)
-  })
-
-  pushTopic(props.worldBook?.summary)
-  pushTopic(props.worldBook?.entries?.overview)
-  pushTopic(props.worldBook?.entries?.timeline)
-  pushTopic(props.worldBook?.entries?.conflict)
-
-  const fallbackTopics = [
-    '城内突发事件',
-    '关键角色行踪',
-    '资源供给异常',
-    '地方势力博弈',
-    '边境异常目击',
-    '公共安全通报',
-    '市场与舆论波动',
-    '神秘事件追踪',
-  ]
-  fallbackTopics.forEach((item) => pushTopic(item))
-
-  return [...topicSet].slice(0, 24)
-}
-
-const buildNewsMediaProfiles = () => {
-  const profiles = [...NEWS_MEDIA_POOL]
-  const worldTitle = toSnippet(props.worldBook?.title, 8) || '本地'
-  profiles.push({ name: `${worldTitle}晨报`, style: '区域纸媒，重本地民生' })
-  profiles.push({ name: `${worldTitle}速览`, style: '移动端短讯，标题更抓眼球' })
-  return profiles.slice(0, 10)
-}
-
-const buildNewsRefreshContext = () => ({
-  topicSeeds: collectNewsTopicSeeds(),
-  mediaProfiles: buildNewsMediaProfiles(),
-})
-
-const selectNewsChannel = (channel) => {
-  if (!NEWS_CHANNELS.includes(channel)) return
-  selectedNewsChannel.value = channel
-}
-
-const getNewsTopicBadge = (event) => {
-  const topic = String(event?.topic || '').trim().replace(/\s+/g, '')
-  if (!topic) return '新闻'
-  return topic.slice(0, 4)
-}
-
 const formatForumMetric = (value) => {
   const number = Math.max(0, Number(value) || 0)
   if (number >= 10000) {
@@ -2435,26 +2120,6 @@ const openForumPost = (postId) => {
 
 const showForumList = () => {
   isForumThreadView.value = false
-}
-
-const openNewsEvent = (eventId) => {
-  const id = String(eventId || '').trim()
-  if (!id) return
-  selectedNewsEventId.value = id
-  selectedNewsVersionIndex.value = 0
-  isNewsDetailView.value = true
-}
-
-const showNewsList = () => {
-  isNewsDetailView.value = false
-  selectedNewsVersionIndex.value = 0
-}
-
-const selectNewsVersion = (index) => {
-  if (!selectedNewsEvent.value) return
-  const total = selectedNewsEvent.value.versions.length
-  if (total <= 0) return
-  selectedNewsVersionIndex.value = Math.max(0, Math.min(index, total - 1))
 }
 
 const handleRefreshForum = async () => {
@@ -2504,68 +2169,6 @@ const handleRefreshForum = async () => {
     forumError.value = '论坛刷新失败，请重试'
   } finally {
     isRefreshingForum.value = false
-  }
-}
-
-const handleRefreshNews = async () => {
-  if (isRefreshingNews.value) return
-  newsError.value = ''
-  const now = Date.now()
-  const cooldownMs = newsRefreshCooldownMs.value
-  if (
-    cooldownMs > 0 &&
-    newsEvents.value.length > 0 &&
-    now - lastNewsRefreshAt.value < cooldownMs
-  ) {
-    const remain = Math.ceil((cooldownMs - (now - lastNewsRefreshAt.value)) / 1000)
-    newsError.value = `刷新过于频繁，请 ${remain}s 后再试`
-    return
-  }
-  isRefreshingNews.value = true
-
-  try {
-    const context = buildNewsRefreshContext()
-    const result = await generatePhoneNewsFeed({
-      worldBook: props.worldBook,
-      dialogueHistory: props.dialogueHistory,
-      currentLine: props.currentLine,
-      recentNewsEvents: newsEvents.value.slice(0, 4),
-      topicSeeds: context.topicSeeds,
-      mediaProfiles: context.mediaProfiles,
-      eventCount: 6,
-      versionsPerEvent: 3,
-    })
-
-    if (!result.success || !Array.isArray(result.events) || result.events.length === 0) {
-      newsError.value = result.error || '新闻刷新失败，请检查 API 设置'
-      return
-    }
-
-    const normalized = normalizeNewsEvents(result.events)
-    if (normalized.length === 0) {
-      newsError.value = '新闻内容为空，请重试'
-      return
-    }
-
-    newsEvents.value = normalized
-    ensureNewsSelection()
-    isNewsDetailView.value = false
-    lastNewsRefreshAt.value = Date.now()
-    await persistNewsEvents()
-
-    await pushAlert({
-      type: 'news',
-      title: '今日X条已更新',
-      content: `已生成 ${newsEvents.value.length} 条新闻`,
-      sourceApp: 'news',
-      sourceId: newsEvents.value[0]?.id || '',
-      dedupeKey: `news_refresh:${newsEvents.value[0]?.id || 'none'}:${newsEvents.value.length}`,
-      silentToast: false,
-    })
-  } catch {
-    newsError.value = '新闻刷新失败，请重试'
-  } finally {
-    isRefreshingNews.value = false
   }
 }
 
@@ -2880,15 +2483,6 @@ const openApp = async (appId) => {
     } else {
       ensureForumSelection()
     }
-  } else if (appId === 'news') {
-    newsError.value = ''
-    isNewsDetailView.value = false
-    selectedNewsChannel.value = NEWS_CHANNELS[0]
-    if (newsEvents.value.length === 0) {
-      await handleRefreshNews()
-    } else {
-      ensureNewsSelection()
-    }
   } else if (appId === 'map') {
     mapError.value = ''
     ensureMapSelection()
@@ -2915,10 +2509,6 @@ const goHome = () => {
   momentReplyDraftMap.value = {}
   isForumThreadView.value = false
   forumError.value = ''
-  isNewsDetailView.value = false
-  newsError.value = ''
-  selectedNewsChannel.value = NEWS_CHANNELS[0]
-  selectedNewsVersionIndex.value = 0
   mapError.value = ''
   isAlertsViewOnlyUnread.value = false
   shopError.value = ''
@@ -3078,10 +2668,6 @@ watch(momentsStorageKey, () => {
 
 watch(forumStorageKey, () => {
   void loadForumPosts()
-}, { immediate: true })
-
-watch(newsStorageKey, () => {
-  void loadNewsEvents()
 }, { immediate: true })
 
 watch(mapStorageKey, () => {

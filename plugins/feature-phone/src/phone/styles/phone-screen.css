@@ -403,6 +403,12 @@
   min-width: 0;
 }
 
+.contact-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .contact-name {
   font-size: 0.95rem;
   font-weight: 500;
@@ -410,6 +416,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .contact-last-msg {
@@ -419,6 +434,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 2px;
+}
+
+.contact-signature {
+  font-size: 0.72rem;
+  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.3));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
+  font-style: italic;
 }
 
 .contact-time {

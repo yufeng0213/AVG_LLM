@@ -22,6 +22,7 @@ import musicPlayerEntry from '../../plugins/feature-music-player/src/entry.js'
 import hourglassEntry from '../../plugins/feature-hourglass/src/entry.js'
 import mobiusParticleEntry from '../../plugins/feature-mobius-particle/src/entry.js'
 import mascotEntry from '../../plugins/feature-mascot/src/entry.js'
+import characterScheduleEntry from '../../plugins/feature-character-schedule/src/entry.js'
 
 const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   backStorageEntry,
@@ -48,6 +49,7 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   hourglassEntry,
   mobiusParticleEntry,
   mascotEntry,
+  characterScheduleEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {

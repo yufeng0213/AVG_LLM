@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.content.pm.ActivityInfo;
 import android.content.SharedPreferences;
+import android.content.Intent;
 import android.util.Log;
 import com.getcapacitor.BridgeActivity;
 import androidx.core.graphics.Insets;
@@ -24,6 +25,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(IcsCalendarPlugin.class);
         registerPlugin(MicrophonePermissionPlugin.class);
         registerPlugin(MascotPlugin.class);
+        registerPlugin(WidgetBackgroundPickerPlugin.class);
+        registerPlugin(ImageReaderPlugin.class);
         // 在 Capacitor Bridge 初始化之前清理 SharedPreferences 中的大尺寸 base64 数据
         // 防止 OOM：Bridge 在 JS→Native 传递时会序列化整个 SharedPreferences
         cleanOomCausingData();
@@ -34,6 +37,9 @@ public class MainActivity extends BridgeActivity {
         enablePortraitMode();
         scheduleInsetsDebug("onCreate");
         injectSafeAreaCssVariables();
+
+        // 处理 Widget 点击 Intent
+        handleWidgetIntent(getIntent());
     }
 
     /**
@@ -137,7 +143,6 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
@@ -154,6 +159,61 @@ public class MainActivity extends BridgeActivity {
         applyStandardSystemUi();
         scheduleInsetsDebug("onResume");
         injectSafeAreaCssVariables();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleWidgetIntent(intent);
+    }
+
+    /**
+     * 处理 Widget 点击 Intent
+     * 将角色信息通过 JS 事件传递给 Vue 应用
+     */
+    private void handleWidgetIntent(Intent intent) {
+        if (intent == null) return;
+
+        String action = intent.getAction();
+        Log.d(TAG, "handleWidgetIntent: action=" + action);
+
+        if ("com.avgllm.app.OPEN_DORMITORY".equals(action)) {
+            String characterId = intent.getStringExtra("characterId");
+            String worldBookId = intent.getStringExtra("worldBookId");
+
+            Log.d(TAG, "Widget intent received: characterId=" + characterId + ", worldBookId=" + worldBookId);
+
+            if (characterId != null && worldBookId != null) {
+                // 发送 JS 事件通知 Vue 应用
+                sendWidgetEvent(characterId, worldBookId);
+            }
+        }
+    }
+
+    /**
+     * 通过 Capacitor Bridge 发送 Widget 事件到 JavaScript
+     */
+    private void sendWidgetEvent(String characterId, String worldBookId) {
+        try {
+            com.getcapacitor.Bridge bridge = getBridge();
+            if (bridge == null) {
+                Log.e(TAG, "Bridge is null, cannot send widget event");
+                return;
+            }
+
+            // 构造 JS 对象参数
+            String jsCode = String.format(
+                "if (window.__avgWidgetHandler) { window.__avgWidgetHandler({ characterId: '%s', worldBookId: '%s' }); }",
+                characterId.replace("'", "\\'"),
+                worldBookId.replace("'", "\\'")
+            );
+
+            bridge.getWebView().evaluateJavascript(jsCode, null);
+            Log.d(TAG, "Widget event sent to JS: charId=" + characterId);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to send widget event: " + e.getMessage(), e);
+        }
     }
 
     /**

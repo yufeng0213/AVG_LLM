@@ -26,6 +26,30 @@ import {
   loadOverlayUrl,
   setOverlayMascotData,
 } from '../plugins/feature-mascot/src/composables/useMascotOverlayAndroid.js'
+import { useCharacterSchedule } from '../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
+import {
+  initAutoRefreshScheduler,
+  startAutoRefreshScheduler,
+  stopAutoRefreshScheduler,
+} from '../plugins/feature-character-schedule/src/services/autoRefreshScheduler.js'
+
+// Widget 事件处理：从 Android Widget 点击进入特定角色的寝室界面
+const handleWidgetOpenDormitory = (data) => {
+  console.log('[App] Widget event received:', data)
+  if (data?.characterId && data?.worldBookId) {
+    // 设置活跃世界书
+    activeWorldBookId.value = data.worldBookId
+    // 切换到寝室界面
+    currentScreen.value = 'dormitory'
+    // 通知寝室界面打开特定角色（通过全局事件）
+    window.__avgDormitoryTargetCharacter = data.characterId
+  }
+}
+
+// 注册全局 Widget 事件处理器
+if (typeof window !== 'undefined') {
+  window.__avgWidgetHandler = handleWidgetOpenDormitory
+}
 
 // PC 端设计基准分辨率（16:9 横屏比例）
 const DESIGN_WIDTH = 1920
@@ -411,6 +435,11 @@ onMounted(() => {
 
     scheduleAndroidLayoutDebug('mounted-android')
   }
+
+  // 初始化并启动角色日程自动刷新调度器
+  const scheduleAPI = useCharacterSchedule()
+  initAutoRefreshScheduler(scheduleAPI)
+  startAutoRefreshScheduler()
 })
 
 onBeforeUnmount(() => {
@@ -427,6 +456,9 @@ onBeforeUnmount(() => {
     window.removeEventListener('orientationchange', handleAndroidResize)
     delete window.__avgLayoutDebug
   }
+
+  // 停止角色日程自动刷新调度器
+  stopAutoRefreshScheduler()
 })
 
 watch(currentScreen, (screen) => {
@@ -467,34 +499,26 @@ const hideMascotOverlay = () => {
 let androidOverlayReady = false
 
 const getMascotScreenRect = () => {
-  // mascot uses Teleport to body with position: fixed + translate3d(x,y,0)
-  // Query the actual DOM element to get its real rendered size and position
-  const mascotEls = document.querySelectorAll('body > .mascot')
-  let mascotEl = null
-  for (let i = 0; i < mascotEls.length; i++) {
-    const el = mascotEls[i]
-    if (el.offsetWidth > 0 || el.offsetHeight > 0) {
-      mascotEl = el
-      break
-    }
-  }
-  if (mascotEl) {
-    const rect = mascotEl.getBoundingClientRect()
-    const dpr = window.devicePixelRatio || 1
-    const screenX = Math.round(rect.left * dpr)
-    const screenY = Math.round(rect.top * dpr)
-    const screenW = Math.round(rect.width * dpr)
-    const screenH = Math.round(rect.height * dpr)
-    console.log('[App] Mascot rect: css=', rect.left, rect.top, rect.width, rect.height,
-      'dpr=', dpr, '=> screenX=', screenX, 'screenY=', screenY, 'size=', screenW, screenH)
-    return { x: screenX, y: screenY, width: screenW, height: screenH }
-  }
+  // mascot 使用固定尺寸 80x80 CSS 像素
+  // 在 Android 上不渲染 Mascot.vue，所以无法从 DOM 获取
+  const dpr = window.devicePixelRatio || 1
+  const cssWidth = 80
+  const cssHeight = 80
 
-  // Fallback
+  // 位置从 storage 获取（CSS 像素）
   const cssX = mascotStorageState.value.x
   const cssY = mascotStorageState.value.y
-  const dpr = window.devicePixelRatio || 1
-  return { x: Math.round(cssX * dpr), y: Math.round(cssY * dpr), width: 80, height: 80 }
+
+  // 转换为物理像素
+  const screenX = Math.round(cssX * dpr)
+  const screenY = Math.round(cssY * dpr)
+  const screenW = Math.round(cssWidth * dpr)
+  const screenH = Math.round(cssHeight * dpr)
+
+  console.log('[App] Mascot rect: cssPos=(' + cssX + ',' + cssY + ') cssSize=' + cssWidth + 'x' + cssHeight
+    + ' dpr=' + dpr + ' => physical=(' + screenX + ',' + screenY + ') size=' + screenW + 'x' + screenH)
+
+  return { x: screenX, y: screenY, width: screenW, height: screenH }
 }
 
 const ensureAndroidMascotOverlay = async () => {
@@ -688,8 +712,8 @@ watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorage
       @close="isMusicPlayerOpen = false"
     />
 
-    <!-- 桌宠：Electron 下用独立覆盖层窗口，非 Electron 下用内嵌组件 -->
-    <Mascot v-if="isMascotEnabled && !isElectronPlatform" />
+    <!-- 桌宠：Electron 下用独立覆盖层窗口，Android 下用系统级悬浮窗，其他平台用内嵌组件 -->
+    <Mascot v-if="isMascotEnabled && !isElectronPlatform && !isAndroidPlatform" />
   </div>
 </template>
 

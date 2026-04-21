@@ -24,6 +24,7 @@ import musicPlayerManifest from '../../plugins/feature-music-player/plugin.json'
 import hourglassManifest from '../../plugins/feature-hourglass/plugin.json'
 import mobiusParticleManifest from '../../plugins/feature-mobius-particle/plugin.json'
 import mascotManifest from '../../plugins/feature-mascot/plugin.json'
+import characterScheduleManifest from '../../plugins/feature-character-schedule/plugin.json'
 
 const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   loadSaveManifest,
@@ -51,6 +52,7 @@ const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   hourglassManifest,
   mobiusParticleManifest,
   mascotManifest,
+  characterScheduleManifest,
 ]
 
 export const getLocalFeaturePluginManifests = () => {

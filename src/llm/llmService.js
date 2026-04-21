@@ -16,6 +16,8 @@ export {
 
 export {
   generatePhoneSmsReply,
+  generatePhoneContactSignature,
+  generatePhoneMomentsReply,
   generateGroupChatReply,
   generateDormChatReply,
   generatePhoneCallReply,
@@ -33,6 +35,10 @@ export {
   generateRedditPosts,
   generateRedditCommentReplies,
 } from './llmService.phone'
+
+export {
+  generateCharacterSchedule,
+} from './llmService.schedule'
 
 export {
   generateBackpackUseResult,

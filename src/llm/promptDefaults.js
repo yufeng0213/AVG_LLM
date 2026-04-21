@@ -244,7 +244,9 @@ export const PROMPT_DEFAULTS = [
 8) 如果你觉得角色应该送礼物给用户，请额外加一行：
    |gift=巧克力:送给你~|
    物品名中文，赠送语 20 字以内。
-   如果你的 replies 里提到了"送你XX"、"给你XX"等送礼行为，就必须加这行。`,
+   如果你的 replies 里提到了"送你XX"、"给你XX"等送礼行为，就必须加这行。
+如果系统提供了玩家的冰箱信息，你可以自然地提及（如"昨天买的XX好吃吗"），也可以装作不知道等玩家自己提到。不要每次都强行提及，要根据聊天语境自然融入。
+如果系统提供了玩家的待办信息，你可以自然地关心进度（如"你上次说要去做XX，做了吗"），但不要像监工一样每次都追问。待办已逾期或今天到期的，可以适当表现出关心。`,
   },
   {
     id: 'phone:call',
@@ -1014,6 +1016,38 @@ export const PROMPT_DEFAULTS = [
 5. 用中文回复`,
   },
 
+  // ===== schedule =====
+  {
+    id: 'schedule:daily_generation',
+    category: 'schedule',
+    name: '角色日程生成',
+    description: '根据世界书背景、角色身份、性格生成24小时每日日程计划',
+    protocol: 'delimiter',
+    defaultValue: `你是"角色日程生成器"。
+你的任务是根据世界书背景、角色身份和性格，生成角色的24小时每日日程计划。
+
+输出格式（严格遵守）：
+每个活动区块用 || 分隔（独占一行）
+区块格式：
+|hour=N|              （起始小时，0-23的整数）
+|duration=D|           （持续小时数，1-24的整数）
+|activity=活动类型|    （sleep/meal/work/study/class/social/leisure/hobby/training/mission/hygiene/appointment/dorm_visit）
+|label=活动名称|
+|desc=活动简述|
+|location=地点ID|地点名称|
+
+硬性要求：
+1) 不要 JSON，不要 markdown，不要解释，只输出分隔符格式。
+2) 必须覆盖全天24小时（hour 0 到 23），不能有遗漏。
+3) 每个区块从 hour=N 开始，持续 duration=D 小时，自动填充后续小时。
+4) 活动类型必须与角色身份匹配（学生应有class/study，工作者应有work）。
+5) 地点必须符合世界观设定，locationId使用英文标识（如school_main, home_bedroom, cafe_center）。
+6) 描述要体现角色性格特点（早起型/夜猫子、认真/随性、独处型/社交型等）。
+7) 睡眠通常占多个小时（如 hour=0, duration=6 表示 0-5点睡觉）。
+8) 所有区块不能重叠，总和必须覆盖 0-23。
+9) 考虑角色当前的好感度关系阶段，亲密以上关系可更开放互动。`,
+  },
+
   // ===== phone_offline =====
   {
     id: 'phone_offline:spontaneous',
@@ -1033,6 +1067,60 @@ export const PROMPT_DEFAULTS = [
 3. 不要写"作为AI""我无法"等元话术
 4. 保持角色性格一致性`,
   },
+  {
+    id: 'phone_offline:spontaneous_call',
+    category: 'phone_offline',
+    name: '来电开场白',
+    description: '角色主动打电话给玩家的开场白',
+    protocol: 'delimiter',
+    defaultValue: `你是"电话来电开场白生成器"。角色主动给用户打电话。
+
+输出格式：
+- 直接写对话内容，不要用引号包裹
+- 声音描写放在()括号里，如：（轻笑）（叹气）（清了清嗓子）（停顿了几秒）
+- 不要描写视觉动作（点头、眨眼、歪头等）
+- 1-2条回复，用 |R| 分隔
+
+硬性要求：
+1) 不要输出 JSON/markdown/解释
+2) 每条中文，8-40字
+3) 语气自然，像突然想到什么打电话来
+4) 与角色身份和世界观一致
+5) 不要写"作为AI""我无法"等元话术`,
+  },
+  {
+    id: 'phone:moments_reply',
+    category: 'phone',
+    name: '朋友圈回应',
+    description: '角色对玩家点赞/评论的回应生成 prompt',
+    protocol: 'plain',
+    defaultValue: `你是"朋友圈回应生成器"。
+你扮演指定角色，根据玩家在你朋友圈的互动（点赞/评论），写一条自然的回应。
+
+要求：
+1) 直接输出回应内容，不要JSON/markdown/解释
+2) 中文，5-20字
+3) 语气自然，像社交媒体回复一样
+4) 可以表达感谢、开心、撒娇、或者调侃
+5) 保持角色性格一致性`,
+  },
+  {
+    id: 'phone:contact_signature',
+    category: 'phone',
+    name: '联系人个性签名',
+    description: '角色在手机联系人列表中显示的个性签名，类似QQ/微信签名',
+    protocol: 'plain',
+    defaultValue: `你是"联系人签名生成器"。
+你要为角色生成一条"个性签名"，类似QQ/微信资料中的签名。
+
+要求：
+1) 直接输出一句话，不要用引号包裹
+2) 中文，8-20字
+3) 体现角色的性格、心情偏好、口头禅或生活态度
+4) 可以是一句感叹、一句诗、一句俏皮话、或者一个状态
+5) 与角色身份和世界观一致
+6) 不要出现"我是AI""作为虚拟角色"等元话术`,
+  },
 ]
 
 /** 分类定义 */
@@ -1045,5 +1133,6 @@ export const PROMPT_CATEGORIES = [
   { id: 'trpg', name: 'TRPG', description: 'TRPG 角色扮演游戏' },
   { id: 'task', name: '任务', description: '任务执行与战斗' },
   { id: 'mail', name: '邮件', description: '信件回复' },
+  { id: 'schedule', name: '日程', description: '角色日程生成与管理' },
   { id: 'phone_offline', name: '离线推送', description: '角色离线主动推送' },
 ]

@@ -58,7 +58,19 @@
       "Bash(xargs cat:*)",
       "Bash(npm list:*)",
       "Bash(curl -s http://localhost:5173/src/mascot-overlay/index.html)",
-      "Bash(curl -s http://localhost:5173/src/mascot-overlay/main.js)"
+      "Bash(curl -s http://localhost:5173/src/mascot-overlay/main.js)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(where java:*)",
+      "Bash(dir \"C:\\\\Program Files\\\\Java\")",
+      "Bash(dir \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\")",
+      "Bash(sed -i 's/Log\\\\.d\\(TAG, \"/Log.d\\(TAG, \"[MascotService] /g' MascotService.java)",
+      "Bash(sed -i 's/Log\\\\.e\\(TAG, \"/Log.e\\(TAG, \"[MascotService] /g' MascotService.java)",
+      "Bash(sed -i 's/Log\\\\.w\\(TAG, \"/Log.w\\(TAG, \"[MascotService] /g' MascotService.java)",
+      "Bash(cmd //c gradlew.bat assembleDebug)",
+      "Bash(gradlew.bat assembleDebug)",
+      "Bash(ls -la electron/)",
+      "Bash(ls -la src/electron/)",
+      "Bash(cmd /c \"gradlew.bat assembleDebug\")"
     ]
   }
 }

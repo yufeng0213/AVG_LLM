@@ -3,7 +3,7 @@
  * PhoneCallsApp.vue - 电话应用
  * 联系人列表 + 通话模拟 + 通话记录。
  */
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, inject, nextTick, onMounted, ref, watch } from 'vue'
 import {
   getGroupedContacts,
   getWorldBookById,
@@ -14,6 +14,7 @@ import {
 } from './composables/usePhoneData.js'
 import { generatePhoneCallReply } from '../../../../src/llm/index.js'
 import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
+import { kvStorage } from '../../../../src/storage/index.js'
 
 const emit = defineEmits(['back'])
 
@@ -29,6 +30,11 @@ let timerInterval = null
 
 const globalUser = useGlobalUser()
 
+// 来电联系人（由 PhoneScreen 传递）
+const pendingCallContact = inject('pendingCallContact', ref(null))
+
+const CALL_OPENING_KEY_PREFIX = 'avg_llm_call_opening_'
+
 onMounted(async () => {
   const [groups, logs] = await Promise.all([
     getGroupedContacts(),
@@ -37,6 +43,38 @@ onMounted(async () => {
   contacts.value = groups
   callLogs.value = logs
 })
+
+// 监听来电
+watch(pendingCallContact, async (contact) => {
+  if (contact && contact.id && !selectedContact.value) {
+    const allChars = contacts.value.flatMap(g => g.characters || [])
+    const found = allChars.find(c => c.id === contact.id)
+    if (found) {
+      await openIncomingCall(found)
+    }
+    pendingCallContact.value = null
+  }
+}, { immediate: true })
+
+// 打开来电通话（带开场白）
+async function openIncomingCall(contact) {
+  // 读取开场白
+  const openingData = await kvStorage.get(`${CALL_OPENING_KEY_PREFIX}${contact.id}`)
+  const replies = openingData?.replies || []
+
+  selectContact(contact)
+
+  // 预填开场白到 transcript
+  if (replies.length > 0) {
+    for (const reply of replies) {
+      callTranscript.value.push({ role: 'assistant', text: reply })
+    }
+    // 清掉已消费的开场白
+    await kvStorage.remove(`${CALL_OPENING_KEY_PREFIX}${contact.id}`)
+  }
+
+  nextTick(() => scrollToBottom())
+}
 
 function selectContact(contact) {
   selectedContact.value = contact

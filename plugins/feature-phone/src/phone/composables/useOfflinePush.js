@@ -56,17 +56,18 @@ export function useOfflinePush({ onNewMessage, onNotificationClick }) {
   }
 
   // 显示系统通知（Android 系统栏）
-  async function showNotification(title, body, contactId) {
+  async function showNotification(title, body, contactId, appId = 'sms') {
     if (!('Notification' in window)) return
     if (Notification.permission !== 'granted') return
 
     // 尝试通过 Service Worker 发送（后台也能工作）
     if (navigator.serviceWorker?.controller) {
       navigator.serviceWorker.controller.postMessage({
-        type: 'show-notification',
+        type: appId === 'calls' ? 'navigate-to-calls' : 'show-notification',
         title,
         body,
         contactId,
+        appId,
         targetUrl: window.location.href,
       })
       return
@@ -144,6 +145,7 @@ export function useOfflinePush({ onNewMessage, onNotificationClick }) {
         `来自 ${contact.name} 的短信`,
         text.trim().slice(0, 50),
         contact.id,
+        'sms',
       )
     } catch (e) {
       console.warn('[OfflinePush] 推送失败:', e)
@@ -205,6 +207,11 @@ export function useOfflinePush({ onNewMessage, onNotificationClick }) {
     if (event.data?.type === 'navigate-to-sms') {
       if (onNotificationClick) {
         onNotificationClick(event.data.contactId)
+      }
+    }
+    if (event.data?.type === 'navigate-to-calls') {
+      if (onNotificationClick) {
+        onNotificationClick({ appId: 'calls', contactId: event.data.contactId })
       }
     }
   }

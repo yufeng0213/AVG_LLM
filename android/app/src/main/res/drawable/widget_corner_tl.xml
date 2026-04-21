@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 取景框角标记 - 左上角 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 水平线 -->
+    <item android:left="0dp" android:top="0dp" android:right="12dp" android:bottom="0dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#66FFFFFF" />
+            <size android:width="20dp" android:height="2dp" />
+        </shape>
+    </item>
+    <!-- 垂直线 -->
+    <item android:left="0dp" android:top="0dp" android:right="0dp" android:bottom="12dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#66FFFFFF" />
+            <size android:width="2dp" android:height="20dp" />
+        </shape>
+    </item>
+</layer-list>

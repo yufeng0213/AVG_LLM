@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 默认取景框：绿色边框效果 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 暗角效果 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="150dp"
+                android:centerColor="#00000000"
+                android:endColor="#40000000" />
+        </shape>
+    </item>
+    <!-- 边框 -->
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="2dp" android:color="#00FF88" />
+            <solid android:color="#00000000" />
+        </shape>
+    </item>
+</layer-list>

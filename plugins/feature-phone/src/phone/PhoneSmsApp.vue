@@ -4,7 +4,7 @@
  * 私聊（联系人列表）+ 群聊（世界书默认群 + 自定义群）+ 对话线程 + LLM 回复。
  * 支持自定义气泡 CSS 样式导入。
  */
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import {
   getGroupedContacts,
   getWorldBookById,
@@ -35,6 +35,11 @@ import { openCalendarImport } from './services/calendarBridge.js'
 import { loadWorldBooks, persistWorldBooks } from '../../../../src/worldbook/worldBookStore.js'
 import AvatarCropModal from '../../../feature-dormitory/src/components/AvatarCropModal.vue'
 import { useAvatar as useDormAvatar } from '../../../feature-dormitory/src/composables/useAvatar.js'
+import { useContactStatus } from './composables/useContactStatus.js'
+import { useCharacterSchedule } from '../../../feature-character-schedule/src/composables/useCharacterSchedule.js'
+import { usePhoneEconomy } from './composables/usePhoneEconomy.js'
+import PhoneRedPacketModal from './PhoneRedPacketModal.vue'
+import PhoneGiftShop from './PhoneGiftShop.vue'
 
 const emit = defineEmits(['back'])
 
@@ -195,7 +200,111 @@ const DEFAULT_BUBBLE_CSS = `/* ===== 短信气泡自定义样式 ===== */
 
 const SMS_BUBBLE_CSS_KEY = 'phone_sms_bubble_css'
 
+// ===== 联系人在线状态 & 签名 =====
+const contactStatus = useContactStatus()
+const schedule = useCharacterSchedule()
+const economy = usePhoneEconomy()
+
+// 红包弹窗
+const activeRedPacket = ref(null)
+const showRedPacketModal = ref(false)
+
+// 礼物商店
+const showGiftShop = ref(false)
+
+// 收到角色回礼提示
+const showGiftReturnToast = ref(null)
+
+// 获取角色日程状态
+function getCharScheduleStatus(char) {
+  const s = schedule.getCharacterStatus(char.worldBookId || '', char.id)
+  if (!s) return { activityType: 'leisure', canContact: true }
+  return { activityType: s.activityType || 'leisure', canContact: s.canContact ?? true }
+}
+
+// 获取角色在线状态
+function getOnlineStatusForChar(char) {
+  const { activityType, canContact } = getCharScheduleStatus(char)
+  return contactStatus.getOnlineStatus(activityType, canContact)
+}
+
+// 获取角色签名
+function getSignatureForChar(char) {
+  return contactStatus.getSignature(char.id)
+}
+
+// ===== 红包相关 =====
+async function handleRedPacketClick(rpMessage) {
+  if (rpMessage.redPacket?.isOpened) return
+  activeRedPacket.value = rpMessage
+  showRedPacketModal.value = true
+}
+
+async function handleRedPacketOpen() {
+  if (!activeRedPacket.value) return null
+  const rpId = activeRedPacket.value.redPacketId
+  const result = await economy.openRedPacket(rpId)
+  if (result.success) {
+    // 更新消息中的红包状态
+    activeRedPacket.value.redPacket.isOpened = true
+    await saveSmsThreads(smsThreads.value)
+  }
+  return result
+}
+
+function handleRedPacketClose() {
+  showRedPacketModal.value = false
+  activeRedPacket.value = null
+}
+
+// ===== 礼物相关 =====
+function openGiftShop() {
+  showGiftShop.value = true
+}
+
+async function handleGiftSent({ gift, contact }) {
+  // 向角色发送一条送礼提示消息
+  if (selectedContact.value && selectedContact.value.id === contact.id) {
+    addSmsMessage(smsThreads.value, contact.id, 'user', `[送出了 ${gift.icon} ${gift.name}]`)
+    await saveSmsThreads(smsThreads.value)
+  }
+  // 触发 LLM 生成感谢回复
+  try {
+    const book = await getWorldBookById(contact.worldBookId)
+    const contactForLlm = {
+      id: contact.id,
+      name: contact.name,
+      identity: contact.identity || contact.nickname || '',
+    }
+    const result = await generatePhoneSmsReply({
+      worldBook: book || { id: contact.worldBookId, title: contact.worldBookTitle, characters: [] },
+      contact: contactForLlm,
+      userMessage: `[送出了 ${gift.icon} ${gift.name} 给${contact.name}]`,
+      history: [],
+      options: { historyLimit: 0, maxTokens: 200 },
+    })
+    if (result.success && result.replies && result.replies.length > 0) {
+      for (const reply of result.replies) {
+        if (reply && reply.trim()) {
+          addSmsMessage(smsThreads.value, contact.id, 'assistant', reply.trim())
+        }
+      }
+      await saveSmsThreads(smsThreads.value)
+    }
+    // 记录礼物回复
+    if (result.replies?.[0]) {
+      await economy.recordGiftReply(gift.id, result.replies[0])
+    }
+  } catch (e) {
+    console.warn('[PhoneSmsApp] 礼物感谢生成失败:', e)
+  }
+  nextTick(() => scrollToBottom())
+}
+
 onMounted(async () => {
+  // 加载签名缓存
+  await contactStatus.loadSignatureCache()
+
   const [groupedContacts, threads, savedCss, smsSettings, groups, groupThreadsData] = await Promise.all([
     getGroupedContacts(),
     loadSmsThreads(),
@@ -217,6 +326,10 @@ onMounted(async () => {
   const allGroups = await ensureWorldBookGroups(groups)
   groupChats.value = allGroups
   groupThreads.value = groupThreadsData
+
+  // 异步生成所有联系人的签名（不阻塞UI）
+  const allChars = groupedContacts.flatMap(g => g.characters || [])
+  contactStatus.generateAllSignatures(allChars)
 })
 
 // 注入自定义气泡 CSS
@@ -565,6 +678,56 @@ async function handleSendSms() {
           contactName: contact.name,
         }
         showCalendarEventModal.value = true
+      }
+
+      // 检测到红包，创建红包消息
+      if (result.redPacket && result.redPacket.amount) {
+        const rp = await economy.createRedPacket(
+          contact.id,
+          contact.name,
+          result.redPacket.amount,
+          result.redPacket.blessing || '给你一个小惊喜~',
+        )
+        const thread = smsThreads.value[contact.id] || []
+        thread.push({
+          id: `sms_rp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          role: 'assistant',
+          msgType: 'redPacket',
+          redPacketId: rp.id,
+          redPacket: {
+            amount: rp.amount,
+            blessing: rp.blessing,
+            senderName: rp.senderName,
+            isOpened: false,
+          },
+          timestamp: new Date().toISOString(),
+        })
+        smsThreads.value[contact.id] = thread
+        await saveSmsThreads(smsThreads.value)
+      }
+
+      // 检测到角色送礼物给玩家
+      if (result.giftToPlayer && result.giftToPlayer.itemName) {
+        const returnGift = await economy.recordGiftReturn(
+          contact.name,
+          result.giftToPlayer.itemName,
+          result.giftToPlayer.message || '',
+        )
+        const thread = smsThreads.value[contact.id] || []
+        thread.push({
+          id: `sms_gift_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          role: 'assistant',
+          msgType: 'giftReturn',
+          giftReturn: {
+            itemName: returnGift.name,
+            icon: returnGift.icon,
+            fromName: contact.name,
+            message: returnGift.senderReply?.text || '',
+          },
+          timestamp: new Date().toISOString(),
+        })
+        smsThreads.value[contact.id] = thread
+        await saveSmsThreads(smsThreads.value)
       }
     }
   } catch (e) {
@@ -1155,9 +1318,15 @@ function getGroupSenderAvatar(senderId) {
               <span v-else class="contact-avatar-placeholder">&#x1F464;</span>
             </div>
             <div class="contact-info">
-              <div class="contact-name">{{ char.name }}</div>
+              <div class="contact-name-row">
+                <span class="contact-name">{{ char.name }}</span>
+                <span class="contact-status-dot" :style="{ background: getOnlineStatusForChar(char).color }" :title="getOnlineStatusForChar(char).label" />
+              </div>
               <div class="contact-last-msg">
                 {{ getLastMessage(char.id)?.text || '暂无消息，点击开始对话' }}
+              </div>
+              <div class="contact-signature" v-if="getSignatureForChar(char)">
+                {{ getSignatureForChar(char) }}
               </div>
             </div>
             <div class="contact-time" :class="{ unread: getLastMessage(char.id)?.role === 'assistant' }">
@@ -1266,6 +1435,9 @@ function getGroupSenderAvatar(senderId) {
           {{ selectedContact.name }}
         </button>
         <div class="phone-app-title" />
+        <button type="button" class="sms-gift-btn" @click="openGiftShop" title="礼物">
+          🎁
+        </button>
         <button type="button" class="sms-bubble-settings-btn" @click="showBubbleSettings = !showBubbleSettings">
           &#x1F3A8;
         </button>
@@ -1304,6 +1476,35 @@ function getGroupSenderAvatar(senderId) {
                 <div v-if="voiceShownText.has(item.id)" class="voice-text-quote">
                   <span class="voice-quote-icon">💬</span>
                   <span class="voice-quote-text">{{ item.voiceText }}</span>
+                </div>
+              </div>
+            </div>
+            <!-- 红包消息 -->
+            <div v-else-if="item.msgType === 'redPacket'" class="sms-msg-row assistant" @click="!item.redPacket?.isOpened && handleRedPacketClick(item)">
+              <div class="sms-msg-avatar">
+                <img v-if="getCharAvatar(selectedContact)" :src="getCharAvatar(selectedContact)" />
+                <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
+              </div>
+              <div class="sms-bubble sms-redpacket-bubble" :class="{ opened: item.redPacket?.isOpened }">
+                <div class="redpacket-icon">{{ item.redPacket?.isOpened ? '🧧' : '🎁' }}</div>
+                <div class="redpacket-content">
+                  <div class="redpacket-title">{{ item.redPacket?.senderName }} 的红包</div>
+                  <div class="redpacket-blessing">{{ item.redPacket?.blessing }}</div>
+                  <div v-if="item.redPacket?.isOpened" class="redpacket-opened-tag">已领取</div>
+                </div>
+              </div>
+            </div>
+            <!-- 角色回礼消息 -->
+            <div v-else-if="item.msgType === 'giftReturn'" class="sms-msg-row assistant">
+              <div class="sms-msg-avatar">
+                <img v-if="getCharAvatar(selectedContact)" :src="getCharAvatar(selectedContact)" />
+                <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
+              </div>
+              <div class="sms-bubble sms-giftreturn-bubble">
+                <div class="giftreturn-icon">{{ item.giftReturn?.icon || '🎁' }}</div>
+                <div class="giftreturn-content">
+                  <div class="giftreturn-title">收到了 {{ item.giftReturn?.fromName }} 的回礼</div>
+                  <div class="giftreturn-item">{{ item.giftReturn?.itemName }} {{ item.giftReturn?.message || '' }}</div>
                 </div>
               </div>
             </div>
@@ -1397,6 +1598,23 @@ function getGroupSenderAvatar(senderId) {
         </div>
       </div>
     </div>
+
+    <!-- ====== 红包弹窗 ====== -->
+    <PhoneRedPacketModal
+      v-if="showRedPacketModal && activeRedPacket"
+      :red-packet="activeRedPacket.redPacket"
+      :on-open="handleRedPacketOpen"
+      @close="handleRedPacketClose"
+    />
+
+    <!-- ====== 礼物商店 ====== -->
+    <PhoneGiftShop
+      v-if="showGiftShop"
+      :contacts="contacts"
+      :economy="economy"
+      @back="showGiftShop = false"
+      @gift-sent="handleGiftSent"
+    />
 
     <!-- ====== 群聊线程 ====== -->
     <template v-else-if="selectedGroup">
@@ -2938,6 +3156,99 @@ function getGroupSenderAvatar(senderId) {
   .platform-android.android-portrait .sms-send-btn {
     background: rgba(10, 132, 255, 0.45) !important;
   }
+
+/* ===== 红包/礼物按钮 & 气泡 ===== */
+.sms-gift-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.sms-redpacket-bubble {
+  background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px !important;
+  cursor: pointer;
+  min-width: 200px;
+  transition: transform 0.15s;
+}
+
+.sms-redpacket-bubble:active:not(.opened) {
+  transform: scale(0.96);
+}
+
+.sms-redpacket-bubble.opened {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.redpacket-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.redpacket-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.redpacket-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.redpacket-blessing {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.redpacket-opened-tag {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+}
+
+/* 角色回礼气泡 */
+.sms-giftreturn-bubble {
+  background: linear-gradient(135deg, #f39c12, #e67e22) !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px !important;
+  min-width: 200px;
+}
+
+.giftreturn-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.giftreturn-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.giftreturn-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.giftreturn-item {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 2px;
+}
 
 /* ===== 日历事件弹窗 ===== */
 .calendar-modal-overlay {

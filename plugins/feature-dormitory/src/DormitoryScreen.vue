@@ -19,6 +19,9 @@ import { useDormAppointment } from './composables/useDormAppointment.js'
 import { useDormSubScene } from './composables/useDormSubScene.js'
 import { useGlobalUser } from '../../../src/composables/useGlobalUser.js'
 import { useBackStorage } from '../../../plugins/feature-back-storage/src/composables/useBackStorage.js'
+import { useCharacterSchedule } from '../../../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
+import { useFridgeInventory } from '../../../src/composables/useFridgeInventory.js'
+import { useTodoInventory } from '../../../src/composables/useTodoInventory.js'
 
 // 子组件导入
 import NestSelectorView from './components/NestSelectorView.vue'
@@ -1079,6 +1082,9 @@ const activeBook = computed(() => {
 // 内联 useEffectiveUser 逻辑：从全局用户和世界书数据合成
 const globalUserForEffective = useGlobalUser()
 const backStorage = useBackStorage()
+const characterSchedule = useCharacterSchedule()
+const fridge = useFridgeInventory()
+const todo = useTodoInventory()
 const effectiveUser = computed(() => {
   const bookId = String(activeBook.value?.id || '').trim()
   if (!bookId) {
@@ -1175,6 +1181,29 @@ const selectedDormRelationshipStageLabel = computed(() => {
   return getDormRelationshipStageLabel(selectedDormRelationshipStageId.value)
 })
 
+// 日程联动：角色是否在寝室可交互
+const scheduleBookId = computed(() => String(activeBook.value?.id || '').trim())
+const scheduleCharId = computed(() => String(selectedCharacterId.value || '').trim())
+
+const characterScheduleStatus = computed(() => {
+  const bookId = scheduleBookId.value
+  const charId = scheduleCharId.value
+  if (!bookId || !charId) return null
+  return characterSchedule.getCharacterStatus(bookId, charId)
+})
+
+const isCharacterAvailableForDorm = computed(() => {
+  const bookId = scheduleBookId.value
+  const charId = scheduleCharId.value
+  if (!bookId || !charId) return true
+  // 没有日程数据时默认角色在寝室
+  return characterSchedule.isCharacterAvailable(bookId, charId)
+})
+
+const characterUnavailableHint = computed(() => {
+  return characterScheduleStatus.value?.contactHint || '角色现在不在寝室'
+})
+
 const selectedDormRelationshipNextStage = computed(() => {
   const currentIndex = getDormRelationshipStageIndex(selectedDormRelationshipStageId.value)
   return DORM_RELATIONSHIP_STAGE_LIBRARY[currentIndex + 1] || null
@@ -1192,6 +1221,10 @@ const selectedDormQuickActionLabel = computed(() => {
 })
 
 const canRunDormQuickAction = computed(() => {
+  if (!isCharacterAvailableForDorm.value) {
+    const actionId = String(dormQuickActionType.value || '').trim()
+    if (actionId === 'chat' || actionId === 'event') return false
+  }
   if (String(dormQuickActionType.value || '').trim() !== 'event') return true
   return !activeDormEvent.value
 })
@@ -1261,6 +1294,7 @@ const mergedDormChatHistory = computed(() => {
 })
 const canSendDormChat = computed(() => {
   if (isDormChatSending.value) return false
+  if (!isCharacterAvailableForDorm.value) return false
   return String(dormChatDraft.value || '').trim().length > 0
 })
 
@@ -2275,6 +2309,10 @@ const handleDormQuickActionTypeChange = (value) => {
 const handleSendDormChat = async () => {
   if (isDormChatSending.value) return
   if (!selectedDormRuntimeKey.value) return
+  if (!isCharacterAvailableForDorm.value) {
+    dormChatError.value = characterUnavailableHint.value
+    return
+  }
 
   const userMessage = String(dormChatDraft.value || '').replace(/\s+/g, ' ').trim().slice(0, 280)
   if (!userMessage) return
@@ -2317,6 +2355,8 @@ const handleSendDormChat = async () => {
           }
         }),
       hasPendingRedPacket: historyBefore.length > 0 && historyBefore[historyBefore.length - 1]?.type === 'redPacket',
+      inventoryContext: fridge.getContextForLLM(8),
+      todoContext: todo.getContextForLLM(6),
       options: {
         historyLimit: 10,
         maxTokens: 420,
@@ -2498,6 +2538,10 @@ const handleSendDormChat = async () => {
 
 const handleRunDormQuickAction = () => {
   const actionType = String(dormQuickActionType.value || '').trim()
+  if (!isCharacterAvailableForDorm.value && (actionType === 'chat' || actionType === 'event')) {
+    actionFeedback.value = characterUnavailableHint.value
+    return
+  }
   if (actionType === 'gift') {
     handleGiftAction()
     return
@@ -2957,6 +3001,28 @@ onMounted(async () => {
   defaultPortraitUrl.value = await getDefaultPortraitUrl()
   await refreshWorldBooks()
 
+  // 处理 Widget 点击：直接进入特定角色的寝室界面
+  if (window.__avgDormitoryTargetCharacter) {
+    const targetCharId = window.__avgDormitoryTargetCharacter
+    console.log('[Dormitory] Widget target character:', targetCharId)
+    window.__avgDormitoryTargetCharacter = null // 清理全局标记
+
+    // 找到包含该角色的世界书并直接进入角色房间
+    for (const book of worldBooks.value) {
+      const characters = book.characters || []
+      const targetChar = characters.find(c => c.id === targetCharId)
+      if (targetChar) {
+        // 确保该书被设为 active
+        await setActiveWorldBookId(book.id)
+        selectedWorldBook.value = book
+        // 进入角色房间
+        enterCharacterRoom(targetCharId)
+        console.log('[Dormitory] Navigated to character room from Widget:', targetChar.name)
+        break
+      }
+    }
+  }
+
   // 检查并生成当天的日记
   diary.checkAndGenerateDailyDiary()
 
@@ -3126,6 +3192,8 @@ onBeforeUnmount(() => {
           @polaroid-back="handlePolaroidBack"
           @polaroid-complete="handlePolaroidComplete"
           @open-appointment="appointment.openAppointmentModal"
+          :is-character-available-for-dorm="isCharacterAvailableForDorm"
+          :character-unavailable-hint="characterUnavailableHint"
         />
       </template>
     </section>

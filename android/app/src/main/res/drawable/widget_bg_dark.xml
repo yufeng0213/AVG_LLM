@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget背景选择：简约黑底 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#121212" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="1dp" android:color="#333333" />
+            <corners android:radius="8dp" />
+            <solid android:color="#00000000" />
+        </shape>
+    </item>
+</layer-list>

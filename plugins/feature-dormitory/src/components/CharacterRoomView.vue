@@ -313,6 +313,16 @@ const props = defineProps({
   task: {
     type: Object,
     default: () => ({})
+  },
+
+  // 日程联动：角色是否在寝室
+  isCharacterAvailableForDorm: {
+    type: Boolean,
+    default: true
+  },
+  characterUnavailableHint: {
+    type: String,
+    default: '角色现在不在寝室'
   }
 })
 
@@ -521,13 +531,20 @@ function formatVisitTime(timestamp) {
       <img class="character-room-portrait" :src="selectedCharacterPortraitUrl" :alt="selectedCharacter?.label || '角色'" />
       <div class="character-room-overlay-mask" aria-hidden="true" />
 
+      <!-- 角色不在寝室时的遮罩 -->
+      <div v-if="!isCharacterAvailableForDorm" class="character-absent-overlay">
+        <div class="absent-icon">🚪</div>
+        <p class="absent-title">角色不在寝室</p>
+        <p class="absent-hint">{{ characterUnavailableHint }}</p>
+      </div>
+
       <!-- 覆盖面板 -->
       <section v-if="isDormOverlayPanelExpanded" class="dorm-overlay-panel" aria-label="寝室二级操作">
         <header class="dorm-overlay-panel-head">
           <button type="button" class="dorm-overlay-panel-close" @click="handleCloseOverlayPanel">×</button>
         </header>
 
-        <div class="dorm-overlay-panel-body">
+        <div class="dorm-overlay-panel-body" :class="{ disabled: !isCharacterAvailableForDorm }">
           <!-- 二级场景面板 -->
           <section v-if="activeDormOverlayPanelId === 'scene'" class="sub-scene-panel">
             <div class="sub-scene-head">
@@ -764,7 +781,7 @@ function formatVisitTime(timestamp) {
           <div v-if="activeDormOverlayPanelId === 'interaction'" class="dorm-action-compact">
             <label class="dorm-action-select-wrap">
               <span class="dorm-action-select-label">寝室互动</span>
-              <select :value="dormQuickActionType" class="dorm-action-select" @change="handleDormQuickActionTypeChange">
+              <select :value="dormQuickActionType" class="dorm-action-select" :disabled="!isCharacterAvailableForDorm" @change="handleDormQuickActionTypeChange">
                 <option
                   v-for="option in DORM_QUICK_ACTION_OPTIONS"
                   :key="option.id"
@@ -778,10 +795,10 @@ function formatVisitTime(timestamp) {
               type="button"
               class="dorm-action-run-btn"
               :class="{ event: dormQuickActionType === 'event' }"
-              :disabled="!canRunDormQuickAction"
+              :disabled="!canRunDormQuickAction || !isCharacterAvailableForDorm"
               @click="handleRunQuickAction"
             >
-              {{ dormQuickActionRunButtonText }}
+              {{ isCharacterAvailableForDorm ? dormQuickActionRunButtonText : '角色不在寝室' }}
             </button>
           </div>
 
@@ -851,6 +868,7 @@ function formatVisitTime(timestamp) {
         <div class="dorm-chat-head">
           <span class="drag-handle-icon" @mousedown="handleStartDragResize" @touchstart="handleStartDragResizeTouch">≡</span>
           <p class="dorm-chat-title">和 {{ selectedCharacter?.label || '角色' }} 聊天</p>
+          <span v-if="!isCharacterAvailableForDorm" class="dorm-chat-unavailable-dot"></span>
           <div class="dorm-chat-menu-wrap">
             <button
               type="button"
@@ -963,7 +981,7 @@ function formatVisitTime(timestamp) {
             :value="dormChatDraft"
             type="text"
             class="dorm-chat-input"
-            :disabled="isDormChatSending"
+            :disabled="isDormChatSending || !isCharacterAvailableForDorm"
             placeholder="输入你想说的话..."
             maxlength="280"
             @input="handleChatDraftInput"
@@ -1153,6 +1171,53 @@ function formatVisitTime(timestamp) {
   pointer-events: none;
 }
 
+/* 角色不在寝室时的遮罩 */
+.character-absent-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 5;
+}
+
+.absent-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.absent-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.absent-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  max-width: 80%;
+}
+
+/* 聊天标题旁的不可联络提示点 */
+.dorm-chat-unavailable-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef9a9a;
+  flex-shrink: 0;
+}
+
 /* 覆盖面板样式 */
 .dorm-overlay-panel {
   position: absolute;
@@ -1200,6 +1265,11 @@ function formatVisitTime(timestamp) {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+}
+
+.dorm-overlay-panel-body.disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 /* ===== 聊天覆盖层 - iOS16 风格 ===== */

@@ -400,6 +400,8 @@ export const generatePhoneSmsReply = async (params = {}) => {
     reply: replies[0],
     replies,
     redPacket: parsed.redPacket,
+    redPacketAction: parsed.redPacketAction,
+    giftToPlayer: parsed.giftToPlayer,
     calendarEvent: parsed.calendarEvent || null,
     voiceMessages: parsed.voiceMessages || [],
     data: result.data,
@@ -440,6 +442,8 @@ export const generateDormChatReply = async (params = {}) => {
   const history = Array.isArray(params.history) ? params.history : []
   const historyLimit = clampPromptLineCount(params.options?.historyLimit, 10, 300)
   const maxTokens = clampMaxTokens(params.options?.maxTokens, 420)
+  const inventoryContext = typeof params.inventoryContext === 'string' ? params.inventoryContext : null
+  const todoContext = typeof params.todoContext === 'string' ? params.todoContext : null
 
   const recentChat = (historyLimit > 0 ? history.slice(-historyLimit) : [])
     .map((item) => {
@@ -470,6 +474,8 @@ export const generateDormChatReply = async (params = {}) => {
     recentChat ? `【最近聊天】\n${recentChat}` : '',
     `【玩家刚发送】${userMessage}`,
     hasPendingRedPacket ? '【特别提示】玩家刚刚给你发了一个红包，请决定领取或退回，并在回复中体现你的反应。' : '',
+    inventoryContext ? `【玩家冰箱】${inventoryContext}` : '',
+    todoContext ? `【玩家待办】${todoContext}` : '',
     '请面对面自然回应，可以描写动作、神态或环境。建议输出 1-4 条连续回复。',
     '请按格式返回：|r=回复1|\n|r=回复2|\n（可选）|redpacket=50:祝福语|',
     '如果对话中提到了未来的约定或计划，请加 |calendar=日期T时间:标题|描述|。',
@@ -902,6 +908,115 @@ export const generatePhoneMomentsReplies = async (params = {}) => {
     error: null,
     comments,
     data: result.data,
+    rawResponse: result.rawResponse,
+  }
+}
+
+/**
+ * 单条朋友圈互动回复
+ */
+export const generatePhoneMomentsReply = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      reply: '',
+    }
+  }
+
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const contact = params.contact && typeof params.contact === 'object' ? params.contact : null
+  const momentText = String(params.momentText || '').trim()
+  const playerAction = String(params.playerAction || '').trim()
+
+  if (!contact?.name || !momentText || !playerAction) {
+    return {
+      success: false,
+      error: '朋友圈互动参数不完整',
+      reply: '',
+    }
+  }
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: await resolvePrompt('phone:moments_reply'),
+    userPrompt: [
+      `【角色名】${contact.name}`,
+      contact.identity ? `【角色信息】${contact.identity}` : '',
+      worldBook?.title ? `【世界背景】${worldBook.title}` : '',
+      `【你的动态】${momentText}`,
+      `【玩家互动】${playerAction}`,
+      '请回复一条自然的回应，1-20字。',
+    ].filter(Boolean).join('\n'),
+    temperature: params.options?.temperature ?? 0.85,
+    maxTokens: params.options?.maxTokens ?? 60,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '朋友圈互动回复生成失败',
+      reply: '',
+    }
+  }
+
+  const reply = String(result.data || '').trim().slice(0, 50)
+  return {
+    success: true,
+    error: null,
+    reply,
+    rawResponse: result.rawResponse,
+  }
+}
+
+/**
+ * 角色个性签名生成（用于联系人列表状态栏）
+ */
+export const generatePhoneContactSignature = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return {
+      success: false,
+      error: validated.error || 'API 配置不可用',
+      signature: '',
+    }
+  }
+
+  const contact = params.contact && typeof params.contact === 'object' ? params.contact : null
+  if (!contact?.name) {
+    return {
+      success: false,
+      error: '角色信息不完整',
+      signature: '',
+    }
+  }
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt: await resolvePrompt('phone:contact_signature'),
+    userPrompt: [
+      `【角色名】${contact.name}`,
+      contact.identity ? `【角色身份】${contact.identity}` : '',
+      contact.personalityProfile ? `【性格特点】${contact.personalityProfile}` : '',
+    ].filter(Boolean).join('\n'),
+    temperature: params.options?.temperature ?? 0.9,
+    maxTokens: params.options?.maxTokens ?? 80,
+  })
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || '签名生成失败',
+      signature: '',
+    }
+  }
+
+  const sig = String(result.data || '').trim().replace(/^[“”'']+|[“”'']+$/g, '').slice(0, 60)
+  return {
+    success: true,
+    error: null,
+    signature: sig,
     rawResponse: result.rawResponse,
   }
 }

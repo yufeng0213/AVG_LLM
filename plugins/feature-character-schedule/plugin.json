@@ -1,0 +1,29 @@
+{
+  "id": "character-schedule",
+  "name": "角色日程",
+  "description": "生成并管理角色的每日日程，支持寝室、短信、地图等多端联动。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "schedule",
+    "title": "日程",
+    "icon": "\ud83d\udcc5",
+    "order": 39,
+    "variant": "tone-yellow border-solid"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "schedule"
+  },
+  "storage": {
+    "namespace": "schedule"
+  },
+  "capabilities": [
+    "storage",
+    "worldbook",
+    "llm"
+  ],
+  "enabledByDefault": true
+}

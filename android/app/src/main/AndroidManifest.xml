@@ -28,6 +28,13 @@
 
         </activity>
 
+        <!-- 透明 Activity 用于文件选择 -->
+        <activity
+            android:name=".MascotFileChooserActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -42,7 +49,56 @@
             android:name=".MascotService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="shortService" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="system_overlay" />
+        </service>
+
+        <!-- 角色信息 Widget -->
+        <receiver
+            android:name=".CharacterWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/character_widget_info" />
+        </receiver>
+
+        <!-- Widget 配置 Activity -->
+        <activity
+            android:name=".CharacterWidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/AppTheme">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <!-- 语音输入 Activity（透明弹窗） -->
+        <activity
+            android:name=".VoiceInputActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true" />
+
+        <!-- 语音启动桥梁 Activity（透明，启动后立即关闭） -->
+        <activity
+            android:name=".VoiceLauncherActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:noHistory="true" />
+
+        <!-- 悬浮语音窗口 Service -->
+        <service
+            android:name=".VoiceFloatingService"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
     <!-- Permissions -->
@@ -56,5 +112,6 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SHORT_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 </manifest>

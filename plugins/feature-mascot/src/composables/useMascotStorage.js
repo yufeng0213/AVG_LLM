@@ -3,13 +3,13 @@ import { isNative } from '../../../../src/utils/platform.js'
 
 const STORAGE_KEY = 'avg_llm_mascot_v1'
 const MASCOT_DIR = 'avg_llm_mascot'
-const MAX_GIF_SIZE = 2 * 1024 * 1024 // 2MB
+const MAX_MASCOT_SIZE = 2 * 1024 * 1024 // 2MB (GIF 文件大小限制)
 
 const mascotState = ref({
   x: window.innerWidth / 2 - 40,
   y: window.innerHeight / 2 - 40,
   visible: true,
-  gifData: null, // { id, name, fileType, dataUrl?, createdAt }
+  gifData: null, // { id, name, data?, createdAt }
 })
 
 // Trigger for showing importer (set by external callers)
@@ -50,9 +50,8 @@ function persist() {
         ? {
             id: mascotState.value.gifData.id,
             name: mascotState.value.gifData.name,
-            fileType: 'gif',
             createdAt: mascotState.value.gifData.createdAt,
-            ...(isNative() ? {} : { dataUrl: mascotState.value.gifData.dataUrl }),
+            ...(isNative() ? {} : { data: mascotState.value.gifData.data }),
           }
         : null,
     }
@@ -65,16 +64,16 @@ function persist() {
 async function loadGifDataUrl() {
   const gif = mascotState.value.gifData
   if (!gif) return null
-  if (gif.dataUrl) return gif.dataUrl
+  if (gif.data) return gif.data
 
   if (isNative()) {
     try {
-      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+      const { Filesystem, Directory } = await import('@capacitor/filesystem')
       const result = await Filesystem.readFile({
         path: getGifPath(gif),
         directory: Directory.Data,
-        encoding: Encoding.Base64,
       })
+      // 返回 base64 data URL
       return `data:image/gif;base64,${result.data}`
     } catch (e) {
       console.warn('[Mascot] Failed to read GIF from filesystem:', e)
@@ -87,70 +86,39 @@ async function loadGifDataUrl() {
 function importGif(file) {
   return new Promise((resolve, reject) => {
     const fileName = file.name.toLowerCase()
+
+    // 仅支持 GIF 格式
     if (!fileName.endsWith('.gif')) {
       reject(new Error('仅支持 GIF 格式'))
       return
     }
 
-    const warnSize = file.size > MAX_GIF_SIZE
-    if (warnSize) {
-      console.warn(`[Mascot] GIF ${Math.round(file.size / 1024)}KB > 2MB recommended`)
+    if (file.size > MAX_MASCOT_SIZE) {
+      reject(new Error(`GIF 文件大小超过 2MB 限制`))
+      return
     }
 
-    if (isNative()) {
-      const gifId = `mascot_${Date.now()}`
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        try {
-          const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+    // GIF 文件：读取为 base64 data URL
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const dataUrl = e.target.result
 
-          try {
-            await Filesystem.mkdir({
-              path: MASCOT_DIR,
-              directory: Directory.Data,
-              recursive: true,
-            })
-          } catch {}
-
-          await Filesystem.writeFile({
-            path: `${MASCOT_DIR}/${gifId}.gif`,
-            data: e.target.result,
-            directory: Directory.Data,
-            encoding: Encoding.Base64,
-          })
-
-          mascotState.value.gifData = {
-            id: gifId,
-            name: file.name.replace(/\.gif$/i, ''),
-            dataUrl: null,
-            fileType: 'gif',
-            createdAt: Date.now(),
-          }
-          persist()
-          resolve(mascotState.value.gifData)
-        } catch (err) {
-          console.error('[Mascot] Failed to save GIF:', err)
-          reject(new Error('保存 GIF 失败'))
-        }
-      }
-      reader.onerror = () => reject(new Error('文件读取失败'))
-      reader.readAsDataURL(file)
-    } else {
-      const reader = new FileReader()
-      reader.onload = (e) => {
         mascotState.value.gifData = {
-          id: `mascot_${Date.now()}`,
+          id: `gif_${Date.now()}`,
           name: file.name.replace(/\.gif$/i, ''),
-          dataUrl: e.target.result,
-          fileType: 'gif',
+          data: dataUrl,
           createdAt: Date.now(),
         }
         persist()
         resolve(mascotState.value.gifData)
+      } catch (err) {
+        console.error('[Mascot] Failed to process GIF:', err)
+        reject(new Error('GIF 处理失败'))
       }
-      reader.onerror = () => reject(new Error('文件读取失败'))
-      reader.readAsDataURL(file)
     }
+    reader.onerror = () => reject(new Error('文件读取失败'))
+    reader.readAsDataURL(file)
   })
 }
 
@@ -169,5 +137,5 @@ function toggleVisibility() {
 load()
 
 export function useMascotStorage() {
-  return { mascotState, importGif, loadGifDataUrl, resetPosition, toggleVisibility, persist, MAX_GIF_SIZE, showImporterTrigger, openImporter }
+  return { mascotState, importGif, loadGifDataUrl, resetPosition, toggleVisibility, persist, MAX_MASCOT_SIZE, showImporterTrigger, openImporter }
 }
