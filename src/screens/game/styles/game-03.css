@@ -3,6 +3,7 @@
 /* 横屏模式优化 */
 @media (max-width: 768px) and (orientation: landscape) {
   .game-topbar {
+    top: max(4px, var(--safe-area-inset-top, 4px));
     padding: 4px 8px;
   }
 
@@ -208,6 +209,7 @@
 /* 超小屏幕 (小于480px) */
 @media (max-width: 480px) {
   .game-topbar {
+    top: max(16px, var(--safe-area-inset-top, 16px));
     padding: 4px 8px;
     gap: 4px;
   }

@@ -547,9 +547,20 @@
         <!-- 标题行 - 包含标题和新增按钮 -->
         <div class="panel-title-row">
           <h2 class="panel-title">char设定</h2>
-          <button type="button" class="action-button action-outline add-char-inline-btn" @click="addCharacter">
-            ＋ 新增角色
-          </button>
+          <div class="char-title-actions">
+            <button type="button" class="action-button action-outline add-char-inline-btn" @click="addCharacter">
+              ＋ 新增角色
+            </button>
+            <button
+              v-if="activeCharacter"
+              type="button"
+              class="action-button char-delete-inline-btn"
+              @click="deleteCharacter(activeCharacterId)"
+              title="删除当前角色"
+            >
+              🗑️ 删除
+            </button>
+          </div>
         </div>
         
         <!-- 角色选择下拉框 -->

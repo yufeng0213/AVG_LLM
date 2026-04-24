@@ -1,0 +1,13 @@
+{
+  "id": "letter-handwritten",
+  "name": "手写信件",
+  "icon": "💌",
+  "description": "一封手写风格的信件",
+  "category": "letter",
+  "variables": {
+    "date": { "type": "date", "description": "写信日期" },
+    "greeting": { "type": "string", "description": "称呼，如'亲爱的XXX：'" },
+    "sender": { "type": "string", "description": "写信人" },
+    "content": { "type": "text", "description": "信件正文" }
+  }
+}

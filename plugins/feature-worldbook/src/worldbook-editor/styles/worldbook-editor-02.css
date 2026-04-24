@@ -544,6 +544,35 @@
     margin-bottom: 12px !important;
   }
 
+  /* 标题行右侧操作按钮区 */
+  .char-title-actions {
+    display: flex !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .char-delete-inline-btn {
+    padding: 8px 14px !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    border-radius: 16px !important;
+    border: 1px solid color-mix(in srgb, #ff4444 30%, transparent) !important;
+    background: color-mix(in srgb, #ff4444 10%, transparent) !important;
+    color: #ff4444 !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .char-delete-inline-btn:hover {
+    background: color-mix(in srgb, #ff4444 20%, transparent) !important;
+    border-color: color-mix(in srgb, #ff4444 50%, transparent) !important;
+  }
+
+  .char-delete-inline-btn:active {
+    background: color-mix(in srgb, #ff4444 30%, transparent) !important;
+    border-color: #ff4444 !important;
+  }
+
   /* 美化下拉框容器 */
   .select-wrapper {
     position: relative !important;
@@ -871,5 +900,10 @@
     border-radius: 10px !important;
     min-width: auto !important;
     width: 100% !important;
+  }
+
+  /* Android 竖屏：适配刘海屏顶部安全距离 */
+  .worldbook-editor-header {
+    padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
   }
 }

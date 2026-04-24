@@ -1,0 +1,339 @@
+/* ===== EvolutionLogScreen — 演化日志全屏沉浸式设计 ===== */
+
+.evolution-log-screen {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background, #0d0d17);
+  overflow: hidden;
+}
+
+.evolution-log-screen::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(180deg, rgba(255, 58, 242, 0.06) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.evolution-log-screen::after {
+  content: '';
+  position: fixed;
+  bottom: -12%;
+  right: -15%;
+  width: 40vmax;
+  height: 40vmax;
+  background: radial-gradient(circle, rgba(123, 47, 255, 0.1) 0%, transparent 70%);
+  animation: blob-drift-ev 26s ease-in-out infinite reverse;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes blob-drift-ev {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-3%, 5%) scale(1.04); }
+  66% { transform: translate(4%, -4%) scale(0.96); }
+}
+
+/* 玻璃拟态头部 */
+.evolution-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(10px, 2vw, 16px) clamp(12px, 3vw, 20px);
+  padding-top: max(clamp(10px, 2vw, 16px), var(--safe-area-inset-top, 16px));
+  background: color-mix(in srgb, var(--background, #0d0d17) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #fff) 20%, transparent);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.evolution-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--background, #0d0d17) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground, #fff) 20%, transparent);
+  color: var(--foreground, #fff);
+  padding: 6px 14px;
+  border-radius: var(--radius-button, 9999px);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.evolution-back-btn:hover {
+  background: color-mix(in srgb, var(--accent-magenta, #ff3af2) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-magenta, #ff3af2) 40%, transparent);
+}
+
+.evolution-back-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.evolution-title {
+  font-size: clamp(15px, 3.2vw, 18px);
+  font-weight: 700;
+  color: var(--foreground, #fff);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.3px;
+}
+
+.evolution-title-scroll {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-magenta, #ff3af2);
+  animation: scroll-spin 4s ease-in-out infinite;
+}
+
+@keyframes scroll-spin {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.15); }
+}
+
+.evolution-gen-btn {
+  background: color-mix(in srgb, var(--accent-magenta, #ff3af2) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-magenta, #ff3af2) 50%, transparent);
+  color: var(--foreground, #fff);
+  padding: 6px 16px;
+  border-radius: var(--radius-button, 9999px);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.evolution-gen-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-magenta, #ff3af2) 40%, transparent);
+  box-shadow: 0 0 16px rgba(255, 58, 242, 0.2);
+}
+
+.evolution-gen-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 内容区域 */
+.evolution-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: clamp(12px, 2vw, 16px);
+  position: relative;
+  z-index: 1;
+}
+
+/* 最新日志 — 特别突出 */
+.evolution-latest {
+  margin-bottom: clamp(16px, 3vw, 24px);
+  animation: ev-latest-in 0.5s ease both;
+}
+
+@keyframes ev-latest-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.evolution-latest-card {
+  background: rgba(30, 25, 50, 0.65);
+  border: 1px solid rgba(150, 120, 200, 0.2);
+  border-top: 3px solid var(--accent-magenta, #ff3af2);
+  border-radius: clamp(14px, 2vw, var(--radius-card, 24px));
+  padding: clamp(14px, 2.5vw, 20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.evolution-latest-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(180deg, rgba(255, 58, 242, 0.06) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* 历史日志 */
+.evolution-history {
+  margin-top: 8px;
+}
+
+.evolution-history-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(200, 192, 216, 0.35);
+  margin-bottom: 10px;
+  padding-left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.evolution-history-title::before {
+  content: '';
+  width: 12px;
+  height: 1px;
+  background: rgba(200, 192, 216, 0.3);
+}
+
+.evolution-card {
+  background: rgba(30, 25, 50, 0.4);
+  border: 1px solid rgba(150, 120, 200, 0.1);
+  border-left: 3px solid rgba(150, 120, 200, 0.2);
+  border-radius: clamp(10px, 2vw, 16px);
+  padding: clamp(10px, 2vw, 14px);
+  margin-bottom: 8px;
+  transition: all 0.25s;
+}
+
+.evolution-card:hover {
+  background: rgba(30, 25, 50, 0.55);
+  border-left-color: var(--accent-purple, #7b2fff);
+  transform: translateX(2px);
+}
+
+/* 卡片头部 */
+.evolution-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.evolution-period {
+  font-size: 11px;
+  color: rgba(200, 192, 216, 0.45);
+  font-family: monospace;
+}
+
+.evolution-event-count {
+  font-size: 10px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent-purple, #7b2fff) 15%, transparent);
+  padding: 2px 8px;
+  border-radius: var(--radius-button, 9999px);
+  color: rgba(200, 192, 216, 0.6);
+  border: 1px solid color-mix(in srgb, var(--accent-purple, #7b2fff) 20%, transparent);
+}
+
+/* 卡片正文 */
+.evolution-card-body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(200, 192, 216, 0.75);
+}
+
+.evolution-card-body.collapsed {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.evolution-card-body.collapsed:hover {
+  color: rgba(200, 192, 216, 1);
+}
+
+/* 统计标签 */
+.evolution-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.evolution-stat-tag {
+  font-size: 10px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--accent-cyan, #00f5d4) 10%, transparent);
+  color: rgba(200, 192, 216, 0.6);
+  padding: 2px 8px;
+  border-radius: var(--radius-button, 9999px);
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00f5d4) 15%, transparent);
+}
+
+/* 空状态 */
+.evolution-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: rgba(200, 192, 216, 0.3);
+  text-align: center;
+  animation: ev-empty-in 0.6s ease both;
+}
+
+@keyframes ev-empty-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.evolution-empty p:first-child {
+  font-size: 56px;
+  margin-bottom: 12px;
+  animation: ev-scroll-float 3s ease-in-out infinite;
+}
+
+@keyframes ev-scroll-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
+
+.evolution-empty p {
+  margin: 4px 0;
+  font-size: 16px;
+}
+
+.evolution-empty-hint {
+  font-size: 13px !important;
+  margin-top: 12px !important;
+  line-height: 1.6;
+  color: rgba(200, 192, 216, 0.2) !important;
+}
+
+/* Android 竖屏适配 */
+.platform-android.android-portrait .evolution-log-screen {
+  background: #0d0d17 !important;
+}
+
+.platform-android.android-portrait .evolution-header {
+  background: rgba(13, 13, 23, 0.92) !important;
+}
+
+.platform-android.android-portrait .evolution-latest-card {
+  background: rgba(30, 25, 50, 0.75) !important;
+}
+
+.platform-android.android-portrait .evolution-card {
+  background: rgba(30, 25, 50, 0.55) !important;
+}
+  .platform-android.android-portrait .evolution-back-btn,
+  .platform-android.android-portrait .evolution-gen-btn{
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }

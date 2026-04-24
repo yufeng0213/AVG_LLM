@@ -85,6 +85,15 @@
         >
           💕 好感度
         </button>
+        <div class="top-menu-divider"></div>
+        <button
+          type="button"
+          class="top-menu-btn top-menu-reset"
+          role="menuitem"
+          @click="confirmRestart"
+        >
+          🔄 重新开始
+        </button>
       </div>
       <!-- 存档成功提示 -->
       <div v-if="saveSuccess" class="save-toast success">
@@ -129,6 +138,29 @@
         >
           {{ isSaving ? '保存中...' : '保存存档' }}
         </button>
+      </div>
+    </section>
+
+    <!-- 重新开始确认弹窗 -->
+    <section v-if="showRestartConfirm" class="restart-overlay" aria-label="确认重新开始">
+      <div class="restart-dialog" role="alertdialog">
+        <h3 class="restart-title">确认重新开始？</h3>
+        <p class="restart-description">当前世界书的所有进度将被重置：</p>
+        <ul class="restart-list">
+          <li>对话剧情重置为开场白</li>
+          <li>角色好感度/信任/立场清零</li>
+          <li>世界记忆（剧情摘要、事件记录）清空</li>
+        </ul>
+        <p class="restart-warning">此操作不可撤销。</p>
+        <div class="restart-actions">
+          <button type="button" class="restart-btn restart-btn-cancel"
+            @click="cancelRestart">取消</button>
+          <button type="button" class="restart-btn restart-btn-confirm"
+            :disabled="isRestarting"
+            @click="handleRestart">
+            {{ isRestarting ? '重置中...' : '确认重新开始' }}
+          </button>
+        </div>
       </div>
     </section>
 
@@ -267,6 +299,110 @@
           </button>
           <button
             type="button"
+            class="action-button action-delete"
+            :disabled="isGenerating"
+            title="删除当前对话"
+            @click.stop="deleteCurrentDialogueLine"
+          >
+            ✕ 删除
+          </button>
+          <button
+            type="button"
+            class="action-button action-more"
+            :class="{ 'is-active': showMoreActions }"
+            title="展开/收起更多操作"
+            @click.stop="toggleMoreActions"
+          >
+            {{ showMoreActions ? '收起 ▲' : '更多 ▼' }}
+          </button>
+          <div v-show="showMoreActions" class="dialogue-more-actions">
+            <button
+              type="button"
+              class="action-button action-ai"
+              :class="{ 'is-active': showGeneratePanel }"
+              :disabled="isMiniTheaterMode || isGeneratingMiniTheater"
+              @click="toggleGeneratePanel"
+              title="AI生成剧情"
+            >
+              🤖 AI生成
+            </button>
+            <button
+              v-if="canRegenerate"
+              type="button"
+              class="action-button action-regen"
+              :disabled="isGenerating"
+              @click="handleRegenerateStory"
+              title="重新生成"
+            >
+              🔄 重新生成
+            </button>
+            <button
+              type="button"
+              class="action-button action-mini"
+              :class="{ 'is-active': showMiniTheaterPanel || isMiniTheaterMode }"
+              :disabled="isGenerating || isGeneratingMiniTheater"
+              @click="toggleMiniTheaterPanel"
+              title="小剧场模式"
+            >
+              {{ miniTheaterActionLabel }}
+            </button>
+            <button
+              type="button"
+              class="action-button action-cg"
+              :class="{ 'is-active': showCGModal }"
+              :disabled="isMiniTheaterMode || isGeneratingMiniTheater"
+              @click="handleOpenCGModal"
+              title="生成CG图片"
+            >
+              🎨 生成CG
+            </button>
+            <button
+              type="button"
+              class="action-button action-card"
+              :class="{ 'is-active': showCardPanel || currentCard }"
+              :disabled="isMiniTheaterMode || isGeneratingMiniTheater || isGeneratingCard"
+              @click="toggleCardPanel"
+              title="随机小卡片"
+            >
+              🃏 随机小卡片
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div v-if="isAndroidPlatform" class="dialogue-actions dialogue-actions-strip">
+        <button
+          type="button"
+          class="action-button action-outline"
+          :disabled="isPrevLineDisabled"
+          @click="goPrevLine"
+        >
+          上一句
+        </button>
+        <button type="button" class="action-button action-strong" @click="goNextLine">
+          {{ nextLineButtonLabel }}
+        </button>
+        <button
+          type="button"
+          class="action-button action-delete"
+          :disabled="isGenerating"
+          title="删除当前对话"
+          @click.stop="deleteCurrentDialogueLine"
+        >
+          ✕ 删除
+        </button>
+        <button
+          type="button"
+          class="action-button action-more"
+          :class="{ 'is-active': showMoreActions }"
+          title="展开/收起更多操作"
+          @click.stop="toggleMoreActions"
+        >
+          {{ showMoreActions ? '收起 ▲' : '更多 ▼' }}
+        </button>
+        <div v-show="showMoreActions" class="dialogue-more-actions">
+          <button
+            type="button"
             class="action-button action-ai"
             :class="{ 'is-active': showGeneratePanel }"
             :disabled="isMiniTheaterMode || isGeneratingMiniTheater"
@@ -276,6 +412,16 @@
             🤖 AI生成
           </button>
           <button
+            v-if="canRegenerate"
+            type="button"
+            class="action-button action-regen"
+            :disabled="isGenerating"
+            @click="handleRegenerateStory"
+            title="重新生成"
+          >
+            🔄 重新生成
+          </button>
+          <button
             type="button"
             class="action-button action-mini"
             :class="{ 'is-active': showMiniTheaterPanel || isMiniTheaterMode }"
@@ -283,7 +429,7 @@
             @click="toggleMiniTheaterPanel"
             title="小剧场模式"
           >
-            {{ miniTheaterActionLabel }}
+            {{ isMiniTheaterMode ? '退出剧场' : '小剧场' }}
           </button>
           <button
             type="button"
@@ -303,63 +449,9 @@
             @click="toggleCardPanel"
             title="随机小卡片"
           >
-            🃏 随机小卡片
+            🃏 小卡片
           </button>
         </div>
-      </section>
-
-      <div v-if="isAndroidPlatform" class="dialogue-actions dialogue-actions-strip">
-        <button
-          type="button"
-          class="action-button action-outline"
-          :disabled="isPrevLineDisabled"
-          @click="goPrevLine"
-        >
-          上一句
-        </button>
-        <button type="button" class="action-button action-strong" @click="goNextLine">
-          {{ nextLineButtonLabel }}
-        </button>
-        <button
-          type="button"
-          class="action-button action-ai"
-          :class="{ 'is-active': showGeneratePanel }"
-          :disabled="isMiniTheaterMode || isGeneratingMiniTheater"
-          @click="toggleGeneratePanel"
-          title="AI生成剧情"
-        >
-          🤖 AI生成
-        </button>
-        <button
-          type="button"
-          class="action-button action-mini"
-          :class="{ 'is-active': showMiniTheaterPanel || isMiniTheaterMode }"
-          :disabled="isGenerating || isGeneratingMiniTheater"
-          @click="toggleMiniTheaterPanel"
-          title="小剧场模式"
-        >
-          {{ isMiniTheaterMode ? '退出剧场' : '小剧场' }}
-        </button>
-        <button
-          type="button"
-          class="action-button action-cg"
-          :class="{ 'is-active': showCGModal }"
-          :disabled="isMiniTheaterMode || isGeneratingMiniTheater"
-          @click="handleOpenCGModal"
-          title="生成CG图片"
-        >
-          🎨 生成CG
-        </button>
-        <button
-          type="button"
-          class="action-button action-card"
-          :class="{ 'is-active': showCardPanel || currentCard }"
-          :disabled="isMiniTheaterMode || isGeneratingMiniTheater || isGeneratingCard"
-          @click="toggleCardPanel"
-          title="随机小卡片"
-        >
-          🃏 小卡片
-        </button>
       </div>
 
       <!-- AI 剧情生成面板 -->
@@ -869,44 +961,26 @@
       </div>
     </section>
 
-    <!-- 音乐播放器（支持插件替换） -->
-    <PluginComponent
-      :default-component="MusicPlayer"
-      :plugin-type="PluginTypes.MUSIC_PLAYER"
+    <!-- 手机 -->
+    <Phone
+      :worldBook="activeBook"
+      :saveSlotId="smsSaveScopeId"
+      :dialogueHistory="dialogueScript"
+      :currentLine="currentLine"
     />
 
-    <!-- 手机（支持插件替换） -->
-    <PluginComponent
-      :default-component="Phone"
-      :plugin-type="PluginTypes.PHONE"
-      :component-props="{
-        worldBook: activeBook,
-        saveSlotId: smsSaveScopeId,
-        dialogueHistory: dialogueScript,
-        currentLine,
-      }"
+    <!-- 掌机 -->
+    <HandheldConsole
+      :worldBook="activeBook"
+      :saveSlotId="smsSaveScopeId"
     />
 
-    <!-- 掌机（支持插件替换） -->
-    <PluginComponent
-      :default-component="HandheldConsole"
-      :plugin-type="PluginTypes.HANDHELD"
-      :component-props="{
-        worldBook: activeBook,
-        saveSlotId: smsSaveScopeId,
-      }"
-    />
-
-    <!-- 背包（支持插件替换） -->
-    <PluginComponent
-      :default-component="Backpack"
-      :plugin-type="PluginTypes.BACKPACK"
-      :component-props="{
-        worldBook: activeBook,
-        saveSlotId: smsSaveScopeId,
-        dialogueHistory: dialogueScript,
-        currentLine,
-      }"
+    <!-- 背包 -->
+    <Backpack
+      :worldBook="activeBook"
+      :saveSlotId="smsSaveScopeId"
+      :dialogueHistory="dialogueScript"
+      :currentLine="currentLine"
     />
 
     <!-- CG 生成弹窗 -->

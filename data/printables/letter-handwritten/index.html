@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>信件</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f5f0e8;
+      font-family: 'Georgia', 'Times New Roman', '楷体', serif;
+      padding: 20px;
+    }
+    .letter {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      background: linear-gradient(180deg, #fffef9 0%, #f9f3e3 100%);
+      padding: 50px 40px;
+      border-radius: 4px;
+      box-shadow: 0 15px 50px rgba(139, 90, 43, 0.15), 0 5px 20px rgba(0,0,0,0.08);
+    }
+    .letter::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(200,180,160,0.25) 27px, rgba(200,180,160,0.25) 28px);
+      pointer-events: none;
+    }
+    .letter-header {
+      text-align: right;
+      margin-bottom: 30px;
+      font-style: italic;
+      color: #8b6914;
+      font-size: 13px;
+    }
+    .letter-greeting {
+      font-size: 16px;
+      color: #4a4a4a;
+      margin-bottom: 20px;
+    }
+    .letter-content {
+      font-size: 15px;
+      line-height: 28px;
+      color: #4a4a4a;
+      text-align: justify;
+      position: relative;
+      z-index: 1;
+      white-space: pre-wrap;
+    }
+    .letter-signature {
+      text-align: right;
+      margin-top: 40px;
+      font-style: italic;
+      color: #8b6914;
+      font-size: 14px;
+    }
+    .letter-signature .name {
+      font-size: 17px;
+      margin-top: 5px;
+      font-weight: bold;
+    }
+    .decorative-corner {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      opacity: 0.25;
+    }
+    .decorative-corner.top-left { top: 10px; left: 10px; border-top: 2px solid #c0392b; border-left: 2px solid #c0392b; }
+    .decorative-corner.top-right { top: 10px; right: 10px; border-top: 2px solid #c0392b; border-right: 2px solid #c0392b; }
+    .decorative-corner.bottom-left { bottom: 10px; left: 10px; border-bottom: 2px solid #c0392b; border-left: 2px solid #c0392b; }
+    .decorative-corner.bottom-right { bottom: 10px; right: 10px; border-bottom: 2px solid #c0392b; border-right: 2px solid #c0392b; }
+  </style>
+</head>
+<body>
+  <div class="letter">
+    <div class="decorative-corner top-left"></div>
+    <div class="decorative-corner top-right"></div>
+    <div class="decorative-corner bottom-left"></div>
+    <div class="decorative-corner bottom-right"></div>
+    <div class="letter-header">{{date}}</div>
+    <div class="letter-greeting">{{greeting}}</div>
+    <div class="letter-content">{{content}}</div>
+    <div class="letter-signature">
+      <div class="name">{{sender}}</div>
+    </div>
+  </div>
+</body>
+</html>

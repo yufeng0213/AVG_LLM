@@ -205,14 +205,31 @@
               </template>
 
               <template v-else>
-                <div class="app-header messages-header">
-                  <button class="back-btn" type="button" @click="showMessagesList" aria-label="返回短信列表">
-                    <span class="chevron">‹</span>
-                  </button>
-                  <span class="app-title">{{ selectedContact?.name || '短信' }}</span>
-                  <span class="header-action messages-thread-avatar-mini">
-                    {{ selectedContact?.avatar || '' }}
-                  </span>
+                <div class="app-header messages-header messages-header-new">
+                  <!-- 左侧胶囊：返回 + 配置 -->
+                  <div class="messages-header-left-capsule">
+                    <button class="back-btn" type="button" @click="showMessagesList" aria-label="返回短信列表">
+                      <span class="chevron">‹</span>
+                    </button>
+                    <span class="header-config-text">配置</span>
+                  </div>
+                  
+                  <!-- 中间圆形头像 -->
+                  <div class="messages-header-center-avatar">
+                    <span class="header-avatar-circle">
+                      {{ selectedContact?.avatar || '' }}
+                    </span>
+                  </div>
+                  
+                  <!-- 右侧胶囊：功能按钮 -->
+                  <div class="messages-header-right-capsule">
+                    <button class="header-action-btn" type="button" title="礼物">
+                      <span class="action-icon">🎁</span>
+                    </button>
+                    <button class="header-action-btn" type="button" title="主题">
+                      <span class="action-icon">🎨</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div class="messages-thread-page">
@@ -234,14 +251,30 @@
                   <p v-if="smsError" class="sms-error">{{ smsError }}</p>
 
                   <div class="messages-compose">
+                    <!-- 左侧+号按钮 -->
+                    <div class="compose-left-actions">
+                      <button
+                        type="button"
+                        class="compose-plus-btn"
+                        :class="{ active: isFeatureMenuOpen }"
+                        @click="toggleFeatureMenu"
+                        :disabled="isSendingSms || !selectedContact"
+                      >
+                        <span class="plus-icon">+</span>
+                      </button>
+                    </div>
+                    
+                    <!-- 输入框 -->
                     <input
                       v-model="smsDraft"
                       class="sms-input"
                       type="text"
-                      placeholder="iMessage"
+                      placeholder="输入消息..."
                       :disabled="isSendingSms || !selectedContact"
                       @keydown.enter.prevent="handleSendSms"
                     />
+                    
+                    <!-- 发送按钮 -->
                     <button
                       type="button"
                       class="sms-send-btn"
@@ -251,6 +284,34 @@
                       {{ isSendingSms ? '...' : '↑' }}
                     </button>
                   </div>
+                  
+                  <!-- 功能菜单弹出层 -->
+                  <Transition name="feature-menu">
+                    <div v-if="isFeatureMenuOpen" class="feature-menu-overlay" @click="closeFeatureMenu">
+                      <div class="feature-menu-panel" @click.stop>
+                        <button type="button" class="feature-menu-item" @click="handleFeatureAction('emoji')">
+                          <span class="feature-icon">😀</span>
+                          <span class="feature-label">表情包</span>
+                        </button>
+                        <button type="button" class="feature-menu-item" @click="handleFeatureAction('image')">
+                          <span class="feature-icon">📷</span>
+                          <span class="feature-label">图片</span>
+                        </button>
+                        <button type="button" class="feature-menu-item" @click="handleFeatureAction('voice')">
+                          <span class="feature-icon">🎤</span>
+                          <span class="feature-label">语音</span>
+                        </button>
+                        <button type="button" class="feature-menu-item" @click="handleFeatureAction('location')">
+                          <span class="feature-icon">📍</span>
+                          <span class="feature-label">位置</span>
+                        </button>
+                        <button type="button" class="feature-menu-item" @click="handleFeatureAction('file')">
+                          <span class="feature-icon">📎</span>
+                          <span class="feature-label">文件</span>
+                        </button>
+                      </div>
+                    </div>
+                  </Transition>
                 </div>
               </template>
             </div>

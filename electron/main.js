@@ -55,7 +55,6 @@ const createMascotWindow = () => {
   mascotWindow.once('ready-to-show', () => {
     console.log('[Mascot] ready-to-show, showing window')
     if (mascotWindow && !mascotWindow.isDestroyed()) {
-      mascotWindow.webContents.openDevTools({ mode: 'detach' })
       mascotWindow.show()
       mascotWindow.setIgnoreMouseEvents(true, { forward: true })
     }

@@ -23,11 +23,17 @@ import PhoneQuizApp from './phone/PhoneQuizApp.vue'
 import PhoneReaderApp from './phone/PhoneReaderApp.vue'
 import PhonePronunciationApp from './phone/PhonePronunciationApp.vue'
 import ScheduleScreen from '../../feature-character-schedule/src/ScheduleScreen.vue'
-import FridgeScreen from '../../../src/components/FridgeScreen.vue'
-import TodoScreen from '../../../src/components/TodoScreen.vue'
+import FridgeScreen from '../../feature-fridge/src/FridgeScreen.vue'
+import TodoScreen from '../../feature-todo/src/TodoScreen.vue'
 import PhoneMomentsApp from './phone/PhoneMomentsApp.vue'
+import PhoneRelationshipApp from '../../feature-relationship-network/src/RelationshipScreen.vue'
 import { useOfflinePush } from './phone/composables/useOfflinePush.js'
 import { useCallPush } from './phone/composables/useCallPush.js'
+import { useBatteryAwareness } from './phone/composables/useBatteryAwareness.js'
+import { useScreenTimeCare } from './phone/composables/useScreenTimeCare.js'
+import { useBluetoothAudio } from './phone/composables/useBluetoothAudio.js'
+import { useAmbientSounds } from './phone/composables/useAmbientSounds.js'
+import { useNotificationSounds } from './phone/composables/useNotificationSounds.js'
 
 const emit = defineEmits(['back'])
 
@@ -88,6 +94,50 @@ const { isPushEnabled: isCallPushEnabled } = useCallPush({
   onNotificationClick: handleNotificationClick,
 })
 
+// 电量感知 + 屏幕时间关怀
+useBatteryAwareness({ onNewMessage: handleNewPushMessage })
+useScreenTimeCare({ onNewMessage: handleNewPushMessage })
+
+// 蓝牙音响联动
+const { isBluetoothConnected, bluetoothDeviceName, isSupported: btSupported } = useBluetoothAudio()
+
+// 查岗推送由 App.vue 全局管理，此处仅监听事件以显示手机内 toast
+onMounted(() => {
+  window.addEventListener('avg:spot-check', (e) => {
+    const { contactName, text } = e.detail
+    pushNotification.value = {
+      contactName,
+      text: text.slice(0, 80),
+      contactId: e.detail.contactId || contactName,
+      appId: 'sms',
+      timestamp: Date.now(),
+      isSpotCheck: true,
+    }
+    setTimeout(() => {
+      if (pushNotification.value) pushNotification.value = null
+    }, 10000)
+  })
+})
+
+// 环境音系统（需要获取角色当前日程地点）
+const currentLocationName = ref('')
+provide('currentLocationName', currentLocationName)
+
+useAmbientSounds({
+  isBluetoothConnected,
+  locationName: currentLocationName,
+  volume: 0.25,
+})
+
+// 铃声系统
+const { playIncomingCall, playIncomingSms } = useNotificationSounds({ isBluetoothConnected })
+provide('playIncomingCall', playIncomingCall)
+provide('playIncomingSms', playIncomingSms)
+
+// 提供给子组件
+provide('isBluetoothConnected', isBluetoothConnected)
+provide('bluetoothDeviceName', bluetoothDeviceName)
+
 // 提供给子组件
 provide('pushNotification', pushNotification)
 
@@ -133,6 +183,7 @@ const APP_MAP = {
   fridge: { component: FridgeScreen, icon: '🧊', name: '小冰箱' },
   todo: { component: TodoScreen, icon: '📋', name: '待办' },
   moments: { component: PhoneMomentsApp, icon: '🌍', name: '朋友圈' },
+  relationship: { component: PhoneRelationshipApp, icon: '🔗', name: '关系网' },
 }
 
 function openApp(appId) {
@@ -172,9 +223,9 @@ const appName = computed(() => APP_MAP[currentApp.value]?.name || '')
 
     <!-- 推送通知浮层 -->
     <div v-if="pushNotification" class="push-notification-toast" @click="handleNotificationClick(pushNotification)">
-      <div class="push-notification-icon">{{ pushNotification.appId === 'calls' ? '&#x1F4DE;' : '&#x1F4AC;' }}</div>
+      <div class="push-notification-icon">{{ pushNotification.isSpotCheck ? '&#x1F3A4;' : pushNotification.appId === 'calls' ? '&#x1F4DE;' : '&#x1F4AC;' }}</div>
       <div class="push-notification-body">
-        <div class="push-notification-sender">{{ pushNotification.appId === 'calls' ? '来电' : '短信' }}：{{ pushNotification.contactName }}</div>
+        <div class="push-notification-sender">{{ pushNotification.isSpotCheck ? '查岗' : pushNotification.appId === 'calls' ? '来电' : '短信' }}：{{ pushNotification.contactName }}</div>
         <div class="push-notification-text">{{ pushNotification.text }}</div>
       </div>
       <button class="push-notification-close" @click.stop="pushNotification = null">×</button>

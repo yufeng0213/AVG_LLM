@@ -5,21 +5,52 @@
 import { getValidatedActiveConfig, callChatCompletion } from './llmService.core.js'
 import { resolvePrompt } from './promptRegistry.js'
 
-// 活动类型到地点类型的映射
-const ACTIVITY_LOCATION_TYPE_MAP = {
-  sleep: 'home',
-  meal: 'home',
-  hygiene: 'home',
-  work: 'work',
-  study: 'school',
-  class: 'school',
-  training: 'work',
-  social: 'outdoor',
-  leisure: 'outdoor',
-  hobby: 'home',
-  mission: 'outdoor',
-  appointment: 'outdoor',
-  dorm_visit: 'home',
+/**
+ * 将LLM原始响应写入本地日志文件（调试用，每次覆盖上一次）
+ * 使用 Capacitor Filesystem（Android）或 localStorage（Web）存储
+ */
+async function logLLMResponse(characterName, rawResponse, parseSuccess) {
+  const timestamp = new Date().toISOString()
+  const separator = '='.repeat(60)
+  const entry = [
+    separator,
+    `[${timestamp}] 角色: ${characterName} | 解析${parseSuccess ? '成功' : '失败'}`,
+    separator,
+    rawResponse,
+    '',
+  ].join('\n')
+
+  // 尝试 Capacitor Filesystem（Android 原生环境）
+  try {
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+    // 确保目录存在
+    try {
+      await Filesystem.mkdir({ path: 'debug', directory: Directory.Documents, recursive: true })
+    } catch {}
+    await Filesystem.writeFile({
+      path: 'debug/schedule-llm-responses.log',
+      data: entry,
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+    })
+    return
+  } catch {
+    // Capacitor 不可用，回退到 localStorage
+  }
+
+  // localStorage 回退（覆盖写入）
+  try {
+    localStorage.setItem('schedule_llm_debug_log', entry)
+  } catch (e) {
+    console.warn('[Schedule] 写入LLM响应日志失败:', e.message)
+  }
+}
+
+/**
+ * 剥离 <thinking>...</thinking> 标签及其内容
+ */
+function stripThinkingTags(content) {
+  return content.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim()
 }
 
 /**
@@ -63,12 +94,14 @@ export const generateCharacterSchedule = async (params = {}) => {
 
   // 场景/地点信息
   const scenes = Array.isArray(worldBook?.scenes) ? worldBook.scenes : []
-  const sceneText = scenes.slice(0, 6).map(s => {
+  // 优先使用世界书中已有的地点，最多 8 个
+  const sceneText = scenes.slice(0, 8).map(s => {
     const name = String(s?.name || '').trim()
     const desc = String(s?.description || '').trim()
     if (!name) return ''
-    return desc ? `${name}（${desc.slice(0, 50)}）` : name
-  }).filter(Boolean).join('、')
+    return desc ? `${name}（${desc.slice(0, 80)}）` : name
+  }).filter(Boolean).join('\n- ')
+  const sceneHint = sceneText ? `\n【已有地点】（请优先使用这些地点名称）\n- ${sceneText}` : ''
 
   // 寝室状态提示
   const dormHint = dormState
@@ -79,7 +112,7 @@ export const generateCharacterSchedule = async (params = {}) => {
     `【世界书】${worldTitle}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
     eraText ? `【时代设定】${eraText}` : '',
-    sceneText ? `【主要地点】${sceneText}` : '',
+    sceneHint,
     `【角色】${characterName}`,
     characterIdentity ? `【身份/职业】${characterIdentity}` : '',
     characterBackground ? `【角色背景】${characterBackground.slice(0, 200)}` : '',
@@ -97,11 +130,13 @@ export const generateCharacterSchedule = async (params = {}) => {
     systemPrompt: await resolvePrompt('schedule:daily_generation'),
     userPrompt,
     temperature: options.temperature ?? 0.75,
-    maxTokens: options.maxTokens ?? 1200,
+    maxTokens: options.maxTokens ?? 2000,
     extraParams: options.extraParams,
   })
 
   if (!result.success) {
+    // API调用失败也记录日志
+    logLLMResponse(characterName, `API调用失败: ${result.error}`, false)
     return {
       success: false,
       error: result.error || '日程生成失败',
@@ -109,10 +144,15 @@ export const generateCharacterSchedule = async (params = {}) => {
     }
   }
 
-  // 解析分隔符格式输出
-  const parsed = parseScheduleDelimiterOutput(result.data)
+  // 剥离 <thinking>...</thinking> 标签后再解析
+  const cleaned = stripThinkingTags(result.data)
+  const parsed = parseScheduleXml(cleaned)
+  const parseOk = !!(parsed && parsed.hourEntries && parsed.hourEntries.length >= 24)
 
-  if (!parsed || !parsed.hourEntries || parsed.hourEntries.length < 24) {
+  // 记录LLM原始响应到本地日志（包含解析结果）
+  logLLMResponse(characterName, result.data, parseOk)
+
+  if (!parseOk) {
     return {
       success: false,
       error: '日程解析失败，请重试',
@@ -155,53 +195,46 @@ function buildPersonalityText(personalityProfile) {
 }
 
 /**
- * 解析分隔符输出（24小时格式）
+ * 解析XML格式日程输出
  * 格式：
- * |hour=N|
- * |duration=D|
- * |activity=类型|
- * |label=名称|
- * |desc=描述|
- * |location=地点ID|地点名称|
+ * <schedule>
+ *   <block hour="0" duration="6">
+ *     <activity>sleep</activity>
+ *     <label>睡觉</label>
+ *     <desc>安静的睡眠</desc>
+ *     <location id="home_bedroom">卧室</location>
+ *   </block>
+ * </schedule>
  */
-function parseScheduleDelimiterOutput(rawContent) {
+function parseScheduleXml(rawContent) {
   const raw = String(rawContent || '').trim()
   if (!raw) return null
 
-  // 按 || 分割活动区块
-  const blocks = raw.split(/^\s*\|\|\s*$/m).filter(Boolean)
-
-  // 用Map跟踪已填充的小时 {hour: entry}
+  // 提取 <block> 区块
+  const blockRegex = /<block\s+hour="(\d+)"\s+duration="(\d+)"[^>]*>([\s\S]*?)<\/block>/gi
   const hourMap = new Map()
 
-  for (const block of blocks) {
-    const lines = block.trim().split('\n').map(l => l.trim()).filter(Boolean)
+  let blockMatch
+  while ((blockMatch = blockRegex.exec(raw)) !== null) {
+    const startHour = parseInt(blockMatch[1], 10)
+    const duration = parseInt(blockMatch[2], 10)
+    const inner = blockMatch[3]
 
-    const hourMatch = lines.find(l => l.startsWith('|hour='))
-    const durationMatch = lines.find(l => l.startsWith('|duration='))
-    const activityMatch = lines.find(l => l.startsWith('|activity='))
-    const labelMatch = lines.find(l => l.startsWith('|label='))
-    const descMatch = lines.find(l => l.startsWith('|desc='))
-    const locationMatch = lines.find(l => l.startsWith('|location='))
-
-    if (!hourMatch) continue
-
-    const startHour = parseInt(extractValue(hourMatch, 'hour='), 10)
     if (!Number.isFinite(startHour) || startHour < 0 || startHour > 23) continue
+    const dur = Math.max(1, Math.min(24, duration || 1))
 
-    const duration = Math.max(1, Math.min(24, parseInt(extractValue(durationMatch, 'duration='), 10) || 1))
-    const activityType = extractValue(activityMatch, 'activity=') || 'leisure'
-    const activityLabel = extractValue(labelMatch, 'label=') || ''
-    const description = extractValue(descMatch, 'desc=') || ''
-    const locationInfo = extractLocation(locationMatch)
+    const activityType = extractXmlTag(inner, 'activity') || 'leisure'
+    const activityLabel = extractXmlTag(inner, 'label') || ''
+    const description = extractXmlTag(inner, 'desc') || ''
+    const locationInfo = extractXmlLocation(inner)
 
     const blockId = `block_${startHour}_${Date.now()}`
     const isLocked = activityType === 'sleep' || activityType === 'mission'
 
     // 展开为duration个hour条目
-    for (let i = 0; i < duration; i++) {
+    for (let i = 0; i < dur; i++) {
       const hour = (startHour + i) % 24
-      if (hourMap.has(hour)) continue // 不覆盖已有条目
+      if (hourMap.has(hour)) continue
 
       hourMap.set(hour, {
         hour,
@@ -242,7 +275,6 @@ function parseScheduleDelimiterOutput(rawContent) {
     }
   }
 
-  // 转为数组并按hour排序
   const hourEntries = Array.from(hourMap.values()).sort((a, b) => a.hour - b.hour)
 
   return {
@@ -251,6 +283,25 @@ function parseScheduleDelimiterOutput(rawContent) {
     generatedAt: new Date().toISOString(),
     hasCustomOverride: false,
   }
+}
+
+/**
+ * 提取XML标签内容
+ */
+function extractXmlTag(content, tagName) {
+  const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, 'i')
+  const match = content.match(regex)
+  return match ? match[1].trim() : ''
+}
+
+/**
+ * 提取地点信息 <location id="xxx">名称</location>
+ */
+function extractXmlLocation(content) {
+  const regex = /<location\s+id="([^"]*)"[^>]*>([\s\S]*?)<\/location>/i
+  const match = content.match(regex)
+  if (!match) return { id: '', name: '' }
+  return { id: match[1].trim(), name: match[2].trim() }
 }
 
 /**
@@ -265,35 +316,4 @@ function getDefaultLabel(activityType) {
     dorm_visit: '来访寝室',
   }
   return labels[activityType] || '活动'
-}
-
-/**
- * 提取分隔符值
- */
-function extractValue(line, prefix) {
-  if (!line) return ''
-  const start = line.indexOf(prefix)
-  if (start < 0) return ''
-  const value = line.slice(start + prefix.length).replace(/\|$/, '').trim()
-  return value
-}
-
-/**
- * 提取地点信息
- */
-function extractLocation(locationMatch) {
-  if (!locationMatch) return { id: '', name: '' }
-  const start = locationMatch.indexOf('|location=')
-  if (start < 0) return { id: '', name: '' }
-  const content = locationMatch.slice(start + 10).replace(/\|$/, '').trim()
-
-  // 格式: locationId|locationName
-  const parts = content.split('|').map(p => p.trim())
-  if (parts.length >= 2) {
-    return { id: parts[0], name: parts[1] }
-  }
-  if (parts.length === 1 && parts[0]) {
-    return { id: parts[0].toLowerCase().replace(/\s+/g, '_'), name: parts[0] }
-  }
-  return { id: '', name: '' }
 }

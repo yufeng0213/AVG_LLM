@@ -14,11 +14,18 @@ import {
   subscribeFeaturePluginRuntimeState,
 } from './features/featurePluginRuntimeState'
 import { StatusBar, Style } from '@capacitor/status-bar'
+import { loadWorldBooks } from './worldbook/worldBookStore.js'
+import { getMainStorySaveSlot, loadGame } from './save/saveManager.js'
 import GlobalMailbox from '../plugins/feature-mail/src/components/GlobalMailbox.vue'
 import CheckInScreen from '../plugins/feature-checkin/src/CheckInScreen.vue'
 import CheckIn7Screen from '../plugins/feature-checkin/src/CheckIn7Screen.vue'
 import AvatarFrameScreen from '../plugins/feature-dormitory/src/components/AvatarFrameScreen.vue'
 import MusicPlayerScreen from '../plugins/feature-music-player/src/MusicPlayerScreen.vue'
+import WorldMemoryScreen from '../plugins/feature-world-memory/src/WorldMemoryScreen.vue'
+import WorldMapView from './screens/WorldMapView.vue'
+import DreamScreen from './screens/DreamScreen.vue'
+import TimelineViewScreen from './screens/TimelineViewScreen.vue'
+import EvolutionLogScreen from './screens/EvolutionLogScreen.vue'
 import Mascot from '../plugins/feature-mascot/src/Mascot.vue'
 import { useMascotStorage } from '../plugins/feature-mascot/src/composables/useMascotStorage.js'
 import {
@@ -32,6 +39,9 @@ import {
   startAutoRefreshScheduler,
   stopAutoRefreshScheduler,
 } from '../plugins/feature-character-schedule/src/services/autoRefreshScheduler.js'
+import { useBluetoothAudio } from '../plugins/feature-phone/src/phone/composables/useBluetoothAudio.js'
+import { useSpotCheckPush } from '../plugins/feature-phone/src/phone/composables/useSpotCheckPush.js'
+import { loadSmsThreads, saveSmsThreads } from '../plugins/feature-phone/src/phone/composables/usePhoneData.js'
 
 // Widget 事件处理：从 Android Widget 点击进入特定角色的寝室界面
 const handleWidgetOpenDormitory = (data) => {
@@ -268,6 +278,15 @@ const isCheckIn7Open = ref(false)
 const isAvatarSettingsOpen = ref(false)
 const isMusicPlayerOpen = ref(true)
 
+const isMusicPlayerEnabled = computed(() => {
+  const manifest = featurePluginManifestById.value.get('music-player')
+  if (!manifest) return false
+  const runtimeState = featurePluginRuntimeState.value
+  const hasOverride = Object.prototype.hasOwnProperty.call(runtimeState, 'music-player')
+  if (hasOverride) return Boolean(runtimeState['music-player'])
+  return manifest.enabledByDefault !== false
+})
+
 const isMascotEnabled = computed(() => {
   const manifest = featurePluginManifestById.value.get('feature-mascot')
   if (!manifest) return false
@@ -286,10 +305,51 @@ const featurePluginManifestById = computed(() => {
   return map
 })
 
-const openMainStory = () => {
-  // TODO: 打开主线入口界面（MainStoryEntry）
-  // 临时：直接打开世界书选择（复用新游戏逻辑）
-  openNewGame()
+// 主线世界书选择器
+const showMainStorySelector = ref(false)
+const mainStoryBooks = ref([])
+const mainStoryLoading = ref(false)
+
+const openMainStory = async () => {
+  mainStoryLoading.value = true
+  showMainStorySelector.value = true
+  try {
+    mainStoryBooks.value = await loadWorldBooks()
+  } catch (e) {
+    console.error('Failed to load world books for main story:', e)
+  } finally {
+    mainStoryLoading.value = false
+  }
+}
+
+const closeMainStorySelector = () => {
+  showMainStorySelector.value = false
+}
+
+const selectMainStoryBook = async (book) => {
+  closeMainStorySelector()
+  const worldBookId = book.id
+  const narratorId = book.defaultNarratorId || null
+
+  // 查找该世界书的主线存档
+  const slotId = await getMainStorySaveSlot(worldBookId)
+  if (slotId) {
+    // 有存档，加载它
+    const result = await loadGame(slotId)
+    if (result?.success && result.data) {
+      loadedSaveData.value = result.data
+      activeWorldBookId.value = worldBookId
+      activeNarratorId.value = result.data.game?.narratorId || narratorId
+      currentScreen.value = 'game'
+      return
+    }
+  }
+
+  // 无存档，开始新游戏
+  loadedSaveData.value = null
+  activeWorldBookId.value = worldBookId
+  activeNarratorId.value = narratorId
+  currentScreen.value = 'game'
 }
 
 const openShop = () => { currentScreen.value = 'shop' }
@@ -300,6 +360,71 @@ const openCheckIn7 = () => { isCheckIn7Open.value = true }
 const openMailbox = () => { isMailboxOpen.value = true }
 
 const openPhone = () => { currentScreen.value = 'phone' }
+
+// ===== 全局蓝牙 + 查岗推送（常驻，不随 PhoneScreen 卸载） =====
+const { isBluetoothConnected, bluetoothDeviceName, isSupported: btSupported } = useBluetoothAudio()
+
+let _spotCheckAudio = null
+async function handleSpotCheckVoice({ contact, voiceMsg, audioUrl }) {
+  console.log('[App] SpotCheck voice received:', contact.name)
+
+  // 写入 SMS threads（PhoneScreen 不在时也保存）
+  try {
+    const threads = await loadSmsThreads()
+    const thread = threads[contact.id] || []
+    thread.push(voiceMsg)
+    threads[contact.id] = thread
+    await saveSmsThreads(threads)
+  } catch (e) {
+    console.warn('[App] Failed to save spot check SMS:', e)
+  }
+
+  // 蓝牙已连接时自动播放
+  if (isBluetoothConnected.value && audioUrl) {
+    if (_spotCheckAudio) { _spotCheckAudio.pause() }
+    const audio = new Audio(audioUrl)
+    _spotCheckAudio = audio
+    audio.onended = () => { _spotCheckAudio = null }
+    audio.onerror = () => { _spotCheckAudio = null }
+    audio.play().catch(() => { _spotCheckAudio = null })
+  }
+
+  // 系统通知
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    const perm = await LocalNotifications.checkPermissions()
+    if (perm.display === 'granted' || (await LocalNotifications.requestPermissions()).display === 'granted') {
+      const notifId = Date.now() % 100000 + Math.floor(Math.random() * 90000)
+      await LocalNotifications.schedule({
+        notifications: [{
+          title: `${contact.name} 查岗`,
+          body: (voiceMsg.voiceText || '').slice(0, 200),
+          id: notifId,
+          schedule: { at: new Date(Date.now() + 1000), allowsWhileIdle: true },
+          extra: { type: 'spot_check', contactId: contact.id },
+          sound: null,
+          attachments: null,
+        }],
+      })
+      return
+    }
+  } catch (e) { /* not on Android, fallback below */ }
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(`${contact.name} 查岗`, {
+      body: (voiceMsg.voiceText || '').slice(0, 100),
+      icon: '/favicon.svg',
+      tag: 'spot-check',
+    })
+  }
+}
+
+useSpotCheckPush({
+  isBtConnected: isBluetoothConnected,
+  onNewVoiceMessage: handleSpotCheckVoice,
+})
+
+// =====
 
 // 加载存档后进入游戏
 const handleLoadSave = (saveData) => {
@@ -343,7 +468,10 @@ const pluginScreenRegistry = computed(() => buildPluginScreenRegistry({
   onNavigate: (screen) => { currentScreen.value = screen },
 }))
 
+const FULLSCREEN_SCREENS = new Set(['world-memory', 'world-map', 'dreams', 'timeline', 'evolution-log'])
+
 const activePluginScreen = computed(() => {
+  if (FULLSCREEN_SCREENS.has(currentScreen.value)) return null
   return resolvePluginScreenByRoute(pluginScreenRegistry.value, currentScreen.value)
 })
 
@@ -469,7 +597,7 @@ watch(currentScreen, (screen) => {
 
 watch(activePluginScreen, (pluginScreen) => {
   const screen = currentScreen.value
-  if (screen === 'start' || screen === 'game' || screen === 'world-hub') {
+  if (screen === 'start' || screen === 'game' || screen === 'world-hub' || screen === 'world-memory') {
     return
   }
   if (!pluginScreen) {
@@ -626,13 +754,12 @@ watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorage
   <div class="app-stage" :class="[`platform-${platform}`, { 'android-portrait': isAndroidPlatform }]">
     <div
       class="app-shell"
-      :class="{ 'game-fullscreen': currentScreen === 'game' || currentScreen === 'face-to-face' || currentScreen === 'trpg' }"
+      :class="{ 'game-fullscreen': currentScreen === 'game' || currentScreen === 'face-to-face' || currentScreen === 'trpg' || currentScreen === 'world-memory' || currentScreen === 'world-map' }"
       :style="{ '--ui-scale': uiScale, ...containerStyle }"
     >
       <keep-alive>
         <WorldHubScreen
           v-if="currentScreen === 'world-hub'"
-          @open-new-game="openNewGame"
           @open-main-story="openMainStory"
           @open-dormitory="() => currentScreen = 'dormitory'"
           @open-game-center="() => currentScreen = 'game-center'"
@@ -643,13 +770,17 @@ watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorage
           @open-checkin7="openCheckIn7"
           @open-mailbox="openMailbox"
           @open-worldbook="() => currentScreen = 'worldbook-shelf'"
+          @open-world-map="() => currentScreen = 'world-map'"
+          @open-world-memory="() => currentScreen = 'world-memory'"
+          @open-dreams="() => currentScreen = 'dreams'"
+          @open-timeline="() => currentScreen = 'timeline'"
+          @open-evolution-log="() => currentScreen = 'evolution-log'"
           @open-card-collection="() => currentScreen = 'card-collection'"
           @open-adventure="() => currentScreen = 'adventure-game'"
           @open-narrator="() => currentScreen = 'narrator-manager'"
           @open-plugin="() => currentScreen = 'plugin-manager'"
           @open-settings="() => currentScreen = 'settings'"
           @open-face-to-face="() => currentScreen = 'face-to-face'"
-          @open-load-save="() => currentScreen = 'load-save'"
           @open-phone="openPhone"
           @open-avatar="isAvatarSettingsOpen = true"
           @open-test="openTest"
@@ -693,6 +824,36 @@ watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorage
         @back="isCheckIn7Open = false"
         @checkin7-result="() => {}"
       />
+
+      <!-- 世界记忆（全屏） -->
+      <WorldMemoryScreen
+        v-else-if="currentScreen === 'world-memory'"
+        @back="currentScreen = 'world-hub'"
+      />
+
+      <!-- 世界地图（全屏） -->
+      <WorldMapView
+        v-else-if="currentScreen === 'world-map'"
+        @back="currentScreen = 'world-hub'"
+      />
+
+      <!-- 梦境（全屏） -->
+      <DreamScreen
+        v-else-if="currentScreen === 'dreams'"
+        @back="currentScreen = 'world-hub'"
+      />
+
+      <!-- 时间线（全屏） -->
+      <TimelineViewScreen
+        v-else-if="currentScreen === 'timeline'"
+        @back="currentScreen = 'world-hub'"
+      />
+
+      <!-- 世界演化日志（全屏） -->
+      <EvolutionLogScreen
+        v-else-if="currentScreen === 'evolution-log'"
+        @back="currentScreen = 'world-hub'"
+      />
     </div>
 
     <!-- 全局 Modal（Teleport 到 body，放在 app 外层） -->
@@ -706,16 +867,155 @@ watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorage
       @close="isAvatarSettingsOpen = false"
     />
 
-    <!-- 音乐播放器（全局悬浮，始终挂载） -->
+    <!-- 音乐播放器（全局悬浮） -->
     <MusicPlayerScreen
+      v-if="isMusicPlayerEnabled"
       v-show="isMusicPlayerOpen"
       @close="isMusicPlayerOpen = false"
     />
 
     <!-- 桌宠：Electron 下用独立覆盖层窗口，Android 下用系统级悬浮窗，其他平台用内嵌组件 -->
     <Mascot v-if="isMascotEnabled && !isElectronPlatform && !isAndroidPlatform" />
+
+    <!-- 主线世界书选择器 -->
+    <div v-if="showMainStorySelector" class="main-story-overlay" @click.self="closeMainStorySelector">
+      <div class="main-story-dialog">
+        <div class="main-story-header">
+          <h2 class="main-story-title">选择主线世界书</h2>
+          <button class="main-story-close" @click="closeMainStorySelector">✕</button>
+        </div>
+        <div class="main-story-body">
+          <p v-if="mainStoryLoading" class="main-story-loading">加载中...</p>
+          <p v-else-if="mainStoryBooks.length === 0" class="main-story-empty">暂无世界书</p>
+          <div v-else class="main-story-book-list">
+            <div
+              v-for="book in mainStoryBooks"
+              :key="book.id"
+              class="main-story-book-card"
+              @click="selectMainStoryBook(book)"
+            >
+              <div class="book-card-title">{{ book.title }}</div>
+              <div class="book-card-summary">{{ book.summary?.slice(0, 60) || '无概述' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped src="./App.css"></style>
 <style src="./theme/themeProfiles.css"></style>
+
+<style scoped>
+.main-story-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.main-story-dialog {
+  background: #1a1a2e;
+  border-radius: 16px;
+  width: min(500px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.main-story-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.main-story-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.main-story-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.main-story-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.main-story-loading,
+.main-story-empty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  padding: 40px 0;
+}
+
+.main-story-book-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.main-story-book-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.main-story-book-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.book-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.book-card-summary {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.4;
+}
+
+
+  .platform-android.android-portrait .main-story-close {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+</style>

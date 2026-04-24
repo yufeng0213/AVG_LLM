@@ -531,6 +531,11 @@ export const createCharacterSkeleton = (index = 1) => ({
   relationshipBase: createDefaultRelationshipBase(),
   voiceConfig: createDefaultCharacterVoiceConfig(),
   portraits: [],  // 新增：立绘列表
+  birthday: (() => {
+    const m = Math.floor(Math.random() * 12) + 1
+    const d = Math.floor(Math.random() * 28) + 1
+    return `${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`
+  })(),
   smsAvatar: null,  // 短信聊天专用头像（base64 dataUrl）
   smsBg: null,  // 短信聊天背景图（base64 dataUrl 或 URL）
   smsStickers: {},  // 短信表情包（{描述: url}）
@@ -594,6 +599,7 @@ const normalizeCharacter = (rawCharacter, index = 0) => {
     smsAvatar: typeof rawCharacter?.smsAvatar === 'string' ? rawCharacter.smsAvatar : null,
     smsBg: typeof rawCharacter?.smsBg === 'string' ? rawCharacter.smsBg : null,
     smsStickers: rawCharacter?.smsStickers && typeof rawCharacter.smsStickers === 'object' ? rawCharacter.smsStickers : {},
+    birthday: String(rawCharacter?.birthday || fallback.birthday),
     createdAt: String(rawCharacter?.createdAt || fallback.createdAt),
     updatedAt: String(rawCharacter?.updatedAt || fallback.updatedAt),
   }
@@ -686,6 +692,41 @@ const normalizeScenes = (rawScenes) => {
   return rawScenes.map((scene, index) => normalizeScene(scene, index)).filter((s) => s.name || s.background)
 }
 
+export const createDefaultRelationships = () => ({})
+
+export const normalizeRelationships = (raw, characters) => {
+  if (!raw || typeof raw !== 'object') return createDefaultRelationships()
+
+  const validIds = new Set(['__player__'])
+  if (Array.isArray(characters)) {
+    characters.forEach(c => { if (c?.id) validIds.add(String(c.id)) })
+  }
+
+  const result = {}
+  for (const [fromId, targets] of Object.entries(raw)) {
+    if (!validIds.has(fromId)) continue
+    if (!targets || typeof targets !== 'object') continue
+
+    const normalizedTargets = {}
+    for (const [toId, rel] of Object.entries(targets)) {
+      if (!validIds.has(toId)) continue
+      if (!rel || typeof rel !== 'object') continue
+
+      const score = typeof rel.score === 'number' ? Math.max(0, Math.min(1000, rel.score)) : 0
+      normalizedTargets[toId] = {
+        score,
+        description: typeof rel.description === 'string' && rel.description ? rel.description : '',
+        updatedAt: typeof rel.updatedAt === 'string' && rel.updatedAt ? rel.updatedAt : new Date().toISOString(),
+      }
+    }
+
+    if (Object.keys(normalizedTargets).length > 0) {
+      result[fromId] = normalizedTargets
+    }
+  }
+  return result
+}
+
 export const createDefaultWorldBook = () => ({
   id: 'default_world_book',
   title: '默认世界书',
@@ -703,6 +744,7 @@ export const createDefaultWorldBook = () => ({
   displaySettings: createDefaultDisplaySettings(),
   openingDialogueMode: 'auto',
   openingDialogue: [],
+  relationships: createDefaultRelationships(),
 })
 
 export const normalizeWorldBook = (rawBook, index = 0) => {
@@ -741,6 +783,7 @@ export const normalizeWorldBook = (rawBook, index = 0) => {
     displaySettings: normalizeDisplaySettings(rawBook?.displaySettings),
     openingDialogueMode,
     openingDialogue: hasLegacyDefaultOpening ? [] : normalizedOpeningDialogue,
+    relationships: normalizeRelationships(rawBook?.relationships, rawBook?.characters),
   }
 }
 
@@ -814,6 +857,7 @@ export const loadWorldBookSummaries = async () => {
     const liteBooks = parsed.map((rawBook, index) => {
       const isDefault = Boolean(rawBook?.isDefault) || rawBook?.id === 'default_world_book'
       const chars = Array.isArray(rawBook?.characters) ? rawBook.characters : []
+      const rawRelationships = rawBook?.relationships && typeof rawBook.relationships === 'object' ? rawBook.relationships : {}
       return {
         id: String(rawBook?.id || `world_book_${Date.now()}_${index}`),
         title: String(rawBook?.title || (isDefault ? '默认世界书' : `世界书 ${index + 1}`)),
@@ -829,7 +873,9 @@ export const loadWorldBookSummaries = async () => {
           smsBg: typeof c?.smsBg === 'string' ? c.smsBg : null,
           smsStickers: c?.smsStickers && typeof c.smsStickers === 'object' ? c.smsStickers : {},
           voiceConfig: c?.voiceConfig && typeof c.voiceConfig === 'object' ? c.voiceConfig : { enabled: false, voiceId: '' },
+          birthday: String(c?.birthday || ''),
         })),
+        relationships: normalizeRelationships(rawRelationships, chars),
       }
     })
 

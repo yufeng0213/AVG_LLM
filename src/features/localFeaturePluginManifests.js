@@ -25,6 +25,8 @@ import hourglassManifest from '../../plugins/feature-hourglass/plugin.json'
 import mobiusParticleManifest from '../../plugins/feature-mobius-particle/plugin.json'
 import mascotManifest from '../../plugins/feature-mascot/plugin.json'
 import characterScheduleManifest from '../../plugins/feature-character-schedule/plugin.json'
+import worldMemoryManifest from '../../plugins/feature-world-memory/plugin.json'
+import characterStateManifest from '../../plugins/feature-character-state/plugin.json'
 
 const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   loadSaveManifest,
@@ -53,6 +55,8 @@ const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   mobiusParticleManifest,
   mascotManifest,
   characterScheduleManifest,
+  worldMemoryManifest,
+  characterStateManifest,
 ]
 
 export const getLocalFeaturePluginManifests = () => {

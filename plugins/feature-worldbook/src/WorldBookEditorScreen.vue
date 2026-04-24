@@ -413,6 +413,22 @@ const addCharacter = () => {
   statusMessage.value = `已新增角色：${nextCharacter.name}`
 }
 
+const deleteCharacter = (charId) => {
+  if (!activeBook.value) return
+
+  const index = characters.value.findIndex((c) => c.id === charId)
+  if (index < 0) return
+
+  const name = getCharacterDisplayName(characters.value[index], index)
+  if (!confirm(`确定要删除角色「${name}」吗？此操作不可撤销。`)) return
+
+  activeBook.value.characters = characters.value.filter((c) => c.id !== charId)
+  activeCharacterId.value = ''
+  ensureCharacterSelection()
+  markBookUpdated()
+  statusMessage.value = `已删除角色：${name}`
+}
+
 const updateActiveCharacterField = (field, value) => {
   if (!activeCharacter.value) return
   activeCharacter.value[field] = value

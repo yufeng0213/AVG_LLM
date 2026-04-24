@@ -5,16 +5,13 @@ import { isNative } from '../utils/platform.js'
 import { useGlobalUser } from '../composables/useGlobalUser.js'
 import { useAvatar } from '../../plugins/feature-dormitory/src/composables/useAvatar.js'
 import { useAvatarFrame } from '../../plugins/feature-dormitory/src/composables/useAvatarFrame.js'
-import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStore'
 import { getWorldWallpaperCache, setWorldWallpaperCache, getWorldWallpaperUrl, isWorldWallpaperVideo } from '../../plugins/feature-phone/src/phone/composables/usePhoneData.js'
-import { getEnabledNarratorProfiles, loadNarratorProfiles } from '../narrator/narratorStore'
 import { kvStorage } from '../storage/index.js'
 
 defineOptions({ name: 'WorldHubScreen' })
 
 const emit = defineEmits([
   'back',
-  'open-new-game',
   'open-main-story',
   'open-dormitory',
   'open-game-center',
@@ -25,13 +22,14 @@ const emit = defineEmits([
   'open-checkin7',
   'open-mailbox',
   'open-worldbook',
+  'open-world-memory',
   'open-card-collection',
   'open-adventure',
   'open-narrator',
   'open-plugin',
+  'open-world-map',
   'open-settings',
   'open-face-to-face',
-  'open-load-save',
   'open-phone',
   'open-avatar',
   'open-test',
@@ -39,6 +37,9 @@ const emit = defineEmits([
   'open-book',
   'open-hourglass',
   'open-mobius',
+  'open-dreams',
+  'open-timeline',
+  'open-evolution-log',
 ])
 
 const { username, avatar: globalAvatar, economy } = useGlobalUser()
@@ -156,45 +157,7 @@ async function restoreWorldWallpaperDefault() {
   hasCustomWorldWallpaper.value = false
 }
 
-// 新游戏弹窗
-const showNewGameDialog = ref(false)
-const worldBooks = ref([])
-const selectedWorldBookId = ref('default_world_book')
-const narratorProfiles = ref([])
-const selectedNarratorId = ref('')
-
-const loadWorldBookList = async () => {
-  worldBooks.value = await loadWorldBooks()
-  selectedWorldBookId.value = await getActiveWorldBookId()
-}
-
-const loadNarratorList = async () => {
-  const profiles = await loadNarratorProfiles()
-  narratorProfiles.value = getEnabledNarratorProfiles(profiles)
-}
-
-const openNewGameDialog = async () => {
-  await loadWorldBookList()
-  await loadNarratorList()
-  selectedNarratorId.value = ''
-  showNewGameDialog.value = true
-}
-
-const closeNewGameDialog = () => {
-  showNewGameDialog.value = false
-}
-
-const confirmNewGame = () => {
-  showNewGameDialog.value = false
-  emit('open-new-game', {
-    worldBookId: selectedWorldBookId.value,
-    narratorId: selectedNarratorId.value || null,
-  })
-}
-
 onMounted(async () => {
-  await loadWorldBookList()
-  await loadNarratorList()
   await loadWorldWallpaper()
   await loadActiveFrameUrl()
 })
@@ -296,6 +259,10 @@ onActivated(() => {
           <span class="hub-btn-icon">✨</span>
           <span class="hub-btn-label">粒子</span>
         </button>
+        <button type="button" class="hub-scatter-btn" @click="emit('open-adventure')">
+          <span class="hub-btn-icon">🗡️</span>
+          <span class="hub-btn-label">冒险</span>
+        </button>
       </div>
 
       <!-- 右侧按钮 -->
@@ -331,25 +298,33 @@ onActivated(() => {
       </button>
 
       <div class="hub-secondary-bar">
-        <button type="button" class="hub-secondary-btn hub-secondary-btn--accent" @click="openNewGameDialog">
-          <span class="hub-sec-icon">✨</span>
-          <span class="hub-sec-label">新游戏</span>
-        </button>
-        <button type="button" class="hub-secondary-btn" @click="emit('open-load-save')">
-          <span class="hub-sec-icon">💾</span>
-          <span class="hub-sec-label">读档</span>
-        </button>
         <button type="button" class="hub-secondary-btn" @click="emit('open-worldbook')">
           <span class="hub-sec-icon">🌐</span>
           <span class="hub-sec-label">世界书</span>
         </button>
+        <button type="button" class="hub-secondary-btn" @click="emit('open-world-map')">
+          <span class="hub-sec-icon">🗺️</span>
+          <span class="hub-sec-label">地图</span>
+        </button>
+        <button type="button" class="hub-secondary-btn" @click="emit('open-dreams')">
+          <span class="hub-sec-icon">🌙</span>
+          <span class="hub-sec-label">梦境</span>
+        </button>
+        <button type="button" class="hub-secondary-btn" @click="emit('open-timeline')">
+          <span class="hub-sec-icon">📅</span>
+          <span class="hub-sec-label">时间线</span>
+        </button>
+        <button type="button" class="hub-secondary-btn" @click="emit('open-world-memory')">
+          <span class="hub-sec-icon">🧠</span>
+          <span class="hub-sec-label">记忆</span>
+        </button>
+        <button type="button" class="hub-secondary-btn" @click="emit('open-evolution-log')">
+          <span class="hub-sec-icon">📜</span>
+          <span class="hub-sec-label">演化</span>
+        </button>
         <button type="button" class="hub-secondary-btn" @click="emit('open-card-collection')">
           <span class="hub-sec-icon">🃏</span>
           <span class="hub-sec-label">卡牌</span>
-        </button>
-        <button type="button" class="hub-secondary-btn" @click="emit('open-adventure')">
-          <span class="hub-sec-icon">🗡️</span>
-          <span class="hub-sec-label">冒险</span>
         </button>
         <button type="button" class="hub-secondary-btn" @click="emit('open-narrator')">
           <span class="hub-sec-icon">🎙️</span>
@@ -361,50 +336,6 @@ onActivated(() => {
         </button>
       </div>
     </footer>
-
-    <!-- 新游戏弹窗 -->
-    <div v-if="showNewGameDialog" class="new-game-overlay" @click.self="closeNewGameDialog">
-      <div class="new-game-dialog">
-        <div class="dialog-header">
-          <h3 class="dialog-title">选择世界书</h3>
-          <button type="button" class="dialog-close" @click="closeNewGameDialog">×</button>
-        </div>
-        <p class="dialog-desc">选择一本世界书作为新游戏的背景设定</p>
-
-        <div class="worldbook-list">
-          <button
-            v-for="book in worldBooks"
-            :key="book.id"
-            type="button"
-            class="worldbook-item"
-            :class="{ selected: selectedWorldBookId === book.id }"
-            @click="selectedWorldBookId = book.id"
-          >
-            <span class="book-indicator">{{ selectedWorldBookId === book.id ? '✓' : '' }}</span>
-            <div class="book-info">
-              <span class="book-title">{{ book.title }}</span>
-              <span v-if="book.isDefault" class="book-badge">默认</span>
-              <span class="book-summary">{{ book.summary || '暂无简介' }}</span>
-            </div>
-          </button>
-        </div>
-
-        <label class="dialog-select-field">
-          <span class="dialog-select-label">本局叙事者（可选）</span>
-          <select v-model="selectedNarratorId" class="dialog-select-control">
-            <option value="">使用世界书默认</option>
-            <option v-for="profile in narratorProfiles" :key="profile.id" :value="profile.id">
-              {{ profile.name }}
-            </option>
-          </select>
-        </label>
-
-        <div class="dialog-actions">
-          <button type="button" class="dialog-btn cancel" @click="closeNewGameDialog">取消</button>
-          <button type="button" class="dialog-btn confirm" @click="confirmNewGame">开始新游戏</button>
-        </div>
-      </div>
-    </div>
 
     <!-- 粒子菜单 -->
     <div v-if="showParticleMenu" class="particle-overlay" @click.self="showParticleMenu = false">

@@ -1,0 +1,379 @@
+/* ===== DreamScreen — 梦境全屏沉浸式设计 ===== */
+
+/* 全屏容器 + 装饰光斑 */
+.dream-screen {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background, #0d0d17);
+  overflow: hidden;
+}
+
+.dream-screen::before {
+  content: '';
+  position: fixed;
+  top: -10%;
+  right: -20%;
+  width: 50vmax;
+  height: 50vmax;
+  background: radial-gradient(circle, rgba(123, 47, 255, 0.12) 0%, transparent 70%);
+  animation: blob-drift 25s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dream-screen::after {
+  content: '';
+  position: fixed;
+  bottom: -15%;
+  left: -15%;
+  width: 40vmax;
+  height: 40vmax;
+  background: radial-gradient(circle, rgba(255, 58, 242, 0.08) 0%, transparent 70%);
+  animation: blob-drift 30s ease-in-out infinite reverse;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(5%, -8%) scale(1.05); }
+  66% { transform: translate(-3%, 5%) scale(0.95); }
+}
+
+/* 玻璃拟态头部 */
+.dream-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(10px, 2vw, 16px) clamp(12px, 3vw, 20px);
+  padding-top: max(clamp(10px, 2vw, 16px), var(--safe-area-inset-top, 16px));
+  background: color-mix(in srgb, var(--background, #0d0d17) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #fff) 20%, transparent);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.dream-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--background, #0d0d17) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground, #fff) 20%, transparent);
+  color: var(--foreground, #fff);
+  padding: 6px 14px;
+  border-radius: var(--radius-button, 9999px);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.dream-back-btn:hover {
+  background: color-mix(in srgb, var(--accent-cyan, #00f5d4) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-cyan, #00f5d4) 40%, transparent);
+}
+
+.dream-back-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.dream-title {
+  font-size: clamp(16px, 3.5vw, 20px);
+  font-weight: 700;
+  color: var(--foreground, #fff);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.5px;
+}
+
+.dream-title-glow {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-purple, #7b2fff);
+  box-shadow: 0 0 8px rgba(123, 47, 255, 0.6);
+  animation: title-glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes title-glow-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+.dream-refresh-btn {
+  background: color-mix(in srgb, var(--accent-purple, #7b2fff) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-purple, #7b2fff) 50%, transparent);
+  color: var(--foreground, #fff);
+  padding: 6px 16px;
+  border-radius: var(--radius-button, 9999px);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.dream-refresh-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-purple, #7b2fff) 40%, transparent);
+  box-shadow: 0 0 16px rgba(123, 47, 255, 0.2);
+}
+
+.dream-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 内容区域 */
+.dream-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: clamp(12px, 2vw, 16px);
+  position: relative;
+  z-index: 1;
+}
+
+/* 角色选择栏 */
+.dream-char-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  scrollbar-width: none;
+}
+
+.dream-char-bar::-webkit-scrollbar { display: none; }
+
+.dream-char-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-button, 9999px);
+  background: color-mix(in srgb, var(--foreground, #fff) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground, #fff) 12%, transparent);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.25s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dream-char-item:hover {
+  background: color-mix(in srgb, var(--accent-purple, #7b2fff) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-purple, #7b2fff) 40%, transparent);
+}
+
+.dream-char-item.active {
+  background: color-mix(in srgb, var(--accent-purple, #7b2fff) 30%, transparent);
+  border-color: color-mix(in srgb, var(--accent-purple, #7b2fff) 60%, transparent);
+  box-shadow: 0 0 12px rgba(123, 47, 255, 0.15);
+}
+
+.dream-char-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(123, 47, 255, 0.4), rgba(255, 58, 242, 0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground, #fff);
+}
+
+.dream-char-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dream-char-count {
+  font-size: 10px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent-purple, #7b2fff) 40%, transparent);
+  padding: 1px 6px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 梦境列表 */
+.dream-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 梦境卡片 */
+.dream-card {
+  background: rgba(30, 25, 50, 0.6);
+  border: 1px solid rgba(150, 120, 200, 0.15);
+  border-left: 3px solid var(--accent-purple, #7b2fff);
+  border-radius: clamp(14px, 2vw, var(--radius-card, 24px));
+  padding: clamp(12px, 2vw, 16px);
+  transition: all 0.25s;
+  animation: dream-card-in 0.4s ease both;
+}
+
+@keyframes dream-card-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dream-card:hover {
+  border-left-color: var(--accent-cyan, #00f5d4);
+  box-shadow: 0 4px 24px rgba(0, 245, 212, 0.08), 0 2px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.dream-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.dream-card-char {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-magenta, #ff3af2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dream-card-char-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 58, 242, 0.3), rgba(123, 47, 255, 0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--foreground, #fff);
+}
+
+.dream-card-time {
+  font-size: 11px;
+  color: rgba(200, 192, 216, 0.4);
+  font-family: monospace;
+}
+
+.dream-card-body {
+  font-size: 14px;
+  line-height: 1.75;
+  color: rgba(200, 192, 216, 0.85);
+  font-style: italic;
+  margin-bottom: 10px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(150, 120, 200, 0.1);
+}
+
+.dream-card-footer {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dream-card-mood,
+.dream-card-type {
+  font-size: 11px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--accent-purple, #7b2fff) 15%, transparent);
+  color: rgba(200, 192, 216, 0.7);
+  padding: 3px 10px;
+  border-radius: var(--radius-button, 9999px);
+  border: 1px solid color-mix(in srgb, var(--accent-purple, #7b2fff) 25%, transparent);
+}
+
+/* 空状态 */
+.dream-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: rgba(200, 192, 216, 0.3);
+  text-align: center;
+  animation: dream-empty-in 0.6s ease both;
+}
+
+@keyframes dream-empty-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dream-empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: moon-float 4s ease-in-out infinite;
+}
+
+@keyframes moon-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.dream-empty-text {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.dream-empty-hint {
+  font-size: 13px !important;
+  line-height: 1.6;
+  color: rgba(200, 192, 216, 0.25) !important;
+}
+
+/* Android 竖屏适配 */
+.platform-android.android-portrait .dream-screen {
+  background: #0d0d17 !important;
+}
+
+.platform-android.android-portrait .dream-header {
+  background: rgba(13, 13, 23, 0.92) !important;
+}
+
+.platform-android.android-portrait .dream-char-item {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.platform-android.android-portrait .dream-char-item.active {
+  background: rgba(123, 47, 255, 0.35) !important;
+  border-color: rgba(123, 47, 255, 0.6) !important;
+}
+
+.platform-android.android-portrait .dream-card {
+  background: rgba(30, 25, 50, 0.75) !important;
+}
+  .platform-android.android-portrait .dream-back-btn,
+  .platform-android.android-portrait .dream-refresh-btn{
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }

@@ -14,6 +14,7 @@ import {
   computeExecutionForHour,
   SCHEDULE_ACTIVITY_TYPES,
 } from './useScheduleTime.js'
+export { SCHEDULE_ACTIVITY_TYPES } from './useScheduleTime.js'
 import { generateCharacterSchedule } from '../../../../src/llm/llmService.schedule.js'
 
 // 存储Key（v2 = 24小时制）

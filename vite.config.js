@@ -24,7 +24,7 @@ export default defineConfig({
   server: {
     // Allow Vite to serve multiple HTML entry points in dev mode
     fs: {
-      allow: ['./src', './public', './index.html', './plugins', './packages'],
+      allow: ['./src', './public', './index.html', './plugins', './packages', './data'],
     },
   },
   build: {

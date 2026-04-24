@@ -1,0 +1,26 @@
+{
+  "id": "fridge",
+  "name": "小冰箱",
+  "description": "冰箱库存管理，支持保质期追踪、记账与统计。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "fridge",
+    "title": "小冰箱",
+    "icon": "🧊",
+    "order": 41
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "fridge"
+  },
+  "storage": {
+    "namespace": "fridge"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

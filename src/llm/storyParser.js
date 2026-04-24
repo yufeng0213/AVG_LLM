@@ -750,6 +750,89 @@ const parseTicketLine = (line, index) => {
  * @param {string} content - 原始内容
  * @returns {number} 中文字数
  */
+/**
+ * 解析主线剧情返回的分隔符格式内容
+ * @param {string} content - LLM 返回的原始内容
+ * @returns {Object} 解析结果
+ */
+export const parseMainStoryContent = (content) => {
+  if (!content || typeof content !== 'string') {
+    return { success: false, error: '内容为空或格式错误', dialogues: [], rawContent: content }
+  }
+  const blocks = content.split('\n---\n').map(b => b.trim()).filter(Boolean)
+  const dialogues = []
+  let pendingScene = null
+  for (const block of blocks) {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) continue
+    const header = lines[0]
+    const narratorMatch = header.match(/^\[narrator\|([^\]]*)\]$/)
+    if (narratorMatch) {
+      const storyTime = narratorMatch[1].trim()
+      const body = lines.slice(1).join('\n').trim()
+      if (!body) continue
+      dialogues.push({
+        id: `story_${Date.now()}_${dialogues.length}`,
+        speaker: '旁白', emotion: 'default', text: body, highlight: false,
+        storyTime, choices: null,
+        scene: pendingScene ? { ...pendingScene } : null,
+        metadata: { rawSpeaker: '', rawEmotion: '', rawStoryTime: storyTime, rawScene: null },
+      })
+      pendingScene = null
+      continue
+    }
+    const speakerMatch = header.match(/^\[s:([^|]*)\|e:([^|]*)\|d:([^\]]*)\]$/)
+    if (speakerMatch) {
+      const speaker = speakerMatch[1].trim() || '旁白'
+      const emotion = normalizeEmotion(speakerMatch[2].trim())
+      const storyTime = speakerMatch[3].trim()
+      const body = lines.slice(1).join('\n').trim()
+      if (!body) continue
+      dialogues.push({
+        id: `story_${Date.now()}_${dialogues.length}`,
+        speaker: normalizeSpeaker(speaker), emotion, text: body, highlight: false,
+        storyTime, choices: null,
+        scene: pendingScene ? { ...pendingScene } : null,
+        metadata: { rawSpeaker: speaker, rawEmotion: speakerMatch[2].trim(), rawStoryTime: storyTime, rawScene: null },
+      })
+      pendingScene = null
+      continue
+    }
+    const sceneMatch = header.match(/^\[scene\|([^|]*)\|([^\]]*)\]$/)
+    if (sceneMatch) {
+      const sceneId = sceneMatch[1].trim()
+      const sceneName = sceneMatch[2].trim()
+      if (sceneId || sceneName) {
+        pendingScene = { id: sceneId || sceneName, name: sceneName || sceneId, background: '' }
+      }
+      continue
+    }
+    const choicesMatch = header.match(/^\[choices\|([^\]]*)\]$/)
+    if (choicesMatch) {
+      const prompt = choicesMatch[1].trim() || '你要怎么做？'
+      const optionLines = lines.slice(1)
+      const cleanOptions = optionLines.filter(l => !l.match(/^\[i:/))
+      const options = cleanOptions.map((optLine, idx) => {
+        const gtIdx = optLine.indexOf('>')
+        if (gtIdx === -1) return null
+        const text = optLine.substring(0, gtIdx).trim()
+        const action = optLine.substring(gtIdx + 1).trim()
+        if (!text) return null
+        return { id: `choice_${Date.now()}_${idx}`, text, action: action || `choice_${idx + 1}` }
+      }).filter(Boolean)
+      if (options.length > 0 && dialogues.length > 0) {
+        dialogues[dialogues.length - 1].choices = {
+          prompt, options,
+          allowCustomInput: optionLines.some(l => l.match(/^\[i:[^]]*[1Yy]/)),
+        }
+      }
+      continue
+    }
+  }
+  if (dialogues.length === 0) { return parseStoryContent(content) }
+  return { success: true, error: null, dialogues, rawContent: content }
+}
+
 export const countChineseChars = (content) => {
   if (!content) return 0
   const matches = content.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g)
@@ -758,6 +841,7 @@ export const countChineseChars = (content) => {
 
 export default {
   parseStoryContent,
+  parseMainStoryContent,
   parseStoryTicketContent,
   validateDialogue,
   toGameScript,

@@ -8,6 +8,8 @@ import {
   setActiveWorldBookId,
 } from '../../../src/worldbook/worldBookStore.js'
 import { generatePhoneSmsReply, generateDormChatReply } from '../../../src/llm'
+import { getWorldMemory } from '../../../src/memory/worldMemoryStore.js'
+import { getCharacterRelationship } from '../../../src/relationship/index.js'
 import { getValidatedActiveConfig, callChatCompletion } from '../../../src/llm/llmService.core.js'
 import { isAndroid } from '../../../src/utils/platform.js'
 import RedPacket from './components/RedPacket.vue'
@@ -20,8 +22,8 @@ import { useDormSubScene } from './composables/useDormSubScene.js'
 import { useGlobalUser } from '../../../src/composables/useGlobalUser.js'
 import { useBackStorage } from '../../../plugins/feature-back-storage/src/composables/useBackStorage.js'
 import { useCharacterSchedule } from '../../../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
-import { useFridgeInventory } from '../../../src/composables/useFridgeInventory.js'
-import { useTodoInventory } from '../../../src/composables/useTodoInventory.js'
+import { useFridgeInventory } from '../../../plugins/feature-fridge/src/composables/useFridgeInventory.js'
+import { useTodoInventory } from '../../../plugins/feature-todo/src/composables/useTodoInventory.js'
 
 // 子组件导入
 import NestSelectorView from './components/NestSelectorView.vue'
@@ -2333,6 +2335,24 @@ const handleSendDormChat = async () => {
   }))
 
   try {
+    // 加载世界记忆
+    const bookId = activeBook.value?.id || 'default_world_book'
+    const worldMemories = await getWorldMemory(bookId)
+
+    // 加载关系数据
+    let relationshipSnapshot = null
+    const charId = selectedCharacter.value?.id
+    try {
+      if (charId) {
+        const rel = getCharacterRelationship(charId)
+        if (rel) {
+          relationshipSnapshot = {
+            [charId]: { favor: rel.favor, trust: rel.trust, stance: rel.stance, level: rel.level },
+          }
+        }
+      }
+    } catch { /* 忽略 */ }
+
     const result = await generateDormChatReply({
       worldBook: activeBook.value,
       contact: buildDormChatContact(),
@@ -2355,6 +2375,8 @@ const handleSendDormChat = async () => {
           }
         }),
       hasPendingRedPacket: historyBefore.length > 0 && historyBefore[historyBefore.length - 1]?.type === 'redPacket',
+      worldMemories,
+      relationshipSnapshot,
       inventoryContext: fridge.getContextForLLM(8),
       todoContext: todo.getContextForLLM(6),
       options: {

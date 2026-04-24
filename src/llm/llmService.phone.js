@@ -68,6 +68,25 @@ const tryParseSmsReplies = (rawContent) => {
     return ''
   }
 
+  // ---- Try file protocol: |file=文件名:类型|JSON数据| ----
+  let fileData = null
+  const fileMatch = candidate.match(/\|file=([^:]+):([^|]+)\|([\s\S]*?)\|/)
+  if (fileMatch) {
+    const fileName = fileMatch[1].trim()
+    const fileType = fileMatch[2].trim()
+    const fileContent = fileMatch[3].trim()
+    if (fileName && fileType && fileContent) {
+      try {
+        const parsed = JSON.parse(fileContent)
+        fileData = { fileName, fileType, variables: parsed }
+      } catch {
+        fileData = { fileName, fileType, variables: { content: fileContent } }
+      }
+    }
+  }
+
+  const sendFileIntent = /\|sendfile\|/i.test(candidate)
+
   // ---- Try delimiter-based protocol first: |r=...| ----
   const replyMatches = candidate.match(/\|r=([^|]+)\|/g)
   if (replyMatches && replyMatches.length > 0) {
@@ -138,7 +157,7 @@ const tryParseSmsReplies = (rawContent) => {
           description: calMatch[4].trim().slice(0, 50),
         }
       }
-      return { replies, redPacket, redPacketAction, giftToPlayer, calendarEvent, voiceMessages }
+      return { replies, redPacket, redPacketAction, giftToPlayer, calendarEvent, voiceMessages, fileData, sendFileIntent }
     }
   }
 
@@ -235,7 +254,298 @@ const tryParseSmsReplies = (rawContent) => {
     }
   }
 
-  return { replies, redPacket, redPacketAction, giftToPlayer, calendarEvent }
+  return { replies, redPacket, redPacketAction, giftToPlayer, calendarEvent, fileData: fileData || null, sendFileIntent: sendFileIntent || false }
+}
+
+/**
+ * 将世界记忆数据格式化为短信 prompt 可读的文本
+ */
+function buildWorldMemoryContext(memories) {
+  if (!memories) return ''
+  const parts = []
+
+  // 最近事件
+  const events = (memories.events || []).filter(e => e.status === 'active').slice(-5)
+  if (events.length > 0) {
+    parts.push('【近期事件】')
+    for (const evt of events) {
+      parts.push(`- ${evt.summary || ''}`)
+    }
+  }
+
+  return parts.join('\n')
+}
+
+/**
+ * 将关系数据格式化为短信 prompt 可读的文本（当前角色对玩家的主观印象）
+ */
+function buildRelationshipContext(relationship, contact) {
+  if (!relationship) return ''
+  const entry = relationship[contact.id]
+  if (!entry) return ''
+
+  const parts = []
+  if (entry.favor !== undefined) parts.push(`好感度: ${entry.favor}`)
+  if (entry.trust !== undefined) parts.push(`信任度: ${entry.trust}`)
+  if (entry.stance !== undefined) parts.push(`立场: ${entry.stance}`)
+  if (entry.level !== undefined) parts.push(`关系等级: ${entry.level}`)
+  if (entry.lastInteraction) parts.push(`最近互动: ${entry.lastInteraction}`)
+
+  return parts.join('，')
+}
+
+/**
+ * 将群成员关系数据格式化为 prompt 可读的文本
+ */
+function buildGroupMemberRelationshipsContext(relationships, members, playerName) {
+  if (!relationships) return ''
+  const parts = []
+  for (const m of members) {
+    const entry = relationships[m.contactId || m.id]
+    if (!entry) continue
+    const name = m.contactName || m.name || '未知角色'
+    const bits = []
+    if (entry.favor !== undefined) bits.push(`好感${entry.favor}`)
+    if (entry.trust !== undefined) bits.push(`信任${entry.trust}`)
+    if (entry.stance !== undefined) bits.push(`立场${entry.stance}`)
+    if (entry.level !== undefined) bits.push(`等级${entry.level}`)
+    if (bits.length > 0) {
+      parts.push(`${name}对${playerName}: ${bits.join('，')}`)
+    }
+  }
+  return parts.join('\n')
+}
+
+// ===== 可打印文件三阶段流程 =====
+
+const FALLBACK_PRINTABLE_TYPES = ['letter-handwritten', 'exam-paper', 'invitation', 'sticky-note']
+
+/**
+ * 扫描可打印文件可用类型
+ * 支持自定义 baseDir（native:// 或 web 路径），fallback 到 manifest.json
+ */
+async function scanPrintableTypes(customBaseDir) {
+  // Custom baseDir (native:// or web URL)
+  if (customBaseDir) {
+    if (customBaseDir.startsWith('native://')) {
+      return scanNativePrintableTypes(customBaseDir)
+    }
+    // Web URL: scan subdirectories
+    return scanWebPrintableTypes(customBaseDir)
+  }
+
+  // Default: fetch manifest.json
+  try {
+    const res = await fetch('./data/printables/manifest.json')
+    if (res.ok) {
+      const typeIds = await res.json()
+      if (Array.isArray(typeIds) && typeIds.length > 0) {
+        return Promise.all(typeIds.map(id => loadPrintablePromptJson(id)))
+      }
+    }
+  } catch { /* ignore */ }
+
+  // Fallback: load hardcoded types
+  return Promise.all(FALLBACK_PRINTABLE_TYPES.map(id => loadPrintablePromptJson(id)))
+}
+
+/**
+ * 从 native:// 路径扫描子目录类型
+ */
+async function scanNativePrintableTypes(baseDir) {
+  try {
+    console.log('[printable] scanNative, baseDir:', baseDir)
+    const { Filesystem, Directory } = await import('@capacitor/filesystem')
+    const nativeBase = baseDir.slice('native://'.length).replace(/^\/+/, '').replace(/\/+$/, '')
+    console.log('[printable] nativeBase resolved:', nativeBase)
+    const result = await Filesystem.readdir({ path: nativeBase, directory: Directory.Data })
+    console.log('[printable] readdir result:', result.files?.map(f => `${f.name}(${f.type})`))
+    const subdirs = result.files.filter(f => f.type === 'directory').map(f => f.name)
+    const types = await Promise.all(subdirs.map(async (id) => {
+      const t = await loadPrintablePromptJson(id, baseDir)
+      console.log('[printable] loadPromptJson for', id, t ? 'OK' : 'NULL')
+      return t
+    }))
+    return types.filter(Boolean)
+  } catch (e) {
+    console.warn('[printable] native scan failed:', e.message, e.stack)
+    return []
+  }
+}
+
+/**
+ * 从 web URL 扫描子目录类型（列出子目录需要 manifest 或硬编码）
+ */
+async function scanWebPrintableTypes(baseDir) {
+  // Try fetching a manifest first
+  try {
+    const url = baseDir.endsWith('/') ? `${baseDir}manifest.json` : `${baseDir}/manifest.json`
+    const res = await fetch(url)
+    if (res.ok) {
+      const typeIds = await res.json()
+      if (Array.isArray(typeIds) && typeIds.length > 0) {
+        return Promise.all(typeIds.map(id => loadPrintablePromptJson(id, baseDir)))
+      }
+    }
+  } catch { /* ignore */ }
+  return []
+}
+
+/**
+ * 加载单个 prompt.json
+ * @param {string} typeId - 类型 ID（子目录名）
+ * @param {string} [customBaseDir] - 自定义基础目录（可选）
+ */
+async function loadPrintablePromptJson(typeId, customBaseDir) {
+  try {
+    let json
+    if (customBaseDir && customBaseDir.startsWith('native://')) {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem')
+      const nativeBase = customBaseDir.slice('native://'.length).replace(/^\/+/, '').replace(/\/+$/, '')
+      const path = `${nativeBase}/${typeId}/prompt.json`
+      const result = await Filesystem.readFile({ path, directory: Directory.Data, encoding: 'utf8' })
+      json = JSON.parse(result.data)
+    } else if (customBaseDir) {
+      const url = customBaseDir.endsWith('/') ? `${customBaseDir}${typeId}/prompt.json` : `${customBaseDir}/${typeId}/prompt.json`
+      const res = await fetch(url)
+      if (!res.ok) return null
+      json = await res.json()
+    } else {
+      const res = await fetch(`./data/printables/${typeId}/prompt.json`)
+      if (!res.ok) return null
+      json = await res.json()
+    }
+    return { ...json, variableKeys: Object.keys(json.variables || {}) }
+  } catch { /* ignore */ }
+  return null
+}
+
+/**
+ * 阶段2：选文件类型
+ */
+async function selectPrintableType(printableTypes, contactName, contextMessages) {
+  const available = (printableTypes || []).filter(Boolean)
+  if (available.length === 0) return null
+
+  const typeList = available
+    .map(t => `- ${t.id}（${t.name}）：${t.description || ''}`)
+    .join('\n')
+
+  const systemPrompt = `你是一个文件类型选择器。根据对话上下文，从可用类型列表中选择最合适的一种。只返回类型 id，不要其他内容。`
+  const userPrompt = [
+    `可用文件类型：\n${typeList}`,
+    `角色：${contactName}`,
+    contextMessages ? `上下文（最近 ${contextMessages.length} 条消息）：\n${contextMessages.slice(-10).map(m => `${m.role === 'user' ? '玩家' : contactName}: ${m.text || ''}`).join('\n')}` : '',
+    `请根据上下文选择最合适的文件类型，只返回类型 id。`,
+  ].filter(Boolean).join('\n\n')
+
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success) return null
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt,
+    userPrompt,
+    temperature: 0.5,
+    maxTokens: 64,
+  })
+
+  if (!result.success) return null
+
+  const selected = result.data.trim().toLowerCase()
+  const matched = available.find(t => t.id === selected || t.id.includes(selected))
+  return matched ? matched.id : null
+}
+
+/**
+ * 阶段3：填充文件变量
+ */
+async function generateFileVariables(promptJson, contact, worldBook, contextMessages) {
+  const variables = promptJson.variables || {}
+  const varDef = JSON.stringify(variables, null, 2)
+
+  const systemPrompt = `你是文件内容填充器。根据角色身份和对话上下文，填充文件模板所需的变量值。只输出 JSON 对象，不要 markdown，不要解释。`
+  const userPrompt = [
+    `文件类型：${promptJson.name}（${promptJson.id}）`,
+    `角色：${contact.name}`,
+    contact.identity ? `角色身份：${contact.identity}` : '',
+    `变量定义：\n${varDef}`,
+    contextMessages && contextMessages.length > 0 ? `最近上下文：\n${contextMessages.slice(-10).map(m => `${m.role === 'user' ? '玩家' : contact.name}: ${m.text || ''}`).join('\n')}` : '',
+    `请根据角色和上下文，填充以上所有变量，返回 JSON 对象。`,
+  ].filter(Boolean).join('\n\n')
+
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success) return null
+
+  const result = await callChatCompletion({
+    config: validated.config,
+    systemPrompt,
+    userPrompt,
+    temperature: 0.8,
+    maxTokens: 1024,
+  })
+
+  if (!result.success) return null
+
+  // 尝试提取 JSON
+  const raw = result.data.trim()
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const jsonStr = fencedMatch?.[1]?.trim() || raw
+
+  // 清理可能的多余内容
+  const start = jsonStr.indexOf('{')
+  const end = jsonStr.lastIndexOf('}')
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(jsonStr.slice(start, end + 1))
+    } catch { /* ignore */ }
+  }
+  return null
+}
+
+/**
+ * 导出：三阶段文件生成流程
+ */
+export const generatePhoneSmsFile = async (params = {}) => {
+  const contact = params.contact && typeof params.contact === 'object' ? params.contact : null
+  const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
+  const contextMessages = Array.isArray(params.history) ? params.history : []
+  const customBaseDir = params.customBaseDir || null
+  console.log('[printable] generatePhoneSmsFile, customBaseDir:', customBaseDir)
+
+  if (!contact?.name) {
+    return { success: false, error: '角色参数不完整' }
+  }
+
+  // 阶段1+2：扫描类型 + 选类型
+  const types = await scanPrintableTypes(customBaseDir)
+  console.log('[printable] scanned types:', types.map(t => t?.name || t?.id))
+  const typeId = await selectPrintableType(types, contact.name, contextMessages)
+  console.log('[printable] selected typeId:', typeId)
+  if (!typeId) {
+    return { success: false, error: '未选择合适的文件类型' }
+  }
+
+  // 加载 prompt.json
+  const promptJson = await loadPrintablePromptJson(typeId, customBaseDir)
+  console.log('[printable] promptJson loaded:', promptJson ? 'OK' : 'NULL')
+  if (!promptJson) {
+    return { success: false, error: `未找到文件类型的 prompt.json: ${typeId}` }
+  }
+
+  // 阶段3：填变量
+  const variables = await generateFileVariables(promptJson, contact, worldBook, contextMessages)
+  console.log('[printable] variables generated:', variables ? 'OK' : 'NULL')
+  if (!variables) {
+    return { success: false, error: '文件内容生成失败' }
+  }
+
+  return {
+    success: true,
+    fileType: typeId,
+    fileName: promptJson.name,
+    variables,
+  }
 }
 
 const clampPromptLineCount = (value, fallback, max = 200) => {
@@ -263,6 +573,12 @@ export const generatePhoneSmsReply = async (params = {}) => {
   const worldBook = params.worldBook && typeof params.worldBook === 'object' ? params.worldBook : null
   const contact = params.contact && typeof params.contact === 'object' ? params.contact : null
   const userMessage = String(params.userMessage || '').trim()
+
+  // 世界记忆上下文
+  const worldMemories = params.worldMemories && typeof params.worldMemories === 'object' ? params.worldMemories : null
+  // 关系数据上下文
+  const relationshipSnapshot = params.relationshipSnapshot && typeof params.relationshipSnapshot === 'object'
+    ? params.relationshipSnapshot : null
 
   if (!contact?.name || !userMessage) {
     return {
@@ -336,6 +652,11 @@ export const generatePhoneSmsReply = async (params = {}) => {
   const now = new Date()
   const currentTimeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
+  // 世界记忆文本
+  const worldMemoryText = buildWorldMemoryContext(worldMemories)
+  // 关系数据文本
+  const relationshipText = buildRelationshipContext(relationshipSnapshot, contact)
+
   const userPrompt = [
     `【世界书标题】${String(worldBook?.title || '默认世界书').trim()}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
@@ -347,6 +668,8 @@ export const generatePhoneSmsReply = async (params = {}) => {
     currentLineText ? `【当前剧情句】${currentLineText}` : '',
     recentDialogue ? `【最近剧情上下文】\n${recentDialogue}` : '',
     recentSms ? `【最近短信记录】\n${recentSms}` : '',
+    worldMemoryText ? `【共享记忆】\n${worldMemoryText}` : '',
+    relationshipText ? `【你对玩家的印象】\n${relationshipText}` : '',
     forwardedClueText ? `【本次转发线索】\n${forwardedClueText}` : '',
     stickerText ? stickerText : '',
     `【玩家刚发送】${userMessage}`,
@@ -404,6 +727,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     giftToPlayer: parsed.giftToPlayer,
     calendarEvent: parsed.calendarEvent || null,
     voiceMessages: parsed.voiceMessages || [],
+    sendFileIntent: parsed.sendFileIntent || false,
     data: result.data,
     rawResponse: result.rawResponse,
   }
@@ -430,6 +754,12 @@ export const generateDormChatReply = async (params = {}) => {
   const contact = params.contact && typeof params.contact === 'object' ? params.contact : null
   const userMessage = String(params.userMessage || '').trim()
   const hasPendingRedPacket = !!params.hasPendingRedPacket
+
+  // 世界记忆上下文
+  const worldMemories = params.worldMemories && typeof params.worldMemories === 'object' ? params.worldMemories : null
+  // 关系数据上下文
+  const relationshipSnapshot = params.relationshipSnapshot && typeof params.relationshipSnapshot === 'object'
+    ? params.relationshipSnapshot : null
 
   if (!contact?.name || !userMessage) {
     return {
@@ -464,6 +794,11 @@ export const generateDormChatReply = async (params = {}) => {
     : String(worldBook?.userProfile?.name || worldBook?.userProfile?.nickname || '玩家').trim()
   const playerDescription = effectiveUser ? String(effectiveUser.description || '').trim() : ''
 
+  // 世界记忆上下文
+  const worldMemoryText = buildWorldMemoryContext(worldMemories)
+  // 关系数据上下文
+  const relationshipText = buildRelationshipContext(relationshipSnapshot, contact)
+
   const userPrompt = [
     `【世界书标题】${String(worldBook?.title || '默认世界书').trim()}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
@@ -472,6 +807,8 @@ export const generateDormChatReply = async (params = {}) => {
     `【玩家名】${playerDisplayName}`,
     playerDescription ? `【玩家简介】${playerDescription}` : '',
     recentChat ? `【最近聊天】\n${recentChat}` : '',
+    worldMemoryText ? `【共享记忆】\n${worldMemoryText}` : '',
+    relationshipText ? `【你对玩家的印象】\n${relationshipText}` : '',
     `【玩家刚发送】${userMessage}`,
     hasPendingRedPacket ? '【特别提示】玩家刚刚给你发了一个红包，请决定领取或退回，并在回复中体现你的反应。' : '',
     inventoryContext ? `【玩家冰箱】${inventoryContext}` : '',
@@ -4295,6 +4632,19 @@ export const generateGroupChatReply = async (params = {}) => {
   const history = Array.isArray(params.history) ? params.history : []
   const contextMessages = Math.max(0, Math.min(50, Number(params.contextMessages) || 15))
 
+  // 世界记忆上下文（群聊共享）
+  const worldMemories = params.worldMemories && typeof params.worldMemories === 'object' ? params.worldMemories : null
+  // 群成员关系数据：{ contactId: { favor, trust, stance, level } }
+  const memberRelationships = params.memberRelationships && typeof params.memberRelationships === 'object'
+    ? params.memberRelationships : null
+
+  // 玩家身份信息
+  const effectiveUser = params.effectiveUser && typeof params.effectiveUser === 'object' ? params.effectiveUser : null
+  const playerName = effectiveUser?.name || '玩家'
+
+  // 每个成员的私聊历史
+  const memberPrivateChats = params.memberPrivateChats && typeof params.memberPrivateChats === 'object' ? params.memberPrivateChats : {}
+
   if (members.length === 0) {
     return {
       success: false,
@@ -4336,7 +4686,7 @@ export const generateGroupChatReply = async (params = {}) => {
   // 提取玩家当前消息中的 @ 提及
   const userMentions = extractMentions(userMessage)
   const mentionedText = userMentions.length > 0
-    ? `【玩家提及的角色】${userMentions.join('、')}。玩家正在对他们说话，请优先让这些角色做出回应。`
+    ? `【${playerName}提及的角色】${userMentions.join('、')}。${playerName}正在对他们说话，请优先让这些角色做出回应。`
     : ''
 
   let worldContext = ''
@@ -4389,14 +4739,39 @@ export const generateGroupChatReply = async (params = {}) => {
     }).join('\n')
   }
 
+  // 构建玩家身份信息
+  const playerIdentityText = `【玩家身份】${playerName}是群聊的发起者，是真实用户，不是任何角色。`
+
+  // 构建私聊记忆
+  const privateChatsParts = []
+  for (const [memberName, privateHistory] of Object.entries(memberPrivateChats)) {
+    if (privateHistory.length > 0) {
+      const formattedHistory = privateHistory
+        .map(msg => `${msg.role === 'user' ? playerName : memberName}: ${msg.text}`)
+        .join('\n')
+      privateChatsParts.push(`【${memberName}与${playerName}的私聊记忆（最近${privateHistory.length}条）】\n${formattedHistory}`)
+    }
+  }
+  const privateChatsText = privateChatsParts.length > 0 ? privateChatsParts.join('\n\n') : ''
+
+  // 世界记忆上下文
+  const worldMemoryText = buildWorldMemoryContext(worldMemories)
+
+  // 群成员关系上下文
+  const memberRelationshipsText = buildGroupMemberRelationshipsContext(memberRelationships, members, playerName)
+
   const userPrompt = [
     `【群聊类型】${groupType === 'worldbook' ? '世界书群聊（所有角色来自同一世界）' : '自定义群聊（角色可能来自不同世界书）'}`,
-    `【说明】你是群聊角色发言生成器。群里的"玩家"是用户本人，不是任何角色。请根据每个角色的人设和世界背景，决定哪些角色（0-3个）对玩家的消息做出回应。如果玩家 @ 了某个角色，该角色应该优先做出回应。群内角色之间也可以互相 @ 对话，此时被 @ 的角色应该回应。`,
+    `【说明】你是群聊角色发言生成器。群里的"${playerName}"是用户本人，不是任何角色。请根据每个角色的人设和世界背景，决定哪些角色（0-3个）对${playerName}的消息做出回应。如果${playerName} @ 了某个角色，该角色应该优先做出回应。群内角色之间也可以互相 @ 对话，此时被 @ 的角色应该回应。`,
     worldContext,
+    playerIdentityText,
     `【可用发言角色】\n${memberListText}`,
+    privateChatsText,
+    worldMemoryText ? `【共享记忆】\n${worldMemoryText}` : '',
+    memberRelationshipsText ? `【角色对玩家的印象】\n${memberRelationshipsText}` : '',
     mentionedText,
     recentChat ? `【最近群聊记录】\n${recentChat}` : '【最近群聊记录】\n（这是群聊的第一条消息）',
-    userMessage ? `【玩家刚发送】${userMessage}` : '',
+    userMessage ? `【${playerName}刚发送】${userMessage}` : '',
     '请按格式返回：|m=角色名:回复内容|，每条一行。',
   ]
     .filter(Boolean)

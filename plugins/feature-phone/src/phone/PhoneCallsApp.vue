@@ -30,6 +30,9 @@ let timerInterval = null
 
 const globalUser = useGlobalUser()
 
+// 蓝牙铃声
+const playIncomingCall = inject('playIncomingCall', () => {})
+
 // 来电联系人（由 PhoneScreen 传递）
 const pendingCallContact = inject('pendingCallContact', ref(null))
 
@@ -47,6 +50,9 @@ onMounted(async () => {
 // 监听来电
 watch(pendingCallContact, async (contact) => {
   if (contact && contact.id && !selectedContact.value) {
+    // 播放铃声（蓝牙模式下）
+    playIncomingCall(contact.id)
+
     const allChars = contacts.value.flatMap(g => g.characters || [])
     const found = allChars.find(c => c.id === contact.id)
     if (found) {

@@ -1,0 +1,24 @@
+{
+  "id": "feature-character-state",
+  "name": "角色状态",
+  "description": "角色运行时状态统一管理模块，提供 affection/mood/energy/relationship 等属性的统一读写接口。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "character-state",
+    "title": "角色状态",
+    "icon": "👤",
+    "order": 99,
+    "variant": "tone-gray border-solid"
+  },
+  "entry": {
+    "type": "internal",
+    "module": "./src/entry.js"
+  },
+  "storage": {
+    "namespace": "character-state"
+  },
+  "capabilities": ["storage", "state"],
+  "enabledByDefault": true
+}

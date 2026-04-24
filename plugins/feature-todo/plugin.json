@@ -1,0 +1,26 @@
+{
+  "id": "todo",
+  "name": "待办",
+  "description": "待办事项管理，支持分类、优先级、逾期检测与推送提醒。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "todo",
+    "title": "待办",
+    "icon": "📋",
+    "order": 40
+  },
+  "entry": {
+    "type": "route",
+    "module": "./src/entry.js",
+    "route": "todo"
+  },
+  "storage": {
+    "namespace": "todo"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
+}

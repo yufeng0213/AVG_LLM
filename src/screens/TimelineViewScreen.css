@@ -1,0 +1,415 @@
+/* ===== TimelineViewScreen — 时间线全屏沉浸式设计 ===== */
+
+.timeline-screen {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background, #0d0d17);
+  overflow: hidden;
+}
+
+.timeline-screen::before {
+  content: '';
+  position: fixed;
+  top: -5%;
+  left: -15%;
+  width: 45vmax;
+  height: 45vmax;
+  background: radial-gradient(circle, rgba(0, 245, 212, 0.08) 0%, transparent 70%);
+  animation: blob-drift-tl 28s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.timeline-screen::after {
+  content: '';
+  position: fixed;
+  bottom: -10%;
+  right: -10%;
+  width: 35vmax;
+  height: 35vmax;
+  background: radial-gradient(circle, rgba(123, 47, 255, 0.1) 0%, transparent 70%);
+  animation: blob-drift-tl 22s ease-in-out infinite reverse;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes blob-drift-tl {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -6%) scale(1.03); }
+  66% { transform: translate(-2%, 4%) scale(0.97); }
+}
+
+/* 玻璃拟态头部 */
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(10px, 2vw, 16px) clamp(12px, 3vw, 20px);
+  padding-top: max(clamp(10px, 2vw, 16px), var(--safe-area-inset-top, 16px));
+  background: color-mix(in srgb, var(--background, #0d0d17) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground, #fff) 20%, transparent);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--background, #0d0d17) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground, #fff) 20%, transparent);
+  color: var(--foreground, #fff);
+  padding: 6px 14px;
+  border-radius: var(--radius-button, 9999px);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.timeline-back-btn:hover {
+  background: color-mix(in srgb, var(--accent-cyan, #00f5d4) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent-cyan, #00f5d4) 40%, transparent);
+}
+
+.timeline-back-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.timeline-title {
+  font-size: clamp(15px, 3.2vw, 18px);
+  font-weight: 700;
+  color: var(--foreground, #fff);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: monospace;
+  letter-spacing: 0.3px;
+}
+
+.timeline-title-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-cyan, #00f5d4);
+  box-shadow: 0 0 6px rgba(0, 245, 212, 0.5);
+  animation: tl-dot-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes tl-dot-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.timeline-refresh-btn {
+  background: color-mix(in srgb, var(--accent-cyan, #00f5d4) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-cyan, #00f5d4) 40%, transparent);
+  color: var(--foreground, #fff);
+  padding: 6px 16px;
+  border-radius: var(--radius-button, 9999px);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.timeline-refresh-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-cyan, #00f5d4) 35%, transparent);
+  box-shadow: 0 0 12px rgba(0, 245, 212, 0.15);
+}
+
+.timeline-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 内容区域 */
+.timeline-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: clamp(10px, 2vw, 16px) clamp(12px, 3vw, 20px);
+  position: relative;
+  z-index: 1;
+}
+
+/* 时间线列表 */
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-hour-block {
+  display: flex;
+  gap: clamp(10px, 2vw, 16px);
+  min-height: 36px;
+}
+
+/* 左侧时间标签 */
+.timeline-hour-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: clamp(50px, 10vw, 64px);
+  flex-shrink: 0;
+  padding-top: 8px;
+}
+
+.timeline-hour-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(150, 120, 200, 0.15);
+  border: 2px solid rgba(150, 120, 200, 0.25);
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.timeline-hour-dot.past {
+  background: var(--accent-purple, #7b2fff);
+  border-color: color-mix(in srgb, var(--accent-purple, #7b2fff) 60%, transparent);
+  box-shadow: 0 0 8px rgba(123, 47, 255, 0.35);
+  animation: dot-pulse-tl 3s ease-in-out infinite;
+}
+
+@keyframes dot-pulse-tl {
+  0%, 100% { box-shadow: 0 0 6px rgba(123, 47, 255, 0.25); }
+  50% { box-shadow: 0 0 14px rgba(123, 47, 255, 0.5); }
+}
+
+.timeline-hour-dot.current {
+  background: var(--accent-cyan, #00f5d4);
+  border-color: color-mix(in srgb, var(--accent-cyan, #00f5d4) 70%, transparent);
+  box-shadow: 0 0 10px rgba(0, 245, 212, 0.5);
+  animation: dot-current 1.5s ease-in-out infinite;
+}
+
+@keyframes dot-current {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+
+.timeline-hour-text {
+  font-size: 11px;
+  color: rgba(200, 192, 216, 0.35);
+  font-family: monospace;
+}
+
+/* 条目区域 — 左侧贯穿线 */
+.timeline-hour-entries {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-left: 2px solid rgba(150, 120, 200, 0.12);
+  padding-left: clamp(10px, 2vw, 14px);
+}
+
+/* 条目卡片 */
+.timeline-entry {
+  display: flex;
+  gap: 8px;
+  padding: clamp(8px, 1.5vw, 10px) clamp(10px, 2vw, 14px);
+  background: rgba(30, 25, 50, 0.35);
+  border-radius: clamp(10px, 2vw, 14px);
+  border: 1px solid rgba(150, 120, 200, 0.08);
+  border-left: 3px solid rgba(150, 120, 200, 0.2);
+  transition: all 0.2s;
+  animation: tl-entry-in 0.35s ease both;
+}
+
+@keyframes tl-entry-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.timeline-entry:hover {
+  background: rgba(30, 25, 50, 0.5);
+  transform: translateX(2px);
+}
+
+/* 类型色 */
+.timeline-entry.schedule {
+  border-left-color: #64b4ff;
+  background: rgba(100, 180, 255, 0.04);
+}
+.timeline-entry.schedule:hover { border-left-color: #8ac8ff; }
+
+.timeline-entry.bond_event {
+  border-left-color: var(--accent-magenta, #ff3af2);
+  background: rgba(255, 58, 242, 0.04);
+}
+.timeline-entry.bond_event:hover { border-left-color: #ff6af8; }
+
+.timeline-entry.character_dream {
+  border-left-color: var(--accent-purple, #7b2fff);
+  background: rgba(123, 47, 255, 0.04);
+}
+.timeline-entry.character_dream:hover { border-left-color: #9555ff; }
+
+.timeline-entry.npc_interaction {
+  border-left-color: #64ffb4;
+  background: rgba(100, 255, 180, 0.03);
+}
+.timeline-entry.npc_interaction:hover { border-left-color: #8affca; }
+
+.timeline-entry.birthday {
+  border-left-color: #ffc864;
+  background: rgba(255, 200, 100, 0.04);
+}
+.timeline-entry.birthday:hover { border-left-color: #ffd88a; }
+
+.timeline-entry.daily_activity {
+  border-left-color: var(--accent-cyan, #00f5d4);
+  background: rgba(0, 245, 212, 0.03);
+}
+
+.timeline-entry.relationship_shift {
+  border-left-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.04);
+}
+
+.timeline-entry.event {
+  border-left-color: rgba(200, 192, 216, 0.3);
+}
+
+.timeline-entry-emoji {
+  font-size: 15px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.timeline-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-entry-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(200, 192, 216, 0.8);
+}
+
+.timeline-entry-text strong {
+  color: #d0c0e8;
+  font-weight: 600;
+}
+
+.timeline-entry-location {
+  color: rgba(100, 180, 255, 0.55);
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.timeline-entry-mood {
+  color: rgba(200, 192, 216, 0.45);
+  font-size: 12px;
+  margin-left: 4px;
+  font-style: italic;
+}
+
+.timeline-entry-meta {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.timeline-entry-participants {
+  font-size: 11px;
+  color: rgba(200, 192, 216, 0.35);
+}
+
+.timeline-entry-time {
+  font-size: 11px;
+  color: rgba(200, 192, 216, 0.25);
+  font-family: monospace;
+}
+
+.timeline-entry-planned {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(100, 180, 255, 0.6);
+  background: rgba(100, 180, 255, 0.1);
+  padding: 1px 7px;
+  border-radius: var(--radius-button, 9999px);
+  border: 1px solid rgba(100, 180, 255, 0.2);
+}
+
+.timeline-entry-impact {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 150, 150, 0.7);
+  background: rgba(255, 150, 150, 0.1);
+  padding: 1px 7px;
+  border-radius: var(--radius-button, 9999px);
+  border: 1px solid rgba(255, 150, 150, 0.2);
+}
+
+/* 空状态 */
+.timeline-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: rgba(200, 192, 216, 0.3);
+  text-align: center;
+  animation: tl-empty-in 0.5s ease both;
+}
+
+@keyframes tl-empty-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.timeline-empty p {
+  margin: 4px 0;
+  font-size: 16px;
+}
+
+.timeline-empty-hint {
+  font-size: 13px !important;
+  margin-top: 12px !important;
+  line-height: 1.6;
+  color: rgba(200, 192, 216, 0.2) !important;
+}
+
+/* Android 竖屏适配 */
+.platform-android.android-portrait .timeline-screen {
+  background: #0d0d17 !important;
+}
+
+.platform-android.android-portrait .timeline-header {
+  background: rgba(13, 13, 23, 0.92) !important;
+}
+
+.platform-android.android-portrait .timeline-entry {
+  background: rgba(30, 25, 50, 0.5) !important;
+}
+  .platform-android.android-portrait .timeline-back-btn,
+  .platform-android.android-portrait .timeline-refresh-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }

@@ -15,6 +15,30 @@ import { resolvePrompt } from '../../../../../src/llm/promptRegistry.js'
 const MIN_INTERVAL = 5 * 60 * 1000
 const MAX_INTERVAL = 20 * 60 * 1000
 
+/**
+ * 获取当前电量上下文（用于注入 prompt）
+ */
+async function getBatteryPromptContext() {
+  if (!('getBattery' in navigator)) return ''
+  try {
+    const battery = await navigator.getBattery()
+    const level = Math.round(battery.level * 100)
+    const charging = battery.charging
+    if (level <= 10) {
+      return `\n\n【设备状态】⚡ 手机电量仅剩 ${level}%，${charging ? '充电中' : '未充电'}。请在消息中自然地表达担心玩家手机没电、催促充电的关心。`
+    }
+    if (level <= 20) {
+      return `\n\n【设备状态】手机电量 ${level}%，${charging ? '充电中' : '未充电'}。如果合适，可以自然地提一句电量。`
+    }
+    if (charging && level < 100) {
+      return `\n\n【设备状态】手机正在充电中，当前 ${level}%。`
+    }
+    return ''
+  } catch {
+    return ''
+  }
+}
+
 export function useOfflinePush({ onNewMessage, onNotificationClick }) {
   let timer = null
   let lastPushTime = 0
@@ -98,11 +122,12 @@ export function useOfflinePush({ onNewMessage, onNotificationClick }) {
     }
 
     const spontaneousPrompt = await resolvePrompt('phone_offline:spontaneous')
+    const batteryContext = await getBatteryPromptContext()
 
     const result = await generatePhoneSmsReply({
       worldBook: book,
       contact: contactForLlm,
-      userMessage: spontaneousPrompt,
+      userMessage: batteryContext + spontaneousPrompt,
       history: [], // 主动发起，不带历史
       options: { historyLimit: 0, maxTokens: 200 },
     })

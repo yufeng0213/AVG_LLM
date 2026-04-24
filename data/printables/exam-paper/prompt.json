@@ -1,0 +1,16 @@
+{
+  "id": "exam-paper",
+  "name": "试卷",
+  "icon": "📝",
+  "description": "一份正式的试卷",
+  "category": "exam",
+  "variables": {
+    "title": { "type": "string", "description": "试卷标题" },
+    "subtitle": { "type": "string", "description": "副标题/说明" },
+    "sender": { "type": "string", "description": "出题人" },
+    "student": { "type": "string", "description": "考生姓名（玩家）" },
+    "date": { "type": "date", "description": "日期" },
+    "content": { "type": "text", "description": "试题内容" },
+    "seal": { "type": "string", "description": "印章文字" }
+  }
+}

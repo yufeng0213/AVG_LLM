@@ -13,6 +13,7 @@ const SAVE_DATA_VERSION = 1
 // 存档元数据存储键
 const SAVE_LIST_KEY = 'saves'
 const BACKUP_LIST_KEY = 'backups'
+const MAIN_STORY_SAVES_KEY = 'main_story_saves' // { [worldBookId]: saveSlotId }
 
 // 最大存档/备份数量
 const MAX_SAVES = 20
@@ -85,6 +86,35 @@ const updateSaveList = async (saves) => {
 }
 
 /**
+ * 获取主线存档映射 { worldBookId: saveSlotId }
+ */
+const getMainStorySaves = async () => {
+  try {
+    const map = await kvStorage.get(MAIN_STORY_SAVES_KEY)
+    return map || {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * 获取某个世界书的主线存档槽位ID（不存在则返回 null）
+ */
+const getMainStorySaveSlot = async (worldBookId) => {
+  const map = await getMainStorySaves()
+  return map[worldBookId] || null
+}
+
+/**
+ * 设置某个世界书的主线存档槽位ID
+ */
+const setMainStorySaveSlot = async (worldBookId, slotId) => {
+  const map = await getMainStorySaves()
+  map[worldBookId] = slotId
+  await kvStorage.set(MAIN_STORY_SAVES_KEY, map)
+}
+
+/**
  * 保存游戏进度
  * @param {Object} gameData - 游戏数据
  * @param {string} slotId - 存档槽位ID（可选，不提供则自动生成）
@@ -150,7 +180,13 @@ const saveGame = async (gameData, slotId = null) => {
     }
     
     await updateSaveList(trimmedSaves)
-    
+
+    // 注册为该世界书的主线存档
+    const worldBookId = saveData.game?.worldBookId
+    if (worldBookId) {
+      await setMainStorySaveSlot(worldBookId, id)
+    }
+
     return { success: true, id }
   } catch (error) {
     return { success: false, error: error.message }
@@ -387,6 +423,7 @@ export {
   saveGame,
   loadGame,
   deleteSave,
+  getMainStorySaveSlot,
   createHistoryBackup,
   getBackupList,
   loadBackup,

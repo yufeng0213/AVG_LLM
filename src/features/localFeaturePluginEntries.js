@@ -23,6 +23,8 @@ import hourglassEntry from '../../plugins/feature-hourglass/src/entry.js'
 import mobiusParticleEntry from '../../plugins/feature-mobius-particle/src/entry.js'
 import mascotEntry from '../../plugins/feature-mascot/src/entry.js'
 import characterScheduleEntry from '../../plugins/feature-character-schedule/src/entry.js'
+import worldMemoryEntry from '../../plugins/feature-world-memory/src/entry.js'
+import characterStateEntry from '../../plugins/feature-character-state/src/entry.js'
 
 const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   backStorageEntry,
@@ -50,6 +52,8 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   mobiusParticleEntry,
   mascotEntry,
   characterScheduleEntry,
+  worldMemoryEntry,
+  characterStateEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {

@@ -3,12 +3,15 @@
  * PhoneHomeScreen.vue - iOS 风格手机主屏
  * 显示状态栏、大时钟、应用网格和 Dock 栏。
  */
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { kvStorage } from '../../../../src/storage/index.js'
 import { getPhoneWallpaperCache, setPhoneWallpaperCache, getPhoneWallpaperUrl, isPhoneWallpaperVideo } from './composables/usePhoneData.js'
 import { useCustomAppIcons } from './composables/useCustomAppIcons.js'
 
 const emit = defineEmits(['open-app', 'close'])
+
+const isBluetoothConnected = inject('isBluetoothConnected', ref(false))
+const bluetoothDeviceName = inject('bluetoothDeviceName', ref(''))
 
 const now = ref(new Date())
 let timer = null
@@ -174,6 +177,7 @@ const apps = [
   { id: 'fridge', name: '小冰箱', icon: '🧊', color: 'linear-gradient(135deg, #00d2ff, #3a7bd5)' },
   { id: 'todo', name: '待办', icon: '📋', color: 'linear-gradient(135deg, #ff6b6b, #ee5a24)' },
   { id: 'moments', name: '朋友圈', icon: '🌍', color: 'linear-gradient(135deg, #00b4db, #0083b0)' },
+  { id: 'relationship', name: '关系网', icon: '🔗', color: 'linear-gradient(135deg, #5856d6, #af52de)' },
 ]
 
 // Dock 栏
@@ -207,6 +211,7 @@ const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七
     <div class="phone-status-bar">
       <span class="status-bar-time">{{ timeStr }}</span>
       <div class="status-bar-icons">
+        <span v-if="isBluetoothConnected" class="bluetooth-icon" :title="bluetoothDeviceName">&#x1F50A;</span>
         <div class="signal-bars">
           <span class="signal-bar" /><span class="signal-bar" /><span class="signal-bar" /><span class="signal-bar" />
         </div>

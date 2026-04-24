@@ -180,6 +180,23 @@
   box-shadow: 0 0 16px color-mix(in srgb, var(--accent-cyan) 50%, transparent);
 }
 
+/* 重新生成按钮 */
+
+.action-regen {
+  background: linear-gradient(135deg, #2dd4bf, var(--accent-cyan));
+  border: 3px solid #2dd4bf;
+  color: var(--foreground);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 12px color-mix(in srgb, #2dd4bf 50%, transparent);
+  transition: all 200ms ease;
+}
+
+.action-regen:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-cyan) 60%, transparent);
+}
+
 /* AI 剧情生成面板 */
 
 .generate-panel {
@@ -478,6 +495,7 @@
   }
 
   .game-topbar {
+    top: max(12px, var(--safe-area-inset-top, 12px));
     padding: 12px 16px;
   }
 
@@ -503,6 +521,7 @@
 
 @media (max-width: 680px) {
   .game-topbar {
+    top: max(16px, var(--safe-area-inset-top, 16px));
     padding: 8px 12px;
     gap: 6px;
   }

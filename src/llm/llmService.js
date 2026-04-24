@@ -16,6 +16,7 @@ export {
 
 export {
   generatePhoneSmsReply,
+  generatePhoneSmsFile,
   generatePhoneContactSignature,
   generatePhoneMomentsReply,
   generateGroupChatReply,
@@ -69,6 +70,14 @@ export {
   generatePronunciationTTS,
   parsePronunciationOutput,
 } from './llmService.pronunciation'
+
+export {
+  generateRelationshipAnalysis,
+} from '../../plugins/feature-relationship-network/src/llmService.relationship'
+
+export {
+  extractWorldMemory,
+} from './llmService.memory'
 
 import {
   getActiveApiConfig,
@@ -127,6 +136,14 @@ import {
   parsePronunciationOutput,
 } from './llmService.pronunciation'
 
+import {
+  generateRelationshipAnalysis,
+} from '../../plugins/feature-relationship-network/src/llmService.relationship'
+
+import {
+  extractWorldMemory,
+} from './llmService.memory'
+
 export default {
   generateStory,
   generateFaceToFaceJointDialogues,
@@ -171,5 +188,6 @@ export default {
   calculateRating,
   generatePronunciationLesson,
   generatePronunciationTTS,
-  parsePronunciationOutput,
+  generateRelationshipAnalysis,
+  extractWorldMemory,
 }

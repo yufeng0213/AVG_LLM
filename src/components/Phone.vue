@@ -13,6 +13,8 @@ import {
   generatePhoneShopItems,
   generatePhoneSmsReply,
 } from '../llm/index.js'
+import { getWorldMemory } from '../memory/worldMemoryStore.js'
+import { getCharacterRelationship, getAllRelationships } from '../relationship/index.js'
 
 const props = defineProps({
   worldBook: {
@@ -79,6 +81,7 @@ const isPhoneVisible = ref(false)
 const currentApp = ref(null)
 const phonePluginRef = ref(null)
 const messagesThreadRef = ref(null)
+const isFeatureMenuOpen = ref(false)
 
 const getDefaultPhonePosition = () => {
   if (typeof window === 'undefined') {
@@ -2278,6 +2281,31 @@ const normalizeSmsReplyList = (result) => {
 
 const requestSmsReplies = async ({ contact, userMessage, forwardedClues = [] }) => {
   const history = Array.isArray(smsThreads.value[contact.id]) ? smsThreads.value[contact.id] : []
+
+  // 加载世界记忆
+  let worldMemories = null
+  if (props.worldBook?.id) {
+    worldMemories = await getWorldMemory(props.worldBook.id)
+  }
+
+  // 加载关系数据
+  let relationshipSnapshot = null
+  try {
+    const rel = getCharacterRelationship(contact.id)
+    if (rel) {
+      relationshipSnapshot = {
+        [contact.id]: {
+          favor: rel.favor,
+          trust: rel.trust,
+          stance: rel.stance,
+          level: rel.level,
+        },
+      }
+    }
+  } catch {
+    // 关系系统未初始化时忽略
+  }
+
   const result = await generatePhoneSmsReply({
     worldBook: props.worldBook,
     contact,
@@ -2286,6 +2314,8 @@ const requestSmsReplies = async ({ contact, userMessage, forwardedClues = [] }) 
     dialogueHistory: props.dialogueHistory,
     currentLine: props.currentLine,
     forwardedClues,
+    worldMemories,
+    relationshipSnapshot,
     options: {
       historyLimit: phoneSettings.value.smsHistoryLineCount,
       dialogueLimit: phoneSettings.value.smsDialogueLineCount,
@@ -2397,6 +2427,20 @@ const openClueForwardPicker = () => {
 
 const closeClueForwardPicker = () => {
   isClueForwardPickerOpen.value = false
+}
+
+const toggleFeatureMenu = () => {
+  isFeatureMenuOpen.value = !isFeatureMenuOpen.value
+}
+
+const closeFeatureMenu = () => {
+  isFeatureMenuOpen.value = false
+}
+
+const handleFeatureAction = (action) => {
+  closeFeatureMenu()
+  // TODO: 实现具体功能
+  console.log('Feature action:', action)
 }
 
 const handleForwardCurrentClue = async () => {

@@ -1,0 +1,16 @@
+{
+  "id": "invitation",
+  "name": "邀请函",
+  "icon": "📨",
+  "description": "精美的邀请函",
+  "category": "invitation",
+  "variables": {
+    "title": { "type": "string", "description": "邀请标题" },
+    "greeting": { "type": "string", "description": "称呼" },
+    "content": { "type": "text", "description": "邀请正文" },
+    "time": { "type": "string", "description": "活动时间" },
+    "location": { "type": "string", "description": "活动地点" },
+    "sender": { "type": "string", "description": "邀请人" },
+    "date": { "type": "date", "description": "发出日期" }
+  }
+}

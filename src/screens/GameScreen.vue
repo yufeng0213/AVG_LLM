@@ -7,6 +7,8 @@ import {
   normalizeDirectorEvents,
   normalizeCharacterVoiceConfig,
   normalizeRelationshipBase,
+  persistWorldBooks,
+  createNewScene,
 } from '../worldbook/worldBookStore'
 import {
   generateCharacterSpeech,
@@ -17,6 +19,7 @@ import {
   generateCardContent,
   buildStoryPrompt,
   parseStoryContent,
+  parseMainStoryContent,
   toGameScript,
   hasChoices,
   extractChoices,
@@ -41,11 +44,9 @@ import {
 import { saveGame, createHistoryBackup, formatTimestamp } from '../save/saveManager'
 import { kvStorage } from '../storage/index.js'
 import { DEFAULT_NARRATOR_ID, loadNarratorProfiles, resolveNarratorProfile } from '../narrator/narratorStore'
-import MusicPlayer from '../components/MusicPlayer.vue'
 import Phone from '../components/Phone.vue'
 import HandheldConsole from '../components/HandheldConsole.vue'
 import Backpack from '../components/Backpack.vue'
-import PluginComponent from '../plugins/PluginComponent.vue'
 import RelationshipPanel from '../components/RelationshipPanel.vue'
 import RelationshipChangeToast from '../components/RelationshipChangeToast.vue'
 import {
@@ -55,12 +56,23 @@ import {
   getAllRelationships,
   getRelationshipSnapshot,
   getRelationshipPromptContext,
+  resetRelationshipSystem,
 } from '../relationship/index.js'
 import {
   doesFavorMeetLevelCondition,
   getLevelRange,
 } from '../relationship/relationshipLevels.js'
-import { PluginTypes } from '../plugins/pluginManager.js'
+import {
+  getWorldMemory,
+  addEvents,
+  addCharacterMemory,
+  recordExtraction,
+  getExtractionConfig,
+  deleteWorldMemory,
+} from '../memory/worldMemoryStore.js'
+import {
+  extractWorldMemory,
+} from '../llm'
 import CGGeneratorModal from '../components/CGGeneratorModal.vue'
 import { generateCG, getImageBase64 } from '../comfyui/comfyuiService.js'
 import { isAndroid, isNative } from '../utils/platform.js'
@@ -72,6 +84,34 @@ import {
   switchBackground,
   currentBackgroundUrl
 } from '../background/backgroundStore'
+import {
+  initScheduleConsumer,
+} from '../services/scheduleStateConsumer.js'
+import {
+  initRelationshipScheduler,
+  startRelationshipScheduler,
+  stopRelationshipScheduler,
+} from '../services/relationshipAutoScheduler.js'
+import {
+  processNewDialogue as processExposure,
+} from '../services/exposureTracker.js'
+import {
+  generateCharacterCard,
+  promoteCharacter,
+} from '../services/npcPromotion.js'
+import {
+  generateRelationshipAnalysis,
+  generateNpcNpcAnalysis,
+} from '../../plugins/feature-relationship-network/src/llmService.relationship.js'
+import {
+  initAlivenessServices,
+  startAlivenessServices,
+  stopAlivenessServices,
+  onDialogueGenerated,
+  onPlayerChoice,
+  onRelationshipDelta,
+} from '../services/alivenessOrchestrator.js'
+import { useCharacterSchedule } from '../../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
 
 const emit = defineEmits(['back'])
 
@@ -277,6 +317,15 @@ const resolveOpeningDialogueMode = (book) => {
 // 对话脚本（改为 ref 以支持动态添加）- 初始化使用默认开场白
 const dialogueScript = ref([...defaultOpeningDialogue])
 
+// 世界记忆提取：记录上次提取时的对话行数
+const memoryLastExtractedLineCount = ref(0)
+
+// 批量提取阈值：从 kvStorage 读取，默认 5
+let MEMORY_EXTRACT_BATCH_SIZE = 5
+getExtractionConfig().then(cfg => {
+  MEMORY_EXTRACT_BATCH_SIZE = cfg.batchSize ?? 5
+})
+
 // 初始化开场白（根据世界书或使用默认）
 const initializeOpeningDialogue = async () => {
   if (isInitializingOpeningDialogue.value) return
@@ -343,6 +392,11 @@ const storyMaxTokens = ref(2000)
 const showDebugPanel = ref(false)
 const showInputTokensHud = ref(false)
 const showOutputTokensHud = ref(false)
+
+// 重新生成：追踪上次生成的状态
+const lastGeneratedCount = ref(0) // 上次生成新增的对话条数
+const lastGeneratedBeforeIndex = ref(0) // 上次生成前的 currentLineIndex
+const canRegenerate = computed(() => lastGeneratedCount.value > 0 && isLastLine.value)
 const storyTokenUsage = ref({
   inputTokens: null,
   outputTokens: null,
@@ -2158,6 +2212,8 @@ const handleDirectorRelationshipDeltas = (deltas, reason = '导演器事件') =>
         newValue: result.newValues.favor,
         reason: reason,
       })
+      // 通知活人感系统关系变化
+      onRelationshipDelta(result.characterId, result.deltas, reason)
     }
   }
 }
@@ -2629,6 +2685,10 @@ const extractFallbackDialoguesFromRawContent = (rawContent, fallbackStoryTime = 
 const handleGenerateStory = async (choiceToApply = null, options = {}) => {
   if (isGenerating.value) return
 
+  // 记录生成前的状态（用于重新生成时回退）
+  const beforeLineIndex = currentLineIndex.value
+  const beforeScriptLength = dialogueScript.value.length
+
   isGenerating.value = true
   generateError.value = null
   resetStoryTokenUsage()
@@ -2686,8 +2746,8 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
 
     updateStoryTokenUsageFromResponse(result.rawResponse)
 
-    // 解析返回内容
-    const parsed = parseStoryContent(rawModelContent)
+    // 解析返回内容（优先使用新分隔符格式，回退到旧 JSON）
+    const parsed = parseMainStoryContent(rawModelContent)
     let normalizedDialogues = []
 
     if (parsed.success && Array.isArray(parsed.dialogues)) {
@@ -2754,6 +2814,10 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       
       // 自动跳转到第一条新对话
       currentLineIndex.value = normalizedScript.length - newDialogues.length
+
+      // 记录生成状态（用于重新生成）
+      lastGeneratedCount.value = newDialogues.length
+      lastGeneratedBeforeIndex.value = beforeLineIndex
       
       // 清空用户输入和选择状态
       userPromptInput.value = ''
@@ -2774,12 +2838,181 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
 
       // 每次剧情成功推进后，自动写入默认快速存档槽位
       await quickSave({ silent: true })
+
+      // 攒够 N 段新对话后，批量触发世界记忆提取
+      const totalLines = normalizedScript.length
+      const newCount = totalLines - memoryLastExtractedLineCount.value
+      if (newCount >= MEMORY_EXTRACT_BATCH_SIZE) {
+        triggerMemoryExtraction(totalLines)
+      }
     }
   } catch (err) {
     generateError.value = `生成失败: ${err.message}`
   } finally {
     isGenerating.value = false
   }
+}
+
+// ========== 世界记忆提取 ==========
+
+/**
+ * 合并新发现的地点到世界书 scenes
+ * @param {Object} book - 世界书
+ * @param {Array} discoveredLocations - LLM 提取的新地点 [{name, description}]
+ */
+async function mergeDiscoveredLocations(book, discoveredLocations) {
+  if (!book.scenes) book.scenes = []
+
+  const existingNames = new Set(book.scenes.map(s => s.name))
+  let added = 0
+
+  for (const loc of discoveredLocations) {
+    if (!loc?.name) continue
+    const name = loc.name.trim()
+    if (existingNames.has(name)) continue
+
+    const newScene = createNewScene(book)
+    newScene.name = name
+    newScene.description = (loc.description || '').trim()
+    book.scenes.push(newScene)
+    existingNames.add(name)
+    added++
+  }
+
+  if (added === 0) return
+
+  try {
+    const allBooks = await loadWorldBooks()
+    const idx = allBooks.findIndex(b => b.id === book.id)
+    if (idx >= 0) {
+      allBooks[idx] = book
+      await persistWorldBooks(allBooks)
+      console.log(`[WorldBook] 发现 ${added} 个新地点: ${discoveredLocations.map(l => l.name).join(', ')}`)
+    }
+  } catch (e) {
+    console.warn('[WorldBook] mergeDiscoveredLocations failed:', e.message)
+  }
+}
+
+/**
+ * 批量提取世界记忆：从新增的对话中提取事件和角色记忆
+ * @param {number} currentTotalLines - 当前对话总行数（用于记录提取位置）
+ */
+async function triggerMemoryExtraction(currentTotalLines) {
+  const book = worldBooks.value.find(b => b.id === activeBookId.value)
+  if (!book) return
+
+  const memory = await getWorldMemory(activeBookId.value)
+  const lastCount = memory.lastExtractedLineCount || 0
+
+  // 取上次提取之后的新对话
+  const newDialogue = dialogueScript.value.slice(lastCount)
+  if (newDialogue.length < MEMORY_EXTRACT_BATCH_SIZE) return
+
+  try {
+    const result = await extractWorldMemory({
+      worldBook: book,
+      newDialogue,
+      lastLineCount: lastCount,
+    })
+
+    if (result.success) {
+      // 写入事件
+      if (result.events?.length > 0) {
+        await addEvents(activeBookId.value, result.events)
+      }
+      // 写入角色记忆
+      if (result.characterMemories) {
+        for (const [charId, entries] of Object.entries(result.characterMemories)) {
+          if (Array.isArray(entries)) {
+            for (const entry of entries) {
+              await addCharacterMemory(activeBookId.value, charId, entry)
+            }
+          }
+        }
+      }
+      // 写入新发现的地点
+      if (result.discoveredLocations?.length > 0) {
+        await mergeDiscoveredLocations(book, result.discoveredLocations)
+      }
+      // 名场面收集
+      try {
+        const { processNewDialogue } = await import('../services/highlightCollector.js')
+        await processNewDialogue({
+          newDialogue,
+          newEvents: result.events || [],
+          worldBookId: activeBookId.value,
+        })
+      } catch (e) {
+        console.warn('[GameScreen] highlight collection failed:', e.message)
+      }
+      // 更新提取记录
+      await recordExtraction(activeBookId.value, currentTotalLines)
+      memoryLastExtractedLineCount.value = currentTotalLines
+
+      // 曝光追踪：更新角色曝光分数，检测转正候选
+      const bookForExposure = worldBooks.value.find(b => b.id === activeBookId.value)
+      if (bookForExposure) {
+        const knownCharIds = (bookForExposure.characters || []).map(c => String(c.id))
+        const promotions = await processExposure(
+          activeBookId.value,
+          newDialogue,
+          lastCount,
+          bookForExposure
+        )
+
+        // 处理转正
+        for (const promo of promotions) {
+          try {
+            const cardResult = await generateCharacterCard({
+              name: promo.name || promo.id,
+              worldBookEntries: bookForExposure.entries,
+              mentionContexts: [], // 曝光数据在 storage 中，这里简化处理
+            })
+            if (cardResult.success && cardResult.characterCard) {
+              const exposureData = await import('../services/exposureTracker.js').then(m => m.loadExposureData())
+              const exposureEntry = exposureData[activeBookId.value]?.[promo.id]
+              await promoteCharacter(bookForExposure, exposureEntry || {}, cardResult.characterCard)
+            }
+          } catch (e) {
+            console.warn('[GameScreen] NPC promotion failed:', e.message)
+          }
+        }
+      }
+
+      // 触发活人感检查
+      try {
+        await onDialogueGenerated()
+      } catch (e) {
+        console.warn('[GameScreen] aliveness check failed:', e.message)
+      }
+    }
+  } catch {
+    // 静默失败，不阻塞游戏流程
+  }
+}
+
+/**
+ * 重新生成：回退最近一次生成的对话，然后自动重新生成
+ */
+async function handleRegenerateStory() {
+  if (isGenerating.value || lastGeneratedCount.value <= 0) return
+
+  // 删除最近生成的对话
+  const removeCount = lastGeneratedCount.value
+  dialogueScript.value = dialogueScript.value.slice(0, -removeCount)
+
+  // 回到生成前的位置
+  currentLineIndex.value = lastGeneratedBeforeIndex.value
+
+  // 重置状态
+  lastGeneratedCount.value = 0
+  lastGeneratedBeforeIndex.value = 0
+  showChoicesPanel.value = false
+  currentChoices.value = null
+
+  // 自动重新生成
+  await handleGenerateStory()
 }
 
 // ========== 选项处理功能 ==========
@@ -2791,11 +3024,16 @@ const handleSelectChoice = async (option) => {
     text: option.text,
     action: option.action,
     isCustomInput: false,
+    impactful: option.impactful,
+    impactTargets: option.impactTargets,
   }
-  
+
   // 关闭选项面板
   showChoicesPanel.value = false
-  
+
+  // 记录玩家选择影响
+  onPlayerChoice(option, option.text)
+
   // 自动生成后续剧情
   await handleGenerateStory(selectedChoice.value)
 }
@@ -2803,17 +3041,20 @@ const handleSelectChoice = async (option) => {
 // 处理用户自定义输入
 const handleCustomInput = async () => {
   if (!customInputText.value.trim()) return
-  
+
   // 设置选择的选项（自定义输入）
   selectedChoice.value = {
     text: customInputText.value.trim(),
     action: 'custom_input',
     isCustomInput: true,
   }
-  
+
   // 关闭选项面板
   showChoicesPanel.value = false
-  
+
+  // 记录玩家选择影响
+  onPlayerChoice(selectedChoice.value, customInputText.value.trim())
+
   // 自动生成后续剧情
   await handleGenerateStory(selectedChoice.value)
 }
@@ -3769,6 +4010,28 @@ const goPrevLine = () => {
   currentLineIndex.value -= 1
 }
 
+/**
+ * 删除当前对话行，并从 dialogueScript 中移除，同时自动存档
+ */
+const deleteCurrentDialogueLine = async () => {
+  if (isMiniTheaterMode.value) return
+  if (isGenerating.value) return
+  if (dialogueScript.value.length <= 1) return
+
+  const idx = currentLineIndex.value
+  dialogueScript.value.splice(idx, 1)
+
+  // 如果删的是最后一行，回退索引
+  if (currentLineIndex.value >= dialogueScript.value.length) {
+    currentLineIndex.value = dialogueScript.value.length - 1
+  }
+  // 确保索引不小于 0
+  if (currentLineIndex.value < 0) currentLineIndex.value = 0
+
+  // 自动保存，让删除持久化到本地
+  await quickSave({ silent: true })
+}
+
 const handleBackpackUseRequest = async (event) => {
   const detail = event?.detail && typeof event.detail === 'object' ? event.detail : {}
   const requestWorldId = String(detail.worldBookId || '').trim()
@@ -3918,6 +4181,9 @@ const saveError = ref(null)
 const saveSuccess = ref(null)
 const showSavePanel = ref(false)
 const showTopMenu = ref(false)
+const showMoreActions = ref(false)
+const showRestartConfirm = ref(false)
+const isRestarting = ref(false)
 const saveSlotName = ref('')
 const playStartTime = ref(Date.now()) // 游戏开始时间
 const DEFAULT_QUICK_SAVE_SLOT_ID = 'save_quick_default'
@@ -3940,6 +4206,42 @@ const toggleTopMenu = () => {
   showTopMenu.value = nextState
   if (nextState) {
     showDebugPanel.value = false
+  }
+}
+
+const toggleMoreActions = () => {
+  showMoreActions.value = !showMoreActions.value
+}
+
+// 重新开始确认 / 取消 / 执行
+const confirmRestart = () => {
+  showRestartConfirm.value = true
+}
+
+const cancelRestart = () => {
+  showRestartConfirm.value = false
+}
+
+const handleRestart = async () => {
+  isRestarting.value = true
+  try {
+    const worldId = activeBookId.value
+    // 1. 清空世界记忆
+    await deleteWorldMemory(worldId)
+    // 2. 重置关系系统（含本地存储）
+    await resetRelationshipSystem(worldId)
+    // 3. 重置对话脚本为开场白
+    dialogueScript.value = [...defaultOpeningDialogue]
+    currentLineIndex.value = 0
+    // 4. 清空关系运行时状态
+    relationshipState.value = {}
+    // 5. 关闭各面板
+    showRestartConfirm.value = false
+    showTopMenu.value = false
+    // 6. 自动存档（持久化重置状态）
+    await quickSave({ silent: true })
+  } finally {
+    isRestarting.value = false
   }
 }
 
@@ -4086,6 +4388,10 @@ const loadSaveData = async () => {
   if (props.saveData.game.worldBookId) {
     activeBookId.value = props.saveData.game.worldBookId
   }
+
+  // 恢复世界记忆提取位置
+  const mem = await getWorldMemory(activeBookId.value)
+  memoryLastExtractedLineCount.value = mem.lastExtractedLineCount || 0
   if (props.saveData.game.narratorId) {
     sessionNarratorId.value = props.saveData.game.narratorId
   }
@@ -4178,11 +4484,61 @@ onMounted(async () => {
     window.addEventListener('backpack-use-request', handleBackpackUseRequest)
     window.addEventListener('phone-map-travel-request', handleMapTravelRequest)
   }
+
+  // 初始化新系统
+  initScheduleConsumer()
+  initRelationshipScheduler({
+    getWorldBook: () => activeBook.value,
+    getWorldMemory: async (bookId) => await getWorldMemory(bookId),
+    runRelationshipAnalysis: generateRelationshipAnalysis,
+    runNpcNpcAnalysis: generateNpcNpcAnalysis,
+    saveRelationships: async (wb) => {
+      const books = await loadWorldBooks()
+      const idx = books.findIndex(b => b.id === wb.id)
+      if (idx >= 0) books[idx] = wb
+    },
+    addWorldMemoryEvent: async (bookId, event) => {
+      await addEvents(bookId, [event])
+    },
+    syncToRuntime: async (charId, deltas, reason) => {
+      updateRelationship(charId, deltas, reason, null)
+    },
+    notifyPlayer: (text) => {
+      // 作为旁白追加到对话
+      if (text) {
+        dialogueScript.value.push({
+          speaker: '旁白',
+          text,
+          emotion: 'thinking',
+        })
+      }
+    },
+    isGenerating: () => isGenerating.value,
+  })
+  startRelationshipScheduler()
+
+  // 初始化活人感增强服务
+  const scheduleAPI = useCharacterSchedule()
+  initAlivenessServices({
+    isGenerating: () => isGenerating.value,
+    getWorldBook: () => activeBook.value,
+    getWorldMemory: async (bookId) => await getWorldMemory(bookId),
+    getScheduleFn: (bookId, charId) => scheduleAPI.scheduleState?.scheduleMap?.[`${bookId}::${charId}`],
+    getRelationships: () => activeBook.value?.relationships || {},
+    getRecentEvents: () => {
+      const mem = worldMemoryState.value?.events || []
+      return mem.slice(-10)
+    },
+  })
+  startAlivenessServices()
+
   hasMountedGameScreen.value = true
 })
 
 onUnmounted(() => {
   stopCurrentTtsPlayback()
+  stopRelationshipScheduler()
+  stopAlivenessServices()
   if (cgStatusTimer) {
     clearTimeout(cgStatusTimer)
     cgStatusTimer = null

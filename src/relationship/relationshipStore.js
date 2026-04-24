@@ -18,6 +18,26 @@ import {
   getRelationshipInfluenceHint,
 } from './relationshipLevels.js'
 
+// 同步到角色状态存储（延迟导入，避免循环依赖）
+let _characterStateModule = null
+async function syncToCharacterState(characterId, deltas, reason) {
+  if (!_characterStateModule) {
+    _characterStateModule = await import('../../plugins/feature-character-state/src/services/characterStateStore.js')
+  }
+  try {
+    // 需要获取当前 worldBookId
+    if (activeWorldBookId.value) {
+      await _characterStateModule.updateCharacterState(activeWorldBookId.value, characterId, {
+        favor: deltas.favor || 0,
+        trust: deltas.trust || 0,
+        stance: deltas.stance || 0,
+      })
+    }
+  } catch (e) {
+    console.warn('[Relationship] syncToCharacterState failed:', e.message)
+  }
+}
+
 // 存储键
 const RELATIONSHIP_STORAGE_KEY = 'game_relationships'
 const RELATIONSHIP_HISTORY_KEY = 'relationship_history'
@@ -189,6 +209,9 @@ export const updateRelationship = (characterId, deltas, reason, dialogueIndex = 
   
   // 保存到存储
   saveRelationshipToStorage()
+
+  // 同步到角色状态存储
+  syncToCharacterState(characterId, deltas, reason)
   
   // 返回更新结果（包含变化幅度信息）
   const favorChange = getChangeMagnitude(deltas.favor || 0)

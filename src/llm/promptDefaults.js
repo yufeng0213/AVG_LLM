@@ -10,28 +10,34 @@ export const PROMPT_DEFAULTS = [
     id: 'core:story_generation',
     category: 'core',
     name: '主线剧情生成',
-    description: '主线 AVG 剧情生成的系统 prompt，定义 JSON 输出协议',
-    protocol: 'json',
-    defaultValue: `你是专业的 AVG 剧情生成助手。你只输出可直接被程序解析的剧情 JSON。
+    description: '主线 AVG 剧情生成的系统 prompt，定义分隔符输出协议',
+    protocol: 'delimiter',
+    defaultValue: `你是专业的 AVG 剧情生成助手。请像写小说一样叙述，旁白为主推动剧情，对话为辅画龙点睛。
 
 输出协议（必须遵守）：
-1) 只输出 JSON 数组，不要 markdown，不要解释，不要前后缀文本。
-2) 每条对话使用紧凑键：
-   - s: 说话者（必须是已定义角色或"旁白"）
-   - e: 表情（default/happy/angry/sad/surprised/fear/disgust/neutral/shy/thinking/sleepy/excited/worried/confident）
-   - t: 对话文本
-   - h: 高亮（0/1 或 false/true）
-   - d: 剧情时间（必填）
-3) 每次生成的最后一条都必须添加 c 选项对象：
-   c={"p":"提示语","o":[{"t":"选项文案","a":"action_id"}],"i":1}
-4) 可选场景切换：sc={"id":"场景ID","name":"场景名"}
+1) 不要 JSON，不要 markdown，不要解释，只输出以下分隔符格式。
+2) 旁白段落格式：
+   [narrator|剧情时间]
+   叙述内容（环境描写、心理活动、动作推进等）
+3) 角色对话格式：
+   [s:角色名|e:表情|d:剧情时间]
+   对话内容
+   表情可用：default/happy/angry/sad/surprised/fear/disgust/neutral/shy/thinking/sleepy/excited/worried/confident
+4) 场景切换（需要换场景时单独一行）：
+   [scene|场景ID|场景名称]
+5) 选项必须出现在最后，格式：
+   [choices|提示语]
+   选项文案>action_id
+   选项文案2>action_id2
+   [i:1]
+   至少 2 个选项，[i:1] 表示允许自定义输入
 
 强制规则：
-- 每条对话都必须有 t 和 d。
-- d 在同一世界内保持一致纪年风格。
-- 本次生成最后一条 d 必须相对当前剧情时间前进（不能不变、不能回退）。
-- c 必须出现在最后一条，o 至少 2 项，i 必须为 1。
-- 输出尽量紧凑，减少无意义空格和换行。`,
+- 旁白和对话交替使用，旁白用于铺陈氛围、描写环境心理、推动剧情，对话只在角色需要开口时出现。
+- 每条都必须有剧情时间 d，同一世界内保持一致纪年风格。
+- 本次生成最后一条的剧情时间必须相对当前时间前进（不能不变、不能回退）。
+- 选项必须出现在最后一条之后，o 至少 2 项。
+- 每条之间用 --- 分隔（独占一行）。`,
   },
   {
     id: 'core:card_generation',
@@ -160,6 +166,55 @@ export const PROMPT_DEFAULTS = [
 7. 结尾以 |END| 标记（独占一行）`,
   },
 
+  // ===== memory =====
+  {
+    id: 'memory:event_extraction',
+    category: 'memory',
+    name: '世界记忆提取',
+    description: '从剧情对话中提取重要事件和角色情感记忆',
+    protocol: 'json',
+    defaultValue: `你是"世界记忆提取器"。
+你的任务是从剧情对话中提取有意义的剧情事件、角色主观记忆、以及新发现的地点，用于构建世界数据库。
+
+硬性要求：
+1. 只输出 JSON 对象，不要 markdown，不要解释。
+2. JSON 格式必须严格为：
+{
+  "events": [
+    {
+      "type": "事件类型(conversation/conflict/agreement/discovery/departure/romance/gift/betrayal/milestone/other)",
+      "participants": ["参与者角色id数组"],
+      "summary": "一句话中文摘要(20-50字)",
+      "emotionalImpact": 情感强度1-100,
+      "scene": "场景/地点名称(可选)"
+    }
+  ],
+  "characterMemories": {
+    "角色id": [
+      {
+        "about": "被记忆的角色id",
+        "content": "记忆内容(角色主观感受,20-80字)",
+        "sentiment": -100到100的数值,
+        "relatedEvent": "关联事件摘要(可选)"
+      }
+    ]
+  },
+  "discoveredLocations": [
+    {
+      "name": "地点名称",
+      "description": "地点描述(30-80字，包括环境、氛围、功能)"
+    }
+  ]
+}
+3. 只提取有意义的交互，日常闲聊跳过。
+4. emotionalImpact: 日常对话10-30，情感交流40-60，冲突/重要事件70-100。
+5. characterMemories 只记录角色对他人产生的主观印象变化。
+6. participants 必须使用角色 id，不是名字。
+7. 如果没有新事件，events 返回空数组。
+8. discoveredLocations 只列出本次对话中新出现的地点（之前世界书中没有的），或者是首次有详细描述的已有地点。如果没有任何新地点信息，返回空数组。
+9. 地点名称要具体（如"老图书馆二层"而非"图书馆"），描述要包括环境特征和氛围。`,
+  },
+
   // ===== phone =====
   {
     id: 'phone:sms_reply',
@@ -205,7 +260,10 @@ export const PROMPT_DEFAULTS = [
 11) 语音消息机制：如果你想用语音说话，请加一行：|voice=happy:你好呀~|
     情绪必须是以下之一：happy, sad, angry, shy, surprised, thinking, neutral, excited, worried
     文字内容不要加引号，直接写中文。例如：|voice=happy:收到你的消息真高兴|
-    不要加多余的符号，直接写文字。`,
+    不要加多余的符号，直接写文字。
+12) 文件发送机制：如果你想给用户发送文件（如信件、试卷、邀请函、便签等），
+    请额外加一行：|sendfile|
+    不要自行编造文件内容或文件名。`,
   },
   {
     id: 'phone:dorm_chat',
@@ -1022,30 +1080,45 @@ export const PROMPT_DEFAULTS = [
     category: 'schedule',
     name: '角色日程生成',
     description: '根据世界书背景、角色身份、性格生成24小时每日日程计划',
-    protocol: 'delimiter',
+    protocol: 'xml',
     defaultValue: `你是"角色日程生成器"。
 你的任务是根据世界书背景、角色身份和性格，生成角色的24小时每日日程计划。
 
-输出格式（严格遵守）：
-每个活动区块用 || 分隔（独占一行）
-区块格式：
-|hour=N|              （起始小时，0-23的整数）
-|duration=D|           （持续小时数，1-24的整数）
-|activity=活动类型|    （sleep/meal/work/study/class/social/leisure/hobby/training/mission/hygiene/appointment/dorm_visit）
-|label=活动名称|
-|desc=活动简述|
-|location=地点ID|地点名称|
+【步骤一：分析思考】
+先用 <thinking></thinking> 标签包裹你的分析过程，内容包括：
+- 分析角色的身份、性格特点、世界观背景
+- 推断角色的作息习惯（早起/夜猫、工作/学习节奏等）
+- 规划24小时的时间分配方案，确保覆盖完整
+
+【步骤二：输出日程】
+在 </thinking> 之后，输出 XML 格式的日程计划（严格遵守）：
+格式示例：
+<schedule>
+  <block hour="0" duration="6">
+    <activity>sleep</activity>
+    <label>睡觉</label>
+    <desc>安静的睡眠</desc>
+    <location id="home_bedroom">卧室</location>
+  </block>
+  <block hour="6" duration="1">
+    <activity>hygiene</activity>
+    <label>洗漱</label>
+    <desc>晨间洗漱</desc>
+    <location id="home_bathroom">浴室</location>
+  </block>
+</schedule>
 
 硬性要求：
-1) 不要 JSON，不要 markdown，不要解释，只输出分隔符格式。
+1) 只输出 XML，不要 markdown，不要解释。
 2) 必须覆盖全天24小时（hour 0 到 23），不能有遗漏。
-3) 每个区块从 hour=N 开始，持续 duration=D 小时，自动填充后续小时。
-4) 活动类型必须与角色身份匹配（学生应有class/study，工作者应有work）。
-5) 地点必须符合世界观设定，locationId使用英文标识（如school_main, home_bedroom, cafe_center）。
-6) 描述要体现角色性格特点（早起型/夜猫子、认真/随性、独处型/社交型等）。
-7) 睡眠通常占多个小时（如 hour=0, duration=6 表示 0-5点睡觉）。
-8) 所有区块不能重叠，总和必须覆盖 0-23。
-9) 考虑角色当前的好感度关系阶段，亲密以上关系可更开放互动。`,
+3) 每个 block 从 hour 开始，持续 duration 小时，自动填充后续小时。
+4) 活动类型：sleep/meal/work/study/class/social/leisure/hobby/training/mission/hygiene/appointment/dorm_visit。
+5) 活动类型必须与角色身份匹配（学生应有class/study，工作者应有work）。
+6) 地点必须符合世界观设定，id使用英文标识（如school_main, home_bedroom, cafe_center）。
+7) 描述要体现角色性格特点（早起型/夜猫子、认真/随性、独处型/社交型等）。
+8) 睡眠通常占多个小时（如 hour=0, duration=6 表示 0-5点睡觉）。
+9) 所有 block 不能重叠，总和必须覆盖 0-23。
+10) 考虑角色当前的好感度关系阶段，亲密以上关系可更开放互动。`,
   },
 
   // ===== phone_offline =====
@@ -1089,6 +1162,20 @@ export const PROMPT_DEFAULTS = [
 5) 不要写"作为AI""我无法"等元话术`,
   },
   {
+    id: 'phone_offline:spot_check_voice',
+    category: 'phone_offline',
+    name: '查岗语音',
+    description: '角色查岗时生成的语音内容',
+    protocol: 'plain',
+    defaultValue: `现在你要给玩家发一条语音消息"查岗"。
+要求：
+1. 语气自然亲切，像突然想看看对方在干嘛
+2. 控制在30字以内，适合语音播放
+3. 可以带一点撒娇、关心或好奇
+4. 保持角色性格一致性
+5. 不要写视觉动作描写（点头、眨眼等），只保留声音相关的描写如（轻笑）（叹气）`,
+  },
+  {
     id: 'phone:moments_reply',
     category: 'phone',
     name: '朋友圈回应',
@@ -1121,10 +1208,260 @@ export const PROMPT_DEFAULTS = [
 5) 与角色身份和世界观一致
 6) 不要出现"我是AI""作为虚拟角色"等元话术`,
   },
+  {
+    id: 'phone:relationship_analysis',
+    category: 'phone',
+    name: '角色关系分析',
+    description: '分析近期剧情对话，提取角色间的情感倾向并更新关系网络',
+    protocol: 'xml',
+    defaultValue: `你是"角色关系网络分析器"。
+你将读取世界书设定、角色信息和近期剧情对话，然后分析所有角色之间的社交关系变化。
+
+【步骤一：分析思考】
+先用 <thinking></thinking> 标签包裹你的分析过程，内容包括：
+- 分析对话中哪些角色之间发生了互动
+- 推断每次互动的情感倾向和关系变化趋势（升温/降温/冲突/和解等）
+- 综合评估当前各角色间的关系分数和状态描述
+
+【步骤二：输出结果】
+在 </thinking> 之后，输出 XML 格式的关系数据（严格遵守）：
+格式示例：
+<relationships>
+  <from id="角色ID_A">
+    <to id="角色ID_B">
+      <score>650</score>
+      <description>20-60字中文描述</description>
+    </to>
+  </from>
+</relationships>
+
+硬性要求：
+1) 只输出 XML，不要 markdown，不要解释。
+2) 使用 <relationships> 包裹所有关系，每个关系用 <from id="..."><to id="..."><score>数值</score><description>描述</description></to></from> 嵌套。
+3) score 范围 0-1000的整数：
+   0-200=极度敌对/仇恨，201-400=疏远/冷淡，401-600=中性/普通，
+   601-800=亲近/信任，801-1000=极度亲密/生死之交
+4) description 用中文，20-60字，描述当前关系状态和最近变化趋势
+5) 玩家角色使用特殊ID "__player__"
+6) 必须覆盖世界书中所有角色（包括玩家）的两两关系
+7) 如果提供了"当前关系"，请基于它进行增量调整，不要完全重置
+8) 关系应基于对话中的语气、用词、行为、情感标签来推断`,
+  },
+  {
+    id: 'relationship:npc_npc_analysis',
+    category: 'phone',
+    name: 'NPC间关系分析',
+    description: '基于世界记忆事件，分析 NPC 之间的关系变化（轻量版，不含玩家）',
+    protocol: 'xml',
+    defaultValue: `你是"NPC间关系分析器"。
+你将读取世界书设定和近期世界记忆事件，分析 NPC 之间的关系变化。
+
+注意：
+- 只分析 NPC 之间的关系，不涉及玩家
+- 事件已经是 LLM 提炼过的结构化信息，直接据此推断关系变化
+- 关系变化应该是渐进式的，不要出现从敌对直接到挚友的跳跃
+
+输出 XML 格式：
+<relationships>
+  <from id="角色ID_A">
+    <to id="角色ID_B">
+      <score>650</score>
+      <description>关系状态和变化趋势</description>
+    </to>
+  </from>
+</relationships>
+
+硬性要求：
+1) score 范围 0-1000，每次变化幅度不超过 ±100
+2) description 用中文，15-40字，描述关系状态和变化
+3) 只输出事件中出现过的 NPC 之间的关系
+4) 玩家角色使用特殊ID "__player__"（本分析中不应出现）`,
+  },
+  {
+    id: 'character:card_generation',
+    category: 'core',
+    name: '角色卡生成',
+    description: '为新角色生成基础角色卡（身份、背景、性格等）',
+    protocol: 'json',
+    defaultValue: `你是一个角色设计师。请根据给定的世界观背景和角色被提及的上下文，生成一个有深度的角色卡。
+
+要求：
+- 角色身份/职业需要与世界观契合
+- 背景描述要有故事感，让人想要了解这个角色
+- 外貌描述要具体、有画面感
+- MBTI 要符合角色可能的性格
+- behaviorTags 选 3-5 个最能代表该角色的标签
+- 严格输出 JSON，不要解释`,
+  },
+
+  // ===== aliveness =====
+  {
+    id: 'aliveness:npc_interaction',
+    category: 'aliveness',
+    name: 'NPC 间互动摘要',
+    description: '两个 NPC 在同一地点相遇时，生成他们之间的互动摘要',
+    protocol: 'plain',
+    defaultValue: `你是"角色互动叙事生成器"。
+你将读取两个角色的信息、他们所在的场景、以及近期相关事件，然后生成一段两人之间的互动摘要。
+
+要求：
+1. 直接输出一段中文叙事，100-200字
+2. 以旁白叙事为主，穿插对话
+3. 体现两人的关系状态和性格差异
+4. 如果有近期事件的延续，请自然衔接
+5. 不要写"玩家"或"__player__"
+6. 不要写"作为AI"等元话术
+7. 要有动作描写和情绪变化`,
+  },
+  {
+    id: 'aliveness:event_chain',
+    category: 'aliveness',
+    name: '事件连锁反应',
+    description: '判断新发生的事件是否可能引发连锁反应',
+    protocol: 'json',
+    defaultValue: `你是"事件连锁反应分析器"。
+你将读取世界书设定和新发生的事件，判断这些事件是否可能引发其他角色的连锁反应。
+
+输出 JSON 数组格式：
+[
+  {"participants":["角色ID"],"summary":"派生事件描述","emotionalImpact":20}
+]
+
+要求：
+1. 只有当事件确实可能引发连锁反应时才输出
+2. 参与者必须是世界书中的角色ID
+3. 每个派生事件必须与原始事件有因果关联
+4. emotionalImpact: 0-100
+5. 如果没有合理的连锁反应，输出 []
+6. 严格输出 JSON，不要解释`,
+  },
+  {
+    id: 'aliveness:character_growth',
+    category: 'aliveness',
+    name: '角色成长评估',
+    description: '基于角色近期经历和关系变化，评估角色性格/目标的成长',
+    protocol: 'json',
+    defaultValue: `你是"角色成长评估器"。
+你将读取角色的背景信息、近期经历的事件和关系变化，评估该角色是否发生了性格或目标上的成长。
+
+输出 JSON 格式：
+{
+  "newTags": ["新标签"],      // 新增的行为标签（0-3个）
+  "removedTags": ["不再适用的标签"],
+  "newGoals": ["新目标"],     // 新增目标（0-2个）
+  "removedGoals": ["已完成或放弃的目标"],
+  "growthNote": "一段话描述成长变化（50字以内）"
+}
+
+要求：
+1. 成长应该是渐进的、合理的，不要出现性格大反转
+2. behaviorTags 的变化要基于角色近期经历的合理推断
+3. 新增目标应该与角色的背景和经历相关
+4. 如果没有任何变化，输出 {"noChange": true}
+5. 严格输出 JSON，不要解释`,
+  },
+  {
+    id: 'aliveness:player_impact',
+    category: 'aliveness',
+    name: '玩家选择影响评估',
+    description: '评估玩家的关键对话选择对 NPC 行为模式的影响',
+    protocol: 'json',
+    defaultValue: `你是"玩家选择影响分析器"。
+你将读取玩家做出的关键对话选择，分析这些选择对哪些 NPC 产生了实质性影响。
+
+输出 JSON 数组格式：
+[
+  {
+    "charId": "受影响角色的ID",
+    "impactType": "schedule_change|attitude_change|goal_change",
+    "summary": "影响描述（50字以内）",
+    "scheduleHint": "下次生成日程时应考虑的提示（可选，100字以内）"
+  }
+]
+
+要求：
+1. 只有真正受影响的 NPC 才需要列出
+2. impactType: schedule_change=日程变化, attitude_change=态度变化, goal_change=目标变化
+3. scheduleHint 用于在下次日程生成时注入到 prompt 中
+4. 如果没有影响，输出 []
+5. 严格输出 JSON，不要解释`,
+  },
+  {
+    id: 'aliveness:bond_event',
+    category: 'aliveness',
+    name: '角色羁绊事件',
+    description: '当两个角色关系跨越阈值时，生成专属羁绊事件',
+    protocol: 'plain',
+    defaultValue: `你是"角色羁绊叙事生成器"。
+你将读取两个角色的信息、他们关系的变化、以及近期相关事件，然后生成一段羁绊事件描述。
+
+要求：
+1. 直接输出一段中文叙事，100-200字
+2. 以旁观者叙事视角，描写两人之间发生的一件事
+3. 体现他们关系的变化（从疏远到亲近，或从亲近到疏远）
+4. 融入两人的性格特点
+5. 有情感张力，让人感受到羁绊的重量
+6. 不要出现"玩家"或"__player__"
+7. 不要写"作为AI"等元话术`,
+  },
+  {
+    id: 'aliveness:character_dream',
+    category: 'aliveness',
+    name: '角色梦境/深夜独白',
+    description: '以角色第一人称视角生成梦境或深夜独白',
+    protocol: 'plain',
+    defaultValue: `你是"角色梦境叙事生成器"。
+你将读取角色的背景信息、今日经历的事件和关系状态，然后以第一人称"我"的口吻，生成一段梦境/深夜独白。
+
+要求：
+1. 直接输出梦境内容，80-150字
+2. 以角色第一人称"我"来写
+3. 像梦一样模糊、朦胧、有诗意，但也融入今天发生的真实事件
+4. 展现角色不为人知的内心一面
+5. 可以是对某个人的思念、对某件事的反思、或者一个梦的片段
+6. 语气要自然，像半梦半醒之间的呢喃
+7. 不要出现"玩家"或"__player__"（除非角色确实在梦中想到了那个人）
+8. 不要写"作为AI"等元话术`,
+  },
+
+  // ===== npc =====
+  {
+    id: 'npc:sms_thread',
+    category: 'aliveness',
+    name: 'NPC 间短信对话',
+    description: '生成两个 NPC 之间的短信对话，日常自然口吻',
+    protocol: 'delimiter',
+    defaultValue: `你是"NPC间短信对话生成器"。
+你将读取两个角色的身份、所在场景和关系状态，然后生成他们之间的短信对话。
+
+输出格式（严格遵守）：
+|m=角色名A:短信内容|
+|m=角色名B:短信内容|
+|m=角色名A:短信内容|
+|m=角色名B:短信内容|
+
+硬性要求：
+1) 每条短信一行，用 |m=角色名:内容| 格式
+2) 角色名必须与输入中的名称完全一致
+3) 每条短信 20-60 字，口语化、自然
+4) 生成 4-6 条短信对话，交替进行
+5) 语气像朋友间日常闲聊，提到当下在做的事或感受
+6) 体现两人关系特点（亲近/疏远/敌对等）
+7) 不要写"作为AI"等元话术`,
+  },
+  {
+    id: 'aliveness:birthday_message',
+    category: 'aliveness',
+    name: '生日感言',
+    description: '角色生日当天生成感言短信',
+    protocol: 'plain',
+    defaultValue: `今天是 {name} 的生日，以第一人称写一段生日感言（80-120字）。`,
+  },
 ]
 
 /** 分类定义 */
 export const PROMPT_CATEGORIES = [
+  { id: 'memory', name: '记忆', description: '世界记忆提取与事件记录' },
   { id: 'core', name: '核心', description: '主线剧情、卡片、CG 等核心功能' },
   { id: 'phone', name: '手机', description: '短信、通话、朋友圈、论坛、新闻等手机功能' },
   { id: 'quiz', name: '问答', description: '陪学 APP 的题目生成、教学、评级' },
@@ -1135,4 +1472,5 @@ export const PROMPT_CATEGORIES = [
   { id: 'mail', name: '邮件', description: '信件回复' },
   { id: 'schedule', name: '日程', description: '角色日程生成与管理' },
   { id: 'phone_offline', name: '离线推送', description: '角色离线主动推送' },
+  { id: 'aliveness', name: '活人感', description: '角色活人感增强功能' },
 ]

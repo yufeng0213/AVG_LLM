@@ -1,5 +1,284 @@
 
 
+/* ===== 新短信界面样式 ===== */
+
+/* 顶部导航栏 - 三个独立容器 */
+.messages-header-new {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(247, 247, 250, 0.9);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  min-height: 56px;
+  border-bottom: 1px solid var(--ios-line);
+}
+
+/* 左侧胶囊容器 */
+.messages-header-left-capsule {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(120, 131, 152, 0.12);
+  border-radius: 20px;
+  padding: 4px 8px 4px 4px;
+  height: 36px;
+}
+
+.messages-header-left-capsule .back-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 22px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.messages-header-left-capsule .back-btn:hover {
+  background: rgba(10, 132, 255, 0.15);
+}
+
+.header-config-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ios-accent);
+  padding-right: 4px;
+}
+
+/* 中间圆形头像 */
+.messages-header-center-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e467f;
+  background: linear-gradient(160deg, #dce9ff, #cedef6);
+  box-shadow: 0 2px 8px rgba(10, 22, 46, 0.12);
+}
+
+/* 右侧胶囊容器 */
+.messages-header-right-capsule {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(120, 131, 152, 0.12);
+  border-radius: 20px;
+  padding: 4px 6px;
+  height: 36px;
+}
+
+.header-action-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.header-action-btn:hover {
+  background: rgba(10, 132, 255, 0.15);
+}
+
+.header-action-btn:active {
+  transform: scale(0.92);
+}
+
+.action-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* 底部输入栏新样式 */
+.messages-compose {
+  border-top: 1px solid rgba(60, 60, 67, 0.16);
+  background: rgba(248, 248, 250, 0.95);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.compose-left-actions {
+  flex-shrink: 0;
+}
+
+.compose-plus-btn {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(120, 131, 152, 0.14);
+  color: var(--ios-accent);
+  font-size: 22px;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.compose-plus-btn:hover {
+  background: rgba(10, 132, 255, 0.18);
+}
+
+.compose-plus-btn:active {
+  transform: scale(0.92);
+}
+
+.compose-plus-btn.active {
+  background: var(--ios-accent);
+  color: #ffffff;
+}
+
+.compose-plus-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.plus-icon {
+  line-height: 1;
+  margin-top: -2px;
+}
+
+.sms-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(60, 60, 67, 0.2);
+  border-radius: 18px;
+  padding: 8px 14px;
+  font-size: 14px;
+  line-height: 1.3;
+  color: #17171b;
+  background: #ffffff;
+}
+
+.sms-input:focus {
+  outline: none;
+  border-color: rgba(10, 132, 255, 0.55);
+  box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.14);
+}
+
+.sms-send-btn {
+  border: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  padding: 0;
+  background: #0a84ff;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sms-send-btn:active {
+  transform: scale(0.92);
+}
+
+.sms-send-btn:disabled {
+  opacity: 0.5;
+  background: #85bcff;
+  cursor: not-allowed;
+}
+
+/* 功能菜单弹出层 */
+.feature-menu-overlay {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: flex-start;
+  padding: 0 10px 8px;
+  z-index: 10;
+}
+
+.feature-menu-panel {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.feature-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.feature-menu-item:hover {
+  background: rgba(10, 132, 255, 0.1);
+}
+
+.feature-menu-item:active {
+  transform: scale(0.95);
+}
+
+.feature-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.feature-label {
+  font-size: 10px;
+  color: var(--ios-subtle);
+  font-weight: 500;
+}
+
+/* 功能菜单动画 */
+.feature-menu-enter-active {
+  transition: all 0.2s ease;
+}
+
+.feature-menu-leave-active {
+  transition: all 0.15s ease;
+}
+
+.feature-menu-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.feature-menu-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
 .messages-search-shell {
   padding: 8px 12px 10px;
 }
@@ -132,10 +411,12 @@
   color: var(--ios-subtle);
 }
 
+/* ===== 优化后的消息气泡样式 ===== */
 .sms-row {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  margin-bottom: 4px;
 }
 
 .sms-row.from-user {
@@ -146,33 +427,57 @@
   align-items: flex-start;
 }
 
+/* 时间标签 - 居中显示 */
+.sms-time-label {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(16, 19, 26, 0.45);
+  padding: 8px 0 4px;
+  font-weight: 500;
+}
+
 .sms-bubble {
   margin: 0;
-  max-width: 84%;
-  padding: 8px 11px;
-  border-radius: 17px;
-  font-size: 13px;
-  line-height: 1.4;
+  max-width: 78%;
+  padding: 9px 13px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.45;
   word-break: break-word;
+  position: relative;
 }
 
+/* 用户消息气泡 - 蓝色渐变 */
 .sms-row.from-user .sms-bubble {
-  background: linear-gradient(160deg, #0a84ff, #2d95ff);
+  background: linear-gradient(135deg, #0a84ff 0%, #0070e0 100%);
   color: #ffffff;
-  border-bottom-right-radius: 7px;
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 1px 2px rgba(10, 132, 255, 0.2);
 }
 
+/* 对方消息气泡 - 白色带边框 */
 .sms-row.from-assistant .sms-bubble {
   background: #ffffff;
   color: #16161a;
-  border: 1px solid rgba(60, 60, 67, 0.16);
-  border-bottom-left-radius: 7px;
+  border: 1px solid rgba(60, 60, 67, 0.12);
+  border-bottom-left-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
+/* 消息时间 */
 .sms-time {
   font-size: 10px;
-  color: rgba(16, 19, 26, 0.45);
-  padding: 0 2px;
+  color: rgba(16, 19, 26, 0.4);
+  padding: 0 4px 2px;
+  font-weight: 400;
+}
+
+.sms-row.from-user .sms-time {
+  text-align: right;
+}
+
+.sms-row.from-assistant .sms-time {
+  text-align: left;
 }
 
 .sms-meta {

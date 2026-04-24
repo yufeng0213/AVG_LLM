@@ -70,7 +70,15 @@
       "Bash(gradlew.bat assembleDebug)",
       "Bash(ls -la electron/)",
       "Bash(ls -la src/electron/)",
-      "Bash(cmd /c \"gradlew.bat assembleDebug\")"
+      "Bash(cmd /c \"gradlew.bat assembleDebug\")",
+      "Bash(python3 -c \"import os; print\\(os.path.relpath\\(r'E:\\\\avg_llm\\\\src\\\\llm\\\\index.js', r'E:\\\\avg_llm\\\\plugins\\\\feature-phone\\\\src\\\\phone'\\)\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(wc -l E:\\\\\\\\avg_llm\\\\\\\\plugins\\\\\\\\feature-phone\\\\\\\\src\\\\\\\\phone\\\\\\\\PhoneSmsApp.vue E:\\\\\\\\avg_llm\\\\\\\\plugins\\\\\\\\feature-phone\\\\\\\\src\\\\\\\\phone\\\\\\\\composables\\\\\\\\useSmsMessaging.js E:\\\\\\\\avg_llm\\\\\\\\plugins\\\\\\\\feature-phone\\\\\\\\src\\\\\\\\phone\\\\\\\\components\\\\\\\\sms\\\\\\\\*.vue)",
+      "Bash(git checkout *)",
+      "Bash(kill %1)",
+      "Bash(tail *)",
+      "Bash(cat)",
+      "Bash(python3 /tmp/WorldMapView_css.py)"
     ]
   }
 }

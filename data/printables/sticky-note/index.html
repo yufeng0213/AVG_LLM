@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>便签</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #e8e0d4;
+      font-family: 'Comic Sans MS', '楷体', cursive;
+      padding: 20px;
+    }
+    .sticky-note {
+      width: 100%;
+      max-width: 350px;
+      background: linear-gradient(135deg, #fff9a8 0%, #fff176 100%);
+      padding: 30px 25px;
+      box-shadow: 5px 5px 15px rgba(0,0,0,0.15);
+      transform: rotate(-2deg);
+      position: relative;
+    }
+    .sticky-note::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 25px;
+      background: rgba(0,0,0,0.05);
+      border-bottom: 1px dashed rgba(0,0,0,0.1);
+    }
+    .note-pin {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle at 35% 35%, #e74c3c, #c0392b);
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    .note-content {
+      font-size: 15px;
+      line-height: 1.8;
+      color: #555;
+      margin-top: 15px;
+      white-space: pre-wrap;
+    }
+    .note-sender {
+      text-align: right;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="sticky-note">
+    <div class="note-pin"></div>
+    <div class="note-content">{{content}}</div>
+    <div class="note-sender">—— {{sender}}</div>
+  </div>
+</body>
+</html>

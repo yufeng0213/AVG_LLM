@@ -5,9 +5,11 @@
  */
 import { computed, onMounted, ref } from 'vue'
 import { loadWorldBooks } from '../../../src/worldbook/worldBookStore.js'
-import { useCharacterSchedule, SCHEDULE_EVENTS } from './composables/useCharacterSchedule.js'
+import { useCharacterSchedule, SCHEDULE_EVENTS, SCHEDULE_ACTIVITY_TYPES } from './composables/useCharacterSchedule.js'
 import ScheduleTimeline from './components/ScheduleTimeline.vue'
 import AutoRefreshSettings from './components/AutoRefreshSettings.vue'
+import ScheduleEditHour from './components/ScheduleEditHour.vue'
+import ScheduleAddEvent from './components/ScheduleAddEvent.vue'
 
 const emit = defineEmits(['back'])
 
@@ -20,6 +22,7 @@ const {
   selectCharacter,
   generateScheduleForCharacter,
   executePassedHours,
+  updateActivity,
 } = useCharacterSchedule()
 
 // 世界书和角色列表
@@ -32,6 +35,64 @@ const currentView = ref('books') // 'books' | 'chars' | 'schedule'
 
 // 自动刷新设置
 const showAutoRefreshSettings = ref(false)
+
+// 编辑日程
+const showEditHour = ref(false)
+const editHour = ref(0)
+const editEntry = ref(null)
+const isEditMode = ref(false)
+const showAddEvent = ref(false)
+
+function openAddEvent() {
+  showAddEvent.value = true
+}
+
+function closeAddEvent() {
+  showAddEvent.value = false
+}
+
+async function onSaveAddEvent({ hour, activityType, description, locationName }) {
+  await updateActivity(hour, {
+    plannedActivity: {
+      activityType,
+      activityLabel: SCHEDULE_ACTIVITY_TYPES.find(t => t.type === activityType)?.label || activityType,
+      description,
+      locationId: '',
+      locationName,
+      blockId: '',
+      isLocked: false,
+      isCustom: true,
+    },
+  })
+  closeAddEvent()
+}
+
+function openEditHour(hour, entry) {
+  editHour.value = hour
+  editEntry.value = entry
+  showEditHour.value = true
+}
+
+function closeEditHour() {
+  showEditHour.value = false
+  editEntry.value = null
+}
+
+async function onSaveEditHour({ hour, activityType, description, locationName, isLocked }) {
+  await updateActivity(hour, {
+    plannedActivity: {
+      activityType,
+      activityLabel: SCHEDULE_ACTIVITY_TYPES.find(t => t.type === activityType)?.label || activityType,
+      description,
+      locationId: '',
+      locationName,
+      blockId: '',
+      isLocked,
+      isCustom: true,
+    },
+  })
+  closeEditHour()
+}
 
 onMounted(async () => {
   await loadScheduleMap()
@@ -209,6 +270,23 @@ function onAutoRefreshSaved() {
           </button>
           <button
             type="button"
+            class="edit-toggle-btn"
+            :class="{ active: isEditMode }"
+            @click="isEditMode = !isEditMode"
+            title="编辑模式"
+          >
+            {{ isEditMode ? '编辑中' : '编辑' }}
+          </button>
+          <button
+            type="button"
+            class="add-btn"
+            @click="openAddEvent"
+            title="添加日程"
+          >
+            + 添加
+          </button>
+          <button
+            type="button"
             class="refresh-btn"
             :disabled="isGenerating"
             @click="refreshSchedule"
@@ -256,6 +334,22 @@ function onAutoRefreshSaved() {
       @close="showAutoRefreshSettings = false"
       @saved="onAutoRefreshSaved"
     />
+
+    <!-- 编辑时段 -->
+    <ScheduleEditHour
+      :visible="showEditHour"
+      :hour="editHour"
+      :existing="editEntry"
+      @close="closeEditHour"
+      @save="onSaveEditHour"
+    />
+
+    <!-- 添加日程 -->
+    <ScheduleAddEvent
+      :visible="showAddEvent"
+      @close="closeAddEvent"
+      @save="onSaveAddEvent"
+    />
   </div>
 </template>
 
@@ -274,6 +368,7 @@ function onAutoRefreshSaved() {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
+  padding-top: max(12px, var(--safe-area-inset-top, 12px));
   background: rgba(28, 28, 30, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -305,6 +400,34 @@ function onAutoRefreshSaved() {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.edit-toggle-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.edit-toggle-btn.active {
+  background: rgba(100, 180, 255, 0.2);
+  border-color: rgba(100, 180, 255, 0.5);
+  color: #fff;
+}
+
+.add-btn {
+  background: none;
+  border: 1px solid rgba(100, 255, 180, 0.3);
+  color: rgba(100, 255, 180, 0.7);
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.add-btn:hover {
+  background: rgba(100, 255, 180, 0.1);
 }
 
 .settings-btn {
@@ -499,4 +622,31 @@ function onAutoRefreshSaved() {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
 }
+
+
+
+  .platform-android.android-portrait .schedule-header {
+    background: rgba(28, 28, 30, 0.98) !important;
+  }
+
+  .platform-android.android-portrait .settings-btn,
+  .platform-android.android-portrait .refresh-btn,
+  .platform-android.android-portrait .edit-toggle-btn,
+  .platform-android.android-portrait .add-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
 </style>

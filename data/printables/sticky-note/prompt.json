@@ -1,0 +1,11 @@
+{
+  "id": "sticky-note",
+  "name": "便签",
+  "icon": "📌",
+  "description": "一张随手贴便签",
+  "category": "note",
+  "variables": {
+    "content": { "type": "text", "description": "便签内容" },
+    "sender": { "type": "string", "description": "写便签的人" }
+  }
+}

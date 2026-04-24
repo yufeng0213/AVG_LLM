@@ -11,6 +11,7 @@ export {
   generateCardContent,
   generateStoryTicket,
   generatePhoneSmsReply,
+  generatePhoneSmsFile,
   generateGroupChatReply,
   generateDormChatReply,
   generatePhoneCallReply,
@@ -50,10 +51,13 @@ export {
   generatePronunciationLesson,
   generatePronunciationTTS,
   parsePronunciationOutput,
+  generateRelationshipAnalysis,
+  extractWorldMemory,
 } from './llmService'
 export { buildStoryPrompt, buildQuickPrompt } from './promptGenerator'
 export {
   parseStoryContent,
+  parseMainStoryContent,
   parseStoryTicketContent,
   countChineseChars,
   validateDialogue,

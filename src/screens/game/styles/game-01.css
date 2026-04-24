@@ -126,7 +126,7 @@
 
 .game-topbar {
   position: absolute;
-  top: 0;
+  top: max(16px, var(--safe-area-inset-top, 16px));
   left: 0;
   right: 0;
   z-index: 10;
@@ -917,6 +917,35 @@
   );
   border-color: var(--accent-yellow);
   box-shadow: 0 0 12px color-mix(in srgb, var(--accent-magenta) 48%, transparent);
+}
+
+/* 折叠操作按钮：更多 / 删除 */
+.action-button.action-delete {
+  background: linear-gradient(135deg, rgba(255, 59, 48, 0.3), rgba(255, 59, 48, 0.15));
+  border-color: rgba(255, 59, 48, 0.6);
+}
+.action-button.action-delete:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255, 59, 48, 0.5), rgba(255, 59, 48, 0.3));
+  border-color: #ff3b30;
+}
+.action-button.action-more {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.action-button.action-more:hover:not(:disabled),
+.action-button.action-more.is-active {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08));
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* 折叠操作容器 */
+.dialogue-more-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
 }
 
 /* 卡片面板样式 */
@@ -1771,3 +1800,121 @@
     color-mix(in srgb, var(--accent-purple) 16%, transparent)
   );
 }
+
+/* 重新开始确认对话框 */
+.restart-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.restart-dialog {
+  width: min(90vw, 380px);
+  padding: 24px;
+  border: 3px solid #ff3b30;
+  border-radius: 12px;
+  background: rgba(20, 20, 40, 0.98);
+  box-shadow:
+    0 0 30px rgba(255, 59, 48, 0.3),
+    8px 8px 0 rgba(255, 59, 48, 0.15);
+}
+
+.restart-title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ff3b30;
+  font-family: var(--font-heading);
+  letter-spacing: 0.05em;
+}
+
+.restart-description {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.restart-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.restart-list li {
+  margin-bottom: 4px;
+}
+
+.restart-warning {
+  margin: 0 0 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ff9500;
+}
+
+.restart-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.restart-btn {
+  padding: 8px 16px;
+  border: 2px solid;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.restart-btn-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.restart-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.restart-btn-confirm {
+  background: rgba(255, 59, 48, 0.2);
+  border-color: #ff3b30;
+  color: #ff3b30;
+}
+
+.restart-btn-confirm:hover:not(:disabled) {
+  background: #ff3b30;
+  color: #fff;
+}
+
+.restart-btn-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+  .platform-android.android-portrait .restart-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
