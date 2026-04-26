@@ -153,10 +153,31 @@ function getVoiceDuration(msg) {
 </template>
 
 <style scoped>
+.sms-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 6px;
+  min-height: 100%;
+}
+
 .sms-msg-row {
   display: flex;
   align-items: flex-end;
   width: 100%;
+  gap: 4px;
+  animation: msg-slide-in 0.3s ease-out;
+}
+
+@keyframes msg-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .sms-msg-row.assistant {
@@ -167,26 +188,25 @@ function getVoiceDuration(msg) {
   flex-direction: row-reverse;
 }
 
-.sms-msg-row .sms-bubble {
-  margin-left: 0;
-  margin-right: 0;
-}
-
+/* ===== 头像 ===== */
 .sms-msg-avatar {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  margin: 0 2px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+  margin: 0 2px;
+}
+
+.sms-msg-avatar:hover {
+  transform: scale(1.08);
 }
 
 .sms-msg-avatar img {
@@ -196,28 +216,50 @@ function getVoiceDuration(msg) {
 }
 
 .sms-msg-avatar-default {
-  font-size: 1.5rem;
-  line-height: 1;
+  font-size: 1.2rem;
+  opacity: 0.7;
 }
 
+/* ===== 时间戳 ===== */
 .sms-time {
+  align-self: center;
   text-align: center;
-  font-size: 0.7rem;
-  color: #c0a0b0;
-  background: rgba(255, 255, 255, 0.7);
-  display: inline-block;
-  margin: 12px auto;
-  padding: 4px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(224, 180, 200, 0.3);
-  letter-spacing: 0.5px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  padding: 3px 12px;
+  border-radius: 10px;
+  margin: 8px auto;
+  letter-spacing: 0.3px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ===== 语音消息气泡 ===== */
+/* ===== 消息气泡基础（仅布局属性，装饰样式由自定义CSS控制） ===== */
+.sms-bubble {
+  position: relative;
+  max-width: 75%;
+  word-wrap: break-word;
+  /* 不设置任何装饰样式，让自定义CSS完全控制 */
+}
+
+/* 用户消息间距 */
+.sms-bubble.user {
+  margin-right: 4px;
+}
+
+/* 角色消息间距 */
+.sms-bubble.assistant {
+  margin-left: 4px;
+}
+
+/* ===== 语音消息 ===== */
 .sms-voice-wrapper {
   display: flex;
   flex-direction: column;
   max-width: 75%;
+  gap: 4px;
 }
 
 .sms-voice-bubble {
@@ -225,117 +267,134 @@ function getVoiceDuration(msg) {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  padding: 10px 16px !important;
+  padding: 10px 14px !important;
   min-width: 120px;
   user-select: none;
   position: relative;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(9, 182, 255, 0.12)) !important;
+  border-radius: 16px !important;
 }
 
-.sms-voice-bubble > * {
-  color: inherit;
-}
-
-.sms-voice-bubble:active {
-  opacity: 0.8;
+.sms-voice-bubble:hover {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.35), rgba(9, 182, 255, 0.25)) !important;
 }
 
 .sms-voice-bubble.playing {
-  animation: voice-pulse 1.5s ease-in-out infinite;
+  animation: voice-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes voice-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.3); }
-  50% { box-shadow: 0 0 0 6px rgba(0, 212, 255, 0); }
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(0, 212, 255, 0);
+    transform: scale(1.02);
+  }
 }
 
 .voice-icon {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   flex-shrink: 0;
+  animation: voice-icon-bounce 0.6s ease-in-out infinite;
+}
+
+.sms-voice-bubble.playing .voice-icon {
+  animation: none;
+}
+
+@keyframes voice-icon-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
 }
 
 .voice-wave {
   font-family: var(--font-mono, monospace);
-  font-size: 0.85rem;
-  letter-spacing: 1px;
-  opacity: 0.5;
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  color: rgba(0, 212, 255, 0.8);
 }
 
 .sms-voice-bubble.playing .voice-wave {
-  opacity: 0.8;
+  opacity: 1;
+  animation: wave-animate 0.4s steps(4) infinite;
+}
+
+@keyframes wave-animate {
+  0% { content: '~~~~'; }
+  25% { content: '▂▃▅'; }
+  50% { content: '▃▅▇'; }
+  75% { content: '▅▇█'; }
+  100% { content: '▇█▇'; }
 }
 
 .voice-duration {
   font-size: 0.75rem;
   font-weight: 600;
-  opacity: 0.4;
+  opacity: 0.5;
+  color: rgba(0, 212, 255, 0.7);
 }
 
 .voice-hint {
-  font-size: 0.65rem;
-  opacity: 0.3;
+  font-size: 0.6rem;
+  opacity: 0.35;
   position: absolute;
-  bottom: 4px;
+  bottom: 2px;
   right: 8px;
+  color: rgba(255, 255, 255, 0.5);
 }
 
-/* 语音文字引用（QQ风格）*/
-.sms-msg-row.user .voice-text-quote {
-  color: #5a3e2b !important;
-  background: rgba(252, 182, 159, 0.15);
-  border-left: 3px solid #fcb69f;
-  margin-top: 6px;
-  padding: 6px 10px;
-  border-radius: 4px;
+/* 语音文字引用 */
+.voice-text-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  margin-top: 4px;
+  padding: 8px 12px;
+  border-radius: 12px;
   font-size: 0.8rem;
-  animation: fade-in 0.2s ease;
+  animation: quote-fade-in 0.25s ease;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.sms-msg-row.assistant .voice-text-quote {
-  color: #1b4a5e !important;
-  background: rgba(178, 235, 242, 0.2);
-  border-left: 3px solid #b2ebf2;
-  margin-top: 6px;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  animation: fade-in 0.2s ease;
+@keyframes quote-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.sms-msg-row.user .voice-text-quote .voice-quote-text,
-.sms-msg-row.assistant .voice-text-quote .voice-quote-text {
-  color: inherit !important;
-}
-
-.sms-msg-row.user .voice-text-quote .voice-quote-icon,
-.sms-msg-row.assistant .voice-text-quote .voice-quote-icon {
-  color: inherit !important;
-}
-
-.voice-text-quote .voice-quote-icon {
+.voice-quote-icon {
   flex-shrink: 0;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  opacity: 0.6;
 }
 
-.voice-text-quote .voice-quote-text {
+.voice-quote-text {
   line-height: 1.5;
   word-break: break-word;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* ===== 红包/礼物气泡 ===== */
+/* ===== 红包气泡 ===== */
 .sms-redpacket-bubble {
-  background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px !important;
+  padding: 12px 14px !important;
   cursor: pointer;
-  min-width: 200px;
-  transition: transform 0.15s;
+  min-width: 180px;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3) !important;
+  transition: transform 0.15s ease;
+  margin-left: 4px;
+}
+
+.sms-redpacket-bubble:hover:not(.opened) {
+  transform: scale(1.02);
 }
 
 .sms-redpacket-bubble:active:not(.opened) {
@@ -343,13 +402,24 @@ function getVoiceDuration(msg) {
 }
 
 .sms-redpacket-bubble.opened {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: default;
+  filter: grayscale(30%);
 }
 
 .redpacket-icon {
-  font-size: 32px;
+  font-size: 28px;
   flex-shrink: 0;
+}
+
+.sms-redpacket-bubble:hover:not(.opened) .redpacket-icon {
+  animation: redpacket-shake 0.3s ease-in-out infinite;
+}
+
+@keyframes redpacket-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
 }
 
 .redpacket-content {
@@ -365,8 +435,8 @@ function getVoiceDuration(msg) {
 
 .redpacket-blessing {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -374,22 +444,26 @@ function getVoiceDuration(msg) {
 
 .redpacket-opened-tag {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-top: 2px;
+  color: rgba(255, 215, 0, 0.8);
+  margin-top: 3px;
+  font-weight: 500;
 }
 
-/* 角色回礼气泡 */
+/* ===== 角色回礼气泡 ===== */
 .sms-giftreturn-bubble {
-  background: linear-gradient(135deg, #f39c12, #e67e22) !important;
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%) !important;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px !important;
-  min-width: 200px;
+  padding: 12px 14px !important;
+  min-width: 180px;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3) !important;
+  margin-left: 4px;
 }
 
 .giftreturn-icon {
-  font-size: 32px;
+  font-size: 28px;
   flex-shrink: 0;
 }
 
@@ -406,19 +480,26 @@ function getVoiceDuration(msg) {
 
 .giftreturn-item {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 3px;
 }
 
-/* 文件气泡 */
+/* ===== 文件气泡 ===== */
 .sms-file-bubble {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px !important;
-  min-width: 180px;
+  padding: 12px 14px !important;
+  min-width: 160px;
   cursor: pointer;
-  transition: transform 0.15s;
+  background: linear-gradient(135deg, rgba(100, 100, 255, 0.15), rgba(150, 100, 255, 0.1)) !important;
+  border-radius: 12px !important;
+  transition: transform 0.15s ease;
+  margin-left: 4px;
+}
+
+.sms-file-bubble:hover {
+  transform: scale(1.02);
 }
 
 .sms-file-bubble:active {
@@ -426,7 +507,7 @@ function getVoiceDuration(msg) {
 }
 
 .file-bubble-icon {
-  font-size: 28px;
+  font-size: 24px;
   flex-shrink: 0;
 }
 
@@ -436,7 +517,7 @@ function getVoiceDuration(msg) {
 }
 
 .file-bubble-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: inherit;
   overflow: hidden;
@@ -447,19 +528,76 @@ function getVoiceDuration(msg) {
 .file-bubble-hint {
   font-size: 11px;
   opacity: 0.5;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
-/* 表情包图片 */
+/* ===== 表情包 ===== */
 .sms-sticker-img {
   display: inline-block;
-  max-width: 120px;
-  max-height: 120px;
+  max-width: 100px;
+  max-height: 100px;
   vertical-align: bottom;
-  border-radius: 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
+/* ===== 加载动画 ===== */
+.phone-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(10, 132, 255, 0.8);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== 打字动画 ===== */
+.sms-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ===== Android 兼容 ===== */
 .platform-android.android-portrait .sms-msg-avatar {
   background: rgba(255, 255, 255, 0.18) !important;
 }
+/* Android端气泡样式由自定义CSS控制，不再强制覆盖 */
 </style>

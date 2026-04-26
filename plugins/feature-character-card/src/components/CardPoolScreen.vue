@@ -657,7 +657,18 @@ onMounted(async () => {
 }
 
 
-  .platform-android.android-portrait .pull-btn,
+  /* Android 刘海屏适配 */
+.platform-android.android-portrait .pool-header {
+  padding-top: max(12px, var(--safe-area-inset-top, 12px));
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.platform-android.android-portrait .pool-title {
+  font-size: 1.1rem;
+}
+
+.platform-android.android-portrait .pull-btn,
   .platform-android.android-portrait .pool-back-btn,
   .platform-android.android-portrait .overlay-close-btn,
   .platform-android.android-portrait .debug-add-btn {

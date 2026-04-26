@@ -210,21 +210,6 @@
   display: block;
 }
 
-.world-hub-wp-reset-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: 6px;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: background 150ms ease;
-  flex-shrink: 0;
-}
-
-.world-hub-wp-reset-btn:hover {
-  background: color-mix(in srgb, var(--foreground, #ffffff) 8%, transparent);
-}
-
 /* 活动入口按钮 */
 .world-hub-activity-btn {
   position: relative;
@@ -938,7 +923,6 @@
     font-size: 0.72rem;
   }
 
-    .platform-android.android-portrait .world-hub-wp-reset-btn,
     .platform-android.android-portrait .world-hub-settings-btn,
     .platform-android.android-portrait .hub-secondary-btn{
     width: auto !important;
@@ -1117,123 +1101,3 @@
   flex-shrink: 0;
 }
 
-/* ========== 世界书选择器 ========== */
-.world-book-selector-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-}
-
-.world-book-selector-dialog {
-  background: #1a1a2e;
-  border-radius: 14px;
-  width: min(480px, 90vw);
-  max-height: 75vh;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.selector-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  flex-shrink: 0;
-}
-
-.selector-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #fff;
-  margin: 0;
-}
-
-.selector-close {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px 8px;
-}
-
-.selector-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-}
-
-.selector-empty {
-  text-align: center;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 13px;
-  padding: 30px 0;
-}
-
-.selector-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.selector-book-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 150ms;
-}
-
-.selector-book-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-.selector-book-item.active {
-  border-color: rgba(74, 158, 255, 0.4);
-  background: rgba(74, 158, 255, 0.08);
-}
-
-.book-item-icon {
-  font-size: 20px;
-}
-
-.book-item-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.book-item-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.book-item-summary {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.book-item-check {
-  color: #22c55e;
-  font-size: 18px;
-  font-weight: 700;
-}

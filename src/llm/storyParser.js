@@ -987,11 +987,152 @@ export const countChineseChars = (content) => {
   return matches ? matches.length : 0
 }
 
+/**
+ * 解析短信 XML 格式内容（带思维链）
+ * @param {string} content - LLM 返回的原始内容
+ * @returns {Object} 解析结果
+ */
+export const parseSmsXmlContent = (content) => {
+  if (!content || typeof content !== 'string') {
+    return { success: false, error: '内容为空', replies: [], rawContent: content }
+  }
+
+  const raw = String(content).trim()
+  if (!raw) return { success: false, error: '内容为空', replies: [], rawContent: content }
+
+  // 提取思维链
+  let thinking = ''
+  const thinkMatch = raw.match(/<thinking>([\s\S]*?)<\/thinking>/i)
+  if (thinkMatch) {
+    thinking = thinkMatch[1].trim()
+  }
+
+  // 移除 thinking 块
+  const withoutThinking = raw.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim()
+  if (!withoutThinking) {
+    return { success: false, error: '只有思维链，无回复内容', replies: [], thinking, rawContent: content }
+  }
+
+  // 移除 markdown 代码块包裹
+  const cleaned = withoutThinking
+    .replace(/^```(?:xml)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
+
+  const replies = []
+  let redPacket = null
+  let redPacketAction = null
+  let giftToPlayer = null
+  let calendarEvent = null
+  const voiceMessages = []
+  let sendFileIntent = false
+
+  // 解析短信 <m e="表情">内容</m>
+  const mRegex = /<m(\s+[^>]*)>([\s\S]*?)<\/m>/gi
+  let mMatch
+  while ((mMatch = mRegex.exec(cleaned)) !== null) {
+    const attrs = mMatch[1] || ''
+    const text = (mMatch[2] || '').trim()
+    if (!text) continue
+
+    // 提取表情属性
+    const eMatch = attrs.match(/\be=["']([^"']*)["']/i)
+    const emotion = eMatch?.[1]?.trim()?.toLowerCase() || 'neutral'
+
+    // 验证表情是否有效
+    const validEmotions = ['happy', 'sad', 'angry', 'shy', 'surprised', 'thinking', 'neutral', 'excited', 'worried']
+    const finalEmotion = validEmotions.includes(emotion) ? emotion : 'neutral'
+
+    replies.push({ text, emotion: finalEmotion })
+  }
+
+  // 解析红包 <rp a="金额" b="祝福语"/>
+  const rpRegex = /<rp\s+a=["'](\d+)["']\s+b=["']([^"']*)["']\s*\/>/gi
+  const rpMatch = rpRegex.exec(cleaned)
+  if (rpMatch) {
+    const amount = Number(rpMatch[1])
+    const blessing = rpMatch[2].trim().slice(0, 30)
+    if (amount >= 1 && amount <= 100) {
+      redPacket = { amount: Math.round(amount), blessing: blessing || '小小意思，不成敬意~' }
+    }
+  }
+
+  // 解析红包回应 <rpa a="accept|decline" r="反应"/>
+  const rpaRegex = /<rpa\s+a=["'](accept|decline)["']\s+r=["']([^"']*)["']\s*\/>/gi
+  const rpaMatch = rpaRegex.exec(cleaned)
+  if (rpaMatch) {
+    redPacketAction = {
+      action: rpaMatch[1].toLowerCase(),
+      remark: rpaMatch[2].trim().slice(0, 30),
+    }
+  }
+
+  // 解析礼物 <gift n="物品名" m="赠送语"/>
+  const giftRegex = /<gift\s+n=["']([^"']*)["']\s+m=["']([^"']*)["']\s*\/>/gi
+  const giftMatch = giftRegex.exec(cleaned)
+  if (giftMatch) {
+    const itemName = giftMatch[1].trim()
+    if (itemName) {
+      giftToPlayer = {
+        itemName,
+        message: giftMatch[2].trim().slice(0, 40),
+        count: 1,
+      }
+    }
+  }
+
+  // 解析日历提醒 <cal d="日期时间" t="标题">描述</cal>
+  const calRegex = /<cal\s+d=["']([^"']*)["']\s+t=["']([^"']*)["']>([\s\S]*?)<\/cal>/gi
+  const calMatch = calRegex.exec(cleaned)
+  if (calMatch) {
+    const dateStr = calMatch[1].trim()
+    const title = calMatch[2].trim().slice(0, 20)
+    const desc = calMatch[3].trim().slice(0, 50)
+    if (dateStr && title) {
+      calendarEvent = { date: dateStr, title, description: desc }
+    }
+  }
+
+  // 解析语音 <v e="情绪">内容</v>
+  const vRegex = /<v\s+e=["']([^"']*)["']>([\s\S]*?)<\/v>/gi
+  let vMatch
+  while ((vMatch = vRegex.exec(cleaned)) !== null) {
+    const emotion = vMatch[1].trim().toLowerCase()
+    const text = vMatch[2].trim()
+    const validEmotions = ['happy', 'sad', 'angry', 'shy', 'surprised', 'thinking', 'neutral', 'excited', 'worried']
+    if (text && validEmotions.includes(emotion)) {
+      voiceMessages.push({ voiceText: text, voiceEmotion: emotion })
+    }
+  }
+
+  // 解析文件发送意图 <sendfile/>
+  sendFileIntent = /<sendfile\s*\/>/i.test(cleaned)
+
+  if (replies.length === 0) {
+    return { success: false, error: '未解析到短信内容', replies: [], thinking, rawContent: content }
+  }
+
+  return {
+    success: true,
+    error: null,
+    replies,
+    redPacket,
+    redPacketAction,
+    giftToPlayer,
+    calendarEvent,
+    voiceMessages,
+    sendFileIntent,
+    thinking,
+    rawContent: content,
+  }
+}
+
 export default {
   parseStoryContent,
   parseXmlStoryContent,
   parseMainStoryContent,
   parseStoryTicketContent,
+  parseSmsXmlContent,
   validateDialogue,
   toGameScript,
   extractHighlightCharacters,

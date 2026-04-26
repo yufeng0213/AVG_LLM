@@ -136,22 +136,13 @@ function onAvatarPointerLeave() {
 </template>
 
 <style scoped>
-/* 联系人头像长按交互 */
-.contact-avatar {
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-
-.contact-avatar:active {
-  transform: scale(0.92);
-}
-
 /* ===== 标签切换 ===== */
 .sms-tab-bar {
   display: flex;
-  padding: 6px 12px;
-  gap: 6px;
-  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.1));
+  padding: 10px 14px;
+  gap: 8px;
+  background: linear-gradient(180deg, rgba(25, 25, 35, 0.9) 0%, rgba(20, 20, 28, 0.95) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .sms-tab {
@@ -160,23 +151,182 @@ function onAvatarPointerLeave() {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 6px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.82rem;
+  border-radius: 14px;
+  padding: 8px 10px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.sms-tab:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .sms-tab.active {
-  background: rgba(10, 132, 255, 0.25);
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.25) 0%, rgba(10, 132, 255, 0.15) 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-color: rgba(10, 132, 255, 0.4);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(10, 132, 255, 0.25);
+}
+
+/* ===== 联系人列表 ===== */
+.contact-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.contact-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.contact-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.contact-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.contact-section-header {
+  padding: 10px 16px 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.5px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.contact-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.contact-item:active {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(0.99);
+}
+
+/* ===== 联系人头像 ===== */
+.contact-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  font-size: 1.4rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.contact-avatar:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.contact-avatar:active {
+  transform: scale(0.95);
+}
+
+.contact-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.contact-avatar-placeholder {
+  opacity: 0.7;
+}
+
+/* ===== 联系人信息 ===== */
+.contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.3px;
+}
+
+.contact-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.contact-last-msg {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.contact-signature {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== 时间戳 ===== */
+.contact-time {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.contact-time.unread {
+  color: #0a84ff;
+  background: rgba(10, 132, 255, 0.15);
+  font-weight: 600;
 }
 
 /* ===== 群聊相关 ===== */
@@ -184,23 +334,29 @@ function onAvatarPointerLeave() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px 6px;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
-  font-size: 0.78rem;
+  padding: 12px 16px 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
 .group-create-btn {
-  background: rgba(255, 255, 255, 0.06);
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.2) 0%, rgba(10, 132, 255, 0.1) 100%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  padding: 3px 10px;
+  border: 1px solid rgba(10, 132, 255, 0.3);
+  border-radius: 12px;
+  padding: 5px 12px;
   color: #0a84ff;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.2s ease;
+}
+
+.group-create-btn:hover {
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.3) 0%, rgba(10, 132, 255, 0.2) 100%);
+  transform: scale(1.05);
 }
 
 .group-avatar {
@@ -208,39 +364,61 @@ function onAvatarPointerLeave() {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: linear-gradient(135deg, rgba(100, 200, 255, 0.2), rgba(150, 100, 255, 0.15));
 }
 
-/* NPC 观察 */
+/* ===== NPC 观察 ===== */
 .npc-list-header {
-  padding: 10px 16px 6px;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
-  font-size: 0.78rem;
+  padding: 12px 16px 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
 .npc-thread-item {
-  background: rgba(255, 100, 200, 0.05);
-  border-color: rgba(255, 100, 200, 0.1);
+  background: linear-gradient(135deg, rgba(255, 100, 200, 0.08) 0%, rgba(200, 100, 255, 0.05) 100%);
+  border-bottom: 1px solid rgba(255, 200, 220, 0.1);
+}
+
+.npc-thread-item:hover {
+  background: linear-gradient(135deg, rgba(255, 100, 200, 0.12) 0%, rgba(200, 100, 255, 0.08) 100%);
 }
 
 .npc-thread-avatars {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 12px;
+  gap: 6px;
+  padding: 0 14px;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .npc-avatar-name {
-  color: rgba(255, 200, 220, 0.8);
-  font-weight: 500;
+  color: rgba(255, 200, 220, 0.9);
+  font-weight: 600;
+  padding: 4px 8px;
+  background: rgba(255, 200, 220, 0.15);
+  border-radius: 8px;
 }
 
 .npc-vs {
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 0.9rem;
 }
 
+/* ===== 空状态 ===== */
+.phone-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ===== Android 兼容 ===== */
 .platform-android.android-portrait .sms-tab {
   width: auto !important;
   height: auto !important;
@@ -259,9 +437,11 @@ function onAvatarPointerLeave() {
   white-space: nowrap !important;
   background: rgba(255, 255, 255, 0.18) !important;
 }
+
 .platform-android.android-portrait .sms-tab.active {
   background: rgba(10, 132, 255, 0.35) !important;
 }
+
 .platform-android.android-portrait .group-create-btn {
   width: auto !important;
   height: auto !important;

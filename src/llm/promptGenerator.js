@@ -18,6 +18,7 @@ import {
   getCharacterRelationship,
   getAllRelationships,
 } from '../relationship/relationshipStore.js'
+import { getNarratorFullPrompt } from '../narrator/narratorStore.js'
 
 const personalityDimensionDefs = CHARACTER_PERSONALITY_DIMENSION_DEFS
 
@@ -92,7 +93,8 @@ export const buildStoryPrompt = (params) => {
     messageCount = 3,
     selectedChoice,
     contextLineCount = 10,
-    activityStoryContext,  // 活动故事专属上下文
+    activityStoryContext,
+    memoryContext,
   } = params
 
   const sections = []
@@ -100,6 +102,11 @@ export const buildStoryPrompt = (params) => {
   // 0. 活动故事背景（最优先）
   if (activityStoryContext) {
     sections.push(buildActivityStorySection(activityStoryContext))
+  }
+
+  // 0.5. 世界记忆（近期事件 + 过往回忆）
+  if (memoryContext && memoryContext.trim()) {
+    sections.push(memoryContext)
   }
 
   // 1. 世界设定部分
@@ -564,16 +571,26 @@ const buildNarratorSection = (narratorProfile) => {
     lines.push(`**风格定位**: ${narratorProfile.summary}`)
   }
 
-  if (narratorProfile.stylePrompt && narratorProfile.stylePrompt.trim()) {
-    lines.push('')
-    lines.push('### 文风要求')
-    lines.push(narratorProfile.stylePrompt.trim())
-  }
+  // 新结构：使用items条目
+  if (narratorProfile.items && narratorProfile.items.length > 0) {
+    const itemsPrompt = getNarratorFullPrompt(narratorProfile)
+    if (itemsPrompt && itemsPrompt.trim()) {
+      lines.push('')
+      lines.push(itemsPrompt.trim())
+    }
+  } else {
+    // 兼容旧数据：使用stylePrompt和instructionPrompt
+    if (narratorProfile.stylePrompt && narratorProfile.stylePrompt.trim()) {
+      lines.push('')
+      lines.push('### 文风要求')
+      lines.push(narratorProfile.stylePrompt.trim())
+    }
 
-  if (narratorProfile.instructionPrompt && narratorProfile.instructionPrompt.trim()) {
-    lines.push('')
-    lines.push('### 叙事约束')
-    lines.push(narratorProfile.instructionPrompt.trim())
+    if (narratorProfile.instructionPrompt && narratorProfile.instructionPrompt.trim()) {
+      lines.push('')
+      lines.push('### 叙事约束')
+      lines.push(narratorProfile.instructionPrompt.trim())
+    }
   }
 
   return lines.join('\n')

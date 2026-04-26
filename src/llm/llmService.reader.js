@@ -4,6 +4,7 @@
  */
 import { callChatCompletion, getValidatedActiveConfig } from './llmService.core.js'
 import { resolvePrompt } from './promptRegistry.js'
+import { getNarratorFullPrompt } from '../narrator/narratorStore.js'
 
 // ===== 解析函数 =====
 
@@ -74,6 +75,16 @@ function buildWorldSummary(worldBook) {
 
 function buildNarratorSummary(narrator) {
   if (!narrator) return '默认叙事者风格'
+
+  // 新结构：使用items条目
+  if (narrator.items && narrator.items.length > 0) {
+    const itemsPrompt = getNarratorFullPrompt(narrator)
+    if (itemsPrompt && itemsPrompt.trim()) {
+      return itemsPrompt.trim()
+    }
+  }
+
+  // 兼容旧数据
   const parts = []
   if (narrator.name) parts.push(`叙事者：${narrator.name}`)
   if (narrator.summary) parts.push(`风格定位：${narrator.summary}`)

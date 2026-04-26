@@ -186,13 +186,15 @@ const showRedPacketModal = ref(false)
 const showGiftShop = ref(false)
 const showGiftReturnToast = ref(null)
 
-// 默认气泡 CSS 模板
+// 默认气泡 CSS 模板（使用更具体的选择器确保覆盖scoped样式）
+// 使用 .sms-messages .sms-msg-row 增加选择器层级，提高优先级
+// Android端需要额外添加 .platform-android 选择器 + !important
 const DEFAULT_BUBBLE_CSS = `/* ===== 短信气泡自定义样式 ===== */
 .sms-messages {
   background: linear-gradient(180deg, #fff5f9 0%, #fef0ff 50%, #f0f4ff 100%);
   padding: 12px 6px;
 }
-.sms-bubble.user {
+.sms-messages .sms-msg-row .sms-bubble.user {
   position: relative;
   background: linear-gradient(135deg, #ffecd2, #fcb69f);
   border-radius: 20px 20px 6px 20px;
@@ -203,8 +205,12 @@ const DEFAULT_BUBBLE_CSS = `/* ===== 短信气泡自定义样式 ===== */
   margin: 6px 12px 6px 8px;
   box-shadow: 0 3px 10px rgba(252, 182, 159, 0.35), inset 0 -2px 4px rgba(0, 0, 0, 0.04);
   border: 2px solid rgba(255, 255, 255, 0.6);
+  transition: transform 0.15s ease;
 }
-.sms-bubble.user::after {
+.sms-messages .sms-msg-row .sms-bubble.user:active {
+  transform: scale(0.98);
+}
+.sms-messages .sms-msg-row .sms-bubble.user::after {
   content: '✦';
   position: absolute;
   right: -18px;
@@ -213,7 +219,7 @@ const DEFAULT_BUBBLE_CSS = `/* ===== 短信气泡自定义样式 ===== */
   color: #fcb69f;
   text-shadow: 0 0 6px rgba(252, 182, 159, 0.6);
 }
-.sms-bubble.assistant {
+.sms-messages .sms-msg-row .sms-bubble.assistant {
   position: relative;
   background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
   border-radius: 20px 20px 20px 6px;
@@ -224,8 +230,12 @@ const DEFAULT_BUBBLE_CSS = `/* ===== 短信气泡自定义样式 ===== */
   margin: 6px 8px 6px 12px;
   box-shadow: 0 3px 10px rgba(178, 235, 242, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.04);
   border: 2px solid rgba(255, 255, 255, 0.7);
+  transition: transform 0.15s ease;
 }
-.sms-bubble.assistant::before {
+.sms-messages .sms-msg-row .sms-bubble.assistant:active {
+  transform: scale(0.98);
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant::before {
   content: '❀';
   position: absolute;
   left: -18px;
@@ -234,7 +244,7 @@ const DEFAULT_BUBBLE_CSS = `/* ===== 短信气泡自定义样式 ===== */
   color: #80deea;
   text-shadow: 0 0 6px rgba(128, 222, 234, 0.6);
 }
-.sms-time {
+.sms-messages .sms-time {
   text-align: center;
   font-size: 0.7rem;
   color: #c0a0b0;
@@ -245,6 +255,19 @@ const DEFAULT_BUBBLE_CSS = `/* ===== 短信气泡自定义样式 ===== */
   border-radius: 12px;
   border: 1px solid rgba(224, 180, 200, 0.3);
   letter-spacing: 0.5px;
+}
+/* ===== Android端专用（需要!important覆盖其他样式） ===== */
+.platform-android .sms-messages .sms-msg-row .sms-bubble.user {
+  background: linear-gradient(135deg, #ffecd2, #fcb69f) !important;
+  border-radius: 20px 20px 6px 20px !important;
+  color: #5a3e2b !important;
+  box-shadow: 0 3px 10px rgba(252, 182, 159, 0.35) !important;
+}
+.platform-android .sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: linear-gradient(135deg, #e0f7fa, #b2ebf2) !important;
+  border-radius: 20px 20px 20px 6px !important;
+  color: #1b4a5e !important;
+  box-shadow: 0 3px 10px rgba(178, 235, 242, 0.4) !important;
 }`
 
 const SMS_BUBBLE_CSS_KEY = 'phone_sms_bubble_css'
@@ -1283,6 +1306,8 @@ onMounted(async () => {
   contacts.value = groupedContacts
   smsThreads.value = threads
   bubbleCss.value = savedCss || DEFAULT_BUBBLE_CSS
+  // 初始化时立即应用气泡CSS（无论是保存的还是默认的）
+  applyBubbleCss(bubbleCss.value)
   smsContextMessages.value = smsSettings.contextMessages ?? 8
   groupChats.value = await ensureWorldBookGroups(groups)
   groupThreads.value = groupThreadsData
@@ -1580,165 +1605,51 @@ onMounted(async () => {
 .phone-app-header {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  padding-top: max(12px, var(--safe-area-inset-top, 12px));
-  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.1));
+  padding: 10px 14px;
+  padding-top: max(14px, var(--safe-area-inset-top, 14px));
+  background: linear-gradient(180deg, rgba(25, 25, 35, 0.95) 0%, rgba(20, 20, 28, 0.9) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
 }
 
 .phone-app-back-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  color: var(--phone-text-primary, #fff);
-  font-size: 0.92rem;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 8px;
-  transition: background 0.15s;
+  padding: 6px 10px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
 }
 
 .phone-app-back-btn:hover {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.phone-app-back-btn:active {
+  transform: scale(0.95);
 }
 
 .phone-app-title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: var(--phone-text-primary, #fff);
+  color: rgba(255, 255, 255, 0.95);
   flex: 1;
   text-align: center;
+  letter-spacing: 0.5px;
 }
 
 .phone-app-header-spacer {
   width: 60px;
-}
-
-.contact-list {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.contact-section-header {
-  padding: 6px 16px 2px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
-}
-
-.contact-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.contact-item:hover {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.06));
-}
-
-.contact-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  flex-shrink: 0;
-  font-size: 1.4rem;
-}
-
-.contact-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.contact-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.contact-name-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.contact-name {
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--phone-text-primary, #fff);
-}
-
-.contact-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.contact-last-msg {
-  font-size: 0.78rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
-.contact-signature {
-  font-size: 0.72rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.3));
-  font-style: italic;
-  margin-top: 2px;
-}
-
-.contact-time {
-  font-size: 0.7rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.3));
-  flex-shrink: 0;
-}
-
-.contact-time.unread {
-  color: var(--phone-accent-blue, #0a84ff);
-  font-weight: 600;
-}
-
-.group-item {
-  gap: 12px;
-}
-
-.phone-loading {
-  text-align: center;
-  padding: 24px 16px;
-  font-size: 0.82rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
-}
-
-.loading-spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--phone-accent-blue, #0a84ff);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 .sms-app {
@@ -1747,37 +1658,44 @@ onMounted(async () => {
   height: 100%;
   min-height: 0;
   position: relative;
+  background: linear-gradient(180deg, rgba(20, 20, 28, 0.98) 0%, rgba(15, 15, 22, 1) 100%);
 }
 
-/* 气泡基础样式（覆盖 SmsMessageRender 的 scoped 限制） */
+.phone-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(10, 132, 255, 0.8);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 气泡基础布局样式（不覆盖颜色/背景，让自定义CSS生效） */
 :deep(.sms-bubble) {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 18px;
-  padding: 8px 14px;
   word-wrap: break-word;
-  line-height: 1.5;
   max-width: 75%;
-}
-
-:deep(.sms-bubble.user) {
-  background: rgba(10, 132, 255, 0.2);
-  border: 1px solid rgba(10, 132, 255, 0.3);
-  color: var(--phone-text-primary, #fff);
-}
-
-:deep(.sms-bubble.assistant) {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--phone-text-primary, #fff);
 }
 
 :deep(.sms-messages) {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  padding: 8px 6px;
+  padding: 10px 8px;
 }
 
 /* ===== 可打印文件配置底部弹窗 ===== */

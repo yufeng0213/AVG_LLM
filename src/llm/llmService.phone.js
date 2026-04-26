@@ -4,6 +4,7 @@
 
 import { getValidatedActiveConfig, callChatCompletion } from './llmService.core'
 import { resolvePrompt } from './promptRegistry.js'
+import { parseSmsXmlContent } from './storyParser.js'
 
 const splitSmsReplySegments = (text) => {
   const normalized = String(text || '').replace(/\r/g, '').trim()
@@ -676,8 +677,6 @@ export const generatePhoneSmsReply = async (params = {}) => {
     forwardedClueText
       ? '请结合线索逐条给出判断与态度，建议输出 2-4 条连续短信回复。'
       : '可输出 1-4 条连续短信回复，不要只回一句敷衍话。你可以像恋爱中的人一样主动关心对方、安排约定、分享心里话或秘密。',
-    '请按格式返回：|r=回复1|\n|r=回复2|\n（可选）|redpacket=50:祝福语|',
-    '如果你觉得应该提醒玩家未来的某件事、约定一个计划、或者想在未来某个时间告诉 ta 一个秘密/心里话，请额外加 |calendar=日期T时间:标题|描述|，日期时间请根据当前时间推断。',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -703,8 +702,20 @@ export const generatePhoneSmsReply = async (params = {}) => {
     }
   }
 
-  const parsed = tryParseSmsReplies(result.data)
-  const replies = parsed.replies
+  // 优先尝试 XML 解析（含思维链），回退到分隔符格式
+  let parsed = parseSmsXmlContent(result.data)
+  if (!parsed.success) {
+    parsed = tryParseSmsReplies(result.data)
+  }
+
+  // 从 XML 解析结果提取纯文本回复列表
+  let replies = []
+  if (parsed.replies && parsed.replies.length > 0) {
+    replies = parsed.replies.map(r => r.text || r)
+  } else if (Array.isArray(parsed.replies)) {
+    replies = parsed.replies
+  }
+
   if (replies.length === 0) {
     return {
       success: false,
@@ -714,6 +725,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
       redPacket: null,
       calendarEvent: null,
       voiceMessages: [],
+      thinking: parsed.thinking || '',
     }
   }
 
@@ -728,6 +740,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     calendarEvent: parsed.calendarEvent || null,
     voiceMessages: parsed.voiceMessages || [],
     sendFileIntent: parsed.sendFileIntent || false,
+    thinking: parsed.thinking || '',
     data: result.data,
     rawResponse: result.rawResponse,
   }
@@ -814,8 +827,6 @@ export const generateDormChatReply = async (params = {}) => {
     inventoryContext ? `【玩家冰箱】${inventoryContext}` : '',
     todoContext ? `【玩家待办】${todoContext}` : '',
     '请面对面自然回应，可以描写动作、神态或环境。建议输出 1-4 条连续回复。',
-    '请按格式返回：|r=回复1|\n|r=回复2|\n（可选）|redpacket=50:祝福语|',
-    '如果对话中提到了未来的约定或计划，请加 |calendar=日期T时间:标题|描述|。',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -841,8 +852,20 @@ export const generateDormChatReply = async (params = {}) => {
     }
   }
 
-  const parsed = tryParseSmsReplies(result.data)
-  const replies = parsed.replies
+  // 优先尝试 XML 解析（含思维链），回退到分隔符格式
+  let parsed = parseSmsXmlContent(result.data)
+  if (!parsed.success) {
+    parsed = tryParseSmsReplies(result.data)
+  }
+
+  // 从 XML 解析结果提取纯文本回复列表
+  let replies = []
+  if (parsed.replies && parsed.replies.length > 0) {
+    replies = parsed.replies.map(r => r.text || r)
+  } else if (Array.isArray(parsed.replies)) {
+    replies = parsed.replies
+  }
+
   if (replies.length === 0) {
     return {
       success: false,
@@ -852,6 +875,7 @@ export const generateDormChatReply = async (params = {}) => {
       redPacket: null,
       redPacketAction: null,
       giftToPlayer: null,
+      thinking: parsed.thinking || '',
     }
   }
 
@@ -863,6 +887,7 @@ export const generateDormChatReply = async (params = {}) => {
     redPacket: parsed.redPacket,
     redPacketAction: parsed.redPacketAction,
     giftToPlayer: parsed.giftToPlayer,
+    thinking: parsed.thinking || '',
     data: result.data,
     rawResponse: result.rawResponse,
   }

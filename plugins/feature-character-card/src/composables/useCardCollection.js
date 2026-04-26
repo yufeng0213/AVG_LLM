@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { kvStorage } from '../../../../src/storage/index.js'
 import { getCardDef, getRarityConfig, CHARACTER_CARD_DEFS } from '../services/cardData.js'
+import { getActiveWorldBookId } from '../../../../src/worldbook/worldBookStore.js'
 
 function generateInstanceId() {
   return `card_instance_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -24,33 +25,67 @@ function createPlayerCard(cardId) {
 
 /**
  * 卡牌收藏管理
- * @param {string} worldBookId - 世界书ID，用于绑定存储
+ * 自动使用全局世界书 ID
  */
-export function useCardCollection(worldBookId = 'default_world_book') {
-  // 存储 key 绑定世界书
-  const STORAGE_KEY = `character_card_collection_v1_${worldBookId}`
-
+export function useCardCollection(worldBookIdOverride = null) {
   const cards = ref([])
   const loaded = ref(false)
+  const currentWorldBookId = ref('default_world_book')
+
+  // 获取实际的 worldBookId
+  async function resolveWorldBookId() {
+    if (worldBookIdOverride) {
+      currentWorldBookId.value = worldBookIdOverride
+      return worldBookIdOverride
+    }
+
+    // 尝试从全局状态获取
+    try {
+      const id = await getActiveWorldBookId()
+      console.log('[useCardCollection] getActiveWorldBookId:', id)
+      if (id) {
+        currentWorldBookId.value = id
+        return id
+      }
+    } catch (e) {
+      console.log('[useCardCollection] getActiveWorldBookId 失败:', e.message)
+    }
+
+    // 尝试从全局 API 获取
+    const apiId = window.__avgLLM?.activity?.getWorldBookId?.()
+    if (apiId) {
+      currentWorldBookId.value = apiId
+      return apiId
+    }
+
+    return 'default_world_book'
+  }
 
   async function load() {
+    // 先获取正确的 worldBookId
+    await resolveWorldBookId()
+
+    const STORAGE_KEY = `character_card_collection_v1_${currentWorldBookId.value}`
+    console.log('[useCardCollection] load() - STORAGE_KEY:', STORAGE_KEY)
+
     try {
       const saved = await kvStorage.get(STORAGE_KEY)
-      console.log(`[CardCollection] load() - STORAGE_KEY: ${STORAGE_KEY}, saved:`, saved)
+      console.log(`[useCardCollection] saved:`, saved)
       cards.value = Array.isArray(saved) ? saved : []
-      console.log(`[CardCollection] 加载卡牌收藏 (worldBookId: ${worldBookId}):`, cards.value.length, '张')
+      console.log(`[useCardCollection] 加载卡牌收藏 (worldBookId: ${currentWorldBookId.value}):`, cards.value.length, '张')
     } catch (e) {
-      console.error('[CardCollection] load() error:', e)
+      console.error('[useCardCollection] load() error:', e)
       cards.value = []
     }
     loaded.value = true
   }
 
   async function save() {
+    const STORAGE_KEY = `character_card_collection_v1_${currentWorldBookId.value}`
     try {
       await kvStorage.set(STORAGE_KEY, JSON.parse(JSON.stringify(cards.value)))
     } catch (e) {
-      console.error('[CardCollection] Failed to save collection:', e)
+      console.error('[useCardCollection] Failed to save collection:', e)
     }
   }
 

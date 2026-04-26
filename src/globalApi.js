@@ -27,10 +27,148 @@ window.__avgLLM = {
     },
   },
 
-  // 以下字段由 initBridge() 填充
+  // 以下字段由 initGlobalApi() 填充
   economy: null,
   cardCollection: null,
   activity: null,
+}
+
+// Android/Capacitor 环境下的 activity 文件操作
+async function importActivityToCapacitor(activityId, files) {
+  console.log('[importActivityToCapacitor] 开始导入, activityId:', activityId, 'files:', files?.length)
+  const { Filesystem, Directory } = await import('@capacitor/filesystem')
+
+  // 使用 Directory.Data，这是应用内部数据目录，在 Android 上最可靠
+  const BASE_DIR = Directory.Data
+  console.log('[importActivityToCapacitor] 使用 Directory.Data')
+
+  // 1. 先确保 activities 根目录存在
+  try {
+    await Filesystem.mkdir({ path: 'activities', directory: BASE_DIR, recursive: true })
+    console.log('[importActivityToCapacitor] activities 根目录创建成功')
+  } catch (e) {
+    console.log('[importActivityToCapacitor] activities 根目录已存在:', e.message)
+  }
+
+  // 2. 创建活动目录
+  const basePath = `activities/${activityId}`
+  console.log('[importActivityToCapacitor] basePath:', basePath)
+  try {
+    await Filesystem.mkdir({ path: basePath, directory: BASE_DIR, recursive: true })
+    console.log('[importActivityToCapacitor] 活动目录创建成功')
+  } catch (e) {
+    console.log('[importActivityToCapacitor] 活动目录创建失败或已存在:', e.message)
+  }
+
+  // 3. 先收集所有需要的目录，一次性创建
+  const dirsNeeded = new Set()
+  for (const f of files) {
+    const filePath = `${basePath}/${f.relPath || f.path}`
+    const dirPath = filePath.substring(0, filePath.lastIndexOf('/'))
+    if (dirPath && dirPath !== basePath) {
+      dirsNeeded.add(dirPath)
+    }
+  }
+
+  console.log('[importActivityToCapacitor] 需要创建的子目录:', Array.from(dirsNeeded))
+
+  // 4. 创建所有子目录
+  for (const dirPath of dirsNeeded) {
+    try {
+      await Filesystem.mkdir({ path: dirPath, directory: BASE_DIR, recursive: true })
+      console.log('[importActivityToCapacitor] 子目录创建成功:', dirPath)
+    } catch (e) {
+      console.log('[importActivityToCapacitor] 子目录已存在:', dirPath)
+    }
+  }
+
+  // 5. 写入每个文件
+  let successCount = 0
+  let failCount = 0
+  for (const f of files) {
+    const filePath = `${basePath}/${f.relPath || f.path}`
+    console.log('[importActivityToCapacitor] 写入文件:', filePath, 'encoding:', f.encoding)
+
+    try {
+      // Capacitor writeFile 只接受 base64 数据，文本需要转换
+      let data = f.content
+      let encoding = f.encoding
+
+      // 如果是 utf-8 文本，转成 base64
+      if (encoding === 'utf-8' || encoding === 'utf8') {
+        // 先尝试用 TextEncoder
+        try {
+          const encoder = new TextEncoder()
+          const uint8Array = encoder.encode(f.content)
+          let binary = ''
+          for (let i = 0; i < uint8Array.length; i++) {
+            binary += String.fromCharCode(uint8Array[i])
+          }
+          data = btoa(binary)
+          console.log('[importActivityToCapacitor] 文本转 base64 成功, 长度:', data.length)
+        } catch (e) {
+          // 备用方法：直接 btoa（可能有 Unicode 问题）
+          data = btoa(unescape(encodeURIComponent(f.content)))
+        }
+      }
+
+      await Filesystem.writeFile({
+        path: filePath,
+        data: data,
+        directory: BASE_DIR,
+      })
+      successCount++
+      console.log('[importActivityToCapacitor] 写入成功:', filePath)
+    } catch (e) {
+      failCount++
+      console.log('[importActivityToCapacitor] 写入失败:', filePath, e.message)
+    }
+  }
+
+  console.log('[importActivityToCapacitor] 完成, 成功:', successCount, '失败:', failCount)
+  return { success: failCount === 0, error: failCount > 0 ? `${failCount} 个文件写入失败` : null }
+}
+
+async function removeActivityFromCapacitor(activityId) {
+  const { Filesystem, Directory } = await import('@capacitor/filesystem')
+
+  try {
+    await Filesystem.rmdir({
+      path: `activities/${activityId}`,
+      directory: Directory.Data,
+      recursive: true
+    })
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// 获取活动文件的 WebView 可访问 URL
+async function getActivityFileUrlCapacitor(activityId, relativePath) {
+  const { Filesystem, Directory } = await import('@capacitor/filesystem')
+  const Capacitor = window.Capacitor
+
+  try {
+    const result = await Filesystem.getUri({
+      path: `activities/${activityId}/${relativePath}`,
+      directory: Directory.Data
+    })
+
+    console.log('[getActivityFileUrlCapacitor] getUri result:', result.uri)
+
+    // 用 Capacitor.convertFileSrc 把 file:// URI 转成 WebView 可访问的 URL
+    if (Capacitor?.convertFileSrc) {
+      const url = Capacitor.convertFileSrc(result.uri)
+      console.log('[getActivityFileUrlCapacitor] convertFileSrc result:', url)
+      return url
+    }
+    // 如果没有 convertFileSrc，返回原始 URI
+    return result.uri
+  } catch (e) {
+    console.error('[getActivityFileUrlCapacitor] failed:', e)
+    return null
+  }
 }
 
 /**
@@ -88,13 +226,28 @@ export function initGlobalApi(hooks) {
   }
 
   // ─── 活动专用 ────────────────────────────────────────────
-  window.__avgLLM.activity = {
+  // Capacitor/Android 环境下提供 import 和 remove
+  const activityApi = {
     notifyEvent: (type, count = 1) => {
       const evt = new CustomEvent('avgllm:activity:event', { detail: { type, count } })
       window.dispatchEvent(evt)
     },
     getWorldBookId: () => worldBookIdRef?.value || 'default_world_book',
   }
+
+  // 动态检测 Capacitor 环境（在 initGlobalApi 时检测，而不是模块加载时）
+  const isCapacitorNow = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()
+  console.log('[globalApi] initGlobalApi - isCapacitor:', isCapacitorNow)
+
+  // 如果是 Capacitor 环境，添加文件操作
+  if (isCapacitorNow) {
+    activityApi.import = importActivityToCapacitor
+    activityApi.remove = removeActivityFromCapacitor
+    activityApi.getFileUrl = getActivityFileUrlCapacitor
+    console.log('[globalApi] 已添加 Capacitor 文件操作 API')
+  }
+
+  window.__avgLLM.activity = activityApi
 
   // ─── iframe postMessage bridge ─────────────────────────
   initIframeBridge(globalUser, worldBookIdRef, getCardCollectionByWorldBook)

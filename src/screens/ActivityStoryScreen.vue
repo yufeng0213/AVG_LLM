@@ -34,6 +34,14 @@ const props = defineProps({
     type: Array,
     default: null,
   },
+  storyTitle: {
+    type: String,
+    default: '',
+  },
+  showTitleAnimation: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 // 世界书数据
@@ -50,6 +58,10 @@ const error = ref(null)
 
 // 显示状态
 const displayLine = ref({ speaker: '', text: '', emotion: 'neutral' })
+
+// 标题开场动画状态
+const titleAnimationVisible = ref(false)
+const titleAnimationComplete = ref(false)
 
 // ========== 对话框文字截断 / 续行分页 (来自 GameScreen) ==========
 const lineTruncationMap = ref(new Map())
@@ -428,11 +440,34 @@ onMounted(async () => {
   console.log('storyConfig:', props.storyConfig)
   console.log('openingPrompt:', props.storyConfig?.openingPrompt)
   console.log('portraits:', props.storyConfig?.portraits)
+  console.log('storyTitle:', props.storyTitle)
+  console.log('showTitleAnimation:', props.showTitleAnimation)
   console.log('========================================')
 
   worldBooks.value = await loadWorldBooks()
   activeBookId.value = await getActiveWorldBookId()
 
+  // 如果需要显示标题动画
+  if (props.showTitleAnimation && props.storyTitle) {
+    titleAnimationVisible.value = true
+    titleAnimationComplete.value = false
+    // 等待动画完成（约2.5秒）
+    setTimeout(async () => {
+      titleAnimationVisible.value = false
+      titleAnimationComplete.value = true
+      await initDialogue()
+    }, 2500)
+  } else {
+    titleAnimationComplete.value = true
+    await initDialogue()
+  }
+
+  // 监听窗口 resize
+  window.addEventListener('resize', handleResize)
+})
+
+// 初始化对话（从标题动画后调用或直接调用）
+async function initDialogue() {
   const save = await getActivityStorySave(props.activityId)
   if (save) {
     dialogueScript.value = save.dialogueScript || []
@@ -448,10 +483,7 @@ onMounted(async () => {
       showInputPanel.value = true
     }
   }
-
-  // 监听窗口 resize
-  window.addEventListener('resize', handleResize)
-})
+}
 
 onUnmounted(() => {
   if (typewriterTimer) clearTimeout(typewriterTimer)
@@ -766,6 +798,20 @@ function handleBack() {
 
 <template>
   <main class="activity-story-screen">
+    <!-- 标题开场动画 -->
+    <Teleport to="body">
+      <div v-if="titleAnimationVisible" class="story-title-overlay" aria-hidden="true">
+        <div class="story-title-content">
+          <p class="story-title-label">卡牌剧情</p>
+          <p class="story-title-text">{{ storyTitle }}</p>
+          <p class="story-title-line"></p>
+          <p v-if="storyConfig?.sceneCharacters?.length" class="story-title-character">
+            {{ storyConfig.sceneCharacters[0] }}
+          </p>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- 背景 -->
     <div class="story-background">
       <img v-if="!showGradientBg" :src="backgroundImage" class="bg-image" alt="" @error="handleBgImageError" />
@@ -1143,5 +1189,108 @@ function handleBack() {
   padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
+}
+
+/* 标题开场动画样式（复用 GameScreen 章节动画） */
+.story-title-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  animation: chapter-overlay-fade-in 0.6s ease-out forwards;
+}
+
+.story-title-content {
+  text-align: center;
+  animation: chapter-overlay-slide-up 0.8s ease-out 0.3s both;
+}
+
+.story-title-label {
+  font-size: 1rem;
+  color: #f472b6;
+  letter-spacing: 0.2em;
+  opacity: 0;
+  animation: chapter-overlay-fade-in 0.5s ease-out 0.5s both;
+}
+
+.story-title-text {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.1em;
+  opacity: 0;
+  animation: chapter-overlay-fade-in 0.6s ease-out 0.8s both;
+}
+
+.story-title-line {
+  width: 120px;
+  height: 2px;
+  margin: 16px auto;
+  background: linear-gradient(90deg, transparent, #f472b6, transparent);
+  opacity: 0;
+  animation: chapter-overlay-line-expand 0.8s ease-out 1s both;
+}
+
+.story-title-character {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 400px;
+  margin: 12px auto 0;
+  opacity: 0;
+  animation: chapter-overlay-fade-in 0.6s ease-out 1.3s both;
+}
+
+@keyframes chapter-overlay-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes chapter-overlay-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chapter-overlay-line-expand {
+  from {
+    opacity: 0;
+    width: 0;
+  }
+  to {
+    opacity: 1;
+    width: 120px;
+  }
+}
+
+/* Android 刘海屏适配 */
+.platform-android.android-portrait .back-btn {
+  top: max(16px, var(--safe-area-inset-top, 16px));
+  font-size: 1.8rem;
+}
+
+.platform-android.android-portrait .dialogue-box {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+}
+
+.platform-android.android-portrait .input-area {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+}
+
+.platform-android.android-portrait .story-input {
+  font-size: 1rem;
+  padding: 12px 16px;
+}
+
+.platform-android.android-portrait .send-btn {
+  font-size: 1rem;
+  padding: 12px 20px;
 }
 </style>

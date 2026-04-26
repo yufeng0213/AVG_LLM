@@ -55,7 +55,6 @@ const { activeFrame, loadFrameDataUrl } = useAvatarFrame()
 const showParticleMenu = ref(false)
 const worldBooks = ref([])
 const activeBookTitle = ref('')
-const showWorldBookSelector = ref(false)
 
 async function loadActiveBookInfo() {
   try {
@@ -68,13 +67,6 @@ async function loadActiveBookInfo() {
     console.warn('[WorldHub] Failed to load active book info:', e)
     activeBookTitle.value = ''
   }
-}
-
-async function selectWorldBook(book) {
-  await setActiveWorldBookId(book.id)
-  activeBookTitle.value = book.title
-  showWorldBookSelector.value = false
-  emit('world-book-changed', book.id)
 }
 
 function openParticle(key) {
@@ -125,7 +117,6 @@ const activityCover = activityEntry.enabledCover
 // 世界壁纸
 const worldWallpaperUrl = ref(null)
 const worldWallpaperIsVideo = ref(false)
-const hasCustomWorldWallpaper = ref(false)
 const worldWallpaperVideoRef = ref(null)
 
 const worldHubBackground = computed(() => {
@@ -147,7 +138,6 @@ async function loadWorldWallpaper() {
   if (cached && cached.dataUrl) {
     worldWallpaperUrl.value = cached.dataUrl
     worldWallpaperIsVideo.value = !!cached.isVideo
-    hasCustomWorldWallpaper.value = true
     console.log('[WorldHub] 从内存缓存加载')
     return
   }
@@ -156,12 +146,10 @@ async function loadWorldWallpaper() {
   if (wp && wp.dataUrl) {
     worldWallpaperUrl.value = wp.dataUrl
     worldWallpaperIsVideo.value = !!wp.isVideo
-    hasCustomWorldWallpaper.value = true
     setWorldWallpaperCache({ dataUrl: wp.dataUrl, isVideo: !!wp.isVideo })
   } else {
     worldWallpaperUrl.value = null
     worldWallpaperIsVideo.value = false
-    hasCustomWorldWallpaper.value = false
     setWorldWallpaperCache(null)
   }
 }
@@ -178,13 +166,6 @@ async function ensureWorldVideoPlays() {
 watch(() => worldWallpaperUrl.value, () => {
   ensureWorldVideoPlays()
 })
-
-async function restoreWorldWallpaperDefault() {
-  await kvStorage.set('worldhub_wallpaper', null)
-  worldWallpaperUrl.value = null
-  worldWallpaperIsVideo.value = false
-  hasCustomWorldWallpaper.value = false
-}
 
 onMounted(async () => {
   await loadWorldWallpaper()
@@ -249,11 +230,6 @@ onActivated(async () => {
             />
           </div>
         </div>
-        <button class="world-hub-book-btn" @click="showWorldBookSelector = true">
-          <span class="book-btn-icon">📚</span>
-          <span class="book-btn-text">{{ activeBookTitle || '选择世界' }}</span>
-          <span class="book-btn-arrow">▾</span>
-        </button>
       </div>
 
       <div class="world-hub-top-bar">
@@ -270,10 +246,7 @@ onActivated(async () => {
           </span>
         </div>
 
-        <button v-if="hasCustomWorldWallpaper" type="button" class="world-hub-wp-reset-btn" @click="restoreWorldWallpaperDefault" aria-label="恢复默认壁纸">
-          <span class="settings-icon">🖼️</span>
-        </button>
-        <button v-if="activityCover" type="button" class="world-hub-activity-btn" @click="emit('open-activity', activityCover?.id)" :title="activityCover.name" :style="activityCover.coverGradient ? { background: `linear-gradient(135deg, ${activityCover.coverGradient.join(', ')})` } : {}">
+                <button v-if="activityCover" type="button" class="world-hub-activity-btn" @click="emit('open-activity', activityCover?.id)" :title="activityCover.name" :style="activityCover.coverGradient ? { background: `linear-gradient(135deg, ${activityCover.coverGradient.join(', ')})` } : {}">
           <span v-if="activityCover.coverImage" class="activity-btn-img-wrap">
             <img :src="activityCover.coverImage" class="activity-btn-img" :alt="activityCover.name" />
           </span>
@@ -433,33 +406,5 @@ onActivated(async () => {
       </div>
     </div>
 
-    <!-- 世界书选择器 -->
-    <div v-if="showWorldBookSelector" class="world-book-selector-overlay" @click.self="showWorldBookSelector = false">
-      <div class="world-book-selector-dialog">
-        <div class="selector-header">
-          <h3 class="selector-title">选择世界书</h3>
-          <button class="selector-close" @click="showWorldBookSelector = false">✕</button>
-        </div>
-        <div class="selector-body">
-          <p v-if="worldBooks.length === 0" class="selector-empty">暂无世界书，请先在世界书中创建</p>
-          <div v-else class="selector-list">
-            <div
-              v-for="book in worldBooks"
-              :key="book.id"
-              class="selector-book-item"
-              :class="{ active: book.title === activeBookTitle }"
-              @click="selectWorldBook(book)"
-            >
-              <span class="book-item-icon">📖</span>
-              <div class="book-item-info">
-                <span class="book-item-title">{{ book.title }}</span>
-                <span class="book-item-summary">{{ book.summary?.slice(0, 40) || '暂无概述' }}</span>
-              </div>
-              <span v-if="book.title === activeBookTitle" class="book-item-check">✓</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
+      </main>
 </template>

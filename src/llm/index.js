@@ -60,6 +60,7 @@ export {
   parseXmlStoryContent,
   parseMainStoryContent,
   parseStoryTicketContent,
+  parseSmsXmlContent,
   countChineseChars,
   validateDialogue,
   toGameScript,

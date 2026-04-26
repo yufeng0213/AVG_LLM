@@ -430,18 +430,43 @@ function triggerZipImport() {
         const content = isBinary
           ? await zip.file(p).async('base64')
           : await zip.file(p).async('string')
-        fileList.push({ path: relPath, content, encoding: isBinary ? 'base64' : 'utf-8' })
+        fileList.push({ relPath, content, encoding: isBinary ? 'base64' : 'utf-8' })
       }
 
-      // 存储到 kvStorage
-      const imported = await loadImported()
-      const idx = imported.findIndex(i => i.id === json.id)
-      if (idx >= 0) {
-        imported[idx] = { id: json.id, json: { ...json, coverImage: null, worldBookId: savedWorldBookId }, files: fileList }
-      } else {
-        imported.push({ id: json.id, json: { ...json, coverImage: null, worldBookId: savedWorldBookId }, files: fileList })
+      console.log('[ActivityScreen] zip 导入 - fileList 长度:', fileList.length)
+      console.log('[ActivityScreen] zip 导入 - fileList 前3个:', fileList.slice(0, 3))
+
+      // Electron：通过 IPC 拷贝文件到 data/activities/
+      if (window.avgLLM?.activity?.import && window.electronAPI?.isElectron) {
+        console.log('[ActivityScreen] zip 导入 - 使用 Electron activity.import')
+        const result = await window.avgLLM.activity.import(json.id, fileList)
+        if (!result.success) throw new Error(result.error || '拷贝失败')
       }
-      await saveImported(imported)
+      // Capacitor/Android：写入到文件系统
+      else if (window.Capacitor?.isNativePlatform?.() || window.__avgLLM?.activity?.import) {
+        console.log('[ActivityScreen] zip 导入 - 使用 Capacitor activity.import')
+        const importFn = window.__avgLLM?.activity?.import
+        if (importFn) {
+          console.log('[ActivityScreen] 调用 importFn, activityId:', json.id, 'files:', fileList.length)
+          const result = await importFn(json.id, fileList)
+          console.log('[ActivityScreen] importFn 返回:', result)
+          if (!result?.success) throw new Error(result?.error || '拷贝失败')
+        } else {
+          throw new Error('Capacitor activity.import 未初始化')
+        }
+      }
+      // Web：回退到 kvStorage
+      else {
+        console.log('[ActivityScreen] zip 导入 - 使用 kvStorage')
+        const imported = await loadImported()
+        const idx = imported.findIndex(i => i.id === json.id)
+        if (idx >= 0) {
+          imported[idx] = { id: json.id, json: { ...json, coverImage: null, worldBookId: savedWorldBookId }, files: fileList }
+        } else {
+          imported.push({ id: json.id, json: { ...json, coverImage: null, worldBookId: savedWorldBookId }, files: fileList })
+        }
+        await saveImported(imported)
+      }
 
       // 重新加载
       await load()
@@ -512,14 +537,33 @@ async function processFolderFiles(files) {
       const result = await window.avgLLM.activity.import(json.id, fileList)
       if (!result.success) throw new Error(result.error || '拷贝失败')
     }
-    // Web / Capacitor：回退到 kvStorage
+    // Capacitor/Android：使用 Capacitor Filesystem API
+    else if (window.Capacitor?.isNativePlatform?.() || window.__avgLLM?.activity?.import) {
+      // Capacitor 环境下，activity.import 在 globalApi.js 里定义
+      const importFn = window.__avgLLM?.activity?.import || window.avgLLM?.activity?.import
+      if (importFn) {
+        const result = await importFn(json.id, fileList)
+        if (!result.success) throw new Error(result.error || '拷贝失败')
+      } else {
+        // 如果 activity.import 还没初始化，等待一下再尝试
+        console.warn('[ActivityScreen] activity.import 未定义，等待初始化...')
+        await new Promise(resolve => setTimeout(resolve, 500))
+        if (window.__avgLLM?.activity?.import) {
+          const result = await window.__avgLLM.activity.import(json.id, fileList)
+          if (!result.success) throw new Error(result.error || '拷贝失败')
+        } else {
+          throw new Error('Capacitor activity.import 未初始化')
+        }
+      }
+    }
+    // Web：回退到 kvStorage
     else {
       const imported = await loadImported()
       const idx = imported.findIndex(i => i.id === json.id)
       if (idx >= 0) {
-        imported[idx] = { id: json.id, json: { ...json, coverImage: null, worldBookId: savedWorldBookId } }
+        imported[idx] = { id: json.id, json: { ...json, coverImage: null, worldBookId: savedWorldBookId }, files: fileList }
       } else {
-        imported.push({ id: json.id, json: { ...json, coverImage: null, worldBookId: savedWorldBookId } })
+        imported.push({ id: json.id, json: { ...json, coverImage: null, worldBookId: savedWorldBookId }, files: fileList })
       }
       await saveImported(imported)
     }
@@ -546,7 +590,18 @@ async function removeImported(activity) {
       return
     }
   }
-  // Web / Capacitor：从 kvStorage 删除
+  // Capacitor/Android：使用 Capacitor Filesystem API
+  else if (window.Capacitor?.isNativePlatform?.() || window.__avgLLM?.activity?.remove) {
+    const removeFn = window.__avgLLM?.activity?.remove || window.avgLLM?.activity?.remove
+    if (removeFn) {
+      const result = await removeFn(activity.id)
+      if (!result.success) {
+        error.value = `删除失败：${result.error}`
+        return
+      }
+    }
+  }
+  // Web：从 kvStorage 删除
   else {
     const imported = await loadImported()
     const filtered = imported.filter(i => i.id !== activity.id)
@@ -739,7 +794,7 @@ onMounted(async () => {
 /* 悬浮返回按钮 */
 .floating-back-btn {
   position: fixed;
-  top: 12px;
+  top: 48px;
   left: 12px;
   z-index: 1000;
   background: none;
@@ -1079,11 +1134,22 @@ onMounted(async () => {
   background: rgba(239, 68, 68, 0.25);
 }
 
+/* Android 刘海屏适配 */
+.platform-android.android-portrait .activity-header {
+  padding-top: max(12px, var(--safe-area-inset-top, 12px));
+  padding-left: 14px;
+  padding-right: 14px;
+}
 
-  .platform-android.android-portrait .activity-back-btn,
+.platform-android.android-portrait .activity-title {
+  font-size: 1.1rem;
+}
+
+.platform-android.android-portrait .activity-back-btn,
   .platform-android.android-portrait .retry-btn,
   .platform-android.android-portrait .activity-back-btn,
-  .platform-android.android-portrait .import-btn {
+  .platform-android.android-portrait .import-btn,
+   .platform-android.android-portrait .floating-back-btn {
     width: auto !important;
     height: auto !important;
     min-width: 0 !important;

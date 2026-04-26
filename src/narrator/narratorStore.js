@@ -5,14 +5,29 @@ export const DEFAULT_NARRATOR_ID = 'default_narrator'
 
 const nowIso = () => new Date().toISOString()
 
+// 默认条目模板
+const createDefaultItems = () => [
+  {
+    id: 'item_style',
+    name: '文风设定',
+    content: '整体文风要沉浸、连贯、节奏稳定。对白与叙述平衡，避免堆砌华丽辞藻，优先保证剧情推进和角色动机清晰。',
+    enabled: true,
+    order: 0,
+  },
+  {
+    id: 'item_instruction',
+    name: '叙事规则',
+    content: '在关键节点保留悬念并提供有意义的分支选项；不得破坏世界设定和角色既有性格；避免跳跃式叙事。',
+    enabled: true,
+    order: 1,
+  },
+]
+
 export const createDefaultNarratorProfile = () => ({
   id: DEFAULT_NARRATOR_ID,
   name: '标准叙事者',
   summary: '平衡叙事风格，强调可读性、情绪推进与分支清晰度。',
-  stylePrompt:
-    '整体文风要沉浸、连贯、节奏稳定。对白与叙述平衡，避免堆砌华丽辞藻，优先保证剧情推进和角色动机清晰。',
-  instructionPrompt:
-    '在关键节点保留悬念并提供有意义的分支选项；不得破坏世界设定和角色既有性格；避免跳跃式叙事。',
+  items: createDefaultItems(),
   enabled: true,
   isDefault: true,
   createdAt: nowIso(),
@@ -28,17 +43,54 @@ export const normalizeNarratorProfile = (rawProfile, index = 0) => {
 
   const name = String(rawProfile?.name || rawProfile?.title || '').trim()
   const summary = String(rawProfile?.summary || rawProfile?.description || '').trim()
-  const stylePrompt = String(rawProfile?.stylePrompt || rawProfile?.prompt || rawProfile?.style || '').trim()
-  const instructionPrompt = String(
-    rawProfile?.instructionPrompt || rawProfile?.systemPrompt || rawProfile?.instructions || '',
-  ).trim()
+
+  // 兼容旧数据：将stylePrompt和instructionPrompt转换为items
+  let items = rawProfile?.items || []
+  if (items.length === 0) {
+    const stylePrompt = String(rawProfile?.stylePrompt || rawProfile?.prompt || rawProfile?.style || '').trim()
+    const instructionPrompt = String(
+      rawProfile?.instructionPrompt || rawProfile?.systemPrompt || rawProfile?.instructions || '',
+    ).trim()
+
+    if (stylePrompt) {
+      items.push({
+        id: 'item_style_legacy',
+        name: '文风设定',
+        content: stylePrompt,
+        enabled: true,
+        order: 0,
+      })
+    }
+    if (instructionPrompt) {
+      items.push({
+        id: 'item_instruction_legacy',
+        name: '叙事规则',
+        content: instructionPrompt,
+        enabled: true,
+        order: 1,
+      })
+    }
+
+    // 如果旧数据也没有prompt，使用默认条目
+    if (items.length === 0 && isDefault) {
+      items = createDefaultItems()
+    }
+  }
+
+  // 确保每个item有完整结构
+  items = items.map((item, i) => ({
+    id: String(item.id || `item_${Date.now()}_${i}`),
+    name: String(item.name || `条目 ${i + 1}`).trim(),
+    content: String(item.content || '').trim(),
+    enabled: item.enabled !== false,
+    order: Number(item.order || i),
+  }))
 
   return {
     id,
     name: name || (isDefault ? fallback.name : `叙事者 ${index + 1}`),
     summary: summary || (isDefault ? fallback.summary : ''),
-    stylePrompt: stylePrompt || (isDefault ? fallback.stylePrompt : ''),
-    instructionPrompt: instructionPrompt || (isDefault ? fallback.instructionPrompt : ''),
+    items,
     enabled: isDefault ? true : rawProfile?.enabled !== false,
     isDefault,
     createdAt: String(rawProfile?.createdAt || nowIso()),
@@ -93,8 +145,7 @@ export const createNewNarratorProfile = (profiles = []) => {
     id: `narrator_${Date.now()}`,
     name: `叙事者 ${index}`,
     summary: '请填写该叙事者的风格定位。',
-    stylePrompt: '',
-    instructionPrompt: '',
+    items: [],
     enabled: true,
     isDefault: false,
     createdAt: nowIso(),
@@ -218,5 +269,118 @@ export const resolveNarratorProfile = (profiles = [], preferredId = '') => {
   }
 
   return available.find((profile) => profile.isDefault) || available[0] || createDefaultNarratorProfile()
+}
+
+// ===== 条目管理函数 =====
+
+/**
+ * 创建新条目
+ */
+export const createNarratorItem = (items = []) => {
+  const nextOrder = items.length > 0 ? Math.max(...items.map((i) => i.order || 0)) + 1 : 0
+  return {
+    id: `item_${Date.now()}`,
+    name: '新条目',
+    content: '',
+    enabled: true,
+    order: nextOrder,
+  }
+}
+
+/**
+ * 添加条目到叙事者
+ */
+export const addNarratorItem = (profile, item) => {
+  const newItem = item || createNarratorItem(profile.items || [])
+  const updatedItems = [...(profile.items || []), newItem]
+  return {
+    ...profile,
+    items: updatedItems,
+    updatedAt: nowIso(),
+  }
+}
+
+/**
+ * 删除条目
+ */
+export const deleteNarratorItem = (profile, itemId) => {
+  const updatedItems = (profile.items || []).filter((item) => item.id !== itemId)
+  return {
+    ...profile,
+    items: updatedItems,
+    updatedAt: nowIso(),
+  }
+}
+
+/**
+ * 更新条目
+ */
+export const updateNarratorItem = (profile, itemId, updates) => {
+  const updatedItems = (profile.items || []).map((item) =>
+    item.id === itemId ? { ...item, ...updates } : item,
+  )
+  return {
+    ...profile,
+    items: updatedItems,
+    updatedAt: nowIso(),
+  }
+}
+
+/**
+ * 移动条目顺序
+ */
+export const moveNarratorItem = (profile, itemId, direction) => {
+  const items = [...(profile.items || [])].sort((a, b) => (a.order || 0) - (b.order || 0))
+  const index = items.findIndex((item) => item.id === itemId)
+  if (index === -1) return profile
+
+  const newIndex = direction === 'up' ? index - 1 : index + 1
+  if (newIndex < 0 || newIndex >= items.length) return profile
+
+  // 交换order
+  const swapped = [...items]
+  swapped[index] = { ...swapped[index], order: items[newIndex].order }
+  swapped[newIndex] = { ...swapped[newIndex], order: items[index].order }
+
+  return {
+    ...profile,
+    items: swapped,
+    updatedAt: nowIso(),
+  }
+}
+
+/**
+ * 合并启用的条目内容生成prompt
+ */
+export const buildNarratorPromptFromItems = (profile) => {
+  if (!profile?.items || profile.items.length === 0) {
+    // 兼容旧数据：返回空字符串或使用旧的prompt字段
+    return ''
+  }
+
+  const enabledItems = profile.items
+    .filter((item) => item.enabled)
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+  if (enabledItems.length === 0) return ''
+
+  const combinedContent = enabledItems
+    .map((item) => `【${item.name}】\n${item.content}`)
+    .join('\n\n')
+
+  return combinedContent
+}
+
+/**
+ * 获取叙事者的完整prompt（用于LLM加载）
+ */
+export const getNarratorFullPrompt = (profile) => {
+  const itemsPrompt = buildNarratorPromptFromItems(profile)
+  const summaryPart = profile?.summary ? `【叙事风格简介】\n${profile.summary}` : ''
+
+  if (itemsPrompt && summaryPart) {
+    return `${summaryPart}\n\n${itemsPrompt}`
+  }
+  return itemsPrompt || summaryPart || ''
 }
 

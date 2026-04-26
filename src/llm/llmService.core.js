@@ -5,6 +5,7 @@
 
 import { kvStorage } from '../storage/index.js'
 import { resolvePrompt } from './promptRegistry.js'
+import { getNarratorFullPrompt } from '../narrator/narratorStore.js'
 
 // 存储 key 常量
 const CONFIG_STORAGE_KEY = 'api_configs'
@@ -1016,14 +1017,24 @@ export const generateCgPrompt = async (params = {}) => {
     : ''
 
   const narratorText = narratorProfile
-    ? [
-      String(narratorProfile.name || '').trim() ? `叙事者: ${String(narratorProfile.name || '').trim()}` : '',
-      String(narratorProfile.summary || '').trim() ? `风格定位: ${String(narratorProfile.summary || '').trim()}` : '',
-      String(narratorProfile.stylePrompt || '').trim() ? `文风要求: ${String(narratorProfile.stylePrompt || '').trim()}` : '',
-      String(narratorProfile.instructionPrompt || '').trim() ? `叙事约束: ${String(narratorProfile.instructionPrompt || '').trim()}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n')
+    ? (() => {
+        // 新结构：使用items条目
+        if (narratorProfile.items && narratorProfile.items.length > 0) {
+          const itemsPrompt = getNarratorFullPrompt(narratorProfile)
+          if (itemsPrompt && itemsPrompt.trim()) {
+            return itemsPrompt.trim()
+          }
+        }
+        // 兼容旧数据
+        return [
+          String(narratorProfile.name || '').trim() ? `叙事者: ${String(narratorProfile.name || '').trim()}` : '',
+          String(narratorProfile.summary || '').trim() ? `风格定位: ${String(narratorProfile.summary || '').trim()}` : '',
+          String(narratorProfile.stylePrompt || '').trim() ? `文风要求: ${String(narratorProfile.stylePrompt || '').trim()}` : '',
+          String(narratorProfile.instructionPrompt || '').trim() ? `叙事约束: ${String(narratorProfile.instructionPrompt || '').trim()}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n')
+      })()
     : ''
 
   const userPrompt = [
@@ -1219,12 +1230,19 @@ const buildMiniTheaterPrompt = (params = {}) => {
 
   const worldTitle = String(worldBook?.title || '默认世界书').trim() || '默认世界书'
   const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
-  const narratorStyle = String(
-    narratorProfile?.stylePrompt ||
-    narratorProfile?.instructionPrompt ||
-    narratorProfile?.summary ||
-    '',
-  ).trim()
+
+  // 新结构：使用items条目，兼容旧数据
+  let narratorStyle = ''
+  if (narratorProfile?.items && narratorProfile.items.length > 0) {
+    narratorStyle = getNarratorFullPrompt(narratorProfile).trim()
+  } else {
+    narratorStyle = String(
+      narratorProfile?.stylePrompt ||
+      narratorProfile?.instructionPrompt ||
+      narratorProfile?.summary ||
+      '',
+    ).trim()
+  }
   const characterNames = (Array.isArray(worldBook?.characters) ? worldBook.characters : [])
     .map((char) => String(char?.name || char?.nickname || char?.id || '').trim())
     .filter(Boolean)

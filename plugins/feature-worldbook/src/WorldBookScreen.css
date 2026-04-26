@@ -305,6 +305,21 @@
   background: color-mix(in srgb, var(--accent-magenta, #5E6AD2) 12%, transparent) !important;
 }
 
+.activate-btn:hover {
+  border-color: #ff6b9d !important;
+  background: color-mix(in srgb, #ff6b9d 15%, transparent) !important;
+}
+
+.spine-active-badge {
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  color: #ff6b9d !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  background: rgba(255, 107, 157, 0.15) !important;
+  border: 1px solid rgba(255, 107, 157, 0.3) !important;
+}
+
 /* 删除确认弹窗 */
 .delete-confirm-overlay {
   position: fixed !important;
@@ -727,6 +742,17 @@
     background: color-mix(in srgb, var(--accent-magenta, #5E6AD2) 12%, transparent) !important;
     color: var(--accent-magenta, #5E6AD2) !important;
     border-color: var(--accent-magenta, #5E6AD2) !important;
+  }
+
+  .spine-action-btn.activate-btn:hover {
+    background: color-mix(in srgb, #ff6b9d 15%, transparent) !important;
+    color: #ff6b9d !important;
+    border-color: #ff6b9d !important;
+  }
+
+  .spine-active-badge {
+    font-size: 0.85rem !important;
+    padding: 6px 10px !important;
   }
 
   .spine-action-btn:active {

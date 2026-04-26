@@ -17,6 +17,7 @@ const emit = defineEmits(['back', 'open-book'])
 const statusMessage = ref('点击一本世界书进入详细设定。')
 const worldBooks = ref([])
 const activeBookId = ref('default_world_book')
+const activatedBookId = ref('default_world_book') // 当前激活的世界书（用于游戏）
 const showDeleteConfirm = ref(false)
 const bookToDelete = ref(null)
 const fileInputRef = ref(null)
@@ -43,7 +44,14 @@ const refreshBooks = async () => {
   const storedActiveId = await getActiveWorldBookId()
   const activeExists = worldBooks.value.some((book) => book.id === storedActiveId)
   activeBookId.value = activeExists ? storedActiveId : worldBooks.value[0]?.id || 'default_world_book'
-  await setActiveWorldBookId(activeBookId.value)
+  activatedBookId.value = activeBookId.value // 同步激活状态
+}
+
+const activateBook = async (bookId) => {
+  await setActiveWorldBookId(bookId)
+  activatedBookId.value = bookId
+  const book = worldBooks.value.find(b => b.id === bookId)
+  statusMessage.value = `已激活：${book?.title || bookId}`
 }
 
 const openBook = async (bookId) => {
@@ -223,13 +231,23 @@ onMounted(async () => {
           :key="book.id"
           type="button"
           class="worldbook-book-spine"
-          :class="[getBookToneClass(book, index), { active: activeBookId === book.id }]"
+          :class="[getBookToneClass(book, index), { active: activatedBookId === book.id }]"
           :title="book.summary || book.title"
           @click="openBook(book.id)"
         >
           <span v-if="book.isDefault" class="spine-badge">默认</span>
           <span class="spine-title">{{ book.title }}</span>
           <div class="spine-actions" @click.stop>
+            <button
+              v-if="activatedBookId !== book.id"
+              type="button"
+              class="spine-action-btn activate-btn"
+              title="激活此世界书"
+              @click="activateBook(book.id)"
+            >
+              ⚡
+            </button>
+            <span v-else class="spine-active-badge">✓激活</span>
             <button
               type="button"
               class="spine-action-btn export-btn"

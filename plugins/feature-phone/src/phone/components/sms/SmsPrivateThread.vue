@@ -61,25 +61,25 @@ defineExpose({ messagesContainerRef })
     <!-- 聊天背景层 -->
     <div v-if="chatBgUrl" class="sms-chat-bg" :style="{ backgroundImage: 'url(' + chatBgUrl + ')' }"></div>
 
-    <!-- Header：三区域 -->
+    <!-- Header：简洁按钮 -->
     <div class="sms-thread-header">
-      <div class="sms-header-capsule sms-header-capsule--left">
-        <button type="button" class="sms-capsule-btn" @click="emit('back')">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <div class="sms-header-left">
+        <button type="button" class="sms-header-btn" @click="emit('back')">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <button type="button" class="sms-capsule-btn" @click="emit('open-settings')" title="设置">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4m-9-9h4m14 0h4m-3.3-6.7l-2.8 2.8M6.1 17.9l-2.8 2.8m0-13.4l2.8 2.8m11.8 7.8l2.8 2.8"/></svg>
+        <button type="button" class="sms-header-btn" @click="emit('open-settings')" title="设置">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4m-9-9h4m14 0h4m-3.3-6.7l-2.8 2.8M6.1 17.9l-2.8 2.8m0-13.4l2.8 2.8m11.8 7.8l2.8 2.8"/></svg>
         </button>
       </div>
       <div class="sms-header-avatar" @pointerdown="emit('avatar-pointer-down', $event, contact)" @pointerup="emit('avatar-pointer-up')" @pointerleave="emit('avatar-pointer-leave')">
         <img v-if="charAvatar" :src="charAvatar" />
         <span v-else class="sms-header-avatar-placeholder">{{ contact.name?.slice(0, 1) }}</span>
       </div>
-      <div class="sms-header-capsule sms-header-capsule--right">
-        <button type="button" class="sms-capsule-btn" @click="emit('open-gift-shop')" title="礼物">
-          <span style="font-size: 18px;">&#x1F381;</span>
+      <div class="sms-header-right">
+        <button type="button" class="sms-header-btn" @click="emit('open-gift-shop')" title="礼物">
+          <span style="font-size: 20px;">&#x1F381;</span>
         </button>
-        <button type="button" class="sms-capsule-btn" @click="emit('call-video', contact)" title="视频通话">
+        <button type="button" class="sms-header-btn" @click="emit('call-video', contact)" title="视频通话">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
         </button>
       </div>
@@ -183,81 +183,82 @@ defineExpose({ messagesContainerRef })
   pointer-events: none;
 }
 
-/* ===== 私聊顶部三区域导航 ===== */
+/* ===== Header 区域 ===== */
 .sms-thread-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
+  padding-top: max(8px, var(--safe-area-inset-top, 8px));
   background: transparent;
-  border-bottom: none;
   flex-shrink: 0;
   position: relative;
-  z-index: 5;
+  z-index: 10;
 }
 
-.sms-header-capsule {
+/* 左侧按钮组 */
+.sms-header-left {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.50);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 32px;
-  padding: 4px 6px;
-  gap: 2px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  gap: 8px;
 }
 
-.sms-header-capsule--left {
-  min-width: 70px;
-  justify-content: center;
+/* 右侧按钮组 */
+.sms-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.sms-header-capsule--right {
-  min-width: 44px;
-  justify-content: center;
-}
-
-.sms-capsule-btn {
+/* 简洁按钮（无背景无边框） */
+.sms-header-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.65);
   cursor: pointer;
-  transition: background 0.15s;
+  border-radius: 6px;
+  transition: all 0.15s ease;
 }
 
-.sms-capsule-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+.sms-header-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.sms-capsule-btn:active {
-  background: rgba(255, 255, 255, 0.2);
+.sms-header-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.12);
 }
 
+/* 中间头像 */
 .sms-header-avatar {
-  width: 60px;
-  height: 60px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
   flex-shrink: 0;
   cursor: pointer;
   border: 2px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  transition: transform 0.15s;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+  transition: all 0.2s ease;
+}
+
+.sms-header-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
 }
 
 .sms-header-avatar:active {
-  transform: scale(0.92);
+  transform: scale(0.95);
 }
 
 .sms-header-avatar img {
@@ -267,8 +268,8 @@ defineExpose({ messagesContainerRef })
 }
 
 .sms-header-avatar-placeholder {
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.1rem;
+  font-weight: 700;
   color: #fff;
 }
 
@@ -278,7 +279,8 @@ defineExpose({ messagesContainerRef })
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 12px 8px 16px;
+  padding: 12px 8px;
+  padding-bottom: max(16px, var(--safe-area-inset-bottom, 16px));
   animation: sms-plus-slide-up 0.2s ease;
 }
 
@@ -328,43 +330,43 @@ defineExpose({ messagesContainerRef })
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* ===== + 按钮 ===== */
+/* ===== + 按钮（简洁无背景无边框） ===== */
 .sms-plus-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
-  border-radius: 50%;
-  transition: all 0.15s;
+  border-radius: 6px;
+  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
 .sms-plus-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .sms-plus-btn.active {
   color: #0a84ff;
-  background: rgba(10, 132, 255, 0.15);
+  transform: rotate(45deg);
 }
 
 /* ===== 输入栏 ===== */
 .sms-input-bar {
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  padding: 8px 10px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  padding-bottom: max(10px, var(--safe-area-inset-bottom, 10px));
   background: rgba(28, 28, 30, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
   z-index: 5;
 }
@@ -422,8 +424,9 @@ defineExpose({ messagesContainerRef })
   background: rgba(10, 132, 255, 0.4);
 }
 
-.platform-android.android-portrait .sms-header-capsule {
-  background: rgba(255, 255, 255, 0.18) !important;
+/* ===== Android 兼容 ===== */
+.platform-android.android-portrait .sms-header-btn {
+  color: rgba(255, 255, 255, 0.75) !important;
 }
 .platform-android.android-portrait .sms-header-avatar {
   background: linear-gradient(135deg, #5a6fd6, #6a3ba2) !important;
@@ -450,8 +453,9 @@ defineExpose({ messagesContainerRef })
   background: rgba(10, 132, 255, 0.45) !important;
 }
 
-
-  .platform-android.android-portrait .sms-plus-btn {
+  .platform-android.android-portrait .sms-send-btn,
+  .platform-android.android-portrait .sms-plus-btn,
+  .platform-android.android-portrait .sms-header-btn {
     width: auto !important;
     height: auto !important;
     min-width: 0 !important;
@@ -468,5 +472,4 @@ defineExpose({ messagesContainerRef })
     border-radius: 8px !important;
     white-space: nowrap !important;
   }
-
 </style>

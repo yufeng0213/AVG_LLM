@@ -819,23 +819,35 @@
 
         // 检测当前环境：Electron 用 activity://，Web 用 /data/activities/
         // Android/Capacitor: 如果有 __PORTRAIT_BLOBURLS__ 或 __PORTRAIT_DATAURIS__，使用对应 URL
+        // Capacitor: URL 是 https://localhost/_capacitor_file_/
         var portraitBlobUrls = window.__PORTRAIT_BLOBURLS__ || null
         var portraitDataUris = window.__PORTRAIT_DATAURIS__ || null
-        var isElectron = window.location.href.startsWith('activity://') || window.location.protocol === 'activity:'
-        var isBlobUrl = window.location.href.startsWith('blob:')
+        var currentUrl = window.location.href
+        var isElectron = currentUrl.startsWith('activity://') || window.location.protocol === 'activity:'
+        var isBlobUrl = currentUrl.startsWith('blob:')
+        var isCapacitor = currentUrl.indexOf('_capacitor_file_') >= 0 || currentUrl.indexOf('/_capacitor_file_') >= 0
         var basePath = isElectron
           ? 'activity://' + ACTIVITY_ID + '/'
           : '/data/activities/' + ACTIVITY_ID + '/'
 
-        console.log('[Gacha] buildGachaCards - activityId:', ACTIVITY_ID, 'basePath:', basePath, 'hasPortraitBlobUrls:', !!portraitBlobUrls)
+        console.log('[Gacha] buildGachaCards - activityId:', ACTIVITY_ID, 'basePath:', basePath)
+        console.log('[Gacha] currentUrl:', currentUrl)
+        console.log('[Gacha] isElectron:', isElectron, 'isBlobUrl:', isBlobUrl, 'isCapacitor:', isCapacitor)
+        console.log('[Gacha] hasPortraitBlobUrls:', !!portraitBlobUrls, 'hasPortraitDataUris:', !!portraitDataUris)
 
         return config.cards.map(function(c) {
           // 从角色名取首字母缩写作为 icon（简化的 emoji）
           var iconMap = { '陆野': '🌴', '祁朔': '🌊', '阿诺': '🎆', '白屿': '☀️' }
           // 构建图片路径
           var imagePath
-          // Android/Capacitor blob URL 环境：优先使用注入的 portrait blob URL
-          if (isBlobUrl && portraitBlobUrls && portraitBlobUrls[c.character]) {
+          // Capacitor 环境：使用相对路径（相对于 activity 目录）
+          if (isCapacitor) {
+            // iframe base URL 已经是 activity 目录，相对路径可以直接工作
+            imagePath = './portraits/' + c.character + '.png'
+            console.log('[Gacha] Capacitor 环境，使用相对路径:', imagePath)
+          }
+          // Android/Capacitor blob URL 环境：使用注入的 portrait URL
+          else if (isBlobUrl && portraitBlobUrls && portraitBlobUrls[c.character]) {
             imagePath = portraitBlobUrls[c.character]
           } else if (isBlobUrl && portraitDataUris && portraitDataUris[c.character]) {
             // 兼容旧版
@@ -1263,10 +1275,13 @@
         // 设置卡牌图片
         var imagePath = card.image || ''
         if (imagePath) {
-          // 解析图片路径
-          if (imagePath.startsWith('./')) {
+          // Capacitor 环境下相对路径可以直接工作，不需要转换
+          // Electron/Web 环境下需要转换相对路径
+          var isCapacitor = window.location.href.indexOf('_capacitor_file_') >= 0
+          if (imagePath.startsWith('./') && !isCapacitor) {
             imagePath = '/data/activities/' + ACTIVITY_ID + '/' + imagePath.substring(2)
           }
+          console.log('[Gacha] showHighRarityReveal - 最终 imagePath:', imagePath)
           imageEl.src = imagePath
           imageEl.style.display = 'block'
         } else {

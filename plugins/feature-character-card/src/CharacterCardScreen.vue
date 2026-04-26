@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useCardCollection } from './composables/useCardCollection.js'
 import CardPoolScreen from './components/CardPoolScreen.vue'
 import CardDetailScreen from './components/CardDetailScreen.vue'
@@ -16,9 +16,7 @@ const emit = defineEmits(['back'])
 
 console.log('[CharacterCardScreen] props.worldBookId:', props.worldBookId)
 
-// 使用全局的 cardCollection API（如果可用），确保与 iframe 调用同步
-const globalCardCollection = window.__avgLLM?.cardCollection
-
+// 不传递 worldBookId，让 useCardCollection 自动解析全局世界书 ID
 const {
   cards,
   loaded,
@@ -28,7 +26,7 @@ const {
   cardsByRarity,
   getCardDetail,
   getUnownedCards,
-} = useCardCollection(props.worldBookId)
+} = useCardCollection()
 
 // 监听 iframe 添加卡牌事件，刷新本地数据
 watch(cards, () => {
@@ -57,22 +55,43 @@ const collectionRate = computed(() => {
   return Math.round((owned.size / CHARACTER_CARD_DEFS.length) * 100)
 })
 
-// 获取卡牌图片路径
-function getCardImage(cardDef) {
-  // 优先使用定义中的 image 字段
-  if (cardDef.image) return cardDef.image
+// 卡牌图片 URL 缓存（async 函数不能直接在模板中使用）
+const cardImageUrls = ref({})
 
-  // 根据 activityId 和角色名构建路径（活动卡牌）
-  if (cardDef.activityId && cardDef.characterName) {
-    const isElectron = typeof window !== 'undefined' && window.electronAPI?.isElectron
-    const basePath = isElectron
-      ? `activity://${cardDef.activityId}/activity/portraits/`
-      : `/data/activities/${cardDef.activityId}/activity/portraits/`
-    return basePath + cardDef.characterName + '.png'
+// 加载卡牌图片 URL
+async function loadCardImageUrls() {
+  const isElectron = typeof window !== 'undefined' && window.electronAPI?.isElectron
+  const isCapacitor = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()
+
+  console.log('[CharacterCardScreen] loadCardImageUrls - isElectron:', isElectron, 'isCapacitor:', isCapacitor)
+
+  for (const def of CHARACTER_CARD_DEFS) {
+    if (def.image) {
+      cardImageUrls.value[def.id] = def.image
+    } else if (def.activityId && def.characterName) {
+      if (isElectron) {
+        cardImageUrls.value[def.id] = `activity://${def.activityId}/activity/portraits/${def.characterName}.png`
+      } else if (isCapacitor) {
+        try {
+          const url = await window.__avgLLM?.activity?.getFileUrl?.(
+            def.activityId,
+            `activity/portraits/${def.characterName}.png`
+          )
+          console.log('[CharacterCardScreen] Capacitor URL for', def.characterName, ':', url)
+          cardImageUrls.value[def.id] = url
+        } catch (e) {
+          console.log('[CharacterCardScreen] getFileUrl 失败:', e.message)
+        }
+      } else {
+        cardImageUrls.value[def.id] = `/data/activities/${def.activityId}/activity/portraits/${def.characterName}.png`
+      }
+    }
   }
+}
 
-  // 默认占位图
-  return null
+// 获取卡牌图片路径（同步，从缓存读取）
+function getCardImage(cardDef) {
+  return cardImageUrls.value[cardDef.id] || cardDef.image || null
 }
 
 // 格式化卡牌显示名称：卡牌名·角色名
@@ -105,6 +124,7 @@ const activityEntry = useActivityEntry()
 
 onMounted(async () => {
   await load()
+  await loadCardImageUrls()
 })
 
 // 监听来自 WorldHub 的活动跳转请求
@@ -990,8 +1010,27 @@ function closeActivityStory() {
   100% { background-position: 0% 50%; }
 }
 
+/* Android 刘海屏适配 */
+.platform-android.android-portrait .card-screen-header {
+  padding-top: max(12px, var(--safe-area-inset-top, 12px));
+  padding-left: 14px;
+  padding-right: 14px;
+}
 
-  .platform-android.android-portrait .pool-entry-btn {
+.platform-android.android-portrait .back-button {
+  font-size: 1.5rem !important;
+  padding: 8px !important;
+}
+
+.platform-android.android-portrait .card-title {
+  font-size: 1.2rem;
+}
+
+.platform-android.android-portrait .card-subtitle {
+  font-size: 0.6rem;
+}
+
+.platform-android.android-portrait .pool-entry-btn {
     width: auto !important;
     height: auto !important;
     min-width: 0 !important;

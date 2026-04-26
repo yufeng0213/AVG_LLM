@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useCardCollection } from '../composables/useCardCollection.js'
-import { getRarityConfig } from '../services/cardData.js'
+import { getRarityConfig, CHARACTER_CARD_DEFS } from '../services/cardData.js'
 import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
+import ActivityStoryScreen from '../../../../src/screens/ActivityStoryScreen.vue'
 
 const props = defineProps({
   instanceId: { type: String, default: '' },
@@ -10,11 +11,32 @@ const props = defineProps({
 
 const emit = defineEmits(['back'])
 
-const { economy, updateEconomy } = useGlobalUser()
+const { economy, updateEconomy, inventory, removeFromInventory } = useGlobalUser()
 const collection = useCardCollection()
 
 const detail = ref(null)
 const activeSection = ref('stats') // stats | skills | stories
+const cardImageUrl = ref(null) // 卡牌图片 URL
+const showGiftModal = ref(false) // 礼品选择弹窗
+const giftFeedback = ref('') // 送礼反馈消息
+const showStoryScreen = ref(false) // 剧情阅读界面
+const currentStoryData = ref(null) // 当前阅读的剧情数据
+
+// 背包中的礼品列表
+const giftItems = computed(() => {
+  const items = inventory.value || []
+  return items.filter(item => item.category === 'gift')
+})
+
+// 根据礼品价格计算好感度加成
+function getGiftAffinityBonus(giftItem) {
+  const price = giftItem.price || 30
+  // 价格越高，好感加成越多
+  if (price >= 70) return 15
+  if (price >= 50) return 10
+  if (price >= 35) return 7
+  return 5
+}
 
 // 升级消耗（金币 = 当前等级 * 50）
 const levelUpCost = computed(() => {
@@ -112,10 +134,70 @@ function refreshDetail() {
   if (newDetail) detail.value = newDetail
 }
 
-function openStory(story) {
-  if (story.unlocked) {
-    alert(`剧情「${story.title}」\n\n${story.seed}\n\n（LLM生成内容将在阶段5实现）`)
+// 加载卡牌图片 URL
+async function loadCardImageUrl() {
+  if (!detail.value) return
+
+  const def = detail.value.def
+  const isElectron = typeof window !== 'undefined' && window.electronAPI?.isElectron
+  const isCapacitor = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()
+
+  console.log('[CardDetailScreen] loadCardImageUrl - isElectron:', isElectron, 'isCapacitor:', isCapacitor)
+
+  if (def.image) {
+    cardImageUrl.value = def.image
+  } else if (def.activityId && def.characterName) {
+    if (isElectron) {
+      cardImageUrl.value = `activity://${def.activityId}/activity/portraits/${def.characterName}.png`
+    } else if (isCapacitor) {
+      try {
+        const url = await window.__avgLLM?.activity?.getFileUrl?.(
+          def.activityId,
+          `activity/portraits/${def.characterName}.png`
+        )
+        console.log('[CardDetailScreen] Capacitor URL:', url)
+        cardImageUrl.value = url
+      } catch (e) {
+        console.log('[CardDetailScreen] getFileUrl 失败:', e.message)
+      }
+    } else {
+      cardImageUrl.value = `/data/activities/${def.activityId}/activity/portraits/${def.characterName}.png`
+    }
   }
+}
+
+function openStory(story) {
+  if (!story.unlocked || !detail.value) return
+
+  // 构建 storyConfig
+  const def = detail.value.def
+  const activityId = def.activityId || 'default_story'
+
+  currentStoryData.value = {
+    activityId: `card_story_${def.id}_${story.id}`,
+    storyTitle: story.title,
+    showTitleAnimation: true,
+    storyConfig: {
+      openingPrompt: story.seed,
+      sceneCharacters: [def.characterName],
+      portraits: {},
+      backgroundGradient: ['#1a0a2e', '#2a1f10', '#0a1628'],
+    },
+  }
+
+  // 如果有活动ID，设置立绘路径
+  if (def.activityId && cardImageUrl.value) {
+    currentStoryData.value.storyConfig.portraits[def.characterName] = {
+      default: cardImageUrl.value,
+    }
+  }
+
+  showStoryScreen.value = true
+}
+
+function closeStoryScreen() {
+  showStoryScreen.value = false
+  currentStoryData.value = null
 }
 
 // 调试：添加金币
@@ -123,14 +205,61 @@ function addCoinsDebug(amount = 10000) {
   updateEconomy(prev => ({ ...prev, coins: prev.coins + amount }))
 }
 
+// 送礼功能
+function openGiftModal() {
+  showGiftModal.value = true
+  giftFeedback.value = ''
+}
+
+function closeGiftModal() {
+  showGiftModal.value = false
+  giftFeedback.value = ''
+}
+
+async function handleSendGift(giftItem) {
+  if (!detail.value) return
+
+  const bonus = getGiftAffinityBonus(giftItem)
+
+  // 消耗礼品
+  removeFromInventory(giftItem.id, 1)
+
+  // 增加好感度
+  const result = await collection.addAffinity(detail.value.card.instanceId, bonus)
+
+  if (result.success) {
+    giftFeedback.value = `送礼成功！${giftItem.icon} ${giftItem.name} → 好感度 +${bonus}`
+    refreshDetail()
+    // 3秒后自动关闭
+    setTimeout(() => {
+      if (giftFeedback.value.includes('成功')) {
+        closeGiftModal()
+      }
+    }, 2000)
+  } else {
+    giftFeedback.value = `送礼失败：${result.error}`
+  }
+}
+
 onMounted(async () => {
   await collection.load()
   refreshDetail()
+  await loadCardImageUrl()
 })
 </script>
 
 <template>
-  <div class="card-detail-screen">
+  <!-- 剧情阅读界面 -->
+  <ActivityStoryScreen
+    v-if="showStoryScreen && currentStoryData"
+    :activity-id="currentStoryData.activityId"
+    :story-config="currentStoryData.storyConfig"
+    :story-title="currentStoryData.storyTitle"
+    :show-title-animation="currentStoryData.showTitleAnimation"
+    @back="closeStoryScreen"
+  />
+
+  <div v-else class="card-detail-screen">
     <!-- 顶部返回 -->
     <header class="detail-header">
       <button class="detail-back-btn" @click="emit('back')">
@@ -150,7 +279,8 @@ onMounted(async () => {
           <div class="showcase-rarity" :style="{ color: getRarityColor(detail.def.rarity) }">
             {{ detail.def.rarity }}
           </div>
-          <div class="showcase-art">🎴</div>
+          <img v-if="cardImageUrl" :src="cardImageUrl" class="showcase-art-img" alt="" />
+          <div v-else class="showcase-art">🎴</div>
         </div>
         <div class="showcase-info">
           <h1 class="card-name-big">{{ detail.def.name }}</h1>
@@ -186,7 +316,7 @@ onMounted(async () => {
         </div>
       </section>
 
-      <!-- 升级 & 升阶按钮 -->
+      <!-- 升级 & 升阶 & 送礼按钮 -->
       <section class="action-bar">
         <button class="action-btn level-btn" @click="handleLevelUp">
           <div class="action-content">
@@ -199,6 +329,12 @@ onMounted(async () => {
             <span class="action-label">升阶</span>
             <span class="action-cost">相同卡 ×{{ evolveCost }}</span>
             <span class="action-hint">(拥有{{ sameCardCount }}张)</span>
+          </div>
+        </button>
+        <button class="action-btn gift-btn" :disabled="giftItems.length === 0" @click="openGiftModal">
+          <div class="action-content">
+            <span class="action-label">送礼</span>
+            <span class="action-cost">🎁 {{ giftItems.length }}</span>
           </div>
         </button>
       </section>
@@ -297,6 +433,46 @@ onMounted(async () => {
     </template>
 
     <div v-else class="detail-loading">加载中...</div>
+
+    <!-- 送礼弹窗 -->
+    <div v-if="showGiftModal" class="gift-modal-overlay" @click.self="closeGiftModal">
+      <div class="gift-modal">
+        <div class="gift-modal-header">
+          <h3 class="gift-modal-title">选择礼品</h3>
+          <button class="gift-modal-close" @click="closeGiftModal">✕</button>
+        </div>
+        <p class="gift-modal-subtitle">送礼可增加好感度，解锁更多剧情</p>
+
+        <div v-if="giftFeedback" class="gift-feedback" :class="{ success: giftFeedback.includes('成功') }">
+          {{ giftFeedback }}
+        </div>
+
+        <div v-if="giftItems.length === 0" class="gift-empty">
+          <span class="gift-empty-icon">🎁</span>
+          <p>背包中没有礼品</p>
+          <p class="gift-empty-hint">去商店购买礼品吧</p>
+        </div>
+
+        <div v-else class="gift-list">
+          <div
+            v-for="gift in giftItems"
+            :key="gift.id"
+            class="gift-item"
+            @click="handleSendGift(gift)"
+          >
+            <span class="gift-icon">{{ gift.icon }}</span>
+            <div class="gift-info">
+              <span class="gift-name">{{ gift.name }}</span>
+              <span class="gift-desc">{{ gift.description }}</span>
+            </div>
+            <div class="gift-affinity">
+              <span class="gift-plus">+{{ getGiftAffinityBonus(gift) }}</span>
+              <span class="gift-affinity-label">好感</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -401,6 +577,13 @@ onMounted(async () => {
 .showcase-art {
   font-size: 48px;
   opacity: 0.4;
+}
+
+.showcase-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .showcase-info { flex: 1; }
@@ -509,6 +692,17 @@ onMounted(async () => {
 
 .evolve-btn:disabled {
   background: rgba(168, 85, 247, 0.3);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.gift-btn {
+  background: linear-gradient(135deg, #f472b6, #ec4899);
+  color: #fff;
+}
+
+.gift-btn:disabled {
+  background: rgba(244, 114, 182, 0.3);
   color: rgba(255, 255, 255, 0.5);
   cursor: not-allowed;
 }
@@ -718,11 +912,236 @@ onMounted(async () => {
   color: rgba(255, 255, 255, 0.3);
 }
 
+/* Android 刘海屏适配 */
+.platform-android.android-portrait .detail-header {
+  padding-top: max(12px, var(--safe-area-inset-top, 12px));
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.platform-android.android-portrait .detail-back-btn {
+  font-size: 1.1rem;
+  padding: 8px 14px;
+}
+
+.platform-android.android-portrait .detail-title {
+  font-size: 1.1rem;
+}
+
+.platform-android.android-portrait .detail-coins {
+  font-size: 0.9rem;
+}
+
+.platform-android.android-portrait .debug-add-btn {
+  font-size: 1rem;
+  padding: 4px 10px;
+}
+
   .platform-android.android-portrait .action-btn,
   .platform-android.android-portrait .story-read-btn,
   .platform-android.android-portrait .detail-back-btn,
   .platform-android.android-portrait .section-tab,
   .platform-android.android-portrait .debug-add-btn {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none !important;
+    font-size: 1.1rem !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  /* 送礼弹窗 */
+  .gift-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+
+  .gift-modal {
+    background: #1a1a2e;
+    border-radius: 16px;
+    width: min(380px, 92vw);
+    max-height: 70vh;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 16px;
+  }
+
+  .gift-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .gift-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: #f472b6;
+  }
+
+  .gift-modal-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+
+  .gift-modal-subtitle {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 0 0 12px;
+  }
+
+  .gift-feedback {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+  }
+
+  .gift-feedback.success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+
+  .gift-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .gift-empty-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .gift-empty-hint {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.3);
+    margin-top: 4px;
+  }
+
+  .gift-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .gift-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .gift-item:hover {
+    background: rgba(244, 114, 182, 0.1);
+    border-color: rgba(244, 114, 182, 0.3);
+    transform: translateX(4px);
+  }
+
+  .gift-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+  }
+
+  .gift-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .gift-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .gift-desc {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .gift-affinity {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .gift-plus {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f472b6;
+  }
+
+  .gift-affinity-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  /* Android 送礼弹窗适配 */
+  .platform-android.android-portrait .gift-modal {
+    max-height: 60vh;
+    padding: 14px;
+  }
+
+  .platform-android.android-portrait .gift-modal-title {
+    font-size: 1.1rem;
+  }
+
+  .platform-android.android-portrait .gift-item {
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .platform-android.android-portrait .gift-icon {
+    font-size: 32px;
+  }
+
+  .platform-android.android-portrait .gift-name {
+    font-size: 1rem;
+  }
+
+  .platform-android.android-portrait .gift-desc {
+    font-size: 0.85rem;
+  }
+
+  .platform-android.android-portrait .gift-plus {
+    font-size: 1.1rem;
+  }
+
+ 
+    .platform-android.android-portrait .gift-modal-close {
     width: auto !important;
     height: auto !important;
     min-width: 0 !important;
