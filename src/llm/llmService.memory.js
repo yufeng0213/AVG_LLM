@@ -1,49 +1,103 @@
 /**
- * LLM 服务模块 — 从对话中提取世界记忆事件
+ * LLM 服务模块 — 从对话中提取世界记忆事件（Markdown + 思维链格式）
  */
 
 import { callChatCompletion, getValidatedActiveConfig } from './llmService.core.js'
 import { resolvePrompt } from './promptRegistry.js'
 
 /**
- * 从 LLM 原始响应中提取 JSON
+ * 从 LLM 原始响应中提取 thinking + markdown 结构化数据
  */
-function extractJson(rawContent) {
+function extractStructured(rawContent) {
   const raw = String(rawContent || '').trim()
   if (!raw) return null
 
-  const parseJson = (text) => {
-    try { return JSON.parse(text) } catch { return null }
+  const result = { thinking: '', events: [], characterMemories: {}, discoveredLocations: [] }
+
+  // 提取 thinking
+  const thinkingMatch = raw.match(/<thinking>([\s\S]*?)<\/thinking>/i)
+  if (thinkingMatch?.[1]) {
+    result.thinking = thinkingMatch[1].trim()
   }
 
-  // 1. markdown code block
-  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
-  if (fencedMatch?.[1]?.trim()) {
-    const parsed = parseJson(fencedMatch[1].trim())
-    if (parsed) return parsed
+  // 提取 events — 匹配 ### 事件 N 区块
+  const eventBlocks = raw.match(/###\s*事件\s*\d*\s*\n([\s\S]*?)(?=###\s*事件|###\s*角色记忆|###\s*地点发现|####|$)/g)
+  if (eventBlocks) {
+    for (const block of eventBlocks) {
+      const evt = {}
+      const typeM = block.match(/-\s*类型[：:]\s*(.+)/i)
+      const partM = block.match(/-\s*参与者[：:]\s*(.+)/i)
+      const sumM = block.match(/-\s*摘要[：:]\s*(.+)/i)
+      const impM = block.match(/-\s*情感强度[：:]\s*(\d+)/i)
+      const scenM = block.match(/-\s*场景[：:]\s*(.+)/i)
+      if (sumM?.[1]?.trim()) evt.summary = sumM[1].trim()
+      if (typeM?.[1]?.trim()) evt.type = typeM[1].trim()
+      if (partM?.[1]?.trim()) evt.participants = partM[1].trim().split(/[,，、]\s*/).map(s => s.trim()).filter(Boolean)
+      if (impM?.[1]) evt.emotionalImpact = parseInt(impM[1], 10)
+      if (scenM?.[1]?.trim()) evt.scene = scenM[1].trim()
+      if (evt.summary) result.events.push(evt)
+    }
   }
 
-  // 2. direct parse
-  const direct = parseJson(raw)
-  if (direct) return direct
+  // 提取 characterMemories
+  const memSection = raw.match(/###\s*角色记忆[\s\S]*?\n([\s\S]*?)(?=###\s*地点发现|$)/i)
+  if (memSection?.[1]) {
+    const charBlocks = memSection[1].split(/####\s+/).filter(Boolean)
+    for (const block of charBlocks) {
+      const charNameM = block.match(/^([^\n]+)/)
+      if (!charNameM) continue
+      const charName = charNameM[1].trim()
+      if (!charName) continue
 
-  // 3. extract { ... }
-  const start = raw.indexOf('{')
-  const end = raw.lastIndexOf('}')
-  if (start >= 0 && end > start) {
-    return parseJson(raw.slice(start, end + 1))
+      const memItems = []
+      // 逐行扫描：遇到 "- 内容:" 开始新记忆
+      const lines = block.split('\n')
+      let currentMem = null
+      for (const line of lines) {
+        const contentM = line.match(/-\s*内容[：:]\s*(.+)/i)
+        const sentM = line.match(/-\s*情感[：:]\s*(-?\d+)/i)
+        const relatedM = line.match(/-\s*关联事件[：:]\s*(.+)/i)
+        if (contentM?.[1]?.trim()) {
+          if (currentMem) memItems.push(currentMem)
+          currentMem = { content: contentM[1].trim().slice(0, 300) }
+        } else if (currentMem) {
+          if (sentM?.[1]) currentMem.sentiment = parseInt(sentM[1], 10)
+          if (relatedM?.[1]?.trim()) currentMem.relatedEvent = relatedM[1].trim().slice(0, 200)
+        }
+      }
+      if (currentMem) memItems.push(currentMem)
+
+      if (memItems.length > 0) {
+        result.characterMemories[charName] = memItems
+      }
+    }
   }
-  return null
+
+  // 提取 discoveredLocations
+  const locSection = raw.match(/###\s*地点发现[\s\S]*?\n([\s\S]*?)$/i)
+  if (locSection?.[1]) {
+    const locBlocks = locSection[1].split(/-{3,}/).filter(Boolean)
+    for (const block of locBlocks) {
+      const loc = {}
+      const nameM = block.match(/-\s*名称[：:]\s*(.+)/i)
+      const descM = block.match(/-\s*描述[：:]\s*(.+)/i)
+      if (nameM?.[1]?.trim()) loc.name = nameM[1].trim()
+      if (descM?.[1]?.trim()) loc.description = descM[1].trim()
+      if (loc.name) result.discoveredLocations.push(loc)
+    }
+  }
+
+  return result
 }
 
 /**
- * 构建事件提取 prompt
+ * 构建事件提取 prompt（Markdown + 思维链格式）
  */
 function buildExtractionPrompt(worldBook, newDialogue, lastLineCount) {
   const parts = []
 
-  parts.push('【任务】从以下新增对话中提取有意义的剧情事件和角色情感交互。')
-  parts.push('只提取"新发生的"内容（最后几条对话），不要重复已记录的事件。')
+  parts.push('【任务】从以下新增对话中提取有意义的剧情事件和角色情感记忆。')
+  parts.push('只提取"新发生的"内容，不要重复已记录的事件。')
 
   parts.push(`\n【世界书】${worldBook?.title || '未知'}`)
   if (worldBook?.summary) parts.push(`概述: ${worldBook.summary}`)
@@ -74,36 +128,50 @@ function buildExtractionPrompt(worldBook, newDialogue, lastLineCount) {
 
   parts.push(`\n【已记录事件数】${lastLineCount} 条之前已提取过`)
 
-  parts.push('\n【输出格式】严格输出 JSON：')
-  parts.push(`{
-  "events": [
-    {
-      "type": "事件类型(conversation|conflict|agreement|discovery|departure|romance|gift|betrayal|milestone|other)",
-      "participants": ["参与者角色id数组"],
-      "summary": "一句话中文摘要（20-50字）",
-      "emotionalImpact": 情感强度1-100,
-      "scene": "场景/地点（可选）"
-    }
-  ],
-  "characterMemories": {
-    "角色id": [
-      {
-        "about": "被记忆的角色id",
-        "content": "记忆内容（角色主观感受，20-80字）",
-        "sentiment": -100到100的数值,
-        "relatedEvent": "关联事件摘要（可选）"
-      }
-    ]
-  }
-}`)
+  // 思维链引导
+  parts.push('\n【输出格式】分两步输出：')
+  parts.push('\n第一步：<thinking> 标签内逐步分析')
+  parts.push('1. 这几条对话中，哪些交互是有意义的？（闲聊跳过）')
+  parts.push('2. 每个事件的参与者是谁？类型是什么？')
+  parts.push('3. 角色之间是否有主观印象变化？谁对谁有什么印象？')
+  parts.push('4. 是否有新地点出现？')
+  parts.push('\n第二步：</thinking> 之后，用 Markdown 格式输出提取结果')
+
+  parts.push(`\n\`\`\`markdown
+### 事件 1
+- 类型: conversation/conflict/agreement/discovery/departure/romance/gift/betrayal/milestone/other
+- 参与者: 角色id，用逗号分隔（必须使用id，不是名字）
+- 摘要: 一句话中文摘要（20-50字）
+- 情感强度: 1-100（日常对话10-30，情感交流40-60，冲突/重要事件70-100）
+- 场景: 场景/地点名称（可选）
+
+### 事件 2
+...
+
+### 角色记忆
+#### 角色id
+- 内容: 角色主观感受，20-80字
+- 情感: -100到100的数值
+- 关联事件: 关联事件摘要（可选）
+
+#### 另一个角色id
+...
+
+---
+### 地点发现
+- 名称: 地点名称
+- 描述: 环境、氛围、功能描述（30-80字）
+---
+...
+\`\`\``)
 
   parts.push('\n【提取规则】')
-  parts.push('- 只有有意义的交互才提取（闲聊跳过）')
-  parts.push('- emotionalImpact: 日常对话 10-30, 情感交流 40-60, 冲突/重要事件 70-100')
-  parts.push('- characterMemories: 只记录角色对他人产生的主观印象变化')
+  parts.push('- 只有有意义的交互才提取')
   parts.push('- participants 必须使用角色 id（UUID），不是名字')
-  parts.push('- 如果没有新事件，events 返回空数组')
-  parts.push('- 不要输出解释，只输出 JSON')
+  parts.push('- 如果没有新事件，事件部分留空')
+  parts.push('- 角色记忆只记录角色对他人产生的主观印象变化')
+  parts.push('- 地点只列出之前世界书中没有的新地点')
+  parts.push('- 思维链要逐步分析，不要跳过')
 
   return parts.join('\n')
 }
@@ -246,7 +314,7 @@ export async function extractWorldMemory(params = {}) {
     return { success: false, error: result.error, events: [], characterMemories: {} }
   }
 
-  const parsed = extractJson(result.data)
+  const parsed = extractStructured(result.data)
   if (!parsed) {
     return { success: false, error: '提取结果解析失败', events: [], characterMemories: {} }
   }

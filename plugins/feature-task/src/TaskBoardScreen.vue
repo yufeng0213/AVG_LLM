@@ -6,7 +6,7 @@
 import { onMounted } from 'vue'
 import { useGlobalTaskBoard } from './composables/useGlobalTaskBoard.js'
 
-const emit = defineEmits(['back', 'open-battle'])
+const emit = defineEmits(['back', 'open-battle', 'open-collect', 'open-puzzle', 'open-clue'])
 
 const task = useGlobalTaskBoard()
 
@@ -94,12 +94,36 @@ const rewardLabel = (t) => {
             接受
           </button>
           <button
-            v-if="t.status === 'accepted' || t.status === 'in_progress'"
+            v-if="(t.status === 'accepted' || t.status === 'in_progress') && t.type === 'collect'"
+            type="button"
+            class="task-collect-btn"
+            @click="emit('open-collect', t.id)"
+          >
+            采集模式
+          </button>
+          <button
+            v-if="(t.status === 'accepted' || t.status === 'in_progress') && t.type !== 'collect' && t.type !== 'puzzle' && t.type !== 'clue'"
             type="button"
             class="task-battle-btn"
             @click="emit('open-battle', t.id)"
           >
             战斗模式
+          </button>
+          <button
+            v-if="(t.status === 'accepted' || t.status === 'in_progress') && t.type === 'puzzle'"
+            type="button"
+            class="task-puzzle-btn"
+            @click="emit('open-puzzle', { taskId: t.id, worldBook: t.worldBook, task: t })"
+          >
+            解谜模式
+          </button>
+          <button
+            v-if="(t.status === 'accepted' || t.status === 'in_progress') && t.type === 'clue'"
+            type="button"
+            class="task-clue-btn"
+            @click="emit('open-clue', { taskId: t.id, worldBook: t.worldBook, task: t })"
+          >
+            线索模式
           </button>
           <button
             v-if="t.status === 'completable'"
@@ -311,6 +335,7 @@ const rewardLabel = (t) => {
 
 .task-accept-btn,
 .task-battle-btn,
+.task-collect-btn,
 .task-claim-btn {
   appearance: none;
   border: 1px solid var(--task-gold-border, rgba(255, 215, 0, 0.25));
@@ -326,8 +351,53 @@ const rewardLabel = (t) => {
 
 .task-accept-btn:hover,
 .task-battle-btn:hover,
+.task-collect-btn:hover,
 .task-claim-btn:hover {
   background: rgba(255, 215, 0, 0.15);
+}
+
+.task-collect-btn {
+  border-color: rgba(34, 197, 94, 0.25);
+  background: rgba(34, 197, 94, 0.08);
+  color: #22c55e;
+}
+.task-collect-btn:hover {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.task-puzzle-btn {
+  appearance: none;
+  border-color: rgba(168, 85, 247, 0.25);
+  border-radius: 8px;
+  padding: 4px 14px;
+  background: rgba(168, 85, 247, 0.08);
+  color: #a855f7;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.task-puzzle-btn:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+.task-clue-btn {
+  appearance: none;
+  border-color: rgba(59, 130, 246, 0.25);
+  border-radius: 8px;
+  padding: 4px 14px;
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.task-clue-btn:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
 }
 
 .task-delete-btn {

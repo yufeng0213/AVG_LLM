@@ -252,6 +252,70 @@ export function useGlobalTaskBoard() {
     taskBoardFeedback.value = `战斗失败！任务「${task.name}」未完成，可以再次挑战。`
   }
 
+  function handleCollectSuccess(taskId) {
+    const task = taskBoardTasks.value.find((t) => t.id === taskId)
+    if (!task) return
+    const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+    const evidence = { type: 'collect', success: true, timestamp: Date.now() }
+    const updated = markTaskCompletable(board, taskId, evidence)
+    taskBoardTasks.value = updated.tasks
+    persistGlobalTaskBoard(updated)
+    taskBoardFeedback.value = `采集成功！任务「${task.name}」已完成，请返回任务板领取奖励。`
+  }
+
+  function handleCollectFail(taskId) {
+    const task = taskBoardTasks.value.find((t) => t.id === taskId)
+    if (!task) return
+    taskBoardFeedback.value = `采集失败！任务「${task.name}」未完成，可以再次尝试。`
+  }
+
+  function handlePuzzleSuccess(taskId, reasoningPoints) {
+    const task = taskBoardTasks.value.find((t) => t.id === taskId)
+    if (!task) return
+    const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+    const evidence = { type: 'puzzle', success: true, reasoningPoints, timestamp: Date.now() }
+    const updated = markTaskCompletable(board, taskId, evidence)
+    taskBoardTasks.value = updated.tasks
+    persistGlobalTaskBoard(updated)
+
+    // Bonus coins based on reasoning points
+    const bonusCoins = Math.max(10, Math.floor(reasoningPoints * 0.5))
+    globalUser.updateEconomy(prev => ({
+      ...prev,
+      coins: Math.min(9999, (prev.coins || 0) + bonusCoins),
+    }))
+    taskBoardFeedback.value = `谜题全部解开！推理点数 ${reasoningPoints}，额外获得 💰 ${bonusCoins} 金币！`
+  }
+
+  function handlePuzzleFail(taskId) {
+    const task = taskBoardTasks.value.find((t) => t.id === taskId)
+    if (!task) return
+    taskBoardFeedback.value = `解谜失败！任务「${task.name}」未完成，可以重新开始。`
+  }
+
+  function handleClueSuccess(taskId, score) {
+    const task = taskBoardTasks.value.find((t) => t.id === taskId)
+    if (!task) return
+    const board = { tasks: taskBoardTasks.value, lastGenerated: 0 }
+    const evidence = { type: 'clue', success: true, score, timestamp: Date.now() }
+    const updated = markTaskCompletable(board, taskId, evidence)
+    taskBoardTasks.value = updated.tasks
+    persistGlobalTaskBoard(updated)
+
+    const bonusCoins = Math.max(10, Math.floor(score * 0.5))
+    globalUser.updateEconomy(prev => ({
+      ...prev,
+      coins: Math.min(9999, (prev.coins || 0) + bonusCoins),
+    }))
+    taskBoardFeedback.value = `线索收集完成！得分 ${score}，额外获得 💰 ${bonusCoins} 金币！`
+  }
+
+  function handleClueFail(taskId) {
+    const task = taskBoardTasks.value.find((t) => t.id === taskId)
+    if (!task) return
+    taskBoardFeedback.value = `线索收集失败！任务「${task.name}」未完成，可以重新开始。`
+  }
+
   return {
     // 状态
     isTaskBoardOpen,
@@ -275,5 +339,11 @@ export function useGlobalTaskBoard() {
     handleTaskExecutionClose,
     handleBattleVictory,
     handleBattleDefeat,
+    handleCollectSuccess,
+    handleCollectFail,
+    handlePuzzleSuccess,
+    handlePuzzleFail,
+    handleClueSuccess,
+    handleClueFail,
   }
 }

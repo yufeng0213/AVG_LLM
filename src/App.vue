@@ -1,5 +1,5 @@
 ﻿<script setup>
-import { onBeforeUnmount, onMounted, ref, computed, watch, nextTick } from 'vue'
+import { onBeforeUnmount, onMounted, ref, computed, watch, nextTick, provide } from 'vue'
 import GameScreen from './screens/GameScreen.vue'
 import StartScreen from './screens/StartScreen.vue'
 import WorldHubScreen from './screens/WorldHubScreen.vue'
@@ -14,7 +14,9 @@ import {
   subscribeFeaturePluginRuntimeState,
 } from './features/featurePluginRuntimeState'
 import { StatusBar, Style } from '@capacitor/status-bar'
-import { loadWorldBooks } from './worldbook/worldBookStore.js'
+import { loadWorldBooks, getActiveWorldBookTags, getActiveWorldBookId } from './worldbook/worldBookStore.js'
+import { getSharedGameState, subscribeSharedGameState, setSharedGameStateFlag } from './features/sharedGameState.js'
+import { useActivityEntry } from './features/useActivityEntry.js'
 import { getMainStorySaveSlot, loadGame } from './save/saveManager.js'
 import GlobalMailbox from '../plugins/feature-mail/src/components/GlobalMailbox.vue'
 import CheckInScreen from '../plugins/feature-checkin/src/CheckInScreen.vue'
@@ -22,6 +24,7 @@ import CheckIn7Screen from '../plugins/feature-checkin/src/CheckIn7Screen.vue'
 import AvatarFrameScreen from '../plugins/feature-dormitory/src/components/AvatarFrameScreen.vue'
 import MusicPlayerScreen from '../plugins/feature-music-player/src/MusicPlayerScreen.vue'
 import WorldMemoryScreen from '../plugins/feature-world-memory/src/WorldMemoryScreen.vue'
+import BaseBuildingScreen from '../plugins/feature-base-building/src/BaseBuildingScreen.vue'
 import WorldMapView from './screens/WorldMapView.vue'
 import DreamScreen from './screens/DreamScreen.vue'
 import TimelineViewScreen from './screens/TimelineViewScreen.vue'
@@ -42,6 +45,9 @@ import {
 import { useBluetoothAudio } from '../plugins/feature-phone/src/phone/composables/useBluetoothAudio.js'
 import { useSpotCheckPush } from '../plugins/feature-phone/src/phone/composables/useSpotCheckPush.js'
 import { loadSmsThreads, saveSmsThreads } from '../plugins/feature-phone/src/phone/composables/usePhoneData.js'
+import { initGlobalApi } from './globalApi.js'
+import { useGlobalUser } from './composables/useGlobalUser.js'
+import { useCardCollection } from '../plugins/feature-character-card/src/composables/useCardCollection.js'
 
 // Widget 事件处理：从 Android Widget 点击进入特定角色的寝室界面
 const handleWidgetOpenDormitory = (data) => {
@@ -71,7 +77,9 @@ const ANDROID_DESIGN_HEIGHT = 1920
 
 const currentScreen = ref('world-hub')
 const activeWorldBookId = ref('default_world_book')
+const activeWorldBookTags = ref([])
 const activeNarratorId = ref(null)
+const activityEntry = useActivityEntry()
 const uiScale = ref(1)
 const containerStyle = ref({})
 
@@ -195,10 +203,12 @@ const loadedSaveData = ref(null)
 const localFeaturePluginManifests = getLocalFeaturePluginManifests()
 const localFeaturePluginEntries = getLocalFeaturePluginEntries()
 const featurePluginRuntimeState = ref(getFeaturePluginRuntimeState())
+const sharedGameState = ref(getSharedGameState())
 const enabledFeaturePluginManifests = computed(() => {
   return filterEnabledFeaturePluginManifests(
     localFeaturePluginManifests,
     featurePluginRuntimeState.value,
+    activeWorldBookTags.value,
   )
 })
 const startMenuRegistry = computed(() => buildStartMenuRegistry({
@@ -310,7 +320,31 @@ const showMainStorySelector = ref(false)
 const mainStoryBooks = ref([])
 const mainStoryLoading = ref(false)
 
-const openMainStory = async () => {
+const openMainStory = async (payload) => {
+  // 如果有 worldBookId，直接进入游戏
+  if (payload?.worldBookId) {
+    const narratorId = payload.narratorId || null
+    // 查找主线存档
+    const slotId = await getMainStorySaveSlot(payload.worldBookId)
+    if (slotId) {
+      const result = await loadGame(slotId)
+      if (result?.success && result.data) {
+        loadedSaveData.value = result.data
+        activeWorldBookId.value = payload.worldBookId
+        activeNarratorId.value = result.data.game?.narratorId || narratorId
+        currentScreen.value = 'game'
+        return
+      }
+    }
+    // 无存档，开始新游戏
+    loadedSaveData.value = null
+    activeWorldBookId.value = payload.worldBookId
+    activeNarratorId.value = narratorId
+    currentScreen.value = 'game'
+    return
+  }
+
+  // 没有传入 worldBookId，显示选择器
   mainStoryLoading.value = true
   showMainStorySelector.value = true
   try {
@@ -360,6 +394,18 @@ const openCheckIn7 = () => { isCheckIn7Open.value = true }
 const openMailbox = () => { isMailboxOpen.value = true }
 
 const openPhone = () => { currentScreen.value = 'phone' }
+
+const openActivity = (activityId) => {
+  currentScreen.value = 'character-card'
+  activityEntry.requestOpenActivity(activityId)
+}
+
+const openDebugBaseBuilding = () => {
+  setSharedGameStateFlag('base_building_unlocked', true)
+  showDebugBaseBuilding.value = true
+}
+
+const showDebugBaseBuilding = ref(false)
 
 // ===== 全局蓝牙 + 查岗推送（常驻，不随 PhoneScreen 卸载） =====
 const { isBluetoothConnected, bluetoothDeviceName, isSupported: btSupported } = useBluetoothAudio()
@@ -513,20 +559,65 @@ const updateUiScale = () => {
   }
 }
 
+const loadActiveWorldBookTags = async () => {
+  try {
+    activeWorldBookTags.value = await getActiveWorldBookTags()
+  } catch (e) {
+    console.error('[App] Failed to load active world book tags:', e)
+    activeWorldBookTags.value = []
+  }
+}
+
+// 从 worldBookStore 加载实际激活的世界书 ID
+const loadActiveWorldBookId = async () => {
+  try {
+    const bookId = await getActiveWorldBookId()
+    console.log('[App] Loaded active world book ID:', bookId)
+    activeWorldBookId.value = bookId
+  } catch (e) {
+    console.error('[App] Failed to load active world book ID:', e)
+    activeWorldBookId.value = 'default_world_book'
+  }
+}
+
 let unsubscribeFeaturePluginRuntime = null
+let unsubscribeSharedGameState = null
 
 const handleFeaturePluginRuntimeStateChange = (nextState) => {
   featurePluginRuntimeState.value = nextState
 }
 
+const handleSharedGameStateChange = (nextState) => {
+  sharedGameState.value = nextState
+}
+
 onMounted(() => {
   // 数据迁移已在 feature-back-storage 模块加载时自动执行
+
+  // 从 worldBookStore 加载实际激活的世界书 ID
+  void loadActiveWorldBookId()
+
+  // 暴露 window.__avgLLM 供运行时活动 JS 调用
+  initGlobalApi({
+    useGlobalUser,
+    useCardCollection,
+    worldBookIdRef: activeWorldBookId,  // 传入 ref，而不是 value
+  })
 
   updateUiScale()
   window.addEventListener('resize', updateUiScale)
   unsubscribeFeaturePluginRuntime = subscribeFeaturePluginRuntimeState(
     handleFeaturePluginRuntimeStateChange,
   )
+  unsubscribeSharedGameState = subscribeSharedGameState(
+    handleSharedGameStateChange,
+  )
+
+  // 加载当前世界书标签，用于插件条件启用
+  void loadActiveWorldBookTags()
+
+  // 向子组件提供共享状态
+  provide('sharedGameState', sharedGameState.value)
   
   // 添加平台类名到 body
   const body = document.body
@@ -576,6 +667,10 @@ onBeforeUnmount(() => {
     unsubscribeFeaturePluginRuntime()
     unsubscribeFeaturePluginRuntime = null
   }
+  if (unsubscribeSharedGameState) {
+    unsubscribeSharedGameState()
+    unsubscribeSharedGameState = null
+  }
 
   if (isAndroidPlatform.value) {
     document.removeEventListener('visibilitychange', handleAndroidVisibilityChange)
@@ -593,6 +688,10 @@ watch(currentScreen, (screen) => {
   if (screen === 'game') {
     scheduleAndroidLayoutDebug('screen-to-game')
   }
+})
+
+watch(activeWorldBookId, () => {
+  void loadActiveWorldBookTags()
 })
 
 watch(activePluginScreen, (pluginScreen) => {
@@ -775,7 +874,10 @@ watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorage
           @open-dreams="() => currentScreen = 'dreams'"
           @open-timeline="() => currentScreen = 'timeline'"
           @open-evolution-log="() => currentScreen = 'evolution-log'"
-          @open-card-collection="() => currentScreen = 'card-collection'"
+          @open-card-collection="() => currentScreen = 'memento-card'"
+          @open-character-card="() => currentScreen = 'character-card'"
+          @world-book-changed="(bookId) => activeWorldBookId = bookId"
+          @open-activity="openActivity"
           @open-adventure="() => currentScreen = 'adventure-game'"
           @open-narrator="() => currentScreen = 'narrator-manager'"
           @open-plugin="() => currentScreen = 'plugin-manager'"
@@ -788,6 +890,7 @@ watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorage
           @open-book="() => currentScreen = 'book'"
           @open-hourglass="() => currentScreen = 'hourglass'"
           @open-mobius="() => currentScreen = 'mobius'"
+          @open-debug-base="openDebugBaseBuilding"
         />
       </keep-alive>
       <StartScreen
@@ -823,6 +926,13 @@ watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorage
         :coins="0"
         @back="isCheckIn7Open = false"
         @checkin7-result="() => {}"
+      />
+
+      <!-- 基建调试（直接渲染，不走插件路由） -->
+      <BaseBuildingScreen
+        v-if="showDebugBaseBuilding"
+        :world-book-id="activeWorldBookId"
+        @back="showDebugBaseBuilding = false"
       />
 
       <!-- 世界记忆（全屏） -->

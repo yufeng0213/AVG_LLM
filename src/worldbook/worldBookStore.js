@@ -5,6 +5,13 @@ import { DEFAULT_NARRATOR_ID } from '../narrator/narratorStore'
 export const WORLD_BOOK_STORAGE_KEY = 'world_books'
 export const ACTIVE_WORLD_BOOK_KEY = 'active_world_book'
 
+// --- 规范化结果缓存 ---
+let _normalizedCache = null
+let _cacheVersion = 0
+
+// --- 活跃世界书 ID 缓存 ---
+let _activeBookIdCache = null
+
 export const WORLD_BOOK_ENTRY_DEFS = [
   { key: 'overview', label: '世界概述', hint: '一句话说明这个世界最核心的设定。' },
   { key: 'era', label: '时代背景', hint: '故事发生的时代、科技水平与历史阶段。' },
@@ -732,6 +739,7 @@ export const createDefaultWorldBook = () => ({
   title: '默认世界书',
   summary: '主线剧情默认背景设定。',
   isDefault: true,
+  tags: [],
   defaultNarratorId: DEFAULT_NARRATOR_ID,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -784,7 +792,17 @@ export const normalizeWorldBook = (rawBook, index = 0) => {
     openingDialogueMode,
     openingDialogue: hasLegacyDefaultOpening ? [] : normalizedOpeningDialogue,
     relationships: normalizeRelationships(rawBook?.relationships, rawBook?.characters),
+    tags: normalizeWorldbookTags(rawBook?.tags),
   }
+}
+
+const normalizeWorldbookTags = (rawTags) => {
+  if (!Array.isArray(rawTags)) return []
+  return rawTags
+    .map((t) => String(t ?? '').trim().toLowerCase())
+    .filter(Boolean)
+    .filter((t, i, arr) => arr.indexOf(t) === i)
+    .slice(0, 20)
 }
 
 const sortWorldBooks = (books) => {
@@ -817,6 +835,16 @@ export const loadWorldBookTitles = async () => {
     return [createDefaultWorldBook()]
   }
 
+  // 如果主缓存已存在，从中提取轻量数据
+  if (_normalizedCache) {
+    return _normalizedCache.map(b => ({
+      id: b.id,
+      title: b.title,
+      summary: b.summary,
+      isDefault: b.isDefault,
+    }))
+  }
+
   try {
     const parsed = await kvStorage.get(WORLD_BOOK_STORAGE_KEY)
     if (!Array.isArray(parsed) || parsed.length === 0) {
@@ -846,6 +874,29 @@ export const loadWorldBookTitles = async () => {
 export const loadWorldBookSummaries = async () => {
   if (typeof window === 'undefined') {
     return [createDefaultWorldBook()]
+  }
+
+  // 如果主缓存已存在，从中提取轻量摘要
+  if (_normalizedCache) {
+    return _normalizedCache.map(b => ({
+      id: b.id,
+      title: b.title,
+      summary: b.summary,
+      isDefault: b.isDefault,
+      characters: b.characters.map(c => ({
+        id: c.id,
+        name: c.name,
+        nickname: c.nickname,
+        identity: c.identity,
+        portraits: c.portraits,
+        smsAvatar: c.smsAvatar,
+        smsBg: c.smsBg,
+        smsStickers: c.smsStickers,
+        voiceConfig: c.voiceConfig,
+        birthday: c.birthday,
+      })),
+      relationships: b.relationships,
+    }))
   }
 
   try {
@@ -890,13 +941,19 @@ export const loadWorldBooks = async () => {
     return [createDefaultWorldBook()]
   }
 
+  // 命中缓存直接返回
+  if (_normalizedCache) {
+    return _normalizedCache
+  }
+
   try {
     const parsed = await kvStorage.get(WORLD_BOOK_STORAGE_KEY)
-    const normalized = Array.isArray(parsed)
+    _normalizedCache = Array.isArray(parsed)
       ? parsed.map((book, index) => normalizeWorldBook(book, index))
       : []
-
-    return sortWorldBooks(ensureDefaultWorldBook(normalized))
+    _normalizedCache = sortWorldBooks(ensureDefaultWorldBook(_normalizedCache))
+    _cacheVersion++
+    return _normalizedCache
   } catch {
     return [createDefaultWorldBook()]
   }
@@ -905,16 +962,53 @@ export const loadWorldBooks = async () => {
 export const persistWorldBooks = async (books) => {
   if (typeof window === 'undefined') return
   await kvStorage.set(WORLD_BOOK_STORAGE_KEY, books)
+  // 失效缓存：下次 loadWorldBooks 将重新读取并规范化
+  _normalizedCache = null
+  _cacheVersion++
+}
+
+/**
+ * 按 ID 获取单本规范化的世界书，优先使用缓存。
+ */
+export const getNormalizedBook = async (bookId) => {
+  if (typeof window === 'undefined') {
+    return createDefaultWorldBook()
+  }
+
+  // 优先从缓存查找
+  if (_normalizedCache) {
+    const cached = _normalizedCache.find(b => b.id === bookId)
+    if (cached) return cached
+  }
+
+  // 缓存未命中，回退到完整加载
+  const books = await loadWorldBooks()
+  return books.find(b => b.id === bookId) || createDefaultWorldBook()
 }
 
 export const getActiveWorldBookId = async () => {
   if (typeof window === 'undefined') return 'default_world_book'
-  return (await kvStorage.get(ACTIVE_WORLD_BOOK_KEY)) || 'default_world_book'
+  if (_activeBookIdCache !== null) return _activeBookIdCache
+  const id = (await kvStorage.get(ACTIVE_WORLD_BOOK_KEY)) || 'default_world_book'
+  _activeBookIdCache = id
+  return id
 }
 
 export const setActiveWorldBookId = async (bookId) => {
   if (typeof window === 'undefined') return
-  await kvStorage.set(ACTIVE_WORLD_BOOK_KEY, bookId || 'default_world_book')
+  const id = bookId || 'default_world_book'
+  await kvStorage.set(ACTIVE_WORLD_BOOK_KEY, id)
+  _activeBookIdCache = id
+}
+
+export const getActiveWorldBookTags = async () => {
+  try {
+    const activeId = await getActiveWorldBookId()
+    const book = await getNormalizedBook(activeId)
+    return Array.isArray(book?.tags) ? book.tags : []
+  } catch {
+    return []
+  }
 }
 
 export const createNewWorldBook = (books = []) => {
@@ -980,18 +1074,28 @@ export const exportWorldBook = (book) => {
 export const importWorldBook = (jsonString, existingBooks = []) => {
   try {
     const data = JSON.parse(jsonString)
-    
+
     // 验证数据结构
     if (!data.worldBook && !data.title) {
       return { success: false, message: '无效的世界书格式', book: null }
     }
-    
+
     // 支持两种格式：带包装的和不带包装的
     const rawBook = data.worldBook || data
-    
-    // 生成新ID，避免冲突
-    const newId = `world_book_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-    
+
+    // 检查是否使用原有 ID（如果不冲突）
+    const existingIds = new Set(existingBooks.map(b => b.id))
+    const originalId = rawBook._exportedId || rawBook.id
+    let newId
+
+    if (originalId && !existingIds.has(originalId) && !originalId.startsWith('default_')) {
+      // 原有 ID 不冲突，保留使用
+      newId = originalId
+    } else {
+      // 生成新 ID
+      newId = `world_book_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+    }
+
     // 规范化并创建新世界书
     const normalizedBook = normalizeWorldBook({
       ...rawBook,
@@ -1001,7 +1105,7 @@ export const importWorldBook = (jsonString, existingBooks = []) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    
+
     return { success: true, message: `已导入：${normalizedBook.title}`, book: normalizedBook }
   } catch (error) {
     return { success: false, message: `导入失败：${error.message}`, book: null }
@@ -1055,4 +1159,14 @@ export const importWorldBooks = (jsonString, existingBooks = []) => {
   } catch (error) {
     return { success: false, message: `导入失败：${error.message}`, books: [] }
   }
+}
+
+// --- 跨页签同步：当其他页签修改世界书数据时失效缓存 ---
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === `avg_llm_${WORLD_BOOK_STORAGE_KEY}`) {
+      _normalizedCache = null
+      _cacheVersion++
+    }
+  })
 }

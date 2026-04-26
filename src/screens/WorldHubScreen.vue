@@ -6,12 +6,15 @@ import { useGlobalUser } from '../composables/useGlobalUser.js'
 import { useAvatar } from '../../plugins/feature-dormitory/src/composables/useAvatar.js'
 import { useAvatarFrame } from '../../plugins/feature-dormitory/src/composables/useAvatarFrame.js'
 import { getWorldWallpaperCache, setWorldWallpaperCache, getWorldWallpaperUrl, isWorldWallpaperVideo } from '../../plugins/feature-phone/src/phone/composables/usePhoneData.js'
+import { loadWorldBooks, getActiveWorldBookId, setActiveWorldBookId } from '../worldbook/worldBookStore.js'
 import { kvStorage } from '../storage/index.js'
+import { useActivityEntry } from '../features/useActivityEntry.js'
 
 defineOptions({ name: 'WorldHubScreen' })
 
 const emit = defineEmits([
   'back',
+  'world-book-changed',  // 世界书切换事件
   'open-main-story',
   'open-dormitory',
   'open-game-center',
@@ -24,6 +27,8 @@ const emit = defineEmits([
   'open-worldbook',
   'open-world-memory',
   'open-card-collection',
+  'open-character-card',
+  'open-activity',
   'open-adventure',
   'open-narrator',
   'open-plugin',
@@ -40,6 +45,7 @@ const emit = defineEmits([
   'open-dreams',
   'open-timeline',
   'open-evolution-log',
+  'open-debug-base',
 ])
 
 const { username, avatar: globalAvatar, economy } = useGlobalUser()
@@ -47,9 +53,28 @@ const { activeAvatarDataUrl } = useAvatar()
 const { activeFrame, loadFrameDataUrl } = useAvatarFrame()
 
 const showParticleMenu = ref(false)
+const worldBooks = ref([])
+const activeBookTitle = ref('')
+const showWorldBookSelector = ref(false)
 
-function openParticleMenu() {
-  showParticleMenu.value = true
+async function loadActiveBookInfo() {
+  try {
+    const bookId = await getActiveWorldBookId()
+    const books = await loadWorldBooks()
+    worldBooks.value = books
+    const book = books.find(b => b.id === bookId)
+    activeBookTitle.value = book?.title || ''
+  } catch (e) {
+    console.warn('[WorldHub] Failed to load active book info:', e)
+    activeBookTitle.value = ''
+  }
+}
+
+async function selectWorldBook(book) {
+  await setActiveWorldBookId(book.id)
+  activeBookTitle.value = book.title
+  showWorldBookSelector.value = false
+  emit('world-book-changed', book.id)
 }
 
 function openParticle(key) {
@@ -93,11 +118,15 @@ const displayCoins = computed(() => economy.value?.coins ?? 0)
 // 钻石
 const displayCrystals = computed(() => economy.value?.crystals ?? 0)
 
+// 活动入口封面
+const activityEntry = useActivityEntry()
+const activityCover = activityEntry.enabledCover
+
 // 世界壁纸
 const worldWallpaperUrl = ref(null)
 const worldWallpaperIsVideo = ref(false)
 const hasCustomWorldWallpaper = ref(false)
-let worldWallpaperVideoRef = null
+const worldWallpaperVideoRef = ref(null)
 
 const worldHubBackground = computed(() => {
   if (worldWallpaperUrl.value && !worldWallpaperIsVideo.value) {
@@ -140,7 +169,7 @@ async function loadWorldWallpaper() {
 // 视频壁纸加载后自动播放
 async function ensureWorldVideoPlays() {
   await nextTick()
-  const el = worldWallpaperVideoRef?.value
+  const el = worldWallpaperVideoRef.value
   if (el && worldWallpaperIsVideo.value && worldWallpaperUrl.value) {
     try { await el.play() } catch { /* 忽略自动播放限制 */ }
   }
@@ -160,10 +189,14 @@ async function restoreWorldWallpaperDefault() {
 onMounted(async () => {
   await loadWorldWallpaper()
   await loadActiveFrameUrl()
+  await loadActiveBookInfo()
+  await activityEntry.load()
 })
 
-// keep-alive 激活时恢复视频播放
-onActivated(() => {
+// keep-alive 激活时恢复视频播放 + 刷新活动封面
+onActivated(async () => {
+  activityEntry.reset()
+  await activityEntry.load()
   if (!worldWallpaperIsVideo.value) return
 
   let attempts = 0
@@ -203,17 +236,24 @@ onActivated(() => {
 
     <!-- 顶部状态栏 -->
     <header class="world-hub-header">
-      <div class="world-hub-avatar-wrap" @click="emit('open-avatar')">
-        <div class="world-hub-avatar">
-          <img v-if="displayAvatar" :src="displayAvatar" alt="头像" class="world-hub-avatar-img" />
-          <span v-else class="world-hub-avatar-placeholder">👤</span>
-          <img
-            v-if="displayFrameUrl"
-            :src="displayFrameUrl"
-            alt=""
-            class="world-hub-avatar-frame-img"
-          />
+      <div class="world-hub-avatar-column">
+        <div class="world-hub-avatar-wrap" @click="emit('open-avatar')">
+          <div class="world-hub-avatar">
+            <img v-if="displayAvatar" :src="displayAvatar" alt="头像" class="world-hub-avatar-img" />
+            <span v-else class="world-hub-avatar-placeholder">👤</span>
+            <img
+              v-if="displayFrameUrl"
+              :src="displayFrameUrl"
+              alt=""
+              class="world-hub-avatar-frame-img"
+            />
+          </div>
         </div>
+        <button class="world-hub-book-btn" @click="showWorldBookSelector = true">
+          <span class="book-btn-icon">📚</span>
+          <span class="book-btn-text">{{ activeBookTitle || '选择世界' }}</span>
+          <span class="book-btn-arrow">▾</span>
+        </button>
       </div>
 
       <div class="world-hub-top-bar">
@@ -232,6 +272,13 @@ onActivated(() => {
 
         <button v-if="hasCustomWorldWallpaper" type="button" class="world-hub-wp-reset-btn" @click="restoreWorldWallpaperDefault" aria-label="恢复默认壁纸">
           <span class="settings-icon">🖼️</span>
+        </button>
+        <button v-if="activityCover" type="button" class="world-hub-activity-btn" @click="emit('open-activity', activityCover?.id)" :title="activityCover.name" :style="activityCover.coverGradient ? { background: `linear-gradient(135deg, ${activityCover.coverGradient.join(', ')})` } : {}">
+          <span v-if="activityCover.coverImage" class="activity-btn-img-wrap">
+            <img :src="activityCover.coverImage" class="activity-btn-img" :alt="activityCover.name" />
+          </span>
+          <span v-else class="activity-btn-icon">{{ activityCover.bannerIcon }}</span>
+          <span class="activity-btn-badge"></span>
         </button>
         <button type="button" class="world-hub-settings-btn" @click="emit('open-settings')" aria-label="设置">
           <span class="settings-icon">⚙️</span>
@@ -292,7 +339,7 @@ onActivated(() => {
 
     <!-- 底部主按钮 -->
     <footer class="world-hub-footer">
-      <button type="button" class="hub-primary-btn" @click="emit('open-main-story')">
+      <button type="button" class="hub-primary-btn" @click="emit('open-main-story', { worldBookId: worldBooks.find(b => b.title === activeBookTitle)?.id })">
         <span class="hub-primary-icon">📖</span>
         <span class="hub-primary-label">主线</span>
       </button>
@@ -323,8 +370,12 @@ onActivated(() => {
           <span class="hub-sec-label">演化</span>
         </button>
         <button type="button" class="hub-secondary-btn" @click="emit('open-card-collection')">
-          <span class="hub-sec-icon">🃏</span>
-          <span class="hub-sec-label">卡牌</span>
+          <span class="hub-sec-icon">📇</span>
+          <span class="hub-sec-label">回忆卡</span>
+        </button>
+        <button type="button" class="hub-secondary-btn" @click="emit('open-character-card')">
+          <span class="hub-sec-icon">🎴</span>
+          <span class="hub-sec-label">角色卡</span>
         </button>
         <button type="button" class="hub-secondary-btn" @click="emit('open-narrator')">
           <span class="hub-sec-icon">🎙️</span>
@@ -333,6 +384,10 @@ onActivated(() => {
         <button type="button" class="hub-secondary-btn" @click="emit('open-plugin')">
           <span class="hub-sec-icon">🔌</span>
           <span class="hub-sec-label">插件</span>
+        </button>
+        <button type="button" class="hub-secondary-btn hub-debug-btn" @click="emit('open-debug-base')" title="调试: 解锁基建">
+          <span class="hub-sec-icon">🛠️</span>
+          <span class="hub-sec-label">基建调试</span>
         </button>
       </div>
     </footer>
@@ -374,6 +429,35 @@ onActivated(() => {
               <span class="particle-desc">流逝的沙粒时光</span>
             </div>
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 世界书选择器 -->
+    <div v-if="showWorldBookSelector" class="world-book-selector-overlay" @click.self="showWorldBookSelector = false">
+      <div class="world-book-selector-dialog">
+        <div class="selector-header">
+          <h3 class="selector-title">选择世界书</h3>
+          <button class="selector-close" @click="showWorldBookSelector = false">✕</button>
+        </div>
+        <div class="selector-body">
+          <p v-if="worldBooks.length === 0" class="selector-empty">暂无世界书，请先在世界书中创建</p>
+          <div v-else class="selector-list">
+            <div
+              v-for="book in worldBooks"
+              :key="book.id"
+              class="selector-book-item"
+              :class="{ active: book.title === activeBookTitle }"
+              @click="selectWorldBook(book)"
+            >
+              <span class="book-item-icon">📖</span>
+              <div class="book-item-info">
+                <span class="book-item-title">{{ book.title }}</span>
+                <span class="book-item-summary">{{ book.summary?.slice(0, 40) || '暂无概述' }}</span>
+              </div>
+              <span v-if="book.title === activeBookTitle" class="book-item-check">✓</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

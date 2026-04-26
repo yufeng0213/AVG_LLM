@@ -1,0 +1,29 @@
+{
+  "id": "base-building",
+  "name": "基地建设",
+  "description": "LLM驱动的基地资源管理与设施建造系统",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "enabledByDefault": true,
+  "requiredWorldbookTags": ["post-apocalyptic", "末日", "废土", "apocalyptic"],
+  "menu": {
+    "key": "base-building",
+    "title": "基地建设",
+    "icon": "🏗️",
+    "order": 500
+  },
+  "entry": {
+    "type": "route",
+    "module": "feature-base-building",
+    "route": "base-building"
+  },
+  "action": {
+    "type": "screen",
+    "screen": "base-building"
+  },
+  "storage": {
+    "namespace": "base-building"
+  },
+  "capabilities": ["storage", "llm", "worldbook"]
+}

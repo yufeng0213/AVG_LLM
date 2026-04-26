@@ -1,5 +1,5 @@
 import { validateFeaturePluginManifest } from '../../packages/plugin-sdk/src/index.js'
-import cardCollectionManifest from '../../plugins/feature-card-collection/plugin.json'
+import cardCollectionManifest from '../../plugins/feature-memento-card/plugin.json'
 import narratorManagerManifest from '../../plugins/feature-narrator-manager/plugin.json'
 import pluginManagerManifest from '../../plugins/feature-plugin-manager/plugin.json'
 import settingsManifest from '../../plugins/feature-settings/plugin.json'
@@ -27,6 +27,8 @@ import mascotManifest from '../../plugins/feature-mascot/plugin.json'
 import characterScheduleManifest from '../../plugins/feature-character-schedule/plugin.json'
 import worldMemoryManifest from '../../plugins/feature-world-memory/plugin.json'
 import characterStateManifest from '../../plugins/feature-character-state/plugin.json'
+import characterCardManifest from '../../plugins/feature-character-card/plugin.json'
+import baseBuildingManifest from '../../plugins/feature-base-building/plugin.json'
 
 const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   loadSaveManifest,
@@ -57,6 +59,8 @@ const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   characterScheduleManifest,
   worldMemoryManifest,
   characterStateManifest,
+  baseBuildingManifest,
+  characterCardManifest,
 ]
 
 export const getLocalFeaturePluginManifests = () => {

@@ -254,6 +254,35 @@
           </div>
         </section>
 
+        <!-- 世界书标签 - 可折叠 -->
+        <section class="collapsible-block lore-entry-block">
+          <button
+            type="button"
+            class="collapsible-trigger"
+            :class="{ expanded: tagsOpen }"
+            @click="tagsOpen = !tagsOpen"
+          >
+            <span class="collapse-title">世界书标签</span>
+            <span class="collapse-arrow">▼</span>
+          </button>
+          <div v-if="tagsOpen" class="collapsible-content lore-entry-content">
+            <p class="setting-hint">
+              用于插件系统的条件启用。例如：末日、废土、post-apocalyptic 等。
+            </p>
+            <label class="setting-field">
+              <span class="setting-label">标签（每行一个）</span>
+              <textarea
+                :value="tagsText"
+                class="setting-textarea"
+                rows="5"
+                placeholder="post-apocalyptic&#10;末日&#10;废土"
+                spellcheck="false"
+                @input="updateTagsText($event.target.value)"
+              ></textarea>
+            </label>
+          </div>
+        </section>
+
         <!-- 事件导演器 - 可折叠 -->
         <section class="collapsible-block lore-entry-block">
           <button

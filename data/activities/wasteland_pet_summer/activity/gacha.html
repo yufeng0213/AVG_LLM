@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抽卡 - 废土娇宠·夏日祭</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    .gacha-page {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      color: #e8f4ff;
+    }
+
+    /* 背景图 */
+    .gacha-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    /* 装饰光晕 */
+    .gacha-glow {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(72,209,204,0.3) 0%, transparent 70%);
+      animation: glow-float 6s ease-in-out infinite;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .gacha-glow.top { top: -100px; left: 50%; transform: translateX(-50%); }
+    .gacha-glow.bottom { bottom: -50px; right: -50px; animation-delay: -3s; }
+
+    @keyframes glow-float {
+      0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.6; }
+      50% { transform: translateX(-50%) scale(1.2); opacity: 0.8; }
+    }
+
+    /* 漂浮粒子 */
+    .particles {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: rgba(72,209,204,0.6);
+      border-radius: 50%;
+      animation: particle-float 8s linear infinite;
+    }
+
+    @keyframes particle-float {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-20px) rotate(360deg); opacity: 0; }
+    }
+
+    /* 内容层 */
+    .gacha-content {
+      position: absolute;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 60px 20px 80px 20px;
+      width: 100%;
+      max-width: 400px;
+      left: 50%;
+      transform: translateX(-50%);
+      height: 100%;
+    }
+
+    /* ===== 标题 ===== */
+    .gacha-title {
+      font-size: 64px;
+      font-weight: 800;
+      color: #e8f4ff;
+      text-shadow: 0 0 30px rgba(72,209,204,0.6), 0 4px 12px rgba(0,0,0,0.4);
+      letter-spacing: 8px;
+      margin-bottom: 16px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .gacha-subtitle {
+      font-size: 14px;
+      color: rgba(232,244,255,0.85);
+      margin-bottom: 40px;
+      text-align: center;
+      line-height: 1.8;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 12px 20px;
+      backdrop-filter: blur(4px);
+    }
+
+    .gacha-subtitle .name {
+      color: #48d1cc;
+      font-weight: 700;
+    }
+
+    .gacha-subtitle .sr {
+      color: #48d1cc;
+      font-weight: 600;
+    }
+
+    .gacha-subtitle .ssr {
+      color: #fbbf24;
+      font-weight: 600;
+    }
+
+    /* ===== 资源和保底 ===== */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      z-index: 3;
+      background: rgba(255,255,255,0.15);
+      border-bottom: 1px solid rgba(72,209,204,0.2);
+      padding: 12px 20px;
+      backdrop-filter: blur(8px);
+    }
+
+    .top-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .top-icon {
+      font-size: 18px;
+    }
+
+    .top-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #48d1cc;
+      min-width: 40px;
+    }
+
+    .top-label {
+      font-size: 14px;
+      color: rgba(232,244,255,0.7);
+    }
+
+    .top-divider {
+      width: 1px;
+      height: 24px;
+      background: rgba(72,209,204,0.3);
+    }
+
+    .pity-mini {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .pity-mini-track {
+      width: 80px;
+      height: 6px;
+      background: rgba(72,209,204,0.2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .pity-mini-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #48d1cc, #58e0da);
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    .pity-mini-text {
+      font-size: 14px;
+      color: rgba(232,244,255,0.7);
+    }
+
+    /* ===== 抽卡按钮 ===== */
+    .gacha-buttons {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      max-width: 360px;
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+    }
+
+    .pull-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pull-btn {
+      width: 100%;
+      padding: 14px 0;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 4px;
+    }
+
+    /* 按钮背景层 */
+    .pull-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #48d1cc 0%, #3bb8b4 100%);
+      z-index: 0;
+      border-radius: 8px;
+    }
+
+    /* 按钮边框光晕 */
+    .pull-btn::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(72,209,204,0.6), rgba(72,209,204,0.2));
+      z-index: -1;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .pull-btn:hover::after {
+      opacity: 1;
+    }
+
+    .pull-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(72,209,204,0.4);
+    }
+
+    .pull-btn:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .pull-btn:disabled {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .pull-btn:disabled::before {
+      background: rgba(72,209,204,0.3);
+    }
+
+    .pull-btn:disabled::after {
+      opacity: 0;
+    }
+
+    .pull-btn:disabled .btn-text {
+      opacity: 0.5;
+    }
+
+    .pull-btn .btn-text {
+      position: relative;
+      z-index: 1;
+    }
+
+    .pull-cost {
+      font-size: 13px;
+      color: rgba(232,244,255,0.5);
+    }
+
+    .pull-cost .num {
+      color: #48d1cc;
+      font-weight: 600;
+    }
+
+    /* ===== 抽卡过程动画 ===== */
+    .pull-animation {
+      position: fixed;
+      inset: 0;
+      background: rgba(240,249,255,0.95);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pull-animation.active {
+      display: flex;
+    }
+
+    .pull-animation .glow-ring {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(72,209,204,0.8) 0%, transparent 60%);
+      animation: ring-pulse 1s ease-out infinite;
+    }
+
+    @keyframes ring-pulse {
+      0% { transform: scale(0.5); opacity: 1; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+
+    .pull-animation .sparkles {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+    }
+
+    .pull-animation .sparkle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #48d1cc;
+      border-radius: 50%;
+      animation: sparkle-burst 1s ease-out forwards;
+    }
+
+    @keyframes sparkle-burst {
+      0% { transform: translate(0,0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+    }
+
+    /* ===== 抽卡结果 ===== */
+    .result-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(240,249,255,0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .result-overlay.active {
+      display: flex;
+    }
+
+    .result-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #48d1cc;
+      margin-bottom: 24px;
+      text-shadow: 0 0 30px rgba(72,209,204,0.5);
+      animation: title-shine 2s ease-in-out infinite;
+    }
+
+    @keyframes title-shine {
+      0%, 100% { text-shadow: 0 0 30px rgba(72,209,204,0.5); }
+      50% { text-shadow: 0 0 50px rgba(72,209,204,0.8), 0 0 80px rgba(72,209,204,0.4); }
+    }
+
+    /* ===== SSR/SR 全屏单卡展示 ===== */
+    .card-reveal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.95) 100%);
+    }
+
+    .card-reveal-overlay.active {
+      display: flex;
+    }
+
+    .card-reveal-bg-effects {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .card-reveal-ray {
+      position: absolute;
+      width: 2px;
+      height: 200%;
+      background: linear-gradient(to bottom, transparent, rgba(255,215,0,0.3), transparent);
+      top: -50%;
+      left: 50%;
+      transform-origin: center center;
+      animation: ray-spin 3s linear infinite;
+    }
+
+    @keyframes ray-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .card-reveal-sparkle {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      animation: sparkle-float 2s ease-in-out infinite;
+    }
+
+    @keyframes sparkle-float {
+      0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
+      50% { opacity: 1; transform: translateY(-30px) scale(1); }
+    }
+
+    .card-reveal-card {
+      position: relative;
+      width: 280px;
+      height: 400px;
+      border-radius: 16px;
+      overflow: hidden;
+      animation: card-reveal-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      transform: scale(0) rotate(-10deg);
+      opacity: 0;
+    }
+
+    @keyframes card-reveal-in {
+      0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+      60% { transform: scale(1.1) rotate(2deg); opacity: 1; }
+      80% { transform: scale(1.05) rotate(0deg); }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    .card-reveal-card.SR {
+      background: linear-gradient(135deg, #e8f4ff 0%, #c8e0f0 50%, #d4eef9 100%);
+      border: 4px solid #48d1cc;
+      box-shadow: 0 0 60px rgba(72,209,204,0.6), 0 0 120px rgba(72,209,204,0.3);
+    }
+
+    .card-reveal-card.SSR {
+      background: linear-gradient(135deg, #fff5e6 0%, #ffd700 20%, #ffe4c4 50%, #fff0d0 100%);
+      border: 5px solid #ffd700;
+      box-shadow: 0 0 80px rgba(255,215,0,0.8), 0 0 160px rgba(255,215,0,0.4);
+    }
+
+    .card-reveal-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card-reveal-rarity {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 8px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      animation: rarity-pulse 1s ease-in-out infinite;
+    }
+
+    .card-reveal-rarity.SR {
+      color: #48d1cc;
+    }
+
+    .card-reveal-rarity.SSR {
+      color: #ffd700;
+      text-shadow: 0 0 20px rgba(255,215,0,0.8), 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    @keyframes rarity-pulse {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.05); }
+    }
+
+    .card-reveal-name {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+      white-space: nowrap;
+    }
+
+    .card-reveal-close-hint {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      animation: hint-fade 2s ease-in-out infinite;
+    }
+
+    @keyframes hint-fade {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.7; }
+    }
+
+    .result-cards {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 700px;
+    }
+
+    .result-card {
+      width: 100px;
+      height: 140px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: card-fly-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      opacity: 0;
+      transform: translateY(100px) scale(0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 卡片内部光效 */
+    .result-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%);
+      z-index: 0;
+    }
+
+    .result-card.SR {
+      background: linear-gradient(135deg, #e8f4ff 0%, #d4eef9 100%);
+      border: 2px solid rgba(72,209,204,0.6);
+      box-shadow: 0 8px 24px rgba(72,209,204,0.3);
+    }
+
+    .result-card.SSR {
+      background: linear-gradient(135deg, #fff5e6 0%, #ffe4c4 100%);
+      border: 3px solid rgba(245,158,11,0.7);
+      box-shadow: 0 8px 32px rgba(245,158,11,0.5);
+    }
+
+    /* SSR特殊光效 */
+    .result-card.SSR::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 16px;
+      background: linear-gradient(45deg, transparent, rgba(245,158,11,0.3), transparent);
+      animation: ssr-glow 1.5s linear infinite;
+      z-index: -1;
+    }
+
+    @keyframes ssr-glow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes card-fly-in {
+      0% { opacity: 0; transform: translateY(100px) scale(0.5); }
+      60% { opacity: 1; transform: translateY(-20px) scale(1.1); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .result-card .card-icon {
+      font-size: 36px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .result-card .card-rarity {
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .result-card.SR .card-rarity {
+      color: #48d1cc;
+    }
+
+    .result-card.SSR .card-rarity {
+      color: #f59e0b;
+      text-shadow: 0 0 10px rgba(245,158,11,0.5);
+    }
+
+    /* 金币奖励样式 */
+    .result-card.coin {
+      background: linear-gradient(135deg, #fffbe6 0%, #ffe9b3 100%);
+      border: 2px solid rgba(245,158,11,0.5);
+      box-shadow: 0 6px 20px rgba(245,158,11,0.25);
+    }
+
+    .result-card.coin .card-rarity {
+      color: #f59e0b;
+    }
+
+    /* 钻石奖励样式 */
+    .result-card.crystal {
+      background: linear-gradient(135deg, #e6f0ff 0%, #cce0ff 100%);
+      border: 2px solid rgba(99,102,241,0.5);
+      box-shadow: 0 6px 20px rgba(99,102,241,0.25);
+    }
+
+    .result-card.crystal .card-rarity {
+      color: #6366f1;
+    }
+
+    .result-card .card-char {
+      font-size: 12px;
+      color: rgba(26,74,106,0.6);
+      margin-top: 4px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .close-hint {
+      font-size: 14px;
+      color: rgba(26,74,106,0.5);
+      margin-top: 32px;
+      animation: hint-fade 2s ease-in-out infinite;
+    }
+
+    @keyframes hint-fade {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 0.8; }
+    }
+
+    /* Toast */
+    .wa-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 9999;
+      animation: toast-in 0.2s ease;
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+      to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="gacha-page">
+    <!-- 背景图 -->
+    <img class="gacha-bg" src="./bg.png" alt="" />
+
+    <!-- 装饰光晕 -->
+    <div class="gacha-glow top"></div>
+    <div class="gacha-glow bottom"></div>
+
+    <!-- 漂浮粒子 -->
+    <div class="particles" id="particles"></div>
+
+    <!-- 内容 -->
+    <div class="gacha-content">
+      <!-- 顶部状态栏 -->
+      <div class="top-bar">
+        <div class="top-item">
+          <span class="top-icon">💎</span>
+          <span class="top-value" id="crystal-count">0</span>
+        </div>
+        <div class="top-divider"></div>
+        <div class="top-item">
+          <span class="top-label">已抽</span>
+          <span class="top-value" id="pull-count">0</span>
+        </div>
+        <div class="top-divider"></div>
+        <div class="pity-mini">
+          <div class="pity-mini-track">
+            <div class="pity-mini-fill" id="pity-fill" style="width: 0%"></div>
+          </div>
+          <span class="pity-mini-text">保底<span id="pity-remain">60</span></span>
+        </div>
+      </div>
+
+      <!-- 标题 -->
+      <div class="gacha-title">限定卡池</div>
+      <div class="gacha-subtitle">
+        <span class="name">夏日祭·陆野</span><span class="sr">（SR）</span>、
+        <span class="name">夏日祭·祁朔</span><span class="sr">（SR）</span>、
+        <span class="name">夏日祭·阿诺</span><span class="ssr">（SSR）</span>、
+        <span class="name">夏日祭·白屿</span><span class="ssr">（SSR）</span>
+        概率UP
+      </div>
+
+      <!-- 按钮 -->
+      <div class="gacha-buttons">
+        <div class="pull-group">
+          <button class="pull-btn" id="pull-single">
+            <span class="btn-text">单抽</span>
+          </button>
+          <div class="pull-cost"><span class="num">300</span> 💎</div>
+        </div>
+        <div class="pull-group">
+          <button class="pull-btn" id="pull-ten">
+            <span class="btn-text">十连</span>
+          </button>
+          <div class="pull-cost"><span class="num">2700</span> 💎</div>
+        </div>
+      </div>
+    </div>
+
+  <!-- 抽卡过程动画 -->
+  <div class="pull-animation" id="pull-animation">
+    <div class="glow-ring"></div>
+    <div class="sparkles" id="sparkles"></div>
+  </div>
+
+  <!-- SSR/SR 单卡全屏展示 -->
+  <div class="card-reveal-overlay" id="card-reveal-overlay">
+    <div class="card-reveal-bg-effects" id="card-reveal-effects"></div>
+    <div class="card-reveal-card" id="card-reveal-card">
+      <div class="card-reveal-name" id="card-reveal-name"></div>
+      <img id="card-reveal-image" src="" alt="" />
+      <div class="card-reveal-rarity" id="card-reveal-rarity"></div>
+    </div>
+    <div class="card-reveal-close-hint">点击继续</div>
+  </div>
+
+  <!-- 结果 -->
+  <div class="result-overlay" id="result-overlay">
+    <div class="result-title">✨ 抽卡结果</div>
+    <div class="result-cards" id="result-cards"></div>
+    <div class="close-hint">点击关闭</div>
+  </div>
+
+  <div id="waToast"></div>
+
+  <script>
+    ;(function() {
+      var storage = window.__avgLLM_storage
+      var economy = window.__avgLLM_economy
+      var updateEconomy = window.__avgLLM_updateEconomy
+      var activity = window.__avgLLM_activity
+
+      function call(mod, fn, args, worldBookId) {
+        return new Promise(function(resolve, reject) {
+          var nextId = window.__gacha_callId = (window.__gacha_callId || 1) + 1
+          var pending = window.__gacha_pending = window.__gacha_pending || {}
+          pending[nextId] = { resolve: resolve, reject: reject }
+          var msg = { __avgLLM: true, id: nextId, mod: mod, fn: fn, args: args }
+          // 如果指定了 worldBookId，传递给 iframe bridge
+          if (worldBookId) msg.worldBookId = worldBookId
+          parent.postMessage(msg, '*')
+        })
+      }
+
+      // 从活动配置读取 gacha 设置
+      function loadGachaConfig() {
+        var config = window.__avgLLM_activityData?.config?.gacha
+        if (!config) {
+          console.warn('[Gacha] 未找到 gacha 配置，使用默认值')
+          return null
+        }
+        console.log('[Gacha] 加载配置:', config)
+        return config
+      }
+
+      // 根据配置生成卡池
+      // 活动ID（从配置获取，用于解析图片路径）
+      var ACTIVITY_ID = null
+      // 活动绑定的世界书ID（用于卡牌存储）
+      var ACTIVITY_WORLD_BOOK_ID = 'default_world_book'
+
+      function buildGachaCards(config) {
+        if (!config || !config.cards) return []
+
+        // 从配置获取 activityId，如果没有则尝试从 URL 推断
+        if (!ACTIVITY_ID && config.activityId) {
+          ACTIVITY_ID = config.activityId
+        }
+
+        if (!ACTIVITY_ID) {
+          console.warn('[Gacha] 无法获取 activityId，使用默认路径')
+          return []
+        }
+
+        // 检测当前环境：Electron 用 activity://，Web 用 /data/activities/
+        // Android/Capacitor: 如果有 __PORTRAIT_BLOBURLS__ 或 __PORTRAIT_DATAURIS__，使用对应 URL
+        var portraitBlobUrls = window.__PORTRAIT_BLOBURLS__ || null
+        var portraitDataUris = window.__PORTRAIT_DATAURIS__ || null
+        var isElectron = window.location.href.startsWith('activity://') || window.location.protocol === 'activity:'
+        var isBlobUrl = window.location.href.startsWith('blob:')
+        var basePath = isElectron
+          ? 'activity://' + ACTIVITY_ID + '/'
+          : '/data/activities/' + ACTIVITY_ID + '/'
+
+        console.log('[Gacha] buildGachaCards - activityId:', ACTIVITY_ID, 'basePath:', basePath, 'hasPortraitBlobUrls:', !!portraitBlobUrls)
+
+        return config.cards.map(function(c) {
+          // 从角色名取首字母缩写作为 icon（简化的 emoji）
+          var iconMap = { '陆野': '🌴', '祁朔': '🌊', '阿诺': '🎆', '白屿': '☀️' }
+          // 构建图片路径
+          var imagePath
+          // Android/Capacitor blob URL 环境：优先使用注入的 portrait blob URL
+          if (isBlobUrl && portraitBlobUrls && portraitBlobUrls[c.character]) {
+            imagePath = portraitBlobUrls[c.character]
+          } else if (isBlobUrl && portraitDataUris && portraitDataUris[c.character]) {
+            // 兼容旧版
+            imagePath = portraitDataUris[c.character]
+          } else if (c.image && c.image.startsWith('./')) {
+            imagePath = basePath + c.image.replace('./', '')
+          } else if (!c.image) {
+            imagePath = basePath + 'activity/portraits/' + c.character + '.png'
+          } else {
+            imagePath = c.image
+          }
+          return {
+            cardId: c.cardId,
+            name: c.name,
+            char: c.character,
+            rarity: c.rarity,
+            icon: iconMap[c.character] || '🎴',
+            image: imagePath
+          }
+        })
+      }
+
+      // 初始化配置
+      var GACHA_CONFIG = loadGachaConfig()
+      var GACHA_CARDS = buildGachaCards(GACHA_CONFIG)
+      // 默认低概率，等待配置加载
+      var RATES = GACHA_CONFIG?.rates || { SR: 5, SSR: 1 }
+      var COST_SINGLE = GACHA_CONFIG?.cost?.crystals || 300
+      var COST_TEN = GACHA_CONFIG?.pull10Cost?.crystals || 2700
+      var PITY_MAX = 60
+
+      // 奖励配置 - 默认以金币为主
+      var REWARD_COINS = { type: 'coins', name: '金币', icon: '🪙', min: 5, max: 10, rate: 80 }
+      var REWARD_CRYSTALS = { type: 'crystals', name: '钻石', icon: '💎', min: 5, max: 10, rate: 14 }
+      if (GACHA_CONFIG?.rewards?.coins) {
+        REWARD_COINS = {
+          type: 'coins',
+          name: '金币',
+          icon: '🪙',
+          min: GACHA_CONFIG.rewards.coins.min || 5,
+          max: GACHA_CONFIG.rewards.coins.max || 10,
+          rate: GACHA_CONFIG.rewards.coins.rate || 60
+        }
+      }
+      if (GACHA_CONFIG?.rewards?.crystals) {
+        REWARD_CRYSTALS = {
+          type: 'crystals',
+          name: '钻石',
+          icon: '💎',
+          min: GACHA_CONFIG.rewards.crystals.min || 5,
+          max: GACHA_CONFIG.rewards.crystals.max || 10,
+          rate: GACHA_CONFIG.rewards.crystals.rate || 10
+        }
+      }
+
+      // 计算卡牌总概率
+      var CARD_RATE_TOTAL = RATES.SR + RATES.SSR
+      var COIN_RATE = REWARD_COINS?.rate || 0
+      var CRYSTAL_RATE = REWARD_CRYSTALS?.rate || 0
+      // 总概率应为100，动态调整
+      var TOTAL_RATE = CARD_RATE_TOTAL + COIN_RATE + CRYSTAL_RATE
+      if (TOTAL_RATE !== 100) {
+        console.warn('[Gacha] 总概率不为100:', TOTAL_RATE, '，将按比例调整')
+      }
+
+      var GACHA_STORAGE_KEY = 'gacha_wasteland_pet_summer_'
+      var pullCount = 0
+      var spentCrystals = 0
+      var configLoaded = false  // 配置是否加载完成
+
+      // 创建漂浮粒子
+      function createParticles() {
+        var container = document.getElementById('particles')
+        for (var i = 0; i < 20; i++) {
+          var p = document.createElement('div')
+          p.className = 'particle'
+          p.style.left = Math.random() * 100 + '%'
+          p.style.animationDelay = Math.random() * 8 + 's'
+          p.style.opacity = 0.3 + Math.random() * 0.4
+          container.appendChild(p)
+        }
+      }
+
+      // 创建爆散粒子
+      function createSparkles() {
+        var container = document.getElementById('sparkles')
+        container.innerHTML = ''
+        for (var i = 0; i < 12; i++) {
+          var s = document.createElement('div')
+          s.className = 'sparkle'
+          var angle = (i / 12) * 360
+          var dist = 100 + Math.random() * 50
+          s.style.left = '50%'
+          s.style.top = '50%'
+          s.style.setProperty('--tx', (Math.cos(angle * Math.PI / 180) * dist) + 'px')
+          s.style.setProperty('--ty', (Math.sin(angle * Math.PI / 180) * dist) + 'px')
+          s.style.animationDelay = '0s'
+          container.appendChild(s)
+        }
+      }
+
+      function init() {
+        createParticles()
+        loadState()
+
+        document.getElementById('pull-single').addEventListener('click', function() { doPull(1) })
+        document.getElementById('pull-ten').addEventListener('click', function() { doPull(10) })
+        document.getElementById('result-overlay').addEventListener('click', closeResult)
+        document.getElementById('card-reveal-overlay').addEventListener('click', closeResult)
+
+        var orig = window.__avgLLM_updateEconomy
+        window.__avgLLM_updateEconomy = function(v) {
+          orig(v)
+          updateUI()
+        }
+
+        // 初始禁用按钮，等待配置加载
+        updateButtonsLoading(true)
+
+        // 检查是否已有配置（配置可能在 gacha.html 加载前就已接收）
+        if (window.__avgLLM_activityData?.config) {
+          console.log('[Gacha] 发现已有配置:', window.__avgLLM_activityData.config)
+          applyConfig(window.__avgLLM_activityData.config)
+        }
+
+        // 监听配置更新事件
+        window.addEventListener('avgLLM_activityConfig', function(e) {
+          console.log('[Gacha] 收到配置更新:', e.detail)
+          applyConfig(e.detail)
+        })
+
+        // 初始更新标题
+        updateGachaTitle()
+      }
+
+      function updateButtonsLoading(loading) {
+        var pullSingleEl = document.getElementById('pull-single')
+        var pullTenEl = document.getElementById('pull-ten')
+        if (pullSingleEl) {
+          pullSingleEl.disabled = loading
+          pullSingleEl.querySelector('.btn-text').textContent = loading ? '加载中...' : '单抽'
+        }
+        if (pullTenEl) {
+          pullTenEl.disabled = loading
+          pullTenEl.querySelector('.btn-text').textContent = loading ? '加载中...' : '十连'
+        }
+      }
+
+      function applyConfig(config) {
+        // 先设置 activityId
+        if (config.activityId) {
+          ACTIVITY_ID = config.activityId
+          console.log('[Gacha] 设置 activityId:', ACTIVITY_ID)
+        }
+
+        // 设置活动绑定的世界书ID
+        if (config.worldBookId) {
+          ACTIVITY_WORLD_BOOK_ID = config.worldBookId
+          console.log('[Gacha] 设置 worldBookId:', ACTIVITY_WORLD_BOOK_ID)
+        }
+
+        GACHA_CONFIG = config.gacha
+        GACHA_CARDS = buildGachaCards(GACHA_CONFIG)
+        RATES = GACHA_CONFIG?.rates || { SR: 25, SSR: 5 }
+        COST_SINGLE = GACHA_CONFIG?.cost?.crystals || 300
+        COST_TEN = GACHA_CONFIG?.pull10Cost?.crystals || 2700
+
+        // 更新奖励配置
+        if (GACHA_CONFIG?.rewards?.coins) {
+          REWARD_COINS = {
+            type: 'coins',
+            name: '金币',
+            icon: '🪙',
+            min: GACHA_CONFIG.rewards.coins.min || 5,
+            max: GACHA_CONFIG.rewards.coins.max || 10,
+            rate: GACHA_CONFIG.rewards.coins.rate || 60
+          }
+        }
+        if (GACHA_CONFIG?.rewards?.crystals) {
+          REWARD_CRYSTALS = {
+            type: 'crystals',
+            name: '钻石',
+            icon: '💎',
+            min: GACHA_CONFIG.rewards.crystals.min || 5,
+            max: GACHA_CONFIG.rewards.crystals.max || 10,
+            rate: GACHA_CONFIG.rewards.crystals.rate || 10
+          }
+        }
+
+        // 重算总概率
+        CARD_RATE_TOTAL = RATES.SR + RATES.SSR
+        COIN_RATE = REWARD_COINS?.rate || 0
+        CRYSTAL_RATE = REWARD_CRYSTALS?.rate || 0
+        TOTAL_RATE = CARD_RATE_TOTAL + COIN_RATE + CRYSTAL_RATE
+
+        configLoaded = true
+        console.log('[Gacha] 配置应用完成:', {
+          activityId: ACTIVITY_ID,
+          cards: GACHA_CARDS.length,
+          rates: RATES,
+          rewards: { coins: COIN_RATE, crystals: CRYSTAL_RATE },
+          totalRate: TOTAL_RATE
+        })
+
+        // 更新 UI，启用按钮
+        updateButtonsLoading(false)
+        updateGachaTitle()
+        updateUI()
+      }
+
+      function updateGachaTitle() {
+        var titleEl = document.querySelector('.gacha-title')
+        var subtitleEl = document.querySelector('.gacha-subtitle')
+        if (titleEl && GACHA_CONFIG?.name) {
+          titleEl.textContent = GACHA_CONFIG.name
+        }
+        if (subtitleEl && GACHA_CARDS.length > 0) {
+          var names = GACHA_CARDS.map(function(c) {
+            var cls = c.rarity === 'SSR' ? 'ssr' : 'sr'
+            return '<span class="name">夏日祭·' + c.char + '</span><span class="' + cls + '">（' + c.rarity + '）</span>'
+          }).join('、')
+          subtitleEl.innerHTML = names + ' 概率UP'
+        }
+      }
+
+      function loadState() {
+        activity.getWorldBookId().then(function(wbId) {
+          storage.get(GACHA_STORAGE_KEY + wbId).then(function(s) {
+            if (s) {
+              pullCount = s.pullCount || 0
+              spentCrystals = s.spentCrystals || 0
+            }
+            // 更新全局数据
+            if (window.__avgLLM_activityData) {
+              window.__avgLLM_activityData.gacha.pulls = pullCount
+              window.__avgLLM_activityData.gacha.spent = spentCrystals
+            }
+            updateUI()
+          })
+        })
+      }
+
+      function saveState() {
+        activity.getWorldBookId().then(function(wbId) {
+          storage.set(GACHA_STORAGE_KEY + wbId, { pullCount: pullCount, spentCrystals: spentCrystals })
+        })
+      }
+
+      function updateUI() {
+        var crystalEl = document.getElementById('crystal-count')
+        var pullCountEl = document.getElementById('pull-count')
+        var pityRemainEl = document.getElementById('pity-remain')
+        var pityFillEl = document.getElementById('pity-fill')
+        var pullSingleEl = document.getElementById('pull-single')
+        var pullTenEl = document.getElementById('pull-ten')
+
+        // 安全检查：当前页面可能已切换，元素不存在
+        if (!crystalEl || !pullCountEl) return
+
+        crystalEl.textContent = economy.value.crystals || 0
+        pullCountEl.textContent = pullCount
+
+        if (pityRemainEl) {
+          var remain = Math.max(0, PITY_MAX - pullCount)
+          pityRemainEl.textContent = remain
+        }
+        if (pityFillEl) {
+          pityFillEl.style.width = Math.min(100, (pullCount / PITY_MAX) * 100) + '%'
+        }
+
+        if (pullSingleEl) pullSingleEl.disabled = (economy.value.crystals || 0) < COST_SINGLE
+        if (pullTenEl) pullTenEl.disabled = (economy.value.crystals || 0) < COST_TEN
+      }
+
+      function doPull(count) {
+        var cost = count === 10 ? COST_TEN : COST_SINGLE * count
+        if ((economy.value.crystals || 0) < cost) {
+          showToast('💎 钻石不足')
+          return
+        }
+
+        // 显示抽卡动画
+        var animOverlay = document.getElementById('pull-animation')
+        createSparkles()
+        animOverlay.classList.add('active')
+
+        var results = []
+        var totalCoins = 0
+        var totalCrystals = 0
+
+        for (var i = 0; i < count; i++) {
+          pullCount++
+          var isPity = pullCount >= PITY_MAX
+          var item = rollCard(isPity)
+
+          // 安全检查：如果 item 为空，跳过
+          if (!item) continue
+
+          // 如果抽到 SSR 或卡牌，重置保底计数
+          if (isPity || item.rarity === 'SSR' || item.rarity === 'SR') pullCount = 0
+
+          results.push(item)
+
+          // 累计金币和钻石奖励
+          if (item.type === 'coins') totalCoins += item.amount
+          if (item.type === 'crystals') totalCrystals += item.amount
+        }
+
+        // 记录消费钻石
+        spentCrystals += cost
+
+        // 更新全局数据
+        if (window.__avgLLM_activityData) {
+          window.__avgLLM_activityData.gacha.pulls = pullCount
+          window.__avgLLM_activityData.gacha.spent = spentCrystals
+        }
+
+        // 扣除抽卡费用，加上奖励
+        var newCrystals = Math.max(0, (economy.value.crystals || 0) - cost + totalCrystals)
+        var newCoins = (economy.value.coins || 0) + totalCoins
+        updateEconomy({ crystals: newCrystals, coins: newCoins })
+
+        // 添加抽到的卡牌到卡牌收藏（绑定到活动的世界书）
+        results.forEach(function(item) {
+          if (item.cardId) {
+            call('cardCollection', 'addCard', [item.cardId], ACTIVITY_WORLD_BOOK_ID)
+          }
+        })
+
+        // 通知任务系统：抽卡次数和消费钻石
+        activity.notifyEvent('pull_cards', count)
+        activity.notifyEvent('spend_crystals', cost)
+
+        saveState()
+        updateUI()
+
+        // 0.8秒后显示结果
+        setTimeout(function() {
+          animOverlay.classList.remove('active')
+          showResult(results)
+        }, 800)
+      }
+
+      function rollCard(isPity) {
+        // 安全检查：如果卡池为空，返回默认金币奖励
+        if (!GACHA_CARDS || GACHA_CARDS.length === 0) {
+          var amount = 5 + Math.floor(Math.random() * 6)
+          return { type: 'coins', name: '金币', icon: '🪙', amount: amount, rarity: 'coin' }
+        }
+
+        var rand = Math.random() * TOTAL_RATE
+
+        // SSR 区间 (0 ~ SSR_RATE)
+        if (isPity || rand < RATES.SSR) {
+          var candidates = GACHA_CARDS.filter(function(c) { return c.rarity === 'SSR' })
+          if (candidates.length > 0) {
+            return candidates[Math.floor(Math.random() * candidates.length)]
+          }
+        }
+
+        // SR 区间 (SSR_RATE ~ SSR_RATE + SR_RATE)
+        if (rand < RATES.SSR + RATES.SR) {
+          var candidates = GACHA_CARDS.filter(function(c) { return c.rarity === 'SR' })
+          if (candidates.length > 0) {
+            return candidates[Math.floor(Math.random() * candidates.length)]
+          }
+        }
+
+        // 金币区间
+        if (REWARD_COINS && rand < RATES.SSR + RATES.SR + COIN_RATE) {
+          var amount = REWARD_COINS.min + Math.floor(Math.random() * (REWARD_COINS.max - REWARD_COINS.min + 1))
+          return { type: 'coins', name: REWARD_COINS.name, icon: REWARD_COINS.icon, amount: amount, rarity: 'coin' }
+        }
+
+        // 钻石区间（剩余部分）
+        if (REWARD_CRYSTALS) {
+          var amount = REWARD_CRYSTALS.min + Math.floor(Math.random() * (REWARD_CRYSTALS.max - REWARD_CRYSTALS.min + 1))
+          return { type: 'crystals', name: REWARD_CRYSTALS.name, icon: REWARD_CRYSTALS.icon, amount: amount, rarity: 'crystal' }
+        }
+
+        // 如果没有奖励配置，回退到第一个卡牌
+        return GACHA_CARDS[0]
+      }
+
+      function showResult(results) {
+        // 收集 SSR 和 SR 卡牌
+        var highRarityCards = results.filter(function(item) {
+          return item.rarity === 'SSR' || item.rarity === 'SR'
+        })
+
+        // 如果有 SSR/SR，先展示单卡
+        if (highRarityCards.length > 0) {
+          showHighRarityReveal(highRarityCards, 0, results)
+        } else {
+          // 没有 SSR/SR，直接显示所有结果
+          showAllResults(results)
+        }
+      }
+
+      // SSR/SR 单卡全屏展示
+      function showHighRarityReveal(cards, index, allResults) {
+        if (index >= cards.length) {
+          // 所有高稀有度卡牌展示完毕，显示全部结果
+          showAllResults(allResults)
+          return
+        }
+
+        var card = cards[index]
+        var overlay = document.getElementById('card-reveal-overlay')
+        var cardEl = document.getElementById('card-reveal-card')
+        var nameEl = document.getElementById('card-reveal-name')
+        var imageEl = document.getElementById('card-reveal-image')
+        var rarityEl = document.getElementById('card-reveal-rarity')
+        var effectsEl = document.getElementById('card-reveal-effects')
+
+        // 清空特效
+        effectsEl.innerHTML = ''
+
+        // 设置卡牌信息
+        cardEl.className = 'card-reveal-card ' + card.rarity
+        nameEl.textContent = card.name || ''
+        rarityEl.className = 'card-reveal-rarity ' + card.rarity
+        rarityEl.textContent = card.rarity
+
+        // 设置卡牌图片
+        var imagePath = card.image || ''
+        if (imagePath) {
+          // 解析图片路径
+          if (imagePath.startsWith('./')) {
+            imagePath = '/data/activities/' + ACTIVITY_ID + '/' + imagePath.substring(2)
+          }
+          imageEl.src = imagePath
+          imageEl.style.display = 'block'
+        } else {
+          imageEl.style.display = 'none'
+        }
+
+        // 创建背景特效
+        createRevealEffects(effectsEl, card.rarity)
+
+        // 显示 overlay
+        overlay.classList.add('active')
+
+        // 点击继续展示下一张或结束
+        overlay.onclick = function() {
+          overlay.classList.remove('active')
+          // 延迟后展示下一张
+          setTimeout(function() {
+            showHighRarityReveal(cards, index + 1, allResults)
+          }, 300)
+        }
+      }
+
+      // 创建全屏展示特效
+      function createRevealEffects(container, rarity) {
+        // 光线特效
+        for (var i = 0; i < 8; i++) {
+          var ray = document.createElement('div')
+          ray.className = 'card-reveal-ray'
+          ray.style.animationDelay = (i * 0.375) + 's'
+          ray.style.transform = 'rotate(' + (i * 45) + 'deg)'
+          container.appendChild(ray)
+        }
+
+        // 星星特效
+        for (var i = 0; i < 20; i++) {
+          var sparkle = document.createElement('div')
+          sparkle.className = 'card-reveal-sparkle'
+          sparkle.style.left = (Math.random() * 100) + '%'
+          sparkle.style.top = (Math.random() * 100) + '%'
+          sparkle.style.animationDelay = (Math.random() * 2) + 's'
+          if (rarity === 'SSR') {
+            sparkle.style.background = '#ffd700'
+          } else {
+            sparkle.style.background = '#48d1cc'
+          }
+          container.appendChild(sparkle)
+        }
+      }
+
+      // 显示所有结果（小卡片列表）
+      function showAllResults(results) {
+        var container = document.getElementById('result-cards')
+        container.innerHTML = ''
+        results.forEach(function(item, i) {
+          var div = document.createElement('div')
+          div.className = 'result-card ' + (item.rarity || 'common')
+          div.style.animationDelay = (i * 0.08) + 's'
+
+          // 根据奖励类型显示不同内容
+          if (item.type === 'coins' || item.type === 'crystals') {
+            // 金币或钻石奖励
+            div.innerHTML =
+              '<span class="card-icon">' + item.icon + '</span>' +
+              '<span class="card-rarity">' + item.name + '</span>' +
+              '<span class="card-char">×' + item.amount + '</span>'
+          } else {
+            // 卡牌奖励
+            div.innerHTML =
+              '<span class="card-icon">' + item.icon + '</span>' +
+              '<span class="card-rarity">' + item.rarity + '</span>' +
+              '<span class="card-char">' + item.char + '</span>'
+          }
+          container.appendChild(div)
+        })
+        document.getElementById('result-overlay').classList.add('active')
+      }
+
+      function closeResult() {
+        document.getElementById('result-overlay').classList.remove('active')
+        document.getElementById('card-reveal-overlay').classList.remove('active')
+      }
+
+      function showToast(msg) {
+        var el = document.getElementById('waToast')
+        el.innerHTML = '<div class="wa-toast">' + msg + '</div>'
+        setTimeout(function() { el.innerHTML = '' }, 1500)
+      }
+
+      if (!window.__avgLLM_bridge_listener) {
+        window.__avgLLM_bridge_listener = true
+        window.addEventListener('message', function(e) {
+          if (!e.data || !e.data.__avgLLM || e.data.type !== 'result') return
+          var pending = window.__gacha_pending
+          if (pending && pending[e.data.id]) {
+            if (e.data.error) pending[e.data.id].reject(new Error(e.data.error))
+            else pending[e.data.id].resolve(e.data.value)
+            delete pending[e.data.id]
+          }
+        })
+      }
+
+      init()
+    })()
+  </script>
+</body>
+</html>

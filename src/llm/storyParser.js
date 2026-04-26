@@ -751,6 +751,139 @@ const parseTicketLine = (line, index) => {
  * @returns {number} 中文字数
  */
 /**
+ * 解析 LLM 返回的 XML + 思维链格式剧情
+ * @param {string} content - LLM 返回的原始内容
+ * @returns {Object|null} 解析结果，若不是 XML 格式则返回 null
+ */
+export const parseXmlStoryContent = (content) => {
+  if (!content || typeof content !== 'string') return null
+
+  const raw = String(content).trim()
+  if (!raw) return null
+
+  // 移除 thinking 块
+  const withoutThinking = raw.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim()
+  if (!withoutThinking) return null
+
+  // 移除 markdown 代码块包裹
+  const cleaned = withoutThinking
+    .replace(/^```(?:xml)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
+
+  const dialogues = []
+  let pendingScene = null
+  let lastDialogueIndex = null
+  let chapterInfo = null
+
+  // 解析章节标签 <chapter major="1" minor="1" name="初遇" s="本章主线概要"/>
+  const chRegex = /<chapter\s+major=["'](\d+)["']\s+minor=["'](\d+)["']\s+name=["']([^"']*)["']\s+s=["']([^"']*)["']\s*\/>/gi
+  const chMatch = chRegex.exec(cleaned)
+  if (chMatch) {
+    chapterInfo = {
+      major: Number(chMatch[1]),
+      minor: Number(chMatch[2]),
+      name: chMatch[3].trim(),
+      storyline: chMatch[4].trim(),
+    }
+  }
+
+  // 全局正则匹配，支持标签跨行
+  // 匹配场景切换
+  const scRegex = /<sc\s+id=["']([^"']*)["'](?:\s+n=["']([^"']*)["'])?\s*\/>/gi
+  let scMatch
+  while ((scMatch = scRegex.exec(cleaned)) !== null) {
+    const sceneId = (scMatch[1] || '').trim()
+    const sceneName = (scMatch[2] || '').trim() || sceneId
+    if (sceneId || sceneName) {
+      pendingScene = { id: sceneId || sceneName, name: sceneName || sceneId, background: '' }
+    }
+  }
+
+  // 匹配对话 <d ...>text</d>
+  const dRegex = /<d(\s+[^>]*)>([\s\S]*?)<\/d>/gi
+  let dMatch
+  while ((dMatch = dRegex.exec(cleaned)) !== null) {
+    const attrs = dMatch[1] || ''
+    const text = (dMatch[2] || '').trim()
+    if (!text) continue
+
+    const sMatch = attrs.match(/\bs=["']([^"']*)["']/i)
+    const eMatch = attrs.match(/\be=["']([^"']*)["']/i)
+    const dAttrMatch = attrs.match(/\bd=["']([^"']*)["']/i)
+    const hMatch = attrs.match(/\bh=["']([^"']*)["']/i)
+
+    const speaker = normalizeSpeaker(sMatch?.[1])
+    const emotion = normalizeEmotion(eMatch?.[1])
+    const storyTime = dAttrMatch?.[1]?.trim() || ''
+    const highlight = normalizeHighlight(hMatch?.[1])
+
+    const entry = {
+      id: `xml_dialogue_${Date.now()}_${dialogues.length}`,
+      speaker,
+      emotion,
+      text,
+      highlight,
+      storyTime,
+      choices: null,
+      scene: pendingScene ? { ...pendingScene } : null,
+      metadata: {
+        rawSpeaker: sMatch?.[1] || '',
+        rawEmotion: eMatch?.[1] || '',
+        rawStoryTime: dAttrMatch?.[1] || '',
+        rawScene: pendingScene ? { ...pendingScene } : null,
+      },
+    }
+    dialogues.push(entry)
+    lastDialogueIndex = dialogues.length - 1
+    pendingScene = null
+  }
+
+  // 匹配选项 <choices ...>...</choices>
+  const cRegex = /<choices(\s+[^>]*)>([\s\S]*?)<\/choices>/gi
+  let cMatch
+  while ((cMatch = cRegex.exec(cleaned)) !== null) {
+    if (lastDialogueIndex === null) continue
+    const cAttrs = cMatch[1] || ''
+    const cBody = cMatch[2] || ''
+
+    const pMatch = cAttrs.match(/\bp=["']([^"']*)["']/i)
+    const iMatch = cAttrs.match(/\bi=["']([^"']*)["']/i)
+    const prompt = pMatch?.[1]?.trim() || '你要怎么做？'
+    const allowCustom = normalizeHighlight(iMatch?.[1])
+
+    const options = []
+    const oRegex = /<o(\s+[^>]*)\s*\/>/gi
+    let oMatch
+    while ((oMatch = oRegex.exec(cBody)) !== null) {
+      const oAttrs = oMatch[1] || ''
+      const tMatch = oAttrs.match(/\bt=["']([^"']*)["']/i)
+      const aMatch = oAttrs.match(/\ba=["']([^"']*)["']/i)
+      const optText = tMatch?.[1]?.trim()
+      if (optText) {
+        options.push({
+          id: `xml_choice_${Date.now()}_${options.length}`,
+          text: optText,
+          action: aMatch?.[1]?.trim() || `choice_${options.length + 1}`,
+        })
+      }
+    }
+
+    if (options.length >= 2) {
+      dialogues[lastDialogueIndex].choices = {
+        prompt,
+        options,
+        allowCustomInput: allowCustom,
+      }
+    }
+  }
+
+  if (dialogues.length === 0) return null
+
+  return { success: true, error: null, dialogues, rawContent: content, chapter: chapterInfo }
+}
+
+/**
  * 解析主线剧情返回的分隔符格式内容
  * @param {string} content - LLM 返回的原始内容
  * @returns {Object} 解析结果
@@ -762,10 +895,25 @@ export const parseMainStoryContent = (content) => {
   const blocks = content.split('\n---\n').map(b => b.trim()).filter(Boolean)
   const dialogues = []
   let pendingScene = null
+  let chapterInfo = null
   for (const block of blocks) {
     const lines = block.split('\n').map(l => l.trim()).filter(Boolean)
     if (lines.length === 0) continue
     const header = lines[0]
+    // 章节标记 [chapter|大章-小节|名称|主线概要]
+    const chapterMatch = header.match(/^\[chapter\|(\d+)-(\d+)\|([^\]]*)\]$/)
+    if (chapterMatch) {
+      const major = Number(chapterMatch[1])
+      const minor = Number(chapterMatch[2])
+      const rest = (chapterMatch[3] || '').trim()
+      const pipeIdx = rest.indexOf('|')
+      const name = pipeIdx >= 0 ? rest.substring(0, pipeIdx).trim() : rest
+      const storyline = pipeIdx >= 0 ? rest.substring(pipeIdx + 1).trim() : ''
+      if (major && minor) {
+        chapterInfo = { major, minor, name, storyline }
+      }
+      continue
+    }
     const narratorMatch = header.match(/^\[narrator\|([^\]]*)\]$/)
     if (narratorMatch) {
       const storyTime = narratorMatch[1].trim()
@@ -830,7 +978,7 @@ export const parseMainStoryContent = (content) => {
     }
   }
   if (dialogues.length === 0) { return parseStoryContent(content) }
-  return { success: true, error: null, dialogues, rawContent: content }
+  return { success: true, error: null, dialogues, rawContent: content, chapter: chapterInfo }
 }
 
 export const countChineseChars = (content) => {
@@ -841,6 +989,7 @@ export const countChineseChars = (content) => {
 
 export default {
   parseStoryContent,
+  parseXmlStoryContent,
   parseMainStoryContent,
   parseStoryTicketContent,
   validateDialogue,

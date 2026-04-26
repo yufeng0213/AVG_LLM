@@ -77,9 +77,17 @@ export const getFeaturePluginRuntimeState = () => {
   return readStateFromLocalStorage()
 }
 
-export const isFeaturePluginEnabled = (manifest, runtimeState = {}) => {
+export const isFeaturePluginEnabled = (manifest, runtimeState = {}, worldbookTags = []) => {
   const pluginId = String(manifest?.id || '').trim()
   if (!pluginId) return false
+
+  const requiredTags = Array.isArray(manifest?.requiredWorldbookTags) ? manifest.requiredWorldbookTags : []
+  if (requiredTags.length > 0) {
+    const availableTags = Array.isArray(worldbookTags) ? worldbookTags.map(t => String(t).trim().toLowerCase()) : []
+    const hasMatch = requiredTags.some(tag => availableTags.includes(String(tag).trim().toLowerCase()))
+    if (!hasMatch) return false
+  }
+
   const normalizedState = normalizeState(runtimeState)
   if (Object.prototype.hasOwnProperty.call(normalizedState, pluginId)) {
     return Boolean(normalizedState[pluginId])
@@ -87,9 +95,9 @@ export const isFeaturePluginEnabled = (manifest, runtimeState = {}) => {
   return manifest?.enabledByDefault !== false
 }
 
-export const filterEnabledFeaturePluginManifests = (manifests, runtimeState = {}) => {
+export const filterEnabledFeaturePluginManifests = (manifests, runtimeState = {}, worldbookTags = []) => {
   const source = Array.isArray(manifests) ? manifests : []
-  return source.filter((manifest) => isFeaturePluginEnabled(manifest, runtimeState))
+  return source.filter((manifest) => isFeaturePluginEnabled(manifest, runtimeState, worldbookTags))
 }
 
 export const setFeaturePluginEnabled = (pluginId, enabled) => {

@@ -213,8 +213,9 @@
   right: 2% !important;
   width: auto !important;
   max-width: 96% !important;
-  min-height: var(--android-dialogue-min-height) !important;
-  max-height: var(--android-dialogue-max-height) !important;
+  min-height: clamp(100px, 22dvh, 180px) !important;
+  max-height: clamp(100px, 22dvh, 180px) !important;
+  height: clamp(100px, 22dvh, 180px) !important;
   padding: 8px 10px !important;
   border-left-width: 1px !important;
   border-right-width: 1px !important;
@@ -224,7 +225,7 @@
   backdrop-filter: blur(8px) !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 8px !important;
+  overflow: hidden !important;
   z-index: 7 !important;
 }
 .platform-android.android-portrait .dialogue-head {
@@ -239,11 +240,31 @@
   font-size: 0.7rem !important;
 }
 .platform-android.android-portrait .dialogue-text {
-  font-size: 0.9rem !important;
+  font-size: var(--dialogue-font-size, 0.9rem) !important;
   line-height: 1.42 !important;
+  padding-top: 6px !important;
   flex: 1 1 auto !important;
-  overflow-y: auto !important;
-  max-height: none !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 50 !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+.platform-android.android-portrait .dialogue-text.is-showing-continuation {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+}
+.platform-android.android-portrait .dialogue-continue-arrow {
+  display: block !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  font-size: 0.7rem !important;
+  line-height: 1 !important;
+  color: color-mix(in srgb, var(--accent-cyan) 70%, transparent) !important;
+  text-align: right !important;
+  user-select: none !important;
 }
 /* 对话按钮 - 保持固定在屏幕最底部 */
 .platform-android.android-portrait .dialogue-actions {

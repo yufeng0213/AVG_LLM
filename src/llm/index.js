@@ -57,6 +57,7 @@ export {
 export { buildStoryPrompt, buildQuickPrompt } from './promptGenerator'
 export {
   parseStoryContent,
+  parseXmlStoryContent,
   parseMainStoryContent,
   parseStoryTicketContent,
   countChineseChars,

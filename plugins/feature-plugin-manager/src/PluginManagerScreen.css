@@ -650,6 +650,12 @@
   background: color-mix(in srgb, var(--accent-yellow) 14%, transparent);
 }
 
+.plugin-disable-tag {
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+}
+
 .plugin-actions-row {
   display: flex;
   gap: 8px;

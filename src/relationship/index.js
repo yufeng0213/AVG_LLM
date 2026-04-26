@@ -41,6 +41,7 @@ export {
   useRelationshipState,
   createDefaultRelationshipBase,
   createDefaultRelationshipData,
+  flushRelationshipSave,
 } from './relationshipStore.js'
 
 // 关系事件配置

@@ -105,6 +105,7 @@
 }
 
 .history-dialogue-text {
+  font-size: var(--dialogue-font-size, inherit);
   color: color-mix(in srgb, var(--foreground) 95%, var(--accent-cyan));
   white-space: pre-wrap;
   word-break: break-word;
@@ -310,6 +311,100 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.generate-font-size-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.generate-font-slider {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  touch-action: none;
+  background: linear-gradient(to right, var(--accent-cyan) var(--slider-fill, 50%), rgba(128,128,128,0.5) var(--slider-fill, 50%));
+}
+
+.generate-slider-thumb {
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  margin-top: -11px;
+  background: #fff;
+  border: 2px solid var(--accent-cyan);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  transition: left 60ms ease-out;
+}
+
+.generate-font-size-preview {
+  flex: 0 0 50px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--foreground) 82%, var(--accent-cyan));
+  white-space: nowrap;
+}
+
+.generate-typewriter-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.generate-typewriter-toggle {
+  flex: 0 0 auto;
+  min-width: 36px;
+  padding: 4px 10px;
+  border: 2px solid var(--accent-purple);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.generate-typewriter-toggle.active {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: var(--background);
+}
+
+.generate-typewriter-speed {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 4px;
+  cursor: pointer;
+  accent-color: var(--accent-cyan);
+}
+
+.generate-typewriter-speed:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.generate-typewriter-speed-value {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--foreground) 82%, var(--accent-cyan));
+  white-space: nowrap;
+  min-width: 58px;
+  text-align: right;
 }
 
 .generate-custom-label {
@@ -588,6 +683,9 @@
     border-width: 1px;
     max-width: 96%;
     backdrop-filter: blur(6px);
+    height: clamp(100px, 18dvh, 180px);
+    max-height: clamp(100px, 18dvh, 180px);
+    overflow: hidden;
   }
 
   .dialogue-head {
@@ -616,8 +714,15 @@
   }
 
   .dialogue-text {
-    font-size: 0.9rem;
+    padding-top: 6px;
+    font-size: var(--dialogue-font-size, 0.9rem);
     line-height: 1.42;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 50;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 
   .dialogue-actions {
@@ -689,5 +794,251 @@
     width: 32px;
     height: 32px;
     font-size: 0.84rem;
+  }
+}
+
+/* ========== 章节切换动画 ========== */
+.chapter-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  animation: chapter-overlay-fade-in 0.6s ease-out forwards;
+}
+
+.chapter-overlay-content {
+  text-align: center;
+  animation: chapter-overlay-slide-up 0.8s ease-out 0.3s both;
+}
+
+.chapter-overlay-number {
+  font-size: 1rem;
+  color: var(--accent-cyan);
+  letter-spacing: 0.2em;
+  opacity: 0;
+  animation: chapter-overlay-fade-in 0.5s ease-out 0.5s both;
+}
+
+.chapter-overlay-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--foreground);
+  letter-spacing: 0.1em;
+  opacity: 0;
+  animation: chapter-overlay-fade-in 0.6s ease-out 0.8s both;
+}
+
+.chapter-overlay-line {
+  width: 120px;
+  height: 2px;
+  margin: 16px auto;
+  background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+  opacity: 0;
+  animation: chapter-overlay-line-expand 0.8s ease-out 1s both;
+}
+
+.chapter-overlay-storyline {
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--foreground) 60%, var(--muted));
+  max-width: 400px;
+  margin: 12px auto 0;
+  opacity: 0;
+  animation: chapter-overlay-fade-in 0.6s ease-out 1.3s both;
+}
+
+@keyframes chapter-overlay-fade-in { to { opacity: 1; } }
+@keyframes chapter-overlay-slide-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes chapter-overlay-line-expand {
+  from { opacity: 0; width: 0; }
+  to { opacity: 1; width: 120px; }
+}
+
+/* ========== 章节回顾面板 ========== */
+.chapter-history-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 28px);
+  background: color-mix(in srgb, var(--background) 45%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.chapter-history-panel {
+  position: relative;
+  width: min(92vw, 480px);
+  max-height: min(80vh, 600px);
+  display: flex;
+  flex-direction: column;
+  border: 3px solid var(--accent-cyan);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--accent-cyan) 30%, transparent),
+    0 8px 24px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.chapter-history-header {
+  padding: 14px 18px;
+  border-bottom: 2px solid var(--accent-cyan);
+  background: color-mix(in srgb, var(--accent-cyan) 20%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chapter-history-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--accent-cyan);
+}
+
+.chapter-history-close {
+  appearance: none;
+  min-width: 30px;
+  max-width: 30px;
+  width: 30px;
+  min-height: 30px;
+  max-height: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  flex-shrink: 0;
+  flex-grow: 0;
+  aspect-ratio: 1 / 1;
+  border: 2px solid var(--accent-cyan);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent-cyan);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.chapter-history-close:hover {
+  background: var(--accent-cyan);
+  color: var(--background);
+}
+
+.chapter-history-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chapter-history-item {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent-cyan) 35%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-panel) 60%, transparent);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.chapter-history-item:hover {
+  border-color: var(--accent-yellow);
+  background: color-mix(in srgb, var(--accent-cyan) 15%, transparent);
+}
+
+.chapter-item-number {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  letter-spacing: 0.06em;
+}
+
+.chapter-item-name {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.chapter-item-storyline {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  color: color-mix(in srgb, var(--foreground) 70%, var(--muted));
+}
+
+.chapter-item-lines {
+  margin: 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--foreground) 55%, var(--muted));
+}
+
+.chapter-history-current {
+  padding: 12px 14px;
+  border: 2px solid var(--accent-yellow);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent-yellow) 12%, transparent);
+}
+
+.chapter-item-current-label {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-yellow);
+  text-align: right;
+}
+
+.chapter-history-empty {
+  margin: 0;
+  padding: 20px 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--foreground) 60%, var(--muted));
+}
+
+@media (max-width: 680px) {
+  .chapter-history-panel {
+    width: 96vw;
+    max-height: 85vh;
+    border-radius: 10px;
+    border-width: 2px;
+  }
+
+  .chapter-history-header {
+    padding: 10px 12px;
+  }
+
+  .chapter-history-title {
+    font-size: 0.9rem;
+  }
+
+  .chapter-history-body {
+    padding: 10px 12px;
+  }
+
+  .chapter-history-item {
+    padding: 10px 12px;
+  }
+
+  .chapter-item-name {
+    font-size: 0.92rem;
   }
 }

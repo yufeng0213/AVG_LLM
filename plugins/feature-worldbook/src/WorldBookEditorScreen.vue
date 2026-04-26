@@ -95,6 +95,7 @@ const cropRectConfirmed = ref(false)
 // 世界背景高级设置展开状态
 const displaySettingsOpen = ref(false)
 const directorSettingsOpen = ref(false)
+const tagsOpen = ref(false)
 
 // 世界背景各条目展开状态
 const loreEntryStates = ref({})
@@ -384,6 +385,21 @@ const updateEntry = (key, value) => {
   if (!activeBook.value) return
   if (!activeBook.value.entries) activeBook.value.entries = {}
   activeBook.value.entries[key] = value
+  markBookUpdated()
+}
+
+const tagsText = computed(() => {
+  const tags = activeBook.value?.tags || []
+  return Array.isArray(tags) ? tags.join('\n') : ''
+})
+
+const updateTagsText = (value) => {
+  if (!activeBook.value) return
+  const tags = String(value || '')
+    .split('\n')
+    .map(t => t.trim().toLowerCase())
+    .filter(Boolean)
+  activeBook.value.tags = [...new Set(tags)].slice(0, 20)
   markBookUpdated()
 }
 

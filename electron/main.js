@@ -589,16 +589,15 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
 }
 
-// 注册自定义协议用于本地音频文件播放（必须在 app.whenReady() 之前调用）
+// 注册自定义协议（必须在 app.whenReady() 之前调用，且只能调用一次）
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'local-file',
-    privileges: {
-      secure: true,
-      standard: true,
-      supportFetchAPI: true,
-      corsEnabled: true
-    }
+    privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true },
+  },
+  {
+    scheme: 'activity',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
   }
 ])
 
@@ -1499,6 +1498,203 @@ app.whenReady().then(() => {
       mascotWindow.setIgnoreMouseEvents(ignore, { forward: true })
     }
     return { ok: true }
+  })
+
+  // ==================== 活动系统 IPC handlers ====================
+
+  // 获取活动目录
+  const getActivitiesDir = () => {
+    if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+      return path.join(app.getAppPath(), 'data', 'activities')
+    }
+    return path.join(app.getPath('userData'), 'data', 'activities')
+  }
+
+  // 注册 activity: 协议 handler，让 iframe 能直接读取文件系统上的活动文件
+  protocol.handle('activity', async (request) => {
+    const urlPath = request.url.replace('activity://', '')
+
+    // 处理 Punycode 和 URL 编码（中文目录名和文件名）
+    let decodedPath
+    try {
+      // 分离每个路径片段，分别解码
+      const parts = urlPath.split('/')
+      const decodedParts = parts.map((part, index) => {
+        // 第一段是目录名，可能有 Punycode
+        if (index === 0) {
+          // 先尝试 domainToUnicode 解码 Punycode
+          try {
+            const decoded = url.domainToUnicode(part)
+            // domainToUnicode 对于非 punycode 会返回原值
+            if (decoded !== part) {
+              return decoded
+            }
+          } catch (e) {}
+          // 如果 domainToUnicode 解码后还是 punycode (xn--开头)，说明解码失败
+          // 尝试直接解码 URL 编码
+          if (part.startsWith('xn--')) {
+            return decodeURIComponent(part)
+          }
+          return part
+        }
+        // 其他片段用 decodeURIComponent 解码 URL 编码
+        return decodeURIComponent(part)
+      })
+      decodedPath = decodedParts.join('/')
+    } catch (e) {
+      console.log('[ActivityProtocol] Decode error:', e.message)
+      decodedPath = decodeURIComponent(urlPath)
+    }
+
+    const activitiesDir = getActivitiesDir()
+    let filePath = path.join(activitiesDir, decodedPath)
+
+    // 安全验证：防止路径穿越
+    let normalizedPath = path.normalize(filePath)
+    const normalizedDir = path.normalize(activitiesDir)
+
+    console.log('[ActivityProtocol] Request:', request.url)
+    console.log('[ActivityProtocol] urlPath:', urlPath)
+    console.log('[ActivityProtocol] decodedPath:', decodedPath)
+    console.log('[ActivityProtocol] Resolved path:', normalizedPath)
+    console.log('[ActivityProtocol] File exists:', fs.existsSync(normalizedPath))
+
+    // 如果解码后的路径不存在，尝试查找中文目录名匹配
+    if (!fs.existsSync(normalizedPath) && normalizedPath.startsWith(normalizedDir)) {
+      try {
+        const dirs = fs.readdirSync(activitiesDir)
+        // 尝试匹配任何可能的目录名
+        for (const dir of dirs) {
+          const tryPath = path.join(activitiesDir, dir, parts.slice(1).join('/'))
+          // 解码文件名部分
+          const tryDecoded = path.join(activitiesDir, dir, ...parts.slice(1).map(p => decodeURIComponent(p)))
+          if (fs.existsSync(tryDecoded)) {
+            normalizedPath = path.normalize(tryDecoded)
+            console.log('[ActivityProtocol] Found alternative path:', normalizedPath)
+            break
+          }
+        }
+      } catch (e) {
+        console.log('[ActivityProtocol] Fallback search error:', e.message)
+      }
+    }
+
+    if (!normalizedPath.startsWith(normalizedDir)) {
+      return new Response('Forbidden', { status: 403 })
+    }
+
+    try {
+      const fileBuffer = await fsPromises.readFile(normalizedPath)
+      const ext = path.extname(normalizedPath).toLowerCase()
+      const mimeType = ext === '.html' ? 'text/html; charset=utf-8'
+        : ext === '.css' ? 'text/css'
+        : ext === '.js' ? 'application/javascript'
+        : ext === '.png' ? 'image/png'
+        : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
+        : ext === '.webp' ? 'image/webp'
+        : ext === '.gif' ? 'image/gif'
+        : ext === '.json' ? 'application/json'
+        : 'application/octet-stream'
+      return new Response(fileBuffer, {
+        headers: { 'Content-Type': mimeType }
+      })
+    } catch {
+      return new Response('Not found', { status: 404 })
+    }
+  })
+
+  // 导入活动（拷贝文件夹到 data/activities/）
+  ipcMain.handle('activity:import', async (_event, activityId, files) => {
+    const activitiesDir = getActivitiesDir()
+    const targetDir = path.join(activitiesDir, activityId)
+
+    try {
+      await ensureDir(activitiesDir)
+
+      // 如果目标目录已存在，先删除
+      try {
+        await fsPromises.rm(targetDir, { recursive: true, force: true })
+      } catch { /* 不存在，忽略 */ }
+
+      await ensureDir(targetDir)
+
+      // files: [{ relPath: 'activity/index.html', content: '...', encoding: 'utf-8' | 'base64' }]
+      for (const f of files) {
+        const filePath = path.join(targetDir, f.relPath)
+        const dir = path.dirname(filePath)
+        await ensureDir(dir)
+        if (f.encoding === 'base64') {
+          const buf = Buffer.from(f.content, 'base64')
+          await fsPromises.writeFile(filePath, buf)
+        } else {
+          await fsPromises.writeFile(filePath, f.content, 'utf-8')
+        }
+      }
+
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  // 删除活动
+  ipcMain.handle('activity:remove', async (_event, activityId) => {
+    const activitiesDir = getActivitiesDir()
+    const targetDir = path.join(activitiesDir, activityId)
+
+    try {
+      await fsPromises.rm(targetDir, { recursive: true, force: true })
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  // 选择文件夹并直接拷贝（不传 base64）
+  ipcMain.handle('activity:select-and-import', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择活动文件夹',
+      properties: ['openDirectory'],
+    })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, error: '未选择文件夹' }
+    }
+
+    const sourceDir = result.filePaths[0]
+    const activitiesDir = getActivitiesDir()
+
+    // 读取 activity.json 获取 ID
+    const jsonPath = path.join(sourceDir, 'activity.json')
+    try {
+      const jsonContent = await fsPromises.readFile(jsonPath, 'utf-8')
+      const json = JSON.parse(jsonContent)
+      if (!json.id) {
+        return { success: false, error: 'activity.json 缺少 id 字段' }
+      }
+
+      // 检查是否有 activity/index.html
+      const indexHtmlPath = path.join(sourceDir, 'activity', 'index.html')
+      try {
+        await fsPromises.access(indexHtmlPath)
+      } catch {
+        return { success: false, error: 'activity/ 目录下缺少 index.html' }
+      }
+
+      const targetDir = path.join(activitiesDir, json.id)
+
+      // 如果目标目录已存在，先删除
+      try {
+        await fsPromises.rm(targetDir, { recursive: true, force: true })
+      } catch { /* 不存在，忽略 */ }
+
+      // 拷贝整个文件夹
+      await fsPromises.cp(sourceDir, targetDir, { recursive: true })
+
+      return { success: true, activityId: json.id, json }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
   })
 
   createWindow()

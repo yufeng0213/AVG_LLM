@@ -1,0 +1,28 @@
+{
+  "id": "character-card",
+  "name": "角色卡牌",
+  "description": "乙女向角色卡牌收集、养成、出战系统",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "enabledByDefault": true,
+  "menu": {
+    "key": "character-card",
+    "title": "角色卡牌",
+    "icon": "🎴",
+    "order": 70
+  },
+  "entry": {
+    "type": "route",
+    "module": "feature-character-card",
+    "route": "character-card"
+  },
+  "action": {
+    "type": "screen",
+    "screen": "character-card"
+  },
+  "storage": {
+    "namespace": "character-card"
+  },
+  "capabilities": ["storage", "llm"]
+}

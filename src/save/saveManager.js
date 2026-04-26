@@ -122,7 +122,9 @@ const setMainStorySaveSlot = async (worldBookId, slotId) => {
  */
 const saveGame = async (gameData, slotId = null) => {
   // 确保数据可被序列化（深拷贝并移除不可序列化的属性）
-  const clonedData = JSON.parse(JSON.stringify(gameData))
+  const clonedData = typeof structuredClone === 'function'
+    ? structuredClone(gameData)
+    : JSON.parse(JSON.stringify(gameData))
   
   const saveData = {
     ...createEmptySaveData(),
@@ -147,16 +149,18 @@ const saveGame = async (gameData, slotId = null) => {
   
   // 使用存储抽象层
   try {
-    // 保存存档数据
-    const result = await saveStorage.save(id, saveData)
+    // 保存存档数据 + 预读取存档列表（两者互不依赖，并行执行）
+    const [result, saves] = await Promise.all([
+      saveStorage.save(id, saveData),
+      getSaveList(),
+    ])
+
     if (!result.success) {
       return result
     }
-    
-    // 更新存档列表
-    const saves = await getSaveList()
+
     const existingIndex = saves.findIndex(s => s.id === id)
-    
+
     const saveEntry = {
       id,
       timestamp: saveData.timestamp,
@@ -171,21 +175,20 @@ const saveGame = async (gameData, slotId = null) => {
 
     // 限制存档数量
     const trimmedSaves = saves.slice(0, MAX_SAVES)
-    
+
     // 删除超出限制的存档文件
     if (saves.length > MAX_SAVES) {
       for (const oldSave of saves.slice(MAX_SAVES)) {
         await saveStorage.delete(oldSave.id)
       }
     }
-    
-    await updateSaveList(trimmedSaves)
 
-    // 注册为该世界书的主线存档
+    // 更新存档列表 + 注册主线存档（互不依赖，并行执行）
     const worldBookId = saveData.game?.worldBookId
-    if (worldBookId) {
-      await setMainStorySaveSlot(worldBookId, id)
-    }
+    await Promise.all([
+      updateSaveList(trimmedSaves),
+      worldBookId ? setMainStorySaveSlot(worldBookId, id) : Promise.resolve(),
+    ])
 
     return { success: true, id }
   } catch (error) {
@@ -261,7 +264,9 @@ const deleteSave = async (slotId) => {
  */
 const createHistoryBackup = async (messages, backupName = null) => {
   // 确保数据可被序列化（深拷贝）
-  const clonedMessages = JSON.parse(JSON.stringify(messages))
+  const clonedMessages = typeof structuredClone === 'function'
+    ? structuredClone(messages)
+    : JSON.parse(JSON.stringify(messages))
   
   const backupData = {
     version: SAVE_DATA_VERSION,

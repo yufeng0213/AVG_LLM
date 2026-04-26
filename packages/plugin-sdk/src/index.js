@@ -144,6 +144,13 @@ export const validateFeaturePluginManifest = (input) => {
     }
   })
 
+  const rawRequiredTags = Array.isArray(input.requiredWorldbookTags) ? input.requiredWorldbookTags : []
+  const requiredWorldbookTags = rawRequiredTags
+    .map((t) => String(t ?? '').trim().toLowerCase())
+    .filter(Boolean)
+    .filter((t, i, arr) => arr.indexOf(t) === i)
+    .slice(0, 20)
+
   const normalized = {
     id,
     name,
@@ -171,6 +178,7 @@ export const validateFeaturePluginManifest = (input) => {
     },
     capabilities,
     enabledByDefault: Boolean(input.enabledByDefault),
+    requiredWorldbookTags,
   }
 
   return {

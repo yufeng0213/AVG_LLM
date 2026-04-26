@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>任务 - 废土娇宠·夏日祭</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    .missions-page {
+      width: 100%;
+      height: 100%;
+      padding-bottom: 80px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #0a1628 0%, #132a4a 40%, #0d1f3c 100%);
+      overflow: hidden;
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      color: #e8f4ff;
+    }
+
+    .missions-page::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .missions-page::-webkit-scrollbar-thumb {
+      background: rgba(72,209,204,0.2);
+      border-radius: 2px;
+    }
+
+    /* ===== 顶部 Banner ===== */
+    .missions-banner {
+      position: relative;
+      flex-shrink: 0;
+      height: 220px;
+      padding: 24px 24px 0;
+      background: linear-gradient(180deg, rgba(10,22,40,0.95) 0%, rgba(19,42,74,0.3) 100%);
+      overflow: hidden;
+    }
+
+    .banner-title-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .banner-title {
+      font-size: 42px;
+      font-weight: 800;
+      color: #e8f4ff;
+      text-shadow: 0 2px 12px rgba(72,209,204,0.3);
+      letter-spacing: 4px;
+    }
+
+    .banner-title-en {
+      font-size: 14px;
+      color: rgba(72,209,204,0.4);
+      letter-spacing: 3px;
+      font-weight: 400;
+    }
+
+    .banner-subtitle {
+      font-size: 16px;
+      color: rgba(232,244,255,0.7);
+      margin-bottom: 4px;
+    }
+
+    .banner-subtitle .highlight {
+      color: #48d1cc;
+      font-weight: 700;
+      display: block;
+      font-size: 20px;
+      margin-top: 6px;
+    }
+
+    .banner-character-placeholder {
+      position: absolute;
+      right: 10px;
+      bottom: 0;
+      width: 200px;
+      height: 200px;
+      object-fit: contain;
+      object-position: bottom center;
+    }
+
+    /* 积分进度条 */
+    .progress-section {
+      padding: 8px 16px 4px;
+      flex-shrink: 0;
+    }
+
+    .progress-label {
+      font-size: 12px;
+      color: rgba(72,209,204,0.5);
+      margin-bottom: 6px;
+    }
+
+    .progress-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .progress-bar-track {
+      flex: 1;
+      height: 8px;
+      background: rgba(72,209,204,0.12);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(72,209,204,0.15);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #48d1cc, #58e0da);
+      border-radius: 4px;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .progress-text {
+      font-size: 14px;
+      font-weight: 700;
+      color: #48d1cc;
+      white-space: nowrap;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ===== 任务列表 ===== */
+    .mission-list {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 12px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mission-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .mission-list::-webkit-scrollbar-thumb {
+      background: rgba(72,209,204,0.2);
+      border-radius: 2px;
+    }
+
+    .mission-card {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+      min-height: 80px;
+      border-radius: 6px;
+      overflow: hidden;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    /* 卡片背景色 — 与签到页同款配色 */
+    .mission-card.unclaimed {
+      background: linear-gradient(135deg, #e8f4ff 0%, #d4eef9 100%);
+    }
+
+    .mission-card.claimable {
+      background: linear-gradient(135deg, #f0faff 0%, #d4eef9 100%);
+      box-shadow: 0 0 0 1px rgba(72,209,204,0.4), 0 0 16px rgba(72,209,204,0.12);
+      animation: card-pulse 2s ease-in-out infinite;
+      cursor: pointer;
+    }
+
+    .mission-card.claimable:active {
+      transform: scale(0.985);
+    }
+
+    @keyframes card-pulse {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(72,209,204,0.3), 0 0 12px rgba(72,209,204,0.08); }
+      50% { box-shadow: 0 0 0 1px rgba(72,209,204,0.6), 0 0 20px rgba(72,209,204,0.2); }
+    }
+
+    .mission-card.completed {
+      background: linear-gradient(135deg, #1a2a44 0%, #13203a 100%);
+    }
+
+    /* 卡片四角标记 */
+    .mission-card::before,
+    .mission-card::after {
+      content: '';
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: rgba(72,209,204,0.3);
+      z-index: 2;
+    }
+
+    .mission-card::before { top: 4px; left: 4px; }
+    .mission-card::after { top: 4px; right: 4px; }
+
+    .mission-card .corner-bl,
+    .mission-card .corner-br {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: rgba(72,209,204,0.3);
+      z-index: 2;
+    }
+
+    .mission-card .corner-bl { bottom: 4px; left: 4px; }
+    .mission-card .corner-br { bottom: 4px; right: 4px; }
+
+    /* 英文水印 */
+    .mission-card .mission-watermark {
+      position: absolute;
+      font-size: 48px;
+      font-weight: 900;
+      color: rgba(72,209,204,0.08);
+      top: 50%;
+      left: 60px;
+      transform: translateY(-50%);
+      pointer-events: none;
+      letter-spacing: 2px;
+      user-select: none;
+    }
+
+    .mission-card.completed .mission-watermark {
+      color: rgba(255,255,255,0.04);
+    }
+
+    /* 左侧：奖励图标区 */
+    .mission-reward-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      background: rgba(72,209,204,0.08);
+      border: 1px solid rgba(72,209,204,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin: 10px 0 10px 12px;
+      position: relative;
+      overflow: hidden;
+      align-self: center;
+    }
+
+    .mission-card.claimable .mission-reward-icon {
+      background: rgba(255,140,66,0.1);
+      border-color: rgba(255,140,66,0.2);
+    }
+
+    .mission-card.completed .mission-reward-icon {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.08);
+    }
+
+    .mission-reward-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .mission-reward-icon .icon-placeholder {
+      font-size: 28px;
+      opacity: 0.6;
+    }
+
+    .mission-reward-icon .reward-amount {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    /* 中间：任务信息 */
+    .mission-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      border-right: 1px dashed rgba(72,209,204,0.2);
+    }
+
+    .mission-card.completed .mission-info {
+      border-right-color: rgba(255,255,255,0.08);
+    }
+
+    .mission-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a4a6a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mission-card.completed .mission-name {
+      color: rgba(255,255,255,0.3);
+    }
+
+    .mission-progress-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mission-bar-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(72,209,204,0.12);
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 50px;
+    }
+
+    .mission-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #48d1cc, #58e0da);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+
+    .mission-card.claimable .mission-bar-fill {
+      background: linear-gradient(90deg, #ff8c42, #ff6b6b);
+    }
+
+    .mission-bar-text {
+      font-size: 11px;
+      color: rgba(72,209,204,0.5);
+      white-space: nowrap;
+      min-width: 40px;
+      text-align: right;
+      font-family: 'Courier New', monospace;
+    }
+
+    .mission-card.completed .mission-bar-text {
+      color: rgba(255,255,255,0.2);
+    }
+
+    /* 右侧：操作按钮 */
+    .mission-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+      flex-shrink: 0;
+    }
+
+    .mission-btn {
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      min-width: 100px;
+      text-align: center;
+    }
+
+    .mission-btn.claim {
+      background: linear-gradient(135deg, #48d1cc, #3bb8b4);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(72,209,204,0.3);
+    }
+
+    .mission-btn.claim:hover {
+      background: linear-gradient(135deg, #58e0da, #48d1cc);
+      box-shadow: 0 4px 12px rgba(72,209,204,0.4);
+      transform: translateY(-1px);
+    }
+
+    .mission-btn.claim:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .mission-btn.done {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.25);
+      cursor: default;
+    }
+
+    .mission-btn.locked {
+      background: rgba(72,209,204,0.08);
+      color: rgba(72,209,204,0.4);
+      cursor: default;
+    }
+
+    /* Toast */
+    .wa-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 16px;
+      z-index: 9999;
+      pointer-events: none;
+      animation: wa-fade-in 0.2s ease;
+    }
+
+    @keyframes wa-fade-in {
+      from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+      to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="missions-page">
+    <!-- Banner -->
+    <div class="missions-banner">
+      <div class="banner-title-wrap">
+        <span class="banner-title">活动任务</span>
+        <span class="banner-title-en">MISSIONS</span>
+      </div>
+      <div class="banner-subtitle">
+        完成积分任务，集齐兑换限定角色 <span class="highlight">夏日祭·陆野</span>
+      </div>
+
+      <img class="banner-character-placeholder" src="./missions_character.png" alt="" />
+    </div>
+
+    <!-- 积分进度条 -->
+    <div class="progress-section">
+      <div class="progress-label">活动积分</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+        </div>
+        <span class="progress-text" id="progress-text">0 / 3000</span>
+      </div>
+    </div>
+
+    <!-- 任务列表 -->
+    <div class="mission-list" id="mission-list"></div>
+  </div>
+
+  <div id="waToast"></div>
+
+  <script>
+    ;(function() {
+      var storage = window.__avgLLM_storage
+      var economy = window.__avgLLM_economy
+      var updateEconomy = window.__avgLLM_updateEconomy
+      var activity = window.__avgLLM_activity
+
+      function call(mod, fn, args) {
+        var nextId = window.__missions_callId = (window.__missions_callId || 0) + 1
+        var pending = window.__missions_pending = window.__missions_pending || {}
+        pending[nextId] = { resolve: function(v) { pending[nextId] = null }, reject: function(e) { pending[nextId] = null } }
+        parent.postMessage({ __avgLLM: true, id: nextId, mod: mod, fn: fn, args: args }, '*')
+      }
+
+      // 任务配置（总分3000）
+      var MISSIONS = [
+        { id: 'm1', name: '完成1次签到', type: 'signup', target: 1, points: 200, reward: { type: 'coins', amount: 500, icon: '🪙', iconImg: './reward_coin.png' } },
+        { id: 'm2', name: '完成3次签到', type: 'signup', target: 3, points: 300, reward: { type: 'crystals', amount: 100, icon: '💎', iconImg: './reward_diamond.png' } },
+        { id: 'm3', name: '完成7次签到', type: 'signup', target: 7, points: 500, reward: { type: 'card', amount: 1, icon: '🎴', iconImg: './signin_reward.png' } },
+        { id: 'm4', name: '完成5次抽卡', type: 'pull_cards', target: 5, points: 500, reward: { type: 'coins', amount: 2000, icon: '🪙', iconImg: './reward_coin.png' } },
+        { id: 'm5', name: '完成10次抽卡', type: 'pull_cards', target: 10, points: 800, reward: { type: 'crystals', amount: 300, icon: '💎', iconImg: './reward_diamond.png' } },
+        { id: 'm6', name: '累计消费2000钻石', type: 'spend_crystals', target: 2000, points: 700, reward: { type: 'coins', amount: 500, icon: '🪙', iconImg: './reward_coin.png' } },
+        { id: 'm7', name: '活动积分达成3000', type: 'points', target: 3000, points: 0, reward: { type: 'character', amount: 1, icon: '🎭', iconImg: './reward_character.png' } },
+      ]
+
+      var STORAGE_KEY = 'missions_wasteland_pet_summer_'
+      var SIGNUP_STORAGE_KEY = 'signup_wasteland_pet_summer_'
+      var GACHA_STORAGE_KEY = 'gacha_wasteland_pet_summer_'
+      var claimed = {}
+      var totalPoints = 0
+
+      function getStorageKey() {
+        return new Promise(function(resolve) {
+          activity.getWorldBookId().then(function(wbId) {
+            resolve(STORAGE_KEY + wbId)
+          })
+        })
+      }
+
+      // 从全局数据获取进度
+      function getProgress(type) {
+        var activityData = window.__avgLLM_activityData || { signup: { claimed: [] }, gacha: { pulls: 0, spent: 0 } }
+        if (type === 'signup') {
+          return activityData.signup.claimed.length
+        }
+        if (type === 'pull_cards') {
+          return activityData.gacha.pulls || 0
+        }
+        if (type === 'spend_crystals') {
+          return activityData.gacha.spent || 0
+        }
+        if (type === 'points') {
+          return calculatePoints()
+        }
+        return 0
+      }
+
+      function loadState() {
+        return activity.getWorldBookId().then(function(wbId) {
+          var key = STORAGE_KEY + wbId
+          var signupKey = SIGNUP_STORAGE_KEY + wbId
+          var gachaKey = GACHA_STORAGE_KEY + wbId
+
+          return Promise.all([
+            storage.get(key),
+            storage.get(signupKey),
+            storage.get(gachaKey)
+          ]).then(function(results) {
+            claimed = results[0] || {}
+            // 读取签到数据并更新全局
+            var savedSignup = results[1]
+            if (savedSignup && typeof savedSignup === 'object') {
+              window.__avgLLM_activityData.signup.claimed = savedSignup.claimed || []
+            } else if (Array.isArray(savedSignup)) {
+              window.__avgLLM_activityData.signup.claimed = savedSignup
+            }
+            // 读取抽卡数据并更新全局
+            var savedGacha = results[2]
+            if (savedGacha && typeof savedGacha === 'object') {
+              window.__avgLLM_activityData.gacha.pulls = savedGacha.pullCount || 0
+              window.__avgLLM_activityData.gacha.spent = savedGacha.spentCrystals || 0
+            }
+            renderAll()
+          })
+        })
+      }
+
+      function saveState() {
+        return getStorageKey().then(function(key) {
+          return storage.set(key, claimed)
+        })
+      }
+
+      function calculatePoints() {
+        var pts = 0
+        MISSIONS.forEach(function(m) {
+          if (claimed[m.id]) {
+            pts += m.points || 0
+          }
+        })
+        return pts
+      }
+
+      function renderAll() {
+        renderMissions()
+        renderProgress()
+      }
+
+      function renderProgress() {
+        totalPoints = calculatePoints()
+        var maxPoints = 3000
+        var pct = Math.min(100, (totalPoints / maxPoints) * 100)
+        var fill = document.getElementById('progress-fill')
+        var text = document.getElementById('progress-text')
+        if (fill) fill.style.width = pct + '%'
+        if (text) text.textContent = totalPoints + ' / ' + maxPoints
+      }
+
+      function renderMissions() {
+        var container = document.getElementById('mission-list')
+        if (!container) return
+        container.innerHTML = ''
+
+        if (MISSIONS.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:40px 0;color:rgba(232,244,255,0.25);font-size:14px;">没有更多任务了</div>'
+          return
+        }
+
+        MISSIONS.forEach(function(m) {
+          var progress = getProgress(m.type)
+          var isClaimed = claimed[m.id] || false
+          var canClaim = progress >= m.target && !isClaimed
+          var pct = Math.min(100, (progress / m.target) * 100)
+
+          var cardClass = isClaimed ? 'completed' : (canClaim ? 'claimable' : 'unclaimed')
+
+          var btnHtml = ''
+          if (isClaimed) {
+            btnHtml = '<button class="mission-btn done">已领取</button>'
+          } else if (canClaim) {
+            btnHtml = '<button class="mission-btn claim" data-mid="' + m.id + '">领取</button>'
+          } else {
+            btnHtml = '<button class="mission-btn locked">进行中</button>'
+          }
+
+          var rewardLabel = ''
+          if (m.reward.amount) rewardLabel = '<span class="reward-amount">' + m.reward.amount + '</span>'
+
+          var iconHtml = m.reward.iconImg
+            ? '<img src="' + m.reward.iconImg + '" alt="" />'
+            : '<span class="icon-placeholder">' + m.reward.icon + '</span>'
+
+          var div = document.createElement('div')
+          div.className = 'mission-card ' + cardClass
+          div.innerHTML =
+            '<span class="corner-bl"></span><span class="corner-br"></span>' +
+            '<span class="mission-watermark">✦</span>' +
+            '<div class="mission-reward-icon">' +
+              iconHtml +
+              rewardLabel +
+            '</div>' +
+            '<div class="mission-info">' +
+              '<div class="mission-name">' + m.name + '</div>' +
+              '<div class="mission-progress-bar">' +
+                '<div class="mission-bar-track">' +
+                  '<div class="mission-bar-fill" style="width:' + pct + '%"></div>' +
+                '</div>' +
+                '<span class="mission-bar-text">' + progress + ' / ' + m.target + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="mission-action">' + btnHtml + '</div>'
+
+          container.appendChild(div)
+        })
+
+        container.querySelectorAll('.mission-btn.claim').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            claimMission(btn.dataset.mid)
+          })
+        })
+      }
+
+      function claimMission(mid) {
+        var m = MISSIONS.find(function(x) { return x.id === mid })
+        if (!m || claimed[m.id]) return
+
+        claimed[m.id] = true
+
+        if (m.reward.type === 'coins') {
+          updateEconomy({ coins: (economy.value.coins || 0) + m.reward.amount })
+        } else if (m.reward.type === 'crystals') {
+          updateEconomy({ crystals: (economy.value.crystals || 0) + m.reward.amount })
+        } else if (m.reward.type === 'card') {
+          call('cardCollection', 'addCard', ['card_wasteland_summer_ssr'])
+        } else if (m.reward.type === 'character') {
+          call('cardCollection', 'addCard', ['character_wasteland_summer_luye'])
+        }
+
+        saveState().then(function() {
+          renderAll()
+          showToast('✅ 领取成功！')
+        })
+      }
+
+      function showToast(msg) {
+        var el = document.getElementById('waToast')
+        if (!el) return
+        el.innerHTML = '<div class="wa-toast">' + msg + '</div>'
+        setTimeout(function() { el.innerHTML = '' }, 2000)
+      }
+
+      // 监听活动事件更新
+      window.addEventListener('avgLLM_activityEvent', function(e) {
+        var detail = e.detail
+        if (detail.type === 'signup') {
+          // 签到事件需要重新从存储读取
+          activity.getWorldBookId().then(function(wbId) {
+            storage.get(SIGNUP_STORAGE_KEY + wbId).then(function(saved) {
+              if (saved && typeof saved === 'object') {
+                window.__avgLLM_activityData.signup.claimed = saved.claimed || []
+              } else if (Array.isArray(saved)) {
+                window.__avgLLM_activityData.signup.claimed = saved
+              }
+              renderAll()
+            })
+          })
+        } else {
+          // 抽卡和消费事件，全局数据已更新，直接渲染
+          renderAll()
+        }
+      })
+
+      loadState()
+    })()
+  </script>
+</body>
+</html>

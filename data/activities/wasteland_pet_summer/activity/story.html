@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>活动剧情 - 废土娇宠·夏日祭</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    .story-page {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      color: #e8f4ff;
+    }
+
+    /* 背景图 */
+    .story-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    /* 装饰光晕 */
+    .story-glow {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(72,209,204,0.3) 0%, transparent 70%);
+      animation: glow-float 6s ease-in-out infinite;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .story-glow.center {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    @keyframes glow-float {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+      50% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.7; }
+    }
+
+    /* 漂浮粒子 */
+    .particles {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: rgba(72,209,204,0.6);
+      border-radius: 50%;
+      animation: particle-float 8s linear infinite;
+    }
+
+    @keyframes particle-float {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-20px) rotate(360deg); opacity: 0; }
+    }
+
+    /* 内容层 */
+    .story-content {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    /* ===== 标题 ===== */
+    .story-title {
+      font-size: 64px;
+      font-weight: 800;
+      color: #e8f4ff;
+      text-shadow: 0 0 30px rgba(72,209,204,0.6), 0 4px 12px rgba(0,0,0,0.4);
+      letter-spacing: 8px;
+      margin-bottom: 16px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .story-subtitle {
+      font-size: 16px;
+      color: rgba(232,244,255,0.85);
+      text-align: center;
+      line-height: 1.8;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 16px 24px;
+      backdrop-filter: blur(4px);
+      margin-bottom: 60px;
+    }
+
+    /* ===== 按钮 ===== */
+    .story-btn {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+      padding: 16px 48px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, #48d1cc, #3bb8b4);
+      box-shadow: 0 4px 16px rgba(72,209,204,0.3);
+    }
+
+    .story-btn::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(72,209,204,0.6), rgba(72,209,204,0.2));
+      z-index: -1;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .story-btn:hover::before {
+      opacity: 1;
+    }
+
+    .story-btn:hover {
+      transform: translateX(-50%) translateY(-3px);
+      box-shadow: 0 8px 24px rgba(72,209,204,0.4);
+    }
+
+    .story-btn:active {
+      transform: translateX(-50%) scale(0.97);
+    }
+  </style>
+</head>
+<body>
+  <div class="story-page">
+    <!-- 背景图 -->
+    <img class="story-bg" src="./story_bg.png" alt="" />
+
+    <!-- 装饰光晕 -->
+    <div class="story-glow center"></div>
+
+    <!-- 漂浮粒子 -->
+    <div class="particles" id="particles"></div>
+
+    <!-- 内容 -->
+    <div class="story-content">
+      <!-- 标题 -->
+      <div class="story-title">夏日祭</div>
+      <div class="story-subtitle">
+        炎炎夏日，海滨小镇迎来了一年一度的夏日祭。<br>
+        灯火璀璨，烟火绚烂，一场奇妙的故事即将展开...
+      </div>
+    </div>
+
+    <!-- 按钮 -->
+    <button class="story-btn" id="start-story">开启故事</button>
+  </div>
+
+  <script>
+    ;(function() {
+      // 创建漂浮粒子
+      function createParticles() {
+        var container = document.getElementById('particles')
+        for (var i = 0; i < 20; i++) {
+          var p = document.createElement('div')
+          p.className = 'particle'
+          p.style.left = Math.random() * 100 + '%'
+          p.style.animationDelay = Math.random() * 8 + 's'
+          p.style.opacity = 0.3 + Math.random() * 0.4
+          container.appendChild(p)
+        }
+      }
+
+      createParticles()
+
+      // 按钮点击
+      document.getElementById('start-story').addEventListener('click', function() {
+        parent.postMessage({
+          __avgLLM: true,
+          type: 'activityEvent',
+          eventType: 'openStory',
+          activityId: 'wasteland_pet_summer'
+        }, '*')
+      })
+    })()
+  </script>
+</body>
+</html>

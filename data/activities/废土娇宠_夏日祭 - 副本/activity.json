@@ -1,0 +1,71 @@
+{
+  "id": "wasteland_pet_summer",
+  "name": "废土娇宠·夏日祭",
+  "description": "废土之上的夏日祭典，在荒芜中寻找温暖与欢愉...",
+  "bannerColor": "#4a3728",
+  "bannerIcon": "☀️",
+  "worldBookId": "default_world_book",
+  "coverImage": null,
+  "coverGradient": ["#e67e22", "#d35400", "#c0392b"],
+  "startTime": 1740000000000,
+  "endTime": 1893456000000,
+  "assets": {
+    "bg": "./activity/bg.png",
+    "mask": "./activity/mask.png",
+    "btnDone": "./activity/btn_done.png"
+  },
+  "limitedCards": [
+    { "cardId": "card_wasteland_summer_sr", "obtainMethod": "活动限定" }
+  ],
+  "missions": [
+    {
+      "id": "m_pull_1",
+      "name": "废土初遇",
+      "description": "完成1次召唤",
+      "type": "pull_cards",
+      "target": 1,
+      "reward": { "crystals": 500 }
+    },
+    {
+      "id": "m_pull_10",
+      "name": "废土幸存者",
+      "description": "累计完成10次召唤",
+      "type": "pull_cards",
+      "target": 10,
+      "reward": { "crystals": 2000 }
+    },
+    {
+      "id": "m_level_up",
+      "name": "废土工匠",
+      "description": "升级卡牌5次",
+      "type": "level_up_card",
+      "target": 5,
+      "reward": { "coins": 5000 }
+    },
+    {
+      "id": "m_evolve",
+      "name": "废土觉醒",
+      "description": "升阶卡牌1次",
+      "type": "evolve_card",
+      "target": 1,
+      "reward": { "crystals": 1000 }
+    },
+    {
+      "id": "m_spend_crystals",
+      "name": "废土商贾",
+      "description": "累计消耗5000钻石",
+      "type": "spend_crystals",
+      "target": 5000,
+      "reward": { "crystals": 3000 }
+    }
+  ],
+  "signups": [
+    { "day": 1, "reward": { "crystals": 100 } },
+    { "day": 2, "reward": { "coins": 1000 } },
+    { "day": 3, "reward": { "crystals": 500 } },
+    { "day": 4, "reward": { "coins": 2000 } },
+    { "day": 5, "reward": { "crystals": 800 } },
+    { "day": 6, "reward": { "coins": 3000 } },
+    { "day": 7, "reward": { "crystals": 2000, "special": "card_wasteland_summer_sr" } }
+  ]
+}

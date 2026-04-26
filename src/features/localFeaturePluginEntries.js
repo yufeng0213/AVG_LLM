@@ -1,5 +1,5 @@
 import adventureGameEntry from '../../plugins/feature-adventure-game/src/entry.js'
-import cardCollectionEntry from '../../plugins/feature-card-collection/src/entry.js'
+import cardCollectionEntry from '../../plugins/feature-memento-card/src/entry.js'
 import dormitoryEntry from '../../plugins/feature-dormitory/src/entry.js'
 import faceToFaceEntry from '../../plugins/feature-face-to-face/src/entry.js'
 import gameEntry from '../../plugins/feature-game/src/entry.js'
@@ -25,6 +25,8 @@ import mascotEntry from '../../plugins/feature-mascot/src/entry.js'
 import characterScheduleEntry from '../../plugins/feature-character-schedule/src/entry.js'
 import worldMemoryEntry from '../../plugins/feature-world-memory/src/entry.js'
 import characterStateEntry from '../../plugins/feature-character-state/src/entry.js'
+import characterCardEntry from '../../plugins/feature-character-card/src/entry.js'
+import baseBuildingEntry from '../../plugins/feature-base-building/src/entry.js'
 
 const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   backStorageEntry,
@@ -54,6 +56,8 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   characterScheduleEntry,
   worldMemoryEntry,
   characterStateEntry,
+  baseBuildingEntry,
+  characterCardEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {

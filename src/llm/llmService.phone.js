@@ -3724,7 +3724,7 @@ const tryParseTaskBoardTasks = (rawContent) => {
     return []
   }
 
-  const validTypes = ['explore', 'collect', 'social', 'combat', 'daily']
+  const validTypes = ['explore', 'collect', 'puzzle', 'clue', 'social', 'combat', 'daily']
   const validRewardTypes = ['coins', 'crystals', 'item']
 
   // ---- Try delimiter-based protocol ----

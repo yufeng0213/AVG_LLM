@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+    body {
+      position: relative;
+      width: 1536px;
+      height: 2720px;
+    }
+    img { display: block; }
+  </style>
+</head>
+<body>
+  <!-- 背景 -->
+  <img id="waBg" src="./bg.png" alt=""
+       style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;object-position:center top;">
+
+  <!-- 7 天格子 -->
+  <div class="wa-box" id="waDay1" style="left:164px;top:1062px;"><span class="wa-reward-label"></span></div>
+  <div class="wa-box" id="waDay2" style="left:602px;top:1062px;"><span class="wa-reward-label"></span></div>
+  <div class="wa-box" id="waDay3" style="left:1042px;top:1062px;"><span class="wa-reward-label"></span></div>
+  <div class="wa-box" id="waDay4" style="left:164px;top:1471px;"><span class="wa-reward-label"></span></div>
+  <div class="wa-box" id="waDay5" style="left:602px;top:1471px;"><span class="wa-reward-label"></span></div>
+  <div class="wa-box" id="waDay6" style="left:1042px;top:1471px;"><span class="wa-reward-label"></span></div>
+  <div class="wa-box" id="waDay7" style="left:602px;top:1892px;"><span class="wa-reward-label"></span></div>
+
+  <!-- 签到按钮 -->
+  <img id="waSignBtn" src="./btn_done.png" alt="签到"
+       style="position:absolute;left:225px;top:2243px;width:1075px;height:251px;cursor:pointer;">
+
+  <!-- Toast 容器 -->
+  <div id="waToast"></div>
+
+  <style>
+    .wa-box {
+      position: absolute; width: 438px; height: 409px;
+      cursor: default; transition: opacity 0.3s;
+    }
+    .wa-box.claimable { cursor: pointer; }
+    .wa-box.claimable::after {
+      content: ''; position: absolute; inset: 0;
+      border: 2px solid rgba(255,200,100,0.6); border-radius: 8px;
+      animation: wa-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes wa-pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+    .wa-box.claimed { opacity: 0.5; pointer-events: none; }
+    .wa-mask { position: absolute; left: 53px; top: 87px; width: 331px; height: 234px; z-index: 2; pointer-events: none; }
+    .wa-reward-label {
+      position: absolute; left: 50%; bottom: 18%; transform: translateX(-50%);
+      color: #fff; font-size: 16px; font-weight: 700;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.8); z-index: 3; pointer-events: none; white-space: nowrap;
+    }
+    .wa-sign-btn.disabled { opacity: 0.5; cursor: default; pointer-events: none; }
+    .wa-toast {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.85); color: #fff; padding: 14px 28px;
+      border-radius: 10px; font-size: 16px; z-index: 100; pointer-events: none;
+      animation: wa-fade-in 0.2s ease;
+    }
+    @keyframes wa-fade-in {
+      from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+      to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    }
+  </style>
+
+  <script>
+    // ─── bridge: 通过 postMessage 访问父窗口的 window.__avgLLM ───
+    (function () {
+      var nextId = 1, pending = {}
+
+      function call(mod, fn, args) {
+        return new Promise(function (resolve, reject) {
+          var id = nextId++
+          pending[id] = { resolve: resolve, reject: reject }
+          parent.postMessage({ __avgLLM: true, id: id, mod: mod, fn: fn, args: args }, '*')
+        })
+      }
+
+      window.addEventListener('message', function (e) {
+        if (!e.data || !e.data.__avgLLM || e.data.type !== 'result') return
+        var p = pending[e.data.id]
+        if (!p) return
+        delete pending[e.data.id]
+        if (e.data.error) p.reject(new Error(e.data.error))
+        else p.resolve(e.data.value)
+      })
+
+      // storage
+      window.__avgLLM_storage = {
+        get: function (k) { return call('storage', 'get', [k]) },
+        set: function (k, v) { return call('storage', 'set', [k, v]) },
+        remove: function (k) { return call('storage', 'remove', [k]) }
+      }
+
+      // economy
+      window.__avgLLM_economy = { value: { coins: 0, crystals: 0 } }
+      call('economy', 'get', []).then(function (v) {
+        if (v) Object.assign(window.__avgLLM_economy.value, v)
+      })
+      window.__avgLLM_updateEconomy = function (v) {
+        if (v.coins != null) window.__avgLLM_economy.value.coins = v.coins
+        if (v.crystals != null) window.__avgLLM_economy.value.crystals = v.crystals
+        call('economy', 'update', [v])
+      }
+
+      // activity
+      window.__avgLLM_activity = {
+        notifyEvent: function (type, count) { call('activity', 'notifyEvent', [type, count]) },
+        getWorldBookId: function () { return call('activity', 'getWorldBookId', []) }
+      }
+    })();  // <-- semicolon to prevent IIFE collision
+
+    // ─── 活动逻辑 ───
+    ;(async function () {
+      var storage = window.__avgLLM_storage
+      var economy = window.__avgLLM_economy
+      var updateEconomy = window.__avgLLM_updateEconomy
+      var activity = window.__avgLLM_activity
+
+      var REWARDS = [
+        { coins: 500, label: '500 金币' },
+        { coins: 1000, label: '1000 金币' },
+        { crystals: 200, label: '200 钻石' },
+        { coins: 2000, label: '2000 金币' },
+        { crystals: 500, label: '500 钻石' },
+        { coins: 3000, label: '3000 金币' },
+        { crystals: 1500, label: '1500 钻石' }
+      ]
+
+      var BOX_POSITIONS = [
+        { day: 1, x: 164, y: 1062 }, { day: 2, x: 602, y: 1062 }, { day: 3, x: 1042, y: 1062 },
+        { day: 4, x: 164, y: 1471 }, { day: 5, x: 602, y: 1471 }, { day: 6, x: 1042, y: 1471 },
+        { day: 7, x: 602, y: 1892 }
+      ]
+
+      var claimed = []
+      var toastTimer = null
+
+      function showToast(msg) {
+        var el = document.getElementById('waToast')
+        if (!el) return
+        el.innerHTML = '<div class="wa-toast">' + msg + '</div>'
+        clearTimeout(toastTimer)
+        toastTimer = setTimeout(function () { el.innerHTML = '' }, 2000)
+      }
+
+      function isClaimed(day) { return claimed.indexOf(day) >= 0 }
+      function isClaimable(day) { return day === claimed.length + 1 }
+
+      async function doClaim(day) {
+        if (isClaimed(day) || !isClaimable(day)) return
+        var r = REWARDS[day - 1]
+        claimed.push(day)
+        var wbId = await activity.getWorldBookId()
+        await storage.set('signup_wasteland_pet_summer_' + wbId, claimed)
+        var newVal = {}
+        if (r.coins) { newVal.coins = (economy.value.coins || 0) + r.coins }
+        if (r.crystals) { newVal.crystals = (economy.value.crystals || 0) + r.crystals }
+        if (Object.keys(newVal).length) updateEconomy(newVal)
+        activity.notifyEvent('signup', 1)
+        showToast('✅ 签到成功！获得 ' + r.label)
+        updateUI()
+      }
+
+      function updateUI() {
+        BOX_POSITIONS.forEach(function (pos, i) {
+          var day = i + 1
+          var box = document.getElementById('waDay' + day)
+          if (!box) return
+          box.classList.remove('claimed', 'claimable')
+          var oldMask = box.querySelector('.wa-mask')
+          if (oldMask) oldMask.remove()
+          if (isClaimed(day)) {
+            box.classList.add('claimed')
+            var mask = document.createElement('img')
+            mask.className = 'wa-mask'
+            mask.src = './mask.png'
+            box.appendChild(mask)
+          } else if (isClaimable(day)) {
+            box.classList.add('claimable')
+          }
+          var label = box.querySelector('.wa-reward-label')
+          if (label) label.textContent = REWARDS[i].label
+          box.onclick = function () { if (isClaimable(day)) doClaim(day) }
+        })
+        var btn = document.getElementById('waSignBtn')
+        if (btn) {
+          btn.classList.toggle('disabled', claimed.length >= 7)
+          btn.onclick = function () { var nd = claimed.length + 1; if (nd <= 7) doClaim(nd) }
+        }
+      }
+
+      // init
+      var wbId = await activity.getWorldBookId()
+      var saved = await storage.get('signup_wasteland_pet_summer_' + wbId)
+      claimed = Array.isArray(saved) ? saved : []
+      updateUI()
+    })()
+  </script>
+</body>
+</html>

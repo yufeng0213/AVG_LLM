@@ -88,12 +88,19 @@ export const buildStoryPrompt = (params) => {
     directorDirectives,
     userInput,
     currentStoryTime,
+    currentChapter = null,
     messageCount = 3,
     selectedChoice,
     contextLineCount = 10,
+    activityStoryContext,  // 活动故事专属上下文
   } = params
 
   const sections = []
+
+  // 0. 活动故事背景（最优先）
+  if (activityStoryContext) {
+    sections.push(buildActivityStorySection(activityStoryContext))
+  }
 
   // 1. 世界设定部分
   if (worldBook) {
@@ -131,9 +138,51 @@ export const buildStoryPrompt = (params) => {
   }
 
   // 8. 用户指令（包含消息条数和选择的选项）
-  sections.push(buildInstructionSection(userInput, messageCount, selectedChoice, worldBook, currentStoryTime))
+  sections.push(buildInstructionSection(userInput, messageCount, selectedChoice, worldBook, currentStoryTime, currentChapter))
 
   return sections.filter(Boolean).join('\n\n---\n\n')
+}
+
+/**
+ * 构建活动故事背景部分
+ * @param {Object} context - 活动故事配置
+ * @returns {string} 活动故事背景文本
+ */
+const buildActivityStorySection = (context) => {
+  const lines = ['## ⚠️ 重要：这是活动剧情，不是主线剧情']
+
+  lines.push('')
+  lines.push('**当前正在进行的不是游戏主线剧情，而是限时活动专属剧情。**')
+  lines.push('请完全依据本活动的设定开展故事，不要涉及主线剧情内容。')
+  lines.push('')
+
+  if (context.title) {
+    lines.push(`**活动名称**: ${context.title}`)
+  }
+
+  if (context.openingPrompt) {
+    lines.push('')
+    lines.push('### 活动开场设定（请以此为起点开展剧情）')
+    lines.push(context.openingPrompt)
+    lines.push('')
+    lines.push('**重要**：以上是本活动的开场设定，请以此为起点展开故事，不要偏离这个设定。')
+  }
+
+  if (context.mood) {
+    lines.push('')
+    lines.push(`**整体氛围**: ${context.mood}`)
+  }
+
+  if (context.sceneCharacters && context.sceneCharacters.length > 0) {
+    lines.push('')
+    lines.push(`**出场角色**: ${context.sceneCharacters.join('、')}`)
+  }
+
+  lines.push('')
+  lines.push('---')
+  lines.push('请在生成内容时时刻记住：这是活动剧情，请紧扣活动主题和氛围。')
+
+  return lines.join('\n')
 }
 
 /**
@@ -319,6 +368,7 @@ const buildInstructionSection = (
   selectedChoice = null,
   worldBook = null,
   currentStoryTime = '',
+  currentChapter = null,
 ) => {
   const lines = ['## 生成指令']
   lines.push('')
@@ -327,24 +377,57 @@ const buildInstructionSection = (
   if (normalizedCurrentStoryTime) {
     lines.push(`当前剧情时间：${normalizedCurrentStoryTime}`)
   }
+
+  // 章节上下文
+  if (currentChapter) {
+    lines.push(`当前章节：${currentChapter.major}-${currentChapter.minor} ${currentChapter.name}`)
+    if (currentChapter.storyline) {
+      lines.push(`本章主线：${currentChapter.storyline}`)
+    }
+    lines.push('请围绕本章主线推进剧情，当剧情发展到重要转折或阶段性完成时可开启新章节。')
+    lines.push('新章节用 <chapter major="大章" minor="小节" name="名称" s="主线概要"/> 标签。')
+  }
+
   lines.push('')
-  lines.push('### 输出要求')
-  lines.push('1. 只输出 JSON 数组，不要 markdown，不要解释')
-  lines.push('2. 每条对话使用紧凑键: s(说话者)、e(表情)、t(内容)、h(高亮0/1)、d(剧情时间)')
-  lines.push(`3. 必须生成 ${messageCount} 条对话`)
-  lines.push('4. 说话者必须是已定义角色名称或"旁白"')
-  lines.push('5. 表情必须使用指定的表情标识')
-  lines.push('6. 所有对话都必须包含 d，并在同一世界内保持纪年体系与写法一致')
-  lines.push('7. 本次推进后，最后一条 d 必须相对当前剧情时间前进（不能不变、不能回退）')
-  lines.push('8. 每次生成的最后一条都必须添加 c 选项: c={p,o,i}，其中 o=[{t,a}]，i=1')
-  lines.push('9. 可选场景切换使用 sc={id,name}')
-  lines.push('10. 若角色存在“人格结构化设定”，角色行为与语气必须优先符合该设定')
-  lines.push('11. 输出尽量紧凑，减少无意义空格与换行')
-  
-  // 添加场景指令说明
+  lines.push('### 思考步骤（输出 XML 前）')
+  lines.push('1. 当前剧情进展到哪里？')
+  lines.push('2. 接下来发生什么比较合理？')
+  lines.push('3. 哪些角色会参与？各自的情感/态度是什么？')
+  lines.push(`4. 建议生成 ${messageCount} 条对话，剧情时间应该如何推进？`)
+  lines.push('5. 是否需要场景切换？')
   lines.push('')
-  lines.push('### 场景切换指令')
-  lines.push('如需切换背景场景，在对应对话添加 sc 字段，例如: {"s":"旁白","t":"...","sc":{"id":"street_night","name":"夜街"}}')
+  lines.push('### 输出格式（紧凑 XML）')
+  lines.push('在 <thinking> 之后，用以下 XML 标签输出，不要 markdown、不要 JSON、不要解释：')
+  lines.push('')
+  lines.push('- 对话：<d s="说话者" e="表情" d="剧情时间">内容</d>')
+  lines.push('  - s: 说话者名称或"旁白"')
+  lines.push('  - e: 表情标识，旁白可省略')
+  lines.push('  - d: 剧情时间（必填）')
+  lines.push('')
+  lines.push('- 场景切换：<sc id="场景ID" n="名称"/>')
+  lines.push('')
+  lines.push('- 选项（必须出现在最后）：')
+  lines.push('  <choices p="提示语" i="1">')
+  lines.push('    <o t="选项1" a="action_id"/>')
+  lines.push('    <o t="选项2" a="action_id2"/>')
+  lines.push('  </choices>')
+  lines.push('  - p: 提示语，i: 是否允许自定义输入(0或1)')
+  lines.push('  - o: t=选项文案, a=action ID，至少 2 项')
+  lines.push('')
+  lines.push('### 示例')
+  lines.push('<thinking>')
+  lines.push('当前是傍晚，两人在回家路上。接下来可以推进到夜晚，场景切换到家中...')
+  lines.push('林夏表现出担忧，玩家应该回应关心...')
+  lines.push('</thinking>')
+  lines.push('<d s="旁白" d="傍晚">林夏走在回家的路上，夕阳把她的影子拉得很长。</d>')
+  lines.push('<d s="林夏" e="worried" d="傍晚">你最近还好吗？感觉你心事重重的...</d>')
+  lines.push('<d s="旁白" d="夜深">两人回到了家中，客厅里只开了一盏小灯。</d>')
+  lines.push('<sc id="home_living" n="家中客厅"/>')
+  lines.push('<d s="旁白" d="夜深">安静的房间里，时钟滴答作响。</d>')
+  lines.push('<choices p="接下来怎么做？" i="1">')
+  lines.push('  <o t="陪她聊聊心事" a="chat"/>')
+  lines.push('  <o t="各自回房休息" a="rest"/>')
+  lines.push('</choices>')
   
   // 如果世界书有场景配置，列出可用场景
   if (worldBook?.scenes && worldBook.scenes.length > 0) {

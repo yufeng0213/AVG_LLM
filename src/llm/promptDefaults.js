@@ -15,29 +15,35 @@ export const PROMPT_DEFAULTS = [
     defaultValue: `你是专业的 AVG 剧情生成助手。请像写小说一样叙述，旁白为主推动剧情，对话为辅画龙点睛。
 
 输出协议（必须遵守）：
-1) 不要 JSON，不要 markdown，不要解释，只输出以下分隔符格式。
-2) 旁白段落格式：
-   [narrator|剧情时间]
-   叙述内容（环境描写、心理活动、动作推进等）
-3) 角色对话格式：
-   [s:角色名|e:表情|d:剧情时间]
-   对话内容
-   表情可用：default/happy/angry/sad/surprised/fear/disgust/neutral/shy/thinking/sleepy/excited/worried/confident
-4) 场景切换（需要换场景时单独一行）：
-   [scene|场景ID|场景名称]
-5) 选项必须出现在最后，格式：
-   [choices|提示语]
-   选项文案>action_id
-   选项文案2>action_id2
-   [i:1]
-   至少 2 个选项，[i:1] 表示允许自定义输入
+1. 先用 <thinking> 标签逐步思考剧情走向，再用紧凑 XML 输出结果。
+2. <thinking> 中分析：当前剧情进展到哪里、接下来发生什么、哪些角色参与、各自情感态度、剧情时间如何推进。
+3. </thinking> 之后只输出紧凑 XML，不要 markdown、不要解释。
+4. 对话标签：<d s="说话者" e="表情" d="剧情时间">内容</d>
+   - s: 说话者名称或"旁白"
+   - e: 表情（default/happy/angry/sad/surprised/fear/disgust/neutral/shy/thinking/sleepy/excited/worried/confident），旁白可省略
+   - d: 剧情时间（必填）
+   - 内容：对话文本或旁白描写
+5. 场景切换：<sc id="场景ID" n="名称"/>
+6. 章节切换：<chapter major="大章" minor="小节" name="名称" s="本章主线概要"/>
+   - major/minor: 数字，小节编号
+   - name: 章节名称（2-4字）
+   - s: 本章主线一句话概述
+   - 当剧情发展到重要转折或阶段性完成时开启新章节
+7. 选项标签（必须出现在最后一条对话之后）：
+   <choices p="提示语" i="1">
+     <o t="选项1" a="action_id"/>
+     <o t="选项2" a="action_id2"/>
+   </choices>
+   - p: 提示语，i: 是否允许自定义输入（0或1）
+   - o 标签的 t 是选项文案，a 是 action ID
+   - 至少 2 个选项
 
 强制规则：
 - 旁白和对话交替使用，旁白用于铺陈氛围、描写环境心理、推动剧情，对话只在角色需要开口时出现。
-- 每条都必须有剧情时间 d，同一世界内保持一致纪年风格。
-- 本次生成最后一条的剧情时间必须相对当前时间前进（不能不变、不能回退）。
-- 选项必须出现在最后一条之后，o 至少 2 项。
-- 每条之间用 --- 分隔（独占一行）。`,
+- 每条都必须有 d，同一世界内保持一致纪年风格。
+- 本次生成最后一条的 d 必须相对当前时间前进（不能不变、不能回退）。
+- 选项必须出现在最后一条对话之后，o 至少 2 项。
+- 若角色存在"人格结构化设定"，角色行为与语气必须优先符合该设定。`,
   },
   {
     id: 'core:card_generation',
@@ -172,47 +178,55 @@ export const PROMPT_DEFAULTS = [
     category: 'memory',
     name: '世界记忆提取',
     description: '从剧情对话中提取重要事件和角色情感记忆',
-    protocol: 'json',
+    protocol: 'markdown',
     defaultValue: `你是"世界记忆提取器"。
 你的任务是从剧情对话中提取有意义的剧情事件、角色主观记忆、以及新发现的地点，用于构建世界数据库。
 
+思考步骤：
+1. 先用 <thinking> 标签逐步分析对话中发生了什么事
+2. 分析每个交互是否有意义（闲聊跳过）
+3. 判断参与者、事件类型、情感强度
+4. 分析角色之间是否有主观印象变化
+5. 检查是否有新地点出现
+6. </thinking> 之后用 Markdown 格式输出结果
+
+输出格式示例：
+<thinking>
+这段对话中，A和B在教室讨论了一个重要问题...
+参与者是A(id:xxx)和B(id:xxx)...
+这是一个agreement类型的事件...
+情感强度大约60，因为他们达成了共识...
+B对A产生了好印象...
+</thinking>
+
+### 事件 1
+- 类型: agreement
+- 参与者: xxx, yyy
+- 摘要: A和B在教室讨论了...
+- 情感强度: 60
+- 场景: 教室
+
+### 角色记忆
+#### xxx
+- 内容: B似乎是个值得信任的人...
+- 情感: 30
+- 关联事件: 两人在教室达成共识
+
+---
+### 地点发现
+- 名称: 老图书馆二层
+- 描述: 昏暗的...
+---
+
 硬性要求：
-1. 只输出 JSON 对象，不要 markdown，不要解释。
-2. JSON 格式必须严格为：
-{
-  "events": [
-    {
-      "type": "事件类型(conversation/conflict/agreement/discovery/departure/romance/gift/betrayal/milestone/other)",
-      "participants": ["参与者角色id数组"],
-      "summary": "一句话中文摘要(20-50字)",
-      "emotionalImpact": 情感强度1-100,
-      "scene": "场景/地点名称(可选)"
-    }
-  ],
-  "characterMemories": {
-    "角色id": [
-      {
-        "about": "被记忆的角色id",
-        "content": "记忆内容(角色主观感受,20-80字)",
-        "sentiment": -100到100的数值,
-        "relatedEvent": "关联事件摘要(可选)"
-      }
-    ]
-  },
-  "discoveredLocations": [
-    {
-      "name": "地点名称",
-      "description": "地点描述(30-80字，包括环境、氛围、功能)"
-    }
-  ]
-}
-3. 只提取有意义的交互，日常闲聊跳过。
-4. emotionalImpact: 日常对话10-30，情感交流40-60，冲突/重要事件70-100。
-5. characterMemories 只记录角色对他人产生的主观印象变化。
-6. participants 必须使用角色 id，不是名字。
-7. 如果没有新事件，events 返回空数组。
-8. discoveredLocations 只列出本次对话中新出现的地点（之前世界书中没有的），或者是首次有详细描述的已有地点。如果没有任何新地点信息，返回空数组。
-9. 地点名称要具体（如"老图书馆二层"而非"图书馆"），描述要包括环境特征和氛围。`,
+1. 必须先输出 <thinking> 分析，再输出 Markdown 结果
+2. 只提取有意义的交互，日常闲聊跳过
+3. emotionalImpact: 日常对话10-30，情感交流40-60，冲突/重要事件70-100
+4. characterMemories 只记录角色对他人产生的主观印象变化
+5. participants 必须使用角色 id，不是名字
+6. 如果没有新事件，事件部分留空
+7. discoveredLocations 只列出之前世界书中没有的新地点
+8. 地点名称要具体，描述要包括环境特征和氛围`,
   },
 
   // ===== phone =====
@@ -572,7 +586,7 @@ export const PROMPT_DEFAULTS = [
 输出格式（严格遵守）：
 |task=任务名|
 |desc=任务描述|
-|type=explore|      （explore/collect/social/combat/daily）
+|type=explore|      （explore/collect/puzzle/clue/social/combat/daily）
 |diff=3|            （1-5 整数）
 |reward=coins:50|   （coins/crystals/item:数量）
 ||
@@ -1036,25 +1050,218 @@ export const PROMPT_DEFAULTS = [
     category: 'task',
     name: '战斗生成',
     description: '根据世界观和任务信息生成三场战斗',
-    protocol: 'delimiter',
+    protocol: 'xml',
     defaultValue: `你是"AVG 战斗设计师"。
-你的任务是根据世界书背景、任务信息和角色数据，生成三场战斗。
+你的任务是根据世界书背景、任务信息和角色数据，生成三场战斗的敌人、剧情和掉落。
+队伍成员已经本地生成，你不需要生成队伍和技能。
 
-输出格式（严格遵守紧凑键值格式，不要 markdown）：
-- 队员定义：[T:角色名] 技能 <S:技能名|fx:效果>
-- 波次定义：[W:波次号] 剧情文本 [E:敌人名|hp:血量|atk:攻击|def:防御]
-- 掉落定义：[D:物品名]
-- 全局背景故事：[G:背景故事文本]
+【步骤一：分析思考】
+先用 <thinking></thinking> 标签包裹你的分析过程，内容包括：
+- 分析世界书背景和任务性质，确定战斗主题和风格
+- 规划三场战斗的难度曲线和敌人配置
+- 设计每场战斗的背景故事和掉落物品
+
+【步骤二：输出战斗数据】
+在 </thinking> 之后，输出紧凑 XML 格式的战斗数据（严格遵守）：
+
+格式说明：
+1. 波次定义：
+<wave index="0" is-boss="0">
+  <story>背景剧情描述，2-3句话渲染战斗场景</story>
+  <enemy name="暗影狼" hp="200" max-hp="200" atk="30" def="10" spd="12" cr="0.05" cd="1.5" pos="0">
+    <skill id="enemy_atk" name="撕咬" icon="👊" type="attack" target="single" dmg="physical" mult="1.0" cd="0" hits="1">普通攻击</skill>
+  </enemy>
+  <drop id="drop_1" name="生命药水" icon="🧪" cat="consumable" effect="heal" value="100" target="self" uses="1">恢复100点生命值</drop>
+</wave>
+
+字段说明：
+- wave: index=0,1,2, is-boss=1为Boss战
+- enemy: name=名称, hp/max-hp=生命, atk=攻击, def=防御, spd=速度, cr=暴击率, cd=暴击伤害, pos=位置
+- skill: id=唯一ID, name=名称, icon=emoji, type=attack|defense|support|heal, target=单体/全体目标, dmg=伤害类型, mult=倍率, cd=冷却回合, hits=命中次数
+- drop: cat=consumable, effect=heal|damage|debuff_cleanse|attackUp|defenseUp|shield|buff|healOverTime, target=self|enemy_single, value=效果值, uses=使用次数
 
 硬性要求：
-1. 生成三场战斗（两场普通战斗 + 一场 Boss 战）
-2. 每场普通战斗至少包含 3 个小怪
+1. 生成三场战斗波次（两场普通 + 一场Boss），index 分别为 0,1,2
+2. 每场普通战斗至少包含 3 个敌人
 3. Boss 战包含 1 个 Boss + 3 个以上小怪
-4. 怪物名称使用暗黑地牢风格命名
-5. 怪物属性需与队伍强度匹配
-6. Boss 属性为普通怪物的 2-3 倍
-7. 每场战斗 2-4 个掉落物品
-8. 必须包含一个玩家角色（isPlayer=1）`,
+4. Boss 属性为普通敌人的 2-3 倍
+5. 怪物名称使用暗黑地牢风格
+6. 每场战斗 2-4 个掉落物品
+7. 每个敌人 1-2 个技能（至少1个普通攻击）
+8. 技能 target 属性：single=敌方单体, all_enemies=敌方全体, self=自身
+9. 难度递增：第2场敌人比第1场强，Boss战最强`,
+  },
+
+  // ===== task:collect =====
+  {
+    id: 'task:collect',
+    category: 'task',
+    name: '采集任务生成',
+    description: '根据世界观和任务信息生成采集任务配置',
+    protocol: 'xml',
+    defaultValue: `你是"AVG 采集任务设计师"。
+你的任务是根据世界书背景和任务信息，设计一个采集/收集任务。
+
+【步骤一：分析思考】
+先用 <thinking></thinking> 标签包裹你的分析过程，包括：
+- 分析世界书背景和任务性质，确定采集主题和场景
+- 设计3-5种目标资源（常见+稀有）
+- 设计2-3种陷阱和障碍
+- 选择1-2种特殊事件类型（reflex=反应力, memory=记忆, precision=精准判定）
+- 描述撤离场景的背景
+
+【步骤二：输出数据】
+在 </thinking> 之后，输出紧凑 XML 格式（严格遵守）：
+
+格式：
+<story>采集场景的背景故事描述</story>
+<resource name="资源名" icon="emoji" points="分值" rarity="common|rare|epic" count="数量"/>
+<trap name="陷阱名" icon="emoji" effect="explore_loss|evacuation_penalty" value="影响值" desc="效果描述"/>
+<event type="reflex|memory|precision" name="事件名" desc="描述"/>
+<evacuation story="撤离场景描述" danger-count="3" treasure-count="1"/>
+
+字段说明：
+- resource: name=名称, icon=emoji, points=积分值(50-300), rarity=稀有度, count=数量(1-5)
+- trap: effect=explore_loss(扣探索次数)|evacuation_penalty(撤离时增加危险)
+- event: 最多2个，从reflex/memory/precision中选择
+
+硬性要求：
+1. 必须有至少3种资源，总资源数量6-12个
+2. 必须有至少2种陷阱
+3. 至少1种特殊事件
+4. 资源分值要合理（common=50-120, rare=150-250, epic=250-300）
+5. 背景故事要贴合世界书设定`,
+  },
+
+  // ===== task:puzzle =====
+  {
+    id: 'task:puzzle',
+    category: 'task',
+    name: '解谜任务生成',
+    description: '根据世界书背景和任务信息生成多层次的解谜任务数据',
+    protocol: 'xml',
+    defaultValue: `你是"AVG 解谜任务设计师"。
+你的任务是根据世界书背景和任务信息，设计一个3-5道谜题组成的解谜挑战。
+
+【步骤一：分析思考】
+先用 <thinking></thinking> 标签包裹你的分析过程，包括：
+- 分析世界书背景和任务性质，确定解谜主题和场景
+- 设计3-5道不同类型谜题（riddle=谜语, cipher=密码, logic=逻辑推理, pattern=图案规律）
+- 每道谜题的答案应该是简短的词/数字/短语
+- 设计线索、选项（可选）、提示（2条/题）
+- 设计一个"最终答案"提示，将所有谜题答案串联起来
+
+【步骤二：输出数据】
+在 </thinking> 之后，输出紧凑 XML 格式（严格遵守）：
+
+格式：
+<story>解谜场景的背景故事</story>
+<final>最终答案提示文本（引导玩家将各谜题答案组合）</final>
+<puzzle type="riddle|cipher|logic|pattern" answer="答案文本">
+  <clue>谜题线索描述</clue>
+  <options>选项A</options>
+  <options>选项B</options>
+  <hint1>提示1</hint1>
+  <hint2>提示2</hint2>
+</puzzle>
+<puzzle type="riddle|cipher|logic|pattern" answer="答案文本">
+  <clue>谜题线索描述</clue>
+  <hint1>提示1</hint1>
+  <hint2>提示2</hint2>
+</puzzle>
+
+字段说明：
+- puzzle: type=谜题类型, answer=标准答案（必须）
+- clue: 主线索，让玩家理解谜题内容
+- options: 可选，每道最多4个，有选项则为选择题，否则为文字输入
+- hint1/hint2: 可选提示，每道最多2条
+
+硬性要求：
+1. 必须生成 3-5 道谜题
+2. 每道谜题必须有唯一的 answer 和 clue
+3. 答案要简短（1-4个词），方便玩家输入
+4. 谜题类型要多样化，至少包含2种不同类型
+5. 难度递增：第一道最简单，后面越来越难
+6. final 提示要说明如何将各谜题答案组合成最终答案
+7. 背景故事要贴合世界书设定`,
+  },
+
+  // ===== task:clue =====
+  {
+    id: 'task:clue',
+    category: 'task',
+    name: '线索收集任务生成',
+    description: '根据世界书背景和任务信息生成线索收集/调查任务',
+    protocol: 'xml',
+    defaultValue: `你是"AVG 线索收集任务设计师"。
+你的任务是根据世界书背景和任务信息，设计一个线索收集/调查任务。
+
+【步骤一：分析思考】
+先用 <thinking></thinking> 标签包裹你的分析过程，包括：
+- 分析世界书背景和任务性质，确定调查主题和场景
+- 设计2-4个NPC，每个NPC有身份、性格（谨慎/开朗/冷漠/急躁/狡猾）
+- 每个NPC设计3轮对话，难度递增
+- 每轮对话有3个选项（gentle=温和, direct=直接, indirect=迂回），不同NPC对策略偏好不同
+- 每个NPC在信任度达到阈值时解锁1条线索
+- 设计1-2条全局线索（所有NPC对话完成后自动获得）
+- 设计一个结论答案
+
+【步骤二：输出数据】
+在 </thinking> 之后，输出紧凑 XML 格式（严格遵守）：
+
+格式：
+<story>案件/调查的背景故事描述</story>
+<npc name="张三" role="目击者" personality="谨慎">
+  <dialogue round="1">
+    <text>你好，我是这片的保安...</text>
+    <option text="你好，请问昨晚你在这里吗？" strategy="gentle" trust="3"/>
+    <option text="说！昨晚你看到了什么！" strategy="direct" trust="-2"/>
+    <option text="最近治安怎么样啊？" strategy="indirect" trust="1"/>
+  </dialogue>
+  <dialogue round="2">
+    <text>嗯...我确实看到了一些东西</text>
+    <option text="..." strategy="gentle" trust="3"/>
+    <option text="..." strategy="direct" trust="5"/>
+    <option text="..." strategy="indirect" trust="-1"/>
+  </dialogue>
+  <dialogue round="3">
+    <text>好吧，我告诉你，但是别告诉别人</text>
+    <option text="..." strategy="gentle" trust="2"/>
+    <option text="..." strategy="direct" trust="4"/>
+    <option text="..." strategy="indirect" trust="3"/>
+  </dialogue>
+  <clue name="保安的证言" text="昨晚11点看到黑影..." trust="5"/>
+</npc>
+<npc name="李四" role="..." personality="...">
+  ...
+</npc>
+<clue name="现场照片" text="照片显示..." source="所有NPC对话完成后获得"/>
+<conclusion answer="管家是凶手" hint="综合所有线索，凶手是...">
+  <option text="管家是凶手"/>
+  <option text="园丁是凶手"/>
+  <option text="死者是自杀"/>
+  <option text="目击者保安是凶手"/>
+</conclusion>
+
+字段说明：
+- npc: name=名称, role=身份, personality=性格
+- dialogue: round=轮次(1/2/3)
+- option: text=文本, strategy=gentle|direct|indirect, trust=信任变化(-3到+5)
+- clue: name=名称, text=内容, trust=解锁所需最低信任度
+- 全局clue: source=获取条件描述
+- conclusion: answer=正确答案, hint=推理提示
+
+硬性要求：
+1. 必须生成 2-4 个NPC
+2. 每个NPC必须3轮对话
+3. 每轮必须3个选项
+4. 信任度变化要有区分（不能所有选项都是+1）
+5. 不同NPC对策略的偏好应该不同
+6. 每个NPC至少有1条线索
+7. conclusion 必须包含 4 个选项，其中只有一个是正确答案
+8. conclusion 答案要简短（2-6个字）
+9. 选项之间要有迷惑性，不能一眼看穿
+10. 背景故事要贴合世界书设定`,
   },
 
   // ===== mail =====

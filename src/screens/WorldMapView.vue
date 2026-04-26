@@ -20,32 +20,47 @@
     </div>
 
     <!-- 地点节点画布 -->
-    <div class="map-canvas" v-if="layoutNodes.length > 0">
+    <div class="map-viewport"
+         @mousedown="startDrag"
+         @mousemove="onDrag"
+         @mouseup="stopDrag"
+         @mouseleave="stopDrag"
+         @touchstart="onTouchStart"
+         @touchmove.prevent="onTouchMove"
+         @touchend="onTouchEnd"
+         @wheel.prevent="onWheelZoom"
+         :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
+         v-if="layoutNodes.length > 0">
       <div
-        v-for="node in layoutNodes"
-        :key="node.name"
-        class="map-node"
-        :class="{ active: selectedLocation === node.name }"
-        :style="{ left: node.x + '%', top: node.y + '%' }"
-        @click="selectLocation(node.name)"
+        class="map-canvas"
+        :style="{ transform: `translate(${panX}px, ${panY}px) scale(${zoom})` }"
       >
-        <div class="node-icon">{{ node.icon }}</div>
-        <div class="node-name">{{ node.name }}</div>
-        <div class="node-count">
-          {{ node.chars.length }}人在此
-        </div>
-        <!-- 角色头像 -->
-        <div class="node-avatars">
-          <div
-            v-for="c in node.chars.slice(0, 4)"
-            :key="c.char.id"
-            class="node-avatar"
-            :title="c.char.name"
-          >
-            {{ c.char.name.charAt(0) }}
+        <div
+          v-for="node in layoutNodes"
+          :key="node.name"
+          class="map-node"
+          :class="{ active: selectedLocation === node.name }"
+          :style="{ left: node.x + 'px', top: node.y + 'px' }"
+          @click="clickedDuringDrag(node.name)"
+        >
+          <div class="node-icon">{{ node.icon }}</div>
+          <div class="node-name">{{ node.name }}</div>
+          <div class="node-count">
+            {{ node.chars.length }}人在此
           </div>
-          <div v-if="node.chars.length > 4" class="node-avatar more">
-            +{{ node.chars.length - 4 }}
+          <!-- 角色头像 -->
+          <div class="node-avatars">
+            <div
+              v-for="c in node.chars.slice(0, 4)"
+              :key="c.char.id"
+              class="node-avatar"
+              :title="c.char.name"
+            >
+              {{ c.char.name.charAt(0) }}
+            </div>
+            <div v-if="node.chars.length > 4" class="node-avatar more">
+              +{{ node.chars.length - 4 }}
+            </div>
           </div>
         </div>
       </div>
@@ -66,6 +81,13 @@
           <h3>📍 {{ selectedLocation }}</h3>
           <button class="detail-close-btn" @click="selectedLocation = null">×</button>
         </div>
+
+        <button
+          class="travel-here-btn"
+          @click="handleTravelHere"
+        >
+          🚶 前往此地，开始接下来的剧情
+        </button>
 
         <div class="detail-section" v-if="selectedChars.length > 0">
           <h4>👥 当前在此 ({{ selectedChars.length }}人)</h4>
@@ -125,7 +147,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useCharacterSchedule } from '../../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
 import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStore.js'
 
-const emit = defineEmits(['back'])
+const props = defineProps({
+  worldBookId: { type: String, default: '' },
+})
+
+const emit = defineEmits(['back', 'travel'])
 
 const scheduleAPI = useCharacterSchedule()
 const loading = ref(false)
@@ -133,6 +159,122 @@ const selectedLocation = ref(null)
 const worldBook = ref(null)
 const allLocations = ref(new Map())
 const worldEvents = ref([])
+
+// 画布拖拽与缩放
+const panX = ref(0)
+const panY = ref(0)
+const zoom = ref(1)
+const isDragging = ref(false)
+const dragStart = ref({ x: 0, y: 0 })
+const panStart = ref({ x: 0, y: 0 })
+const movedDuringDrag = ref(0)
+
+function startDrag(e) {
+  isDragging.value = true
+  movedDuringDrag.value = 0
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY
+  dragStart.value = { x: clientX, y: clientY }
+  panStart.value = { x: panX.value, y: panY.value }
+}
+
+function onDrag(e) {
+  if (!isDragging.value) return
+  const dx = e.clientX - dragStart.value.x
+  const dy = e.clientY - dragStart.value.y
+  movedDuringDrag.value = Math.sqrt(dx * dx + dy * dy)
+  panX.value = panStart.value.x + dx
+  panY.value = panStart.value.y + dy
+}
+
+function stopDrag() { isDragging.value = false }
+
+function clickedDuringDrag(name) {
+  if (movedDuringDrag.value > 5) return  // 拖拽中不触发选中
+  selectedLocation.value = selectedLocation.value === name ? null : name
+}
+
+function onWheelZoom(e) {
+  const delta = e.deltaY > 0 ? -0.08 : 0.08
+  zoom.value = Math.min(2, Math.max(0.3, zoom.value + delta))
+}
+
+// --- 触摸：单指拖拽 + 双指捏合缩放 ---
+const pinchStart = ref({ dist: 0, midX: 0, midY: 0, zoom: 1 })
+
+function getTouchDist(e) {
+  const dx = e.touches[0].clientX - e.touches[1].clientX
+  const dy = e.touches[0].clientY - e.touches[1].clientY
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+function getTouchMid(e) {
+  return {
+    x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+    y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+  }
+}
+
+function onTouchStart(e) {
+  if (e.touches.length === 2) {
+    // 双指：进入捏合模式
+    isDragging.value = true
+    movedDuringDrag.value = 0
+    pinchStart.value = {
+      dist: getTouchDist(e),
+      midX: 0, midY: 0,
+      zoom: zoom.value,
+    }
+  } else if (e.touches.length === 1) {
+    // 单指：拖拽平移
+    isDragging.value = true
+    movedDuringDrag.value = 0
+    const t = e.touches[0]
+    dragStart.value = { x: t.clientX, y: t.clientY }
+    panStart.value = { x: panX.value, y: panY.value }
+  }
+}
+
+function onTouchMove(e) {
+  if (!isDragging.value) return
+
+  if (e.touches.length === 2) {
+    // 捏合缩放
+    const dist = getTouchDist(e)
+    const ratio = dist / pinchStart.value.dist
+    zoom.value = Math.min(2, Math.max(0.3, pinchStart.value.zoom * ratio))
+    // 同时平移：以双指中点为参考
+    const mid = getTouchMid(e)
+    const dx = mid.x - dragStart.value.x
+    const dy = mid.y - dragStart.value.y
+    movedDuringDrag.value = Math.sqrt(dx * dx + dy * dy)
+    panX.value = panStart.value.x + dx
+    panY.value = panStart.value.y + dy
+  } else if (e.touches.length === 1) {
+    // 单指拖拽
+    const t = e.touches[0]
+    const dx = t.clientX - dragStart.value.x
+    const dy = t.clientY - dragStart.value.y
+    movedDuringDrag.value = Math.sqrt(dx * dx + dy * dy)
+    panX.value = panStart.value.x + dx
+    panY.value = panStart.value.y + dy
+  }
+}
+
+function onTouchEnd(e) {
+  if (e.touches.length < 2) {
+    // 从双指变为单指或无指：记录当前平移起点，避免跳变
+    isDragging.value = e.touches.length === 0 ? false : true
+    if (e.touches.length === 1) {
+      const t = e.touches[0]
+      dragStart.value = { x: t.clientX, y: t.clientY }
+      panStart.value = { x: panX.value, y: panY.value }
+    }
+  }
+  if (e.touches.length === 0) {
+    isDragging.value = false
+  }
+}
 
 onMounted(async () => {
   await loadWorldBook()
@@ -212,7 +354,7 @@ async function loadWorldEvents() {
 }
 
 /**
- * 自动布局：环形 + 中心
+ * 自动布局：Fibonacci 螺旋 + 绝对像素坐标
  */
 const layoutNodes = computed(() => {
   const arr = Array.from(allLocations.value.entries())
@@ -221,17 +363,20 @@ const layoutNodes = computed(() => {
   // 按人数排序
   arr.sort((a, b) => b[1].length - a[1].length)
 
+  const SPACING = 200  // 节点间距（px）
+  const GOLDEN_ANGLE = 2.399963  // ≈ 137.5°，自然分散
+
   return arr.map(([name, chars], i) => {
     if (i === 0) {
-      return { name, chars, x: 50, y: 35, icon: getIcon(name) }
+      return { name, chars, x: 0, y: 0, icon: getIcon(name) }
     }
-    const angle = ((i - 1) / Math.max(arr.length - 1, 1)) * 2 * Math.PI - Math.PI / 2
-    const radius = 32
+    const angle = i * GOLDEN_ANGLE
+    const radius = SPACING * Math.sqrt(i)
     return {
       name,
       chars,
-      x: 50 + Math.cos(angle) * radius,
-      y: 35 + Math.sin(angle) * radius,
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius,
       icon: getIcon(name),
     }
   })
@@ -281,10 +426,6 @@ const timelineEvents = computed(() => {
     .slice(0, 10)
 })
 
-function selectLocation(name) {
-  selectedLocation.value = selectedLocation.value === name ? null : name
-}
-
 function openCharacterDetail(char) {
   emit('open-character', char)
 }
@@ -297,6 +438,17 @@ function formatEventTime(evt) {
   } catch {
     return ''
   }
+}
+
+/**
+ * 前往此地：向父组件发送旅行事件
+ */
+function handleTravelHere() {
+  if (!selectedLocation.value) return
+  emit('travel', {
+    locationName: selectedLocation.value,
+    worldBookId: props.worldBookId || worldBook.value?.id || '',
+  })
 }
 </script>
 
@@ -397,12 +549,22 @@ function formatEventTime(evt) {
   cursor: not-allowed;
 }
 
-/* Map Canvas */
-.map-canvas {
+/* Map Viewport & Canvas */
+.map-viewport {
   flex: 1;
-  position: relative;
   overflow: hidden;
+  position: relative;
+  cursor: grab;
   min-height: 0;
+}
+
+.map-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+  width: 0;
+  height: 0;
 }
 
 .map-node {
@@ -417,6 +579,7 @@ function formatEventTime(evt) {
   text-align: center;
   min-width: 100px;
   max-width: 160px;
+  /* left/top 由 :style 动态设置，单位 px */
 }
 .map-node:hover {
   transform: translate(-50%, -50%) scale(1.08);

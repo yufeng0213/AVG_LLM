@@ -3,7 +3,7 @@
  * 将对话存档与 WorldMemory 数据库打通
  */
 import { getDialogueArchive } from './useDialogueArchive.js'
-import { getWorldMemory, addEvents, addCharacterMemory, recordExtraction } from '../memory/worldMemoryStore.js'
+import { getWorldMemory, addEvents, addCharacterMemoriesBatch, recordExtraction } from '../memory/worldMemoryStore.js'
 import { extractWorldMemory } from '../llm/llmService.memory.js'
 
 /**
@@ -28,11 +28,10 @@ export async function extractMemoriesFromArchive(worldBookId) {
   const newDialogue = archive.slice(lastLineCount)
 
   // 4. 调用 LLM 提取
-  // 需要世界书数据 — 这里通过 worldBookId 去加载
-  const { loadWorldBooks } = await import('../worldbook/worldBookStore.js')
-  const books = await loadWorldBooks()
-  const worldBook = books.find(b => b.id === worldBookId)
-  if (!worldBook) {
+  // 需要世界书数据 — 使用 getNormalizedBook 直接获取单本，不走全量扫描
+  const { getNormalizedBook } = await import('../worldbook/worldBookStore.js')
+  const worldBook = await getNormalizedBook(worldBookId)
+  if (!worldBook || worldBook.id !== worldBookId) {
     return { success: false, eventsExtracted: 0, memoriesExtracted: 0 }
   }
 
@@ -53,11 +52,15 @@ export async function extractMemoriesFromArchive(worldBookId) {
     await addEvents(worldBookId, result.events)
   }
 
-  // 6. 保存角色记忆
+  // 6. 批量保存角色记忆（合并为一次 getWorldMemory + 一次 markDirty）
+  const memoryItems = []
   for (const [charId, memories] of Object.entries(result.characterMemories)) {
     for (const mem of memories) {
-      await addCharacterMemory(worldBookId, charId, mem)
+      memoryItems.push({ characterId: charId, memoryEntry: mem })
     }
+  }
+  if (memoryItems.length > 0) {
+    await addCharacterMemoriesBatch(worldBookId, memoryItems)
   }
 
   // 7. 更新最后提取记录

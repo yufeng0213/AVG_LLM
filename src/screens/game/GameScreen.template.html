@@ -25,7 +25,7 @@
           Debug
         </button>
         <div class="game-hud">
-          <p class="hud-chip chip-primary">{{ isMiniTheaterMode ? (miniTheaterTitle || '小剧场') : (currentSceneName || '旧图书馆') }}</p>
+          <p class="hud-chip chip-primary">{{ isMiniTheaterMode ? (miniTheaterTitle || '小剧场') : `${currentChapter.major}-${currentChapter.minor} ${currentChapter.name}` }}</p>
           <p class="hud-chip chip-secondary">{{ storyTimelineLabel || '剧情时间待设定' }}</p>
           <p class="hud-chip chip-tertiary">对话 {{ displayLineIndex + 1 }} / {{ displayDialogueLength }}</p>
           <p v-if="showInputTokensHud" class="hud-chip chip-debug chip-debug-input">IN {{ inputTokensHudText }}</p>
@@ -75,6 +75,15 @@
           @click="handleToggleRelationshipTableFromMenu"
         >
           关系数据表
+        </button>
+        <button
+          type="button"
+          class="top-menu-btn top-menu-chapter"
+          :class="{ 'is-active': showChapterHistoryPanel }"
+          role="menuitem"
+          @click="handleToggleChapterHistoryFromMenu"
+        >
+          章节回顾
         </button>
         <button
           type="button"
@@ -265,7 +274,8 @@
             </button>
           </div>
         </div>
-        <p class="dialogue-text">{{ displayLine.text }}</p>
+        <p class="dialogue-text" :class="{ 'is-showing-continuation': currentContinuationPage > 0, 'is-typing': isTypingActive }" ref="dialogueTextRef">{{ visibleText }}</p>
+        <p v-if="totalContinuationPages > 1" class="dialogue-continue-arrow">▼</p>
         <p
           v-if="ttsStatusMessage"
           class="dialogue-tts-status"
@@ -366,6 +376,15 @@
             >
               🃏 随机小卡片
             </button>
+            <button
+              type="button"
+              class="action-button action-map"
+              :class="{ 'is-active': showWorldMap }"
+              @click="openWorldMap"
+              title="剧情地图"
+            >
+              🗺️ 剧情地图
+            </button>
           </div>
         </div>
       </section>
@@ -450,6 +469,15 @@
             title="随机小卡片"
           >
             🃏 小卡片
+          </button>
+          <button
+            type="button"
+            class="action-button action-map"
+            :class="{ 'is-active': showWorldMap }"
+            @click="openWorldMap"
+            title="剧情地图"
+          >
+            🗺️ 剧情地图
           </button>
         </div>
       </div>
@@ -540,6 +568,41 @@
                   @input="updateStoryMaxTokens($event)"
                 />
               </label>
+              <div class="generate-font-size-row">
+                <span class="generate-custom-label">对话字体</span>
+                <div
+                  class="generate-font-slider"
+                  :style="{ '--slider-fill': sliderFillPct + '%' }"
+                  @touchstart="handleSliderTouchStart"
+                  @touchmove="handleSliderTouchMove"
+                  @touchend="handleSliderTouchEnd"
+                  @click="handleSliderClick"
+                >
+                  <div class="generate-slider-thumb" :style="{ left: sliderFillPct + '%' }"></div>
+                </div>
+                <span class="generate-font-size-preview">{{ dialogueFontSize }}px</span>
+              </div>
+              <div class="generate-typewriter-row">
+                <span class="generate-custom-label">打字机</span>
+                <button
+                  type="button"
+                  class="generate-typewriter-toggle"
+                  :class="{ active: typewriterEnabled }"
+                  @click="setTypewriterEnabled(!typewriterEnabled)"
+                >
+                  {{ typewriterEnabled ? '开' : '关' }}
+                </button>
+                <input
+                  type="range"
+                  class="generate-typewriter-speed"
+                  min="5"
+                  max="80"
+                  :value="typewriterSpeed"
+                  :disabled="!typewriterEnabled"
+                  @input="setTypewriterSpeed(Number($event.target.value))"
+                />
+                <span class="generate-typewriter-speed-value">{{ typewriterSpeed }}字/秒</span>
+              </div>
             </div>
           </div>
 
@@ -913,6 +976,55 @@
       </div>
     </section>
 
+    <!-- 章节切换动画 -->
+    <Teleport to="body">
+      <div v-if="showChapterOverlay" class="chapter-transition-overlay" aria-hidden="true">
+        <div class="chapter-overlay-content">
+          <p class="chapter-overlay-number">{{ pendingChapterTransition?.major }}-{{ pendingChapterTransition?.minor }}</p>
+          <p class="chapter-overlay-title">{{ pendingChapterTransition?.name }}</p>
+          <p class="chapter-overlay-line"></p>
+          <p v-if="pendingChapterTransition?.storyline" class="chapter-overlay-storyline">{{ pendingChapterTransition.storyline }}</p>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 章节回顾面板 -->
+    <Teleport to="body">
+      <section
+        v-if="showChapterHistoryPanel"
+        class="chapter-history-overlay"
+        aria-label="章节回顾"
+        @click.self="showChapterHistoryPanel = false"
+      >
+        <div class="chapter-history-panel" role="dialog" aria-modal="false">
+          <div class="chapter-history-header">
+            <h3 class="chapter-history-title">章节回顾</h3>
+            <button type="button" class="chapter-history-close" @click="showChapterHistoryPanel = false">✕</button>
+          </div>
+          <div class="chapter-history-body" data-no-advance>
+            <div
+              v-for="ch in chapterHistory"
+              :key="`${ch.major}-${ch.minor}`"
+              class="chapter-history-item"
+              @click="jumpToChapter(ch)"
+            >
+              <p class="chapter-item-number">{{ ch.major }}-{{ ch.minor }}</p>
+              <p class="chapter-item-name">{{ ch.name }}</p>
+              <p class="chapter-item-storyline">{{ ch.storyline || '—' }}</p>
+              <p class="chapter-item-lines">对话 {{ ch.startLineIndex + 1 }} → {{ ch.endLineIndex + 1 }}</p>
+            </div>
+            <div class="chapter-history-current">
+              <p class="chapter-item-number">{{ currentChapter.major }}-{{ currentChapter.minor }}</p>
+              <p class="chapter-item-name">{{ currentChapter.name }}</p>
+              <p class="chapter-item-storyline">{{ currentChapter.storyline || '—' }}</p>
+              <p class="chapter-item-current-label">← 当前章节</p>
+            </div>
+            <p v-if="chapterHistory.length === 0" class="chapter-history-empty">暂无章节记录</p>
+          </div>
+        </div>
+      </section>
+    </Teleport>
+
     <!-- 选项面板 -->
     <section v-if="showChoicesPanel && currentChoices" class="choices-overlay" aria-label="剧情选项">
       <div class="choices-panel" role="dialog" aria-modal="true">
@@ -1049,4 +1161,18 @@
       :change="activeRelationshipChange"
       @dismiss="dismissRelationshipChangeNotification"
     />
+
+    <!-- 剧情地图覆盖层 -->
+    <div v-if="showWorldMap" class="world-map-overlay">
+      <div class="world-map-overlay-inner">
+        <button type="button" class="world-map-close-btn" @click="closeWorldMap">✕ 关闭</button>
+        <div class="world-map-frame">
+          <WorldMapView
+            :worldBookId="activeBookId"
+            @back="closeWorldMap"
+            @travel="handleMapTravelFromOverlay"
+          />
+        </div>
+      </div>
+    </div>
   </main>

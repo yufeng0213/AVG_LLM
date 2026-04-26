@@ -19,6 +19,7 @@ import {
   generateCardContent,
   buildStoryPrompt,
   parseStoryContent,
+  parseXmlStoryContent,
   parseMainStoryContent,
   toGameScript,
   hasChoices,
@@ -65,7 +66,7 @@ import {
 import {
   getWorldMemory,
   addEvents,
-  addCharacterMemory,
+  addCharacterMemoriesBatch,
   recordExtraction,
   getExtractionConfig,
   deleteWorldMemory,
@@ -74,6 +75,7 @@ import {
   extractWorldMemory,
 } from '../llm'
 import CGGeneratorModal from '../components/CGGeneratorModal.vue'
+import WorldMapView from './WorldMapView.vue'
 import { generateCG, getImageBase64 } from '../comfyui/comfyuiService.js'
 import { isAndroid, isNative } from '../utils/platform.js'
 import { Filesystem, Directory } from '@capacitor/filesystem'
@@ -91,6 +93,7 @@ import {
   initRelationshipScheduler,
   startRelationshipScheduler,
   stopRelationshipScheduler,
+  flushRelationshipSave,
 } from '../services/relationshipAutoScheduler.js'
 import {
   processNewDialogue as processExposure,
@@ -112,6 +115,9 @@ import {
   onRelationshipDelta,
 } from '../services/alivenessOrchestrator.js'
 import { useCharacterSchedule } from '../../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
+import {
+  sampleMemoryForPrompt,
+} from '../services/memoryPromptBuilder.js'
 
 const emit = defineEmits(['back'])
 
@@ -389,6 +395,8 @@ const selectedMessageRangeKey = ref('5-10')
 const customMessageRange = ref({ min: 5, max: 10 })
 const storyContextLineCount = ref(24)
 const storyMaxTokens = ref(2000)
+const DIALOGUE_FONT_SIZE_KEY = 'dialogue-font-size'
+const dialogueFontSize = ref(Number(localStorage.getItem(DIALOGUE_FONT_SIZE_KEY)) || 16)
 const showDebugPanel = ref(false)
 const showInputTokensHud = ref(false)
 const showOutputTokensHud = ref(false)
@@ -397,6 +405,13 @@ const showOutputTokensHud = ref(false)
 const lastGeneratedCount = ref(0) // 上次生成新增的对话条数
 const lastGeneratedBeforeIndex = ref(0) // 上次生成前的 currentLineIndex
 const canRegenerate = computed(() => lastGeneratedCount.value > 0 && isLastLine.value)
+
+// ========== 章节系统 ==========
+const currentChapter = ref({ major: 1, minor: 1, name: '序章', storyline: '', startLineIndex: 0 })
+const chapterHistory = ref([])
+const showChapterOverlay = ref(false)
+const pendingChapterTransition = ref(null)
+const showChapterHistoryPanel = ref(false)
 const storyTokenUsage = ref({
   inputTokens: null,
   outputTokens: null,
@@ -510,6 +525,8 @@ const ttsCachedFormat = ref('mp3')
 
 // CG 生成相关状态
 const showCGModal = ref(false) // 是否显示 CG 生成弹窗
+// 剧情地图覆盖层
+const showWorldMap = ref(false)
 const generatedCG = ref(null) // 生成的 CG 图片数据
 const showCGResultPanel = ref(false)
 const isCgSummarizing = ref(false)
@@ -848,6 +865,211 @@ const updateStoryMaxTokens = (event) => {
   void persistLlmSettings()
 }
 
+const updateDialogueFontSize = (event) => {
+  const val = Number(event?.target?.value)
+  if (Number.isFinite(val) && val >= 12 && val <= 32) {
+    dialogueFontSize.value = val
+    localStorage.setItem(DIALOGUE_FONT_SIZE_KEY, String(val))
+  }
+}
+
+// 自定义滑块触摸/点击处理
+const MIN_FONT = 12, MAX_FONT = 32
+
+const setFontSizeFromPosition = (clientX) => {
+  const el = document.querySelector('.generate-font-slider')
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+  const val = Math.round(MIN_FONT + ratio * (MAX_FONT - MIN_FONT))
+  dialogueFontSize.value = val
+  localStorage.setItem(DIALOGUE_FONT_SIZE_KEY, String(val))
+}
+
+let sliderTouching = false
+
+const handleSliderTouchStart = (e) => {
+  e.preventDefault()
+  sliderTouching = true
+  setFontSizeFromPosition(e.touches[0].clientX)
+}
+
+const handleSliderTouchMove = (e) => {
+  if (!sliderTouching) return
+  e.preventDefault()
+  setFontSizeFromPosition(e.touches[0].clientX)
+}
+
+const handleSliderTouchEnd = () => {
+  sliderTouching = false
+}
+
+const handleSliderClick = (e) => {
+  setFontSizeFromPosition(e.clientX)
+}
+
+const sliderFillPct = computed(() => ((dialogueFontSize.value - 12) / (32 - 12)) * 100)
+
+// Android WebView 上 scoped CSS 覆盖 inline style，注入全局样式绕过 scoped
+const DIALOGUE_FONT_STYLE_ID = '__dialogue-font-size-style__'
+
+const updateDialogueFontStyle = () => {
+  if (typeof document === 'undefined') return
+  let styleEl = document.getElementById(DIALOGUE_FONT_STYLE_ID)
+  if (!styleEl) {
+    styleEl = document.createElement('style')
+    styleEl.id = DIALOGUE_FONT_STYLE_ID
+    document.head.appendChild(styleEl)
+  }
+  styleEl.textContent = `#app .dialogue-text, #app .history-dialogue-text, .platform-android.android-portrait .dialogue-text { font-size: ${dialogueFontSize.value}px !important; }`
+}
+
+// 值变化时更新全局样式
+watch(dialogueFontSize, () => {
+  updateDialogueFontStyle()
+  lineTruncationMap.value.clear()
+})
+
+// 初始化
+onMounted(() => {
+  updateDialogueFontStyle()
+})
+
+// ========== 截断检测函数 ==========
+
+/** 在目标索引附近搜索安全的文字分割点 */
+const findSafeBreakPoint = (text, targetIndex) => {
+  if (targetIndex >= text.length) return text.length
+  const sentenceBreaks = ['。', '！', '？', '.', '!', '?', '…', '\n']
+  const softBreaks = [' ', '，', ',', '、', '；', ';', '」', '"', '）', ')']
+  // 向前搜索句号
+  for (let i = targetIndex; i > Math.max(0, targetIndex - 40); i--) {
+    if (sentenceBreaks.includes(text[i - 1])) return i
+  }
+  // 向前搜索逗号
+  for (let i = targetIndex; i > Math.max(0, targetIndex - 25); i--) {
+    if (softBreaks.includes(text[i - 1])) return i
+  }
+  // 向后搜索句号
+  for (let i = targetIndex; i < Math.min(targetIndex + 40, text.length); i++) {
+    if (sentenceBreaks.includes(text[i])) return i + 1
+  }
+  // 向后搜索逗号
+  for (let i = targetIndex; i < Math.min(targetIndex + 25, text.length); i++) {
+    if (softBreaks.includes(text[i])) return i + 1
+  }
+  return targetIndex
+}
+
+/** 计算文字在给定容器尺寸下需要分成几段 */
+const computeTruncatedSegments = (text, containerWidth, containerHeight) => {
+  if (!text || text.length < 30) return [text]
+
+  const measurer = document.createElement('p')
+  measurer.className = 'dialogue-text'
+  measurer.style.cssText = `position:absolute;visibility:hidden;left:-9999px;top:-9999px;width:${containerWidth}px;line-height:1.55;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;padding:0;margin:0;`
+  document.body.appendChild(measurer)
+
+  const maxHeight = containerHeight - 4 // 留一点余量
+  const segments = []
+  let remaining = text
+
+  while (remaining.length > 0) {
+    measurer.textContent = remaining
+    if (measurer.scrollHeight <= maxHeight) {
+      segments.push(remaining)
+      remaining = ''
+      break
+    }
+
+    // 二分查找最大适配字符数
+    let lo = 1
+    let hi = remaining.length
+    let bestFit = 1
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2)
+      const bp = findSafeBreakPoint(remaining, mid)
+      measurer.textContent = remaining.substring(0, bp)
+      if (measurer.scrollHeight <= maxHeight) {
+        bestFit = bp
+        lo = mid + 1
+      } else {
+        hi = mid - 1
+      }
+    }
+
+    if (bestFit <= 1) {
+      // 防止死循环：至少放一个字符
+      bestFit = Math.min(1, remaining.length)
+    }
+
+    const bp = findSafeBreakPoint(remaining, bestFit)
+    const segment = remaining.substring(0, bp).trimEnd()
+    segments.push(segment)
+    remaining = remaining.substring(bp).trimStart()
+    if (remaining.length === 0) break
+  }
+
+  document.body.removeChild(measurer)
+
+  // 如果只有一段，去掉末尾的 ...
+  if (segments.length === 1) return segments
+  // 非最后一段加 ...
+  for (let i = 0; i < segments.length - 1; i++) {
+    if (!segments[i].endsWith('...')) segments[i] += '...'
+  }
+  return segments.length > 0 ? segments : [text]
+}
+
+/** 检测当前行是否需要截断 */
+const detectLineTruncation = async () => {
+  const line = displayLine.value
+  if (!line || !line.text) {
+    lineTruncationMap.value.delete(displayLineIndex.value)
+    currentContinuationPage.value = 0
+    return
+  }
+
+  // 已有缓存则跳过
+  if (lineTruncationMap.value.has(displayLineIndex.value)) return
+
+  await nextTick()
+  await nextTick()
+
+  const el = dialogueTextRef.value
+  if (!el) return
+
+  const w = el.clientWidth
+  const h = el.clientHeight
+  if (w < 50 || h < 30) return
+
+  const segs = computeTruncatedSegments(line.text, w, h)
+  lineTruncationMap.value.set(displayLineIndex.value, segs)
+  if (segs.length > 1) {
+    currentContinuationPage.value = 0
+  }
+}
+
+/** 清理过期截断缓存（行索引变化时） */
+const clearTruncationCache = () => {
+  // 删除大于等于当前索引的缓存（因为后续行的索引可能因删除而改变）
+  const keys = Array.from(lineTruncationMap.value.keys())
+  for (const key of keys) {
+    if (key >= displayLineIndex.value) {
+      lineTruncationMap.value.delete(key)
+    }
+  }
+}
+
+/** 窗口resize时清理截断缓存（延迟清理避免频繁触发） */
+let resizeClearTimer = null
+const handleResizeClearTruncation = () => {
+  if (resizeClearTimer) clearTimeout(resizeClearTimer)
+  resizeClearTimer = setTimeout(() => {
+    lineTruncationMap.value.clear()
+  }, 300)
+}
+
 const updateShowInputTokensHud = (event) => {
   showInputTokensHud.value = Boolean(event?.target?.checked)
   void persistLlmSettings()
@@ -926,6 +1148,118 @@ const currentLineIndex = ref(0)
 const activeCharacterId = ref('lead')
 const currentSceneName = ref('旧图书馆')
 const hasMountedGameScreen = ref(false)
+
+// ========== 对话框文字截断 / 续行分页 ==========
+const lineTruncationMap = ref(new Map())
+const currentContinuationPage = ref(0)
+const dialogueTextRef = ref(null)
+
+const isCurrentLineTruncated = computed(() => {
+  const segs = lineTruncationMap.value.get(displayLineIndex.value)
+  return segs && segs.length > 1
+})
+
+const totalContinuationPages = computed(() => {
+  const segs = lineTruncationMap.value.get(displayLineIndex.value)
+  return segs ? segs.length : 1
+})
+
+const displayedText = computed(() => {
+  const segs = lineTruncationMap.value.get(displayLineIndex.value)
+  if (!segs) return displayLine.value?.text || ''
+  return segs[Math.min(currentContinuationPage.value, segs.length - 1)] || segs[0]
+})
+
+// ========== 打字机效果 ==========
+const TYPEWRITER_KEY = 'typewriter-enabled'
+const TYPEWRITER_SPEED_KEY = 'typewriter-speed'
+const typewriterEnabled = ref(localStorage.getItem(TYPEWRITER_KEY) === 'true')
+const typewriterSpeed = ref(Number(localStorage.getItem(TYPEWRITER_SPEED_KEY)) || 30) // 字/秒
+const typewriterProgress = ref(0)
+const typewriterActiveLine = ref(-1) // 当前正在打字的行索引，-1 表示未开始
+let typewriterTimer = null
+
+const isTypingActive = computed(() => {
+  if (!typewriterEnabled.value) return false
+  if (typewriterActiveLine.value !== displayLineIndex.value) return false
+  return typewriterTimer !== null
+})
+const visibleText = computed(() => {
+  const fullText = displayedText.value
+  if (!typewriterEnabled.value) return fullText
+  // 行索引不匹配（新行还没开始打字）：显示第一个字符
+  if (typewriterActiveLine.value !== displayLineIndex.value) {
+    return fullText ? fullText.substring(0, 1) : ''
+  }
+  if (typewriterProgress.value <= 0) return ''
+  return fullText.substring(0, typewriterProgress.value)
+})
+
+const PUNCTUATION_CHARS = new Set(['。', '！', '？', '…', '\n', '.', '!', '?'])
+const LONG_PAUSE_CHARS = new Set(['。', '！', '？', '…', '\n'])
+
+const startTyping = (text) => {
+  if (typewriterTimer) clearTimeout(typewriterTimer)
+  if (!text || !typewriterEnabled.value) {
+    typewriterTimer = null
+    typewriterActiveLine.value = displayLineIndex.value
+    typewriterProgress.value = text?.length || 0
+    return
+  }
+  typewriterActiveLine.value = displayLineIndex.value
+  const baseDelay = 1000 / typewriterSpeed.value
+  const punctPause = baseDelay * 2
+  const longPause = baseDelay * 3
+
+  typewriterProgress.value = 1
+
+  const typeNext = () => {
+    if (typewriterProgress.value >= text.length) {
+      typewriterTimer = null
+      return
+    }
+    typewriterProgress.value++
+    const char = text[typewriterProgress.value - 1]
+    let delay = baseDelay
+    if (PUNCTUATION_CHARS.has(char)) delay = punctPause
+    if (LONG_PAUSE_CHARS.has(char)) delay = longPause
+    typewriterTimer = setTimeout(typeNext, delay)
+  }
+  typewriterTimer = setTimeout(typeNext, 0)
+}
+
+const skipTyping = () => {
+  if (typewriterTimer) {
+    clearTimeout(typewriterTimer)
+    typewriterTimer = null
+    typewriterProgress.value = displayedText.value.length
+  }
+}
+
+const setTypewriterEnabled = (val) => {
+  typewriterEnabled.value = val
+  localStorage.setItem(TYPEWRITER_KEY, String(val))
+  // 切换时重新开始
+  if (val) {
+    startTyping(displayedText.value)
+  } else {
+    if (typewriterTimer) {
+      clearTimeout(typewriterTimer)
+      typewriterTimer = null
+    }
+  }
+}
+
+const setTypewriterSpeed = (val) => {
+  const speed = Math.max(5, Math.min(80, Math.round(val)))
+  typewriterSpeed.value = speed
+  localStorage.setItem(TYPEWRITER_SPEED_KEY, String(speed))
+  // 速度改变时重新开始
+  if (typewriterTimer) {
+    startTyping(displayedText.value)
+  }
+}
+
 const DEFAULT_STORY_TIME_LABEL = '2024年2月3日'
 const getCurrentStoryTimeLabel = () => DEFAULT_STORY_TIME_LABEL
 const normalizeStoryTimeLabel = (value, fallback = getCurrentStoryTimeLabel()) => {
@@ -1039,6 +1373,26 @@ const isDisplayLastLine = computed(() => {
   if (total <= 0) return true
   return displayLineIndex.value >= total - 1
 })
+
+// 监听当前行变化，触发截断检测
+watch(displayLineIndex, async () => {
+  currentContinuationPage.value = 0
+
+  if (typewriterTimer) {
+    clearTimeout(typewriterTimer)
+  }
+  typewriterTimer = null
+
+  await detectLineTruncation()
+  await nextTick()
+
+  if (typewriterEnabled.value) {
+    typewriterProgress.value = 0
+    startTyping(displayedText.value)
+  } else {
+    typewriterProgress.value = displayedText.value?.length || 0
+  }
+}, { immediate: true })
 const nextLineButtonLabel = computed(() => {
   if (isMiniTheaterMode.value) {
     return isDisplayLastLine.value ? '结束小剧场' : '下一句'
@@ -2681,6 +3035,48 @@ const extractFallbackDialoguesFromRawContent = (rawContent, fallbackStoryTime = 
   }]
 }
 
+// 保存 LLM 请求/响应到 debug 目录（调试用）
+async function logStoryLlmDebug(prompt, rawResponse, parseSuccess) {
+  const timestamp = new Date().toISOString()
+  const separator = '='.repeat(60)
+  const entry = [
+    separator,
+    `[${timestamp}] AVG 剧情生成 | 解析${parseSuccess ? '成功' : '失败'}`,
+    separator,
+    '',
+    '--- INPUT PROMPT ---',
+    prompt,
+    '',
+    '--- OUTPUT RESPONSE ---',
+    typeof rawResponse === 'string' ? rawResponse : JSON.stringify(rawResponse, null, 2),
+    '',
+  ].join('\n')
+
+  // Capacitor Filesystem（Android 原生环境）
+  try {
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+    try {
+      await Filesystem.mkdir({ path: 'debug', directory: Directory.Documents, recursive: true })
+    } catch {}
+    await Filesystem.writeFile({
+      path: 'debug/story-llm-debug.log',
+      data: entry,
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+    })
+    return
+  } catch {
+    // Capacitor 不可用，回退到 localStorage
+  }
+
+  // localStorage 回退（覆盖写入）
+  try {
+    localStorage.setItem('story_llm_debug_log', entry)
+  } catch (e) {
+    console.warn('[Story] 写入LLM响应日志失败:', e.message)
+  }
+}
+
 // 生成剧情
 const handleGenerateStory = async (choiceToApply = null, options = {}) => {
   if (isGenerating.value) return
@@ -2712,7 +3108,10 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
 
     // 在范围内随机生成消息条数
     const actualMessageCount = getRandomMessageCount()
-    
+
+    // 采样世界记忆注入 prompt（近期 15 条 + 加权随机 5 条过往回忆）
+    const memoryContext = await sampleMemoryForPrompt(activeBookId.value, activeBook.value)
+
     // 构建 Prompt（包含随机消息条数和选择的选项）
     const prompt = buildStoryPrompt({
       worldBook: activeBook.value,
@@ -2728,6 +3127,8 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       relationshipSnapshot,
       relationshipLedger: relationshipLedger.value?.rows,
       directorDirectives: directorPreview.directives,
+      memoryContext,
+      currentChapter: currentChapter.value,
     })
 
     // 调用 LLM API
@@ -2746,8 +3147,10 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
 
     updateStoryTokenUsageFromResponse(result.rawResponse)
 
-    // 解析返回内容（优先使用新分隔符格式，回退到旧 JSON）
-    const parsed = parseMainStoryContent(rawModelContent)
+    // 解析返回内容（优先 XML 格式，回退到分隔符格式，再回退到 JSON）
+    const parsed = parseXmlStoryContent(rawModelContent)
+      || parseMainStoryContent(rawModelContent)
+      || { success: false, error: '格式解析失败：未识别到有效的 XML 或分隔符格式' }
     let normalizedDialogues = []
 
     if (parsed.success && Array.isArray(parsed.dialogues)) {
@@ -2761,6 +3164,9 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
         return
       }
     }
+
+    // 调试日志：保存 LLM 输入输出到文件
+    logStoryLlmDebug(prompt, rawModelContent, parsed.success && Array.isArray(parsed.dialogues) && parsed.dialogues.length > 0)
 
     // 转换为游戏脚本格式并添加到对话列表
     let newDialogues = toGameScript(normalizedDialogues)
@@ -2798,7 +3204,34 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       // 添加新对话到脚本末尾，并清理历史选项
       const mergedScript = [...dialogueScript.value, ...newDialogues]
       const normalizedScript = normalizeDialogueChoicesForHistory(mergedScript)
+      // 清除旧缓存（新行会在 watch 中重新检测）
+      lineTruncationMap.value.clear()
       dialogueScript.value = normalizedScript
+
+      // 章节切换处理
+      const newChapter = parsed.chapter || null
+      if (newChapter && (newChapter.major !== currentChapter.value.major || newChapter.minor !== currentChapter.value.minor)) {
+        // 归档旧章节
+        const oldChapter = { ...currentChapter.value, endLineIndex: beforeLineIndex }
+        if (oldChapter.name || oldChapter.major > 1 || oldChapter.minor > 1) {
+          chapterHistory.value = [...chapterHistory.value, oldChapter]
+        }
+        // 设置新章节
+        currentChapter.value = {
+          major: newChapter.major,
+          minor: newChapter.minor,
+          name: newChapter.name || `第${newChapter.minor}节`,
+          storyline: newChapter.storyline || '',
+          startLineIndex: normalizedScript.length - newDialogues.length,
+        }
+        // 触发章节切换动画
+        pendingChapterTransition.value = { ...currentChapter.value }
+        showChapterOverlay.value = true
+        setTimeout(() => {
+          showChapterOverlay.value = false
+          pendingChapterTransition.value = null
+        }, 3000)
+      }
 
       if (directorPreview.changed) {
         const relationshipRows = buildRelationshipLedgerRowsFromDiff({
@@ -2921,14 +3354,18 @@ async function triggerMemoryExtraction(currentTotalLines) {
       if (result.events?.length > 0) {
         await addEvents(activeBookId.value, result.events)
       }
-      // 写入角色记忆
+      // 写入角色记忆（批量）
       if (result.characterMemories) {
+        const memoryItems = []
         for (const [charId, entries] of Object.entries(result.characterMemories)) {
           if (Array.isArray(entries)) {
             for (const entry of entries) {
-              await addCharacterMemory(activeBookId.value, charId, entry)
+              memoryItems.push({ characterId: charId, memoryEntry: entry })
             }
           }
+        }
+        if (memoryItems.length > 0) {
+          await addCharacterMemoriesBatch(activeBookId.value, memoryItems)
         }
       }
       // 写入新发现的地点
@@ -3001,6 +3438,7 @@ async function handleRegenerateStory() {
   // 删除最近生成的对话
   const removeCount = lastGeneratedCount.value
   dialogueScript.value = dialogueScript.value.slice(0, -removeCount)
+  lineTruncationMap.value.clear()
 
   // 回到生成前的位置
   currentLineIndex.value = lastGeneratedBeforeIndex.value
@@ -3978,6 +4416,19 @@ const goNextLine = () => {
     return
   }
 
+  // 如果当前行有多页，先翻完续行
+  const segs = lineTruncationMap.value.get(currentLineIndex.value)
+  if (segs && segs.length > 1 && currentContinuationPage.value < segs.length - 1) {
+    currentContinuationPage.value += 1
+    if (typewriterEnabled.value) {
+      if (typewriterTimer) clearTimeout(typewriterTimer)
+      typewriterTimer = null
+      typewriterProgress.value = 0
+      nextTick(() => startTyping(displayedText.value))
+    }
+    return
+  }
+
   if (hasChoices(currentLine.value) && !showChoicesPanel.value) {
     if (!currentChoices.value) {
       currentChoices.value = extractChoices(currentLine.value)
@@ -4003,6 +4454,19 @@ const goPrevLine = () => {
     return
   }
 
+  // 如果当前行有多页且不在第一页，先回退续行
+  const segs = lineTruncationMap.value.get(currentLineIndex.value)
+  if (segs && segs.length > 1 && currentContinuationPage.value > 0) {
+    currentContinuationPage.value -= 1
+    if (typewriterEnabled.value) {
+      if (typewriterTimer) clearTimeout(typewriterTimer)
+      typewriterTimer = null
+      typewriterProgress.value = 0
+      nextTick(() => startTyping(displayedText.value))
+    }
+    return
+  }
+
   if (currentLineIndex.value === 0) {
     return
   }
@@ -4020,6 +4484,17 @@ const deleteCurrentDialogueLine = async () => {
 
   const idx = currentLineIndex.value
   dialogueScript.value.splice(idx, 1)
+
+  // 清理截断缓存并重建索引
+  const newMap = new Map()
+  for (const [key, val] of lineTruncationMap.value) {
+    if (key < idx) {
+      newMap.set(key, val)
+    } else if (key > idx) {
+      newMap.set(key - 1, val)
+    }
+  }
+  lineTruncationMap.value = ref(newMap).value
 
   // 如果删的是最后一行，回退索引
   if (currentLineIndex.value >= dialogueScript.value.length) {
@@ -4106,12 +4581,60 @@ const handleMapTravelRequest = async (event) => {
   await handleGenerateStory(null, { overrideUserInput: promptText })
 }
 
+// --- 剧情地图覆盖层 ---
+
+const openWorldMap = () => {
+  showWorldMap.value = true
+}
+
+const closeWorldMap = () => {
+  showWorldMap.value = false
+}
+
+/**
+ * 从地图覆盖层的"前往此地"按钮触发旅行
+ */
+const handleMapTravelFromOverlay = async (detail) => {
+  const locationName = String(detail.locationName || detail.locationId || '').trim()
+  if (!locationName) return
+
+  await loadApiConfigStatus()
+  if (!hasApiConfig.value) {
+    generateError.value = '请先在设置中配置并应用 API'
+    return
+  }
+  if (isMiniTheaterMode.value) return
+  if (isGenerating.value) return
+
+  const promptText = String(
+    detail.promptText ||
+    `角色已移动到地点「${locationName}」，请继续生成该地点发生的新剧情。`,
+  ).trim()
+  if (!promptText) return
+
+  updateCurrentSceneName(locationName)
+  try {
+    await applyBackgroundByLineScene({ scene: locationName }, { allowFallback: false })
+  } catch {
+    // no-op
+  }
+
+  closeWorldMap()
+  showGeneratePanel.value = false
+  showChoicesPanel.value = false
+  currentChoices.value = null
+  selectedChoice.value = null
+  customInputText.value = ''
+
+  await handleGenerateStory(null, { overrideUserInput: promptText })
+}
+
 const createSerializableGameData = () => {
   const sanitizedDialogueScript = normalizeDialogueChoicesForHistory(dialogueScript.value)
 
   return JSON.parse(JSON.stringify({
     metadata: {
-      chapter: '第一章',
+      chapter: `${currentChapter.value.major}-${currentChapter.value.minor} ${currentChapter.value.name}`,
       scene: '旧图书馆',
       storyTime: storyTimelineLabel.value,
       playTime: currentPlayTime.value,
@@ -4133,6 +4656,8 @@ const createSerializableGameData = () => {
         toneClass: c.toneClass,
         positionClass: c.positionClass,
       })),
+      currentChapter: currentChapter.value,
+      chapterHistory: chapterHistory.value,
     },
   }))
 }
@@ -4168,6 +4693,12 @@ const handleDialogueBoxClick = (event) => {
     if (target.closest(interactiveSelector)) {
       return
     }
+  }
+
+  // 如果打字机效果进行中，跳过后继续翻页（不再单独返回）
+  if (isTypingActive.value) {
+    skipTyping()
+    // 继续执行下面的翻页逻辑
   }
 
   goNextLine()
@@ -4360,6 +4891,22 @@ const handleToggleRelationshipTableFromMenu = () => {
   toggleRelationshipTablePanel()
 }
 
+const handleToggleChapterHistoryFromMenu = () => {
+  closeTopMenu()
+  showSavePanel.value = false
+  showDebugPanel.value = false
+  closeDialogueHistoryPanel()
+  closeRelationshipTablePanel()
+  showChapterHistoryPanel.value = !showChapterHistoryPanel.value
+}
+
+const jumpToChapter = (chapter) => {
+  if (chapter.startLineIndex !== undefined && chapter.startLineIndex < dialogueScript.value.length) {
+    currentLineIndex.value = chapter.startLineIndex
+  }
+  showChapterHistoryPanel.value = false
+}
+
 // 加载存档数据
 const loadSaveData = async () => {
   clearMiniTheaterMode()
@@ -4381,11 +4928,19 @@ const loadSaveData = async () => {
   // 从存档恢复游戏状态
   if (props.saveData.game.dialogueScript && props.saveData.game.dialogueScript.length > 0) {
     dialogueScript.value = normalizeDialogueChoicesForHistory(props.saveData.game.dialogueScript)
+    lineTruncationMap.value.clear()
   }
   if (props.saveData.game.currentLineIndex !== undefined) {
     currentLineIndex.value = props.saveData.game.currentLineIndex
   }
-  if (props.saveData.game.worldBookId) {
+  // 以传入的世界书ID为准（不覆盖为用户选择/上级指定的值）
+  // 仅在未明确指定世界书时，使用存档中的worldBookId
+  const explicitWorldBookId = props.worldBookId && props.worldBookId !== 'default_world_book'
+    ? props.worldBookId
+    : null
+  if (explicitWorldBookId) {
+    activeBookId.value = explicitWorldBookId
+  } else if (props.saveData.game.worldBookId) {
     activeBookId.value = props.saveData.game.worldBookId
   }
 
@@ -4400,6 +4955,14 @@ const loadSaveData = async () => {
   hydrateNarrativeRuntimeState(props.saveData.game)
   await hydrateLlmSettingsForScope(props.saveData.game.llmSettings)
   await hydrateRelationshipLedgerForScope(props.saveData.game.relationshipLedger)
+
+  // 恢复章节状态
+  if (props.saveData.game.currentChapter) {
+    currentChapter.value = props.saveData.game.currentChapter
+  }
+  if (props.saveData.game.chapterHistory) {
+    chapterHistory.value = props.saveData.game.chapterHistory
+  }
 
   // 重置游戏开始时间
   playStartTime.value = Date.now() - (props.saveData.metadata?.playTime || 0) * 1000
@@ -4460,9 +5023,14 @@ const hasCustomBackground = computed(() => {
 })
 
 onMounted(async () => {
-  await loadApiConfigStatus()
-  await loadNarratorData()
-  await loadWorldBookData()
+  // Phase 1: 三个独立加载并行化
+  await Promise.all([
+    loadApiConfigStatus(),
+    loadNarratorData(),
+    loadWorldBookData(),
+  ])
+
+  // Phase 2: 依赖 worldBooks 的操作
   await updatePortraitUrls()
   await applyBackgroundAssetsFromActiveBook()
   
@@ -4475,6 +5043,14 @@ onMounted(async () => {
     hydrateNarrativeRuntimeState(null)
     await hydrateLlmSettingsForScope(null)
     await hydrateRelationshipLedgerForScope(null)
+
+    // 新游戏开始时播放章节切换动画
+    pendingChapterTransition.value = { ...currentChapter.value }
+    showChapterOverlay.value = true
+    setTimeout(() => {
+      showChapterOverlay.value = false
+      pendingChapterTransition.value = null
+    }, 3000)
   }
 
   // 确保初始场景背景按世界书配置生效
@@ -4532,20 +5108,35 @@ onMounted(async () => {
   })
   startAlivenessServices()
 
+  // 窗口resize时清理截断缓存
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', handleResizeClearTruncation)
+  }
+
   hasMountedGameScreen.value = true
 })
 
 onUnmounted(() => {
   stopCurrentTtsPlayback()
   stopRelationshipScheduler()
+  flushRelationshipSave()
   stopAlivenessServices()
   if (cgStatusTimer) {
     clearTimeout(cgStatusTimer)
     cgStatusTimer = null
   }
+  if (resizeClearTimer) {
+    clearTimeout(resizeClearTimer)
+    resizeClearTimer = null
+  }
   if (typeof window !== 'undefined') {
     window.removeEventListener('backpack-use-request', handleBackpackUseRequest)
     window.removeEventListener('phone-map-travel-request', handleMapTravelRequest)
+    window.removeEventListener('resize', handleResizeClearTruncation)
+  }
+  if (typewriterTimer) {
+    clearTimeout(typewriterTimer)
+    typewriterTimer = null
   }
 })
 

@@ -6,6 +6,26 @@ import { kvStorage } from '../storage/index.js'
 
 const STORAGE_KEY = 'world_memories'
 
+// --- 内存缓存层 ---
+let _cache = null
+let _dirty = false
+let _loaded = false
+const EVENT_MAX_COUNT = 500
+
+function markDirty() { _dirty = true }
+
+function _capEvents(memory) {
+  const events = memory.events
+  if (events.length > EVENT_MAX_COUNT) {
+    events.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    const keepCount = EVENT_MAX_COUNT
+    for (let i = 0; i < events.length - keepCount; i++) {
+      events[i].status = 'archived'
+    }
+    memory.events = events.slice(events.length - keepCount)
+  }
+}
+
 /**
  * 创建空记忆结构
  */
@@ -22,16 +42,22 @@ function createEmptyMemory(worldBookId) {
 }
 
 /**
- * 加载所有世界书的记忆
+ * 加载所有世界书的记忆（带缓存）
  */
 export async function loadAllWorldMemories() {
   if (typeof window === 'undefined') return {}
-  try {
-    const data = await kvStorage.get(STORAGE_KEY)
-    return data && typeof data === 'object' ? data : {}
-  } catch {
-    return {}
+  if (!_loaded) {
+    try {
+      const data = await kvStorage.get(STORAGE_KEY)
+      _cache = data && typeof data === 'object' ? data : {}
+      _loaded = true
+      _dirty = false
+    } catch {
+      _cache = {}
+      _loaded = true
+    }
   }
+  return _cache
 }
 
 /**
@@ -41,7 +67,7 @@ export async function getWorldMemory(worldBookId) {
   const all = await loadAllWorldMemories()
   if (!all[worldBookId]) {
     all[worldBookId] = createEmptyMemory(worldBookId)
-    await kvStorage.set(STORAGE_KEY, all)
+    markDirty()
   }
   return all[worldBookId]
 }
@@ -51,11 +77,15 @@ export async function getWorldMemory(worldBookId) {
  */
 export async function saveWorldMemory(memory) {
   if (typeof window === 'undefined') return
-  const all = await loadAllWorldMemories()
-  all[memory.worldBookId] = memory
-  await kvStorage.set(STORAGE_KEY, all)
+  _cache[memory.worldBookId] = memory
+  try {
+    await kvStorage.set(STORAGE_KEY, _cache)
+    _dirty = false
+  } catch (e) {
+    console.warn('[worldMemory] save failed:', e.message)
+    _dirty = true
+  }
 
-  // 通知关系调度器等监听器
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('worldMemory:updated', {
       detail: { worldBookId: memory.worldBookId, updateType: 'save', count: 1 }
@@ -64,13 +94,40 @@ export async function saveWorldMemory(memory) {
 }
 
 /**
+ * 将脏数据回写到存储
+ */
+export async function flushDirty() {
+  if (_dirty && _loaded && typeof window !== 'undefined') {
+    try {
+      await kvStorage.set(STORAGE_KEY, _cache)
+      _dirty = false
+    } catch (e) {
+      console.warn('[worldMemory] flush failed:', e.message)
+    }
+  }
+}
+
+/**
  * 删除指定世界书的记忆（世界书删除时调用）
  */
 export async function deleteWorldMemory(worldBookId) {
   if (typeof window === 'undefined') return
-  const all = await loadAllWorldMemories()
-  delete all[worldBookId]
-  await kvStorage.set(STORAGE_KEY, all)
+  if (_loaded && _cache) {
+    delete _cache[worldBookId]
+    markDirty()
+  }
+  await kvStorage.set(STORAGE_KEY, _cache)
+  _dirty = false
+}
+
+/**
+ * 清除指定世界书的缓存条目
+ */
+export function clearWorldMemoryCache(worldBookId) {
+  if (_cache && worldBookId) {
+    delete _cache[worldBookId]
+    markDirty()
+  }
 }
 
 // ===== 事件操作 =====
@@ -87,7 +144,8 @@ export async function addEvent(worldBookId, event) {
     ...event,
   }
   memory.events.push(newEvent)
-  await saveWorldMemory(memory)
+  _capEvents(memory)
+  markDirty()
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('worldMemory:updated', {
@@ -111,7 +169,8 @@ export async function addEvents(worldBookId, events) {
     }
     memory.events.push(newEvent)
   }
-  await saveWorldMemory(memory)
+  _capEvents(memory)
+  markDirty()
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('worldMemory:updated', {
@@ -165,7 +224,7 @@ export async function updateEventStatus(worldBookId, eventId, status) {
   const event = memory.events.find(e => e.id === eventId)
   if (event) {
     event.status = status
-    await saveWorldMemory(memory)
+    markDirty()
   }
 }
 
@@ -188,7 +247,7 @@ export async function decayEvents(worldBookId, options = {}) {
     }
   }
 
-  if (changed) await saveWorldMemory(memory)
+  if (changed) markDirty()
 }
 
 // ===== 角色记忆操作 =====
@@ -215,7 +274,7 @@ export async function addCharacterMemory(worldBookId, characterId, memoryEntry) 
     ...memoryEntry,
   }
   memory.characterMemories[characterId].push(entry)
-  await saveWorldMemory(memory)
+  markDirty()
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('worldMemory:updated', {
@@ -223,6 +282,36 @@ export async function addCharacterMemory(worldBookId, characterId, memoryEntry) 
     }))
   }
   return entry
+}
+
+/**
+ * 批量添加角色记忆（一次 getWorldMemory + 一次 markDirty）
+ * @param {string} worldBookId
+ * @param {{characterId: string, memoryEntry: Object}[]} items
+ */
+export async function addCharacterMemoriesBatch(worldBookId, items) {
+  const memory = await getWorldMemory(worldBookId)
+  const entries = []
+  for (const { characterId, memoryEntry } of items) {
+    if (!memory.characterMemories[characterId]) {
+      memory.characterMemories[characterId] = []
+    }
+    const entry = {
+      id: `mem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      ...memoryEntry,
+    }
+    memory.characterMemories[characterId].push(entry)
+    entries.push(entry)
+  }
+  markDirty()
+
+  if (typeof window !== 'undefined' && items.length > 0) {
+    window.dispatchEvent(new CustomEvent('worldMemory:updated', {
+      detail: { worldBookId, updateType: 'characterMemory', count: items.length }
+    }))
+  }
+  return entries
 }
 
 /**
@@ -262,7 +351,7 @@ export async function getSharedContext(worldBookId, charA, charB) {
 export async function setWorldFlag(worldBookId, flagName, value) {
   const memory = await getWorldMemory(worldBookId)
   memory.worldFlags[flagName] = value
-  await saveWorldMemory(memory)
+  markDirty()
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('worldMemory:updated', {
@@ -286,7 +375,7 @@ export async function addMilestone(worldBookId, name) {
   const memory = await getWorldMemory(worldBookId)
   if (!memory.milestones.includes(name)) {
     memory.milestones.push(name)
-    await saveWorldMemory(memory)
+    markDirty()
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('worldMemory:updated', {
@@ -331,5 +420,16 @@ export async function recordExtraction(worldBookId, lineCount) {
   const memory = await getWorldMemory(worldBookId)
   memory.lastExtractedAt = new Date().toISOString()
   memory.lastExtractedLineCount = lineCount
-  await saveWorldMemory(memory)
+  markDirty()
+}
+
+// --- 跨页签同步：当其他页签修改 world_memories 时失效缓存 ---
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === `avg_llm_${STORAGE_KEY}`) {
+      _cache = null
+      _dirty = false
+      _loaded = false
+    }
+  })
 }

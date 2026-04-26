@@ -77,6 +77,14 @@ const bridgeApi = {
     updateState: (state) => ipcRenderer.invoke('mascot:update-state', state),
     command: (command, payload) => ipcRenderer.invoke('mascot:command', command, payload),
   },
+  activity: {
+    import: (activityId, files) => ipcRenderer.invoke('activity:import', activityId, files),
+    remove: (activityId) => ipcRenderer.invoke('activity:remove', activityId),
+    // 新增：选择文件夹并直接拷贝（不传 base64）
+    selectAndImport: () => ipcRenderer.invoke('activity:select-and-import'),
+    // 新增：扫描活动目录
+    scan: () => ipcRenderer.invoke('activity:scan'),
+  },
 }
 
 try {

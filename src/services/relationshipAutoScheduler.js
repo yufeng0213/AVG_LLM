@@ -3,6 +3,8 @@
  * 基于世界记忆数据库的更新次数自动触发关系分析，区分 NPC-NPC 和 NPC-Player
  */
 import { kvStorage } from '../storage/index.js'
+import { decayEvents } from '../memory/worldMemoryStore.js'
+export { flushRelationshipSave } from '../relationship/index.js'
 
 const STORAGE_KEY = 'avg_llm_relationship_auto_config'
 const CHECK_INTERVAL_MS = 5 * 60 * 1000 // 每 5 分钟检查一次
@@ -92,6 +94,16 @@ async function saveConfig(config) {
 async function _check() {
   if (!_state?.running) return
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+
+  // 运行事件衰减：清理过期低强度事件
+  const worldBook = _state.api.getWorldBook()
+  if (worldBook) {
+    try {
+      await decayEvents(worldBook.id)
+    } catch (e) {
+      console.warn('[RelationshipScheduler] event decay failed:', e.message)
+    }
+  }
 
   const config = await loadConfig()
   if (!config.enabled) return
@@ -238,6 +250,14 @@ async function _runAnalysis(config) {
   config.lastAnalyzedAt = new Date().toISOString()
   config.lastAnalyzedEventCount = memory.events.length
   await saveConfig(config)
+
+  // 回写世界记忆脏数据
+  try {
+    const { flushDirty } = await import('../memory/worldMemoryStore.js')
+    await flushDirty()
+  } catch (e) {
+    // ignore
+  }
 
   console.log(`[RelationshipScheduler] analysis complete, ${allChanges.length} changes detected`)
 }

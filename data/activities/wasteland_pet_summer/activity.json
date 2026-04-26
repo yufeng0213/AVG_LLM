@@ -1,0 +1,66 @@
+{
+  "id": "wasteland_pet_summer",
+  "name": "废土娇宠·夏日祭",
+  "description": "废土之上的夏日祭典，在荒芜中寻找温暖与欢愉...",
+  "bannerColor": "#4a3728",
+  "bannerIcon": "☀️",
+  "cardBackground": "./activity/card_bg.jpg",
+  "worldBookId": "worldbook_feitu_jiaochong_002",
+  "coverImage": null,
+  "coverGradient": ["#e67e22", "#d35400", "#c0392b"],
+  "startTime": 1740000000000,
+  "endTime": 1893456000000,
+  "storyConfig": {
+    "title": "夏日祭",
+    "openingPrompt": "这是短暂的休息时间。经过漫长的废土旅途，大家决定去海滩参加一年一度的夏日祭。灯火璀璨的祭典摊位、绚烂的烟火、清凉的海风...在炎炎夏日中，一场奇妙的故事即将展开。",
+    "sceneCharacters": ["陆野", "祁朔", "阿诺", "白屿"],
+    "backgroundImage": "./activity/story_detail_bg.png",
+    "backgroundGradient": ["#1a0a2e", "#2a1f10", "#0a1628"],
+    "mood": "轻松愉悦的祭典氛围",
+    "portraits": {
+      "陆野": { "default": "./activity/portraits/陆野.png" },
+      "祁朔": { "default": "./activity/portraits/祁朔.png" },
+      "阿诺": { "default": "./activity/portraits/阿诺.png" },
+      "白屿": { "default": "./activity/portraits/白屿.png" }
+    }
+  },
+  "assets": {
+    "bg": "./activity/bg.png",
+    "mask": "./activity/mask.png",
+    "btnDone": "./activity/btn_done.png"
+  },
+  "gacha": {
+    "name": "夏日祭限定卡池",
+    "cost": { "crystals": 300 },
+    "pull10Cost": { "crystals": 2700 },
+    "rates": { "SR": 4, "SSR": 1 },
+    "cards": [
+      { "cardId": "card_ly_summer_sr", "name": "夏日祭", "character": "陆野", "rarity": "SR", "image": "./activity/portraits/陆野.png" },
+      { "cardId": "card_qs_summer_sr", "name": "夏日祭", "character": "祁朔", "rarity": "SR", "image": "./activity/portraits/祁朔.png" },
+      { "cardId": "card_an_summer_ssr", "name": "夏日祭", "character": "阿诺", "rarity": "SSR", "image": "./activity/portraits/阿诺.png" },
+      { "cardId": "card_by_summer_ssr", "name": "夏日祭", "character": "白屿", "rarity": "SSR", "image": "./activity/portraits/白屿.png" }
+    ],
+    "rewards": {
+      "coins": { "min": 5, "max": 10, "rate":  75},
+      "crystals": { "min": 5, "max": 10, "rate": 20 }
+    }
+  },
+  "limitedCards": [
+    { "cardId": "card_wasteland_summer_sr", "obtainMethod": "活动限定" }
+  ],
+  "missions": [
+    { "id": "m1", "name": "初次见面", "description": "完成1次签到", "type": "signup", "target": 1, "reward": { "crystals": 200 } },
+    { "id": "m2", "name": "抽卡达人", "description": "完成5次抽卡", "type": "pull_cards", "target": 5, "reward": { "crystals": 500 } },
+    { "id": "m3", "name": "签到达人", "description": "完成7次签到", "type": "signup", "target": 7, "reward": { "crystals": 1000 } },
+    { "id": "m4", "name": "豪掷千金", "description": "累计消费5000钻石", "type": "spend_crystals", "target": 5000, "reward": { "cards": ["card_wasteland_summer_sr"] } }
+  ],
+  "signups": [
+    { "day": 1, "reward": { "crystals": 100 } },
+    { "day": 2, "reward": { "coins": 1000 } },
+    { "day": 3, "reward": { "crystals": 500 } },
+    { "day": 4, "reward": { "coins": 2000 } },
+    { "day": 5, "reward": { "crystals": 800 } },
+    { "day": 6, "reward": { "coins": 3000 } },
+    { "day": 7, "reward": { "crystals": 2000, "special": "card_wasteland_summer_sr" } }
+  ]
+}

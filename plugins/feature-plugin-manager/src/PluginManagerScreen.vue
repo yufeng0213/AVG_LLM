@@ -10,6 +10,7 @@ import {
   resetFeaturePluginRuntimeState,
   subscribeFeaturePluginRuntimeState,
 } from '../../../src/features/featurePluginRuntimeState.js'
+import { getActiveWorldBookTags } from '../../../src/worldbook/worldBookStore.js'
 
 const emit = defineEmits(['back'])
 
@@ -17,17 +18,38 @@ const message = ref({ type: '', text: '' })
 const featurePluginStatusVersion = ref(0)
 const localFeaturePlugins = getLocalFeaturePluginManifests()
 const featurePluginRuntimeState = ref(getFeaturePluginRuntimeState())
+const activeWorldBookTags = ref([])
 const featurePluginManifestById = new Map(
   localFeaturePlugins.map((plugin) => [plugin.id, plugin]),
 )
 
 const PluginStatus = { DISABLED: 'disabled', ENABLED: 'enabled' }
 
+const loadWorldBookTags = async () => {
+  try {
+    activeWorldBookTags.value = await getActiveWorldBookTags()
+  } catch {
+    activeWorldBookTags.value = []
+  }
+}
+
+const getPluginDisableReason = (plugin) => {
+  const requiredTags = plugin.requiredWorldbookTags || []
+  if (requiredTags.length === 0) return null
+  const availableTags = activeWorldBookTags.value
+  const matched = requiredTags.filter(tag => availableTags.includes(tag))
+  if (matched.length === 0) {
+    return `标签不匹配（需要: ${requiredTags.join(', ')}）`
+  }
+  return null
+}
+
 const featurePlugins = computed(() => {
-  return localFeaturePlugins.map((plugin) => ({
-    ...plugin,
-    enabled: isFeaturePluginEnabled(plugin, featurePluginRuntimeState.value),
-  }))
+  return localFeaturePlugins.map((plugin) => {
+    const enabled = isFeaturePluginEnabled(plugin, featurePluginRuntimeState.value, activeWorldBookTags.value)
+    const disableReason = enabled ? null : getPluginDisableReason(plugin)
+    return { ...plugin, enabled, disableReason }
+  })
 })
 
 const featurePluginOverrideCount = computed(() => {
@@ -336,6 +358,7 @@ onMounted(() => {
     refreshFeaturePluginRuntimeState(nextState)
   })
   refreshFeaturePluginRuntimeState()
+  void loadWorldBookTags()
 })
 
 onBeforeUnmount(() => {
@@ -500,6 +523,12 @@ onBeforeUnmount(() => {
                     class="plugin-native-tag"
                   >
                     已覆盖
+                  </span>
+                  <span
+                    v-if="plugin.disableReason"
+                    class="plugin-disable-tag"
+                  >
+                    {{ plugin.disableReason }}
                   </span>
                 </div>
               </div>

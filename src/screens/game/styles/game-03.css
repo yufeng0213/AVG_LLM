@@ -45,12 +45,21 @@
   .dialogue-box {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
     padding: 7px 10px;
-    max-height: 28vh;
+    height: clamp(90px, 22vh, 160px);
+    max-height: clamp(90px, 22vh, 160px);
+    overflow: hidden;
   }
 
   .dialogue-text {
-    font-size: 0.85rem;
+    padding-top: 6px;
+    font-size: var(--dialogue-font-size, 0.85rem);
     line-height: 1.35;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 50;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 
   .dialogue-actions {
@@ -120,8 +129,67 @@
     gap: 6px;
   }
 
+  .generate-font-size-row {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .generate-font-slider {
+    flex: 1 1 auto;
+    min-width: 0;
+    position: relative;
+    height: 4px;
+    border-radius: 2px;
+    cursor: pointer;
+    touch-action: none;
+    background: linear-gradient(to right, var(--accent-cyan) var(--slider-fill, 50%), rgba(128,128,128,0.5) var(--slider-fill, 50%));
+  }
+
+  .generate-slider-thumb {
+    position: absolute;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    margin-left: -10px;
+    margin-top: -10px;
+    background: #fff;
+    border: 2px solid var(--accent-cyan);
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    transition: left 60ms ease-out;
+  }
+
+  .generate-font-size-preview {
+    flex: 0 0 44px;
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--foreground) 82%, var(--accent-cyan));
+    white-space: nowrap;
+  }
+
   .generate-custom-label {
     font-size: 0.76rem;
+  }
+
+  .generate-typewriter-row {
+    gap: 6px;
+  }
+
+  .generate-typewriter-toggle {
+    min-width: 30px;
+    padding: 3px 8px;
+    font-size: 0.72rem;
+    border-width: 1px;
+  }
+
+  .generate-typewriter-speed-value {
+    font-size: 0.72rem;
+    min-width: 52px;
   }
 
   .generate-input-group {
@@ -247,7 +315,8 @@
   }
 
   .dialogue-text {
-    font-size: 0.8rem;
+    padding-top: 4px;
+    font-size: var(--dialogue-font-size, 0.8rem);
   }
 
   .action-button {

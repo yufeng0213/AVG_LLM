@@ -78,7 +78,17 @@
       "Bash(kill %1)",
       "Bash(tail *)",
       "Bash(cat)",
-      "Bash(python3 /tmp/WorldMapView_css.py)"
+      "Bash(python3 /tmp/WorldMapView_css.py)",
+      "Bash(xcopy /E /I /Y feature-card-collection feature-memento-card)",
+      "Bash(rmdir /S /Q feature-card-collection)",
+      "Bash(curl -s http://localhost:5177)",
+      "Bash(curl -s http://localhost:5177/data/activities/summer_festival/activity.json)",
+      "Bash(curl -s http://localhost:5177/data/activities/summer_festival/activity/activity.js)",
+      "Bash(curl -s http://localhost:5177/data/activities/)",
+      "Bash(taskkill //IM node.exe //F)",
+      "Bash(taskkill //IM electron.exe //F)",
+      "Bash(curl -s \"http://localhost:5173/data/activities/%E5%BA%9F%E5%9C%9F%E5%A8%87%E5%AE%A0_%E5%A4%8F%E6%97%A5%E7%A5%AD/activity/index.html\")",
+      "Bash(curl *)"
     ]
   }
 }

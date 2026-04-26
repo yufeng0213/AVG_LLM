@@ -38,6 +38,29 @@ async function syncToCharacterState(characterId, deltas, reason) {
   }
 }
 
+// --- 保存防抖：多次更新合并为一次写回 ---
+let _saveTimer = null
+const SAVE_DEBOUNCE_MS = 2000
+
+function scheduleSave() {
+  if (_saveTimer) clearTimeout(_saveTimer)
+  _saveTimer = setTimeout(() => {
+    _saveTimer = null
+    saveRelationshipToStorage()
+  }, SAVE_DEBOUNCE_MS)
+}
+
+/**
+ * 立即刷回待保存的关系数据（如卸载前调用）
+ */
+export function flushRelationshipSave() {
+  if (_saveTimer) {
+    clearTimeout(_saveTimer)
+    _saveTimer = null
+    saveRelationshipToStorage()
+  }
+}
+
 // 存储键
 const RELATIONSHIP_STORAGE_KEY = 'game_relationships'
 const RELATIONSHIP_HISTORY_KEY = 'relationship_history'
@@ -207,8 +230,8 @@ export const updateRelationship = (characterId, deltas, reason, dialogueIndex = 
   }
   relationshipState.history.push(historyEntry)
   
-  // 保存到存储
-  saveRelationshipToStorage()
+  // 防抖保存到存储（多次更新合并为一次写回）
+  scheduleSave()
 
   // 同步到角色状态存储
   syncToCharacterState(characterId, deltas, reason)

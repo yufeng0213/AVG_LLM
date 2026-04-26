@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>废土娇宠·夏日祭</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0a0a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #fff;
+    }
+
+    /* 活动入口封面 */
+    #cover {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #1a0a2e 0%, #2a1f10 50%, #0a1628 100%);
+      z-index: 1;
+    }
+
+    #cover h1 {
+      font-size: clamp(28px, 6vw, 48px);
+      color: #fff;
+      text-shadow: 0 0 20px rgba(255,107,157,0.6);
+      margin-bottom: 8px;
+    }
+
+    #cover .subtitle {
+      font-size: clamp(14px, 3vw, 20px);
+      color: rgba(255,255,255,0.6);
+    }
+
+    /* 页面内容容器（子页面注入） */
+    #page-container {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    /* 底部导航 */
+    #bottom-nav {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      background: linear-gradient(0deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 80%, transparent 100%);
+      padding: 0 8px;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      color: rgba(128,128,128,0.6);
+      font-size: clamp(14px, 3vw, 18px);
+      font-weight: 700;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 8px;
+      transition: all 0.15s;
+      flex: 1;
+      max-width: 120px;
+    }
+
+    .nav-btn.active {
+      color: #48d1cc;
+      background: rgba(72,209,204,0.15);
+    }
+
+    .nav-btn:active {
+      transform: scale(0.93);
+    }
+
+    /* 全局 Toast */
+    .wa-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: clamp(13px, 2.5vw, 16px);
+      z-index: 9999;
+      pointer-events: none;
+      animation: wa-fade-in 0.2s ease;
+    }
+
+    @keyframes wa-fade-in {
+      from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+      to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <!-- 封面（初始显示，被页面内容覆盖） -->
+  <div id="cover">
+    <h1>废土娇宠·夏日祭</h1>
+    <div class="subtitle">☀️ 限时活动 · 签到抽卡领限定</div>
+  </div>
+
+  <!-- 页面内容容器 -->
+  <div id="page-container"></div>
+
+  <!-- 底部导航 -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-page="signin">签到</button>
+    <button class="nav-btn" data-page="gacha">抽卡</button>
+    <button class="nav-btn" data-page="missions">任务</button>
+    <button class="nav-btn" data-page="story">活动剧情</button>
+  </nav>
+
+  <!-- 全局 Toast 容器 -->
+  <div id="waToast"></div>
+
+  <script>
+    // ─── 全局活动数据 ───
+    window.__avgLLM_activityData = {
+      signup: { claimed: [] },
+      gacha: { pulls: 0, spent: 0 },
+      config: null  // 存储活动配置
+    };
+
+    // ─── bridge ───
+    (function () {
+      var nextId = 1, pending = {}
+
+      function call(mod, fn, args) {
+        return new Promise(function (resolve, reject) {
+          var id = nextId++
+          pending[id] = { resolve: resolve, reject: reject }
+          parent.postMessage({ __avgLLM: true, id: id, mod: mod, fn: fn, args: args }, '*')
+        })
+      }
+
+      // 请求活动配置
+      function requestActivityConfig() {
+        parent.postMessage({ __avgLLM: true, type: 'requestConfig' }, '*')
+      }
+
+      window.addEventListener('message', function (e) {
+        if (!e.data || !e.data.__avgLLM) return
+
+        // 接收活动配置
+        if (e.data.type === 'activityConfig' && e.data.config) {
+          window.__avgLLM_activityData.config = e.data.config
+          console.log('[Activity] 收到配置:', e.data.config)
+          window.dispatchEvent(new CustomEvent('avgLLM_activityConfig', { detail: e.data.config }))
+          return
+        }
+
+        // 处理 API 结果
+        if (e.data.type !== 'result') return
+        var p = pending[e.data.id]
+        if (!p) return
+        delete pending[e.data.id]
+        if (e.data.error) p.reject(new Error(e.data.error))
+        else p.resolve(e.data.value)
+      })
+
+      window.__avgLLM_storage = {
+        get: function (k) { return call('storage', 'get', [k]) },
+        set: function (k, v) { return call('storage', 'set', [k, v]) },
+        remove: function (k) { return call('storage', 'remove', [k]) }
+      }
+
+      window.__avgLLM_economy = { value: { coins: 0, crystals: 0 } }
+      call('economy', 'get', []).then(function (v) {
+        if (v) Object.assign(window.__avgLLM_economy.value, v)
+      })
+      window.__avgLLM_updateEconomy = function (v) {
+        if (v.coins != null) window.__avgLLM_economy.value.coins = v.coins
+        if (v.crystals != null) window.__avgLLM_economy.value.crystals = v.crystals
+        call('economy', 'update', [v])
+      }
+
+      window.__avgLLM_activity = {
+        notifyEvent: function (type, count) {
+          // 更新全局数据
+          if (type === 'pull_cards') {
+            window.__avgLLM_activityData.gacha.pulls += count
+          } else if (type === 'spend_crystals') {
+            window.__avgLLM_activityData.gacha.spent += count
+          }
+          // 广播事件给当前页面
+          window.dispatchEvent(new CustomEvent('avgLLM_activityEvent', { detail: { type: type, count: count } }))
+          call('activity', 'notifyEvent', [type, count])
+        },
+        getWorldBookId: function () { return call('activity', 'getWorldBookId', []) },
+        updateSignupData: function (data) {
+          window.__avgLLM_activityData.signup = data
+        },
+        updateGachaData: function (data) {
+          window.__avgLLM_activityData.gacha = data
+        }
+      }
+
+      window.__avgLLM_cardCollection = {
+        addCard: function (cardId) { call('cardCollection', 'addCard', [cardId]) }
+      }
+
+      // 立即请求配置
+      requestActivityConfig()
+    })();
+
+    // ─── SPA 路由 ───
+    ;(function() {
+      var pages = typeof __PAGES__ !== 'undefined' ? __PAGES__ : {}
+      var currentPage = null
+
+      document.querySelectorAll('#bottom-nav .nav-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          navigate(btn.dataset.page)
+        })
+      })
+
+      window.navigate = function(page) {
+        if (page === currentPage) return
+        currentPage = page
+
+        document.querySelectorAll('#bottom-nav .nav-btn').forEach(function(btn) {
+          btn.classList.toggle('active', btn.dataset.page === page)
+        })
+
+        var container = document.getElementById('page-container')
+        var cover = document.getElementById('cover')
+
+        // 隐藏封面
+        if (cover) cover.style.display = 'none'
+
+        if (pages[page]) {
+          container.innerHTML = pages[page]
+          execScripts(container)
+        } else if (typeof __PAGES__ !== 'undefined' && __PAGES__[page]) {
+          pages[page] = __PAGES__[page]
+          container.innerHTML = __PAGES__[page]
+          execScripts(container)
+        } else {
+          container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.4);font-size:clamp(16px,3vw,24px);">加载中...</div>'
+          fetch('./' + page + '.html').then(function(r) { return r.text() }).then(function(html) {
+            pages[page] = html
+            container.innerHTML = html
+            execScripts(container)
+          }).catch(function(err) {
+            container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff6b9d;font-size:clamp(16px,3vw,24px);">加载失败: ' + err.message + '</div>'
+          })
+        }
+      }
+
+      function execScripts(container) {
+        var scripts = container.querySelectorAll('script')
+        scripts.forEach(function(s) {
+          var newScript = document.createElement('script')
+          if (s.src) {
+            newScript.src = s.src
+          } else {
+            newScript.textContent = s.textContent
+          }
+          document.body.appendChild(newScript)
+        })
+      }
+
+      // 默认进入签到页
+      navigate('signin')
+    })()
+  </script>
+</body>
+</html>
