@@ -3,9 +3,9 @@
  * 管理卡片收藏的保存、加载、删除和导出功能
  */
 
-import { kvStorage } from '../storage/index'
+import { isSQLiteAvailable, getConfig, setConfig, removeConfig } from '../db/db.js'
 
-// 存储键
+// 存储键（Web fallback）
 const COLLECTION_KEY = 'card_collection'
 
 /**
@@ -64,7 +64,12 @@ export const saveCardToCollection = async (cardData, cardContent, metadata = {})
     updateCollectionStats(collection)
     
     // 保存
-    await kvStorage.set(COLLECTION_KEY, collection)
+    if (isSQLiteAvailable()) {
+      await setConfig(COLLECTION_KEY, collection)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await _saveCollection(collection)
+    }
     
     return { success: true, collectionId: collectionItem.collectionId }
   } catch (error) {
@@ -79,7 +84,13 @@ export const saveCardToCollection = async (cardData, cardContent, metadata = {})
  */
 export const getCollection = async () => {
   try {
-    const collection = await kvStorage.get(COLLECTION_KEY)
+    let collection
+    if (isSQLiteAvailable()) {
+      collection = await getConfig(COLLECTION_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      collection = await kvStorage.get(COLLECTION_KEY)
+    }
     if (!collection) {
       return {
         items: [],
@@ -120,8 +131,25 @@ export const getCardFromCollection = async (collectionId) => {
   }
 }
 
+async function _saveCollection(collection) {
+  if (isSQLiteAvailable()) {
+    await setConfig(COLLECTION_KEY, collection)
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    await _saveCollection(collection)
+  }
+}
+
+async function _removeCollection() {
+  if (isSQLiteAvailable()) {
+    await removeConfig(COLLECTION_KEY)
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    await _removeCollection()
+  }
+}
+
 /**
- * 删除收藏卡片
  * @param {string} collectionId - 收藏ID
  * @returns {Promise<{success: boolean, error?: string}>}
  */
@@ -141,7 +169,7 @@ export const deleteCardFromCollection = async (collectionId) => {
     // 更新统计
     updateCollectionStats(collection)
     
-    await kvStorage.set(COLLECTION_KEY, collection)
+    await _saveCollection(collection)
     
     return { success: true }
   } catch (error) {
@@ -175,7 +203,7 @@ export const updateCardInCollection = async (collectionId, updates) => {
     
     collection.updatedAt = new Date().toISOString()
     
-    await kvStorage.set(COLLECTION_KEY, collection)
+    await _saveCollection(collection)
     
     return { success: true }
   } catch (error) {
@@ -293,7 +321,7 @@ export const isCardCollected = async (cardTemplateId, cardContent) => {
  */
 export const clearCollection = async () => {
   try {
-    await kvStorage.remove(COLLECTION_KEY)
+    await _removeCollection()
     return { success: true }
   } catch (error) {
     console.error('清空收藏失败:', error)

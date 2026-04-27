@@ -4,12 +4,12 @@
  * 集中管理所有 LLM Prompt，支持用户自定义覆盖。
  * 默认值来自 promptDefaults.js，用户覆盖存储在 kvStorage('prompt_overrides')。
  */
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
 import { PROMPT_DEFAULTS } from './promptDefaults.js'
 
 const STORAGE_KEY = 'prompt_overrides'
 
-// 内存缓存，避免每次调用都读 kvStorage
+// 内存缓存，避免每次调用都读存储
 let _overridesCache = null
 let _defaultsMap = null
 
@@ -27,7 +27,12 @@ function _initDefaultsMap() {
 async function _loadOverrides() {
   if (_overridesCache !== null) return _overridesCache
   try {
-    _overridesCache = await kvStorage.get(STORAGE_KEY) || {}
+    if (isSQLiteAvailable()) {
+      _overridesCache = await getConfig(STORAGE_KEY) || {}
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      _overridesCache = await kvStorage.get(STORAGE_KEY) || {}
+    }
   } catch {
     _overridesCache = {}
   }
@@ -68,6 +73,15 @@ export function resolvePromptSync(id) {
   return def ? def.defaultValue : ''
 }
 
+async function _saveOverrides(overrides) {
+  if (isSQLiteAvailable()) {
+    await setConfig(STORAGE_KEY, overrides)
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    await kvStorage.set(STORAGE_KEY, overrides)
+  }
+}
+
 /**
  * 设置用户自定义 prompt
  * @param {string} id - prompt ID
@@ -77,7 +91,7 @@ export async function setOverride(id, value) {
   const overrides = await _loadOverrides()
   overrides[id] = String(value)
   overrides._updatedAt = new Date().toISOString()
-  await kvStorage.set(STORAGE_KEY, overrides)
+  await _saveOverrides(overrides)
   _overridesCache = overrides // 保持缓存同步
 }
 
@@ -88,7 +102,7 @@ export async function setOverride(id, value) {
 export async function resetToDefault(id) {
   const overrides = await _loadOverrides()
   delete overrides[id]
-  await kvStorage.set(STORAGE_KEY, overrides)
+  await _saveOverrides(overrides)
   _overridesCache = overrides
 }
 
@@ -210,7 +224,7 @@ export async function importAll(data) {
   }
 
   overrides._updatedAt = new Date().toISOString()
-  await kvStorage.set(STORAGE_KEY, overrides)
+  await _saveOverrides(overrides)
   _overridesCache = overrides
 
   return {
@@ -225,7 +239,7 @@ export async function importAll(data) {
  * @returns {{success: boolean, message: string}}
  */
 export async function resetAll() {
-  await kvStorage.set(STORAGE_KEY, {})
+  await _saveOverrides({})
   _overridesCache = {}
   return { success: true, message: '已重置所有 prompt 为默认值' }
 }

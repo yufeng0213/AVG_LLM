@@ -3,7 +3,7 @@
  * 负责加载卡片配置、随机抽取卡片模板
  */
 
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig, removeConfig } from '../db/db.js'
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem'
 
 // 默认卡片配置路径
@@ -52,7 +52,7 @@ const readNativeTextFile = async (baseDir, relativePath) => {
  */
 export const getCardConfigPath = async () => {
   try {
-    const customPath = await kvStorage.get(CARD_CONFIG_STORAGE_KEY)
+    const customPath = await kvStorageGet(CARD_CONFIG_STORAGE_KEY)
     return customPath || DEFAULT_CARD_CONFIG_PATH
   } catch {
     return DEFAULT_CARD_CONFIG_PATH
@@ -65,7 +65,7 @@ export const getCardConfigPath = async () => {
  */
 export const getCardBaseDir = async () => {
   try {
-    const customDir = await kvStorage.get(CARD_BASE_DIR_KEY)
+    const customDir = await kvStorageGet(CARD_BASE_DIR_KEY)
     return customDir || DEFAULT_CARD_BASE_DIR
   } catch {
     return DEFAULT_CARD_BASE_DIR
@@ -78,9 +78,17 @@ export const getCardBaseDir = async () => {
  * @param {string} baseDir - 基础目录路径（如 ./data/cards/）
  */
 export const setCardConfigPath = async (configPath, baseDir = null) => {
-  await kvStorage.set(CARD_CONFIG_STORAGE_KEY, configPath)
+  if (isSQLiteAvailable()) {
+    await setConfig(CARD_CONFIG_STORAGE_KEY, configPath)
+  } else {
+    await kvStorageSet(CARD_CONFIG_STORAGE_KEY, configPath)
+  }
   if (baseDir) {
-    await kvStorage.set(CARD_BASE_DIR_KEY, baseDir)
+    if (isSQLiteAvailable()) {
+      await setConfig(CARD_BASE_DIR_KEY, baseDir)
+    } else {
+      await kvStorageSet(CARD_BASE_DIR_KEY, baseDir)
+    }
     cachedBaseDir = baseDir
     cachedCardIndex = null
   }
@@ -93,8 +101,14 @@ export const setCardConfigPath = async (configPath, baseDir = null) => {
  */
 export const setCustomCardConfig = async (baseDir, sourceName = '自定义') => {
   try {
-    await kvStorage.set(CARD_BASE_DIR_KEY, baseDir)
-    await kvStorage.set(CARD_CONFIG_STORAGE_KEY, sourceName)
+    if (isSQLiteAvailable()) {
+      await setConfig(CARD_BASE_DIR_KEY, baseDir)
+      await setConfig(CARD_CONFIG_STORAGE_KEY, sourceName)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.set(CARD_BASE_DIR_KEY, baseDir)
+      await kvStorage.set(CARD_CONFIG_STORAGE_KEY, sourceName)
+    }
     cachedBaseDir = baseDir
     // 清除缓存的索引数据，下次加载时会从新路径读取
     cachedCardIndex = null
@@ -110,12 +124,36 @@ export const setCustomCardConfig = async (baseDir, sourceName = '自定义') => 
  */
 export const clearCustomCardConfig = async () => {
   try {
-    await kvStorage.remove(CARD_BASE_DIR_KEY)
-    await kvStorage.remove(CARD_CONFIG_STORAGE_KEY)
+    if (isSQLiteAvailable()) {
+      await removeConfig(CARD_BASE_DIR_KEY)
+      await removeConfig(CARD_CONFIG_STORAGE_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.remove(CARD_BASE_DIR_KEY)
+      await kvStorage.remove(CARD_CONFIG_STORAGE_KEY)
+    }
     cachedCardIndex = null
     cachedBaseDir = null
   } catch (error) {
     console.error('清除自定义卡片配置失败:', error)
+  }
+}
+
+async function kvStorageGet(key) {
+  if (isSQLiteAvailable()) {
+    return await getConfig(key)
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    return kvStorage.get(key)
+  }
+}
+
+async function kvStorageSet(key, value) {
+  if (isSQLiteAvailable()) {
+    await setConfig(key, value)
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    await kvStorage.set(key, value)
   }
 }
 

@@ -1,9 +1,9 @@
 /**
  * 可打印文件目录配置管理
- * 参考 cardService.js 的模式，使用 kvStorage 持久化路径
+ * 参考 cardService.js 的模式，使用 SQLite/kvStorage 持久化路径
  */
 
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig, removeConfig } from '../db/db.js'
 
 const PRINTABLE_BASE_DIR_KEY = 'printable_base_dir'
 const PRINTABLE_DISPLAY_PATH_KEY = 'printable_display_path'
@@ -16,9 +16,13 @@ const NATIVE_PREFIX = 'native://'
  */
 export async function setPrintableDir(baseDir, displayPath) {
   try {
-    await kvStorage.set(PRINTABLE_BASE_DIR_KEY, baseDir)
-    if (displayPath) {
-      await kvStorage.set(PRINTABLE_DISPLAY_PATH_KEY, displayPath)
+    if (isSQLiteAvailable()) {
+      await setConfig(PRINTABLE_BASE_DIR_KEY, baseDir)
+      if (displayPath) await setConfig(PRINTABLE_DISPLAY_PATH_KEY, displayPath)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.set(PRINTABLE_BASE_DIR_KEY, baseDir)
+      if (displayPath) await kvStorage.set(PRINTABLE_DISPLAY_PATH_KEY, displayPath)
     }
     return true
   } catch (error) {
@@ -33,7 +37,14 @@ export async function setPrintableDir(baseDir, displayPath) {
  */
 export async function getPrintableDir() {
   try {
-    return await kvStorage.get(PRINTABLE_BASE_DIR_KEY) || null
+    let val
+    if (isSQLiteAvailable()) {
+      val = await getConfig(PRINTABLE_BASE_DIR_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      val = await kvStorage.get(PRINTABLE_BASE_DIR_KEY)
+    }
+    return val || null
   } catch {
     return null
   }
@@ -44,7 +55,14 @@ export async function getPrintableDir() {
  */
 export async function getPrintableDisplayPath() {
   try {
-    return await kvStorage.get(PRINTABLE_DISPLAY_PATH_KEY) || null
+    let val
+    if (isSQLiteAvailable()) {
+      val = await getConfig(PRINTABLE_DISPLAY_PATH_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      val = await kvStorage.get(PRINTABLE_DISPLAY_PATH_KEY)
+    }
+    return val || null
   } catch {
     return null
   }
@@ -55,8 +73,14 @@ export async function getPrintableDisplayPath() {
  */
 export async function clearPrintableDir() {
   try {
-    await kvStorage.remove(PRINTABLE_BASE_DIR_KEY)
-    await kvStorage.remove(PRINTABLE_DISPLAY_PATH_KEY)
+    if (isSQLiteAvailable()) {
+      await removeConfig(PRINTABLE_BASE_DIR_KEY)
+      await removeConfig(PRINTABLE_DISPLAY_PATH_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.remove(PRINTABLE_BASE_DIR_KEY)
+      await kvStorage.remove(PRINTABLE_DISPLAY_PATH_KEY)
+    }
     return true
   } catch {
     return false

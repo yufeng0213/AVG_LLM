@@ -1073,28 +1073,6 @@
       </div>
     </section>
 
-    <!-- 手机 -->
-    <Phone
-      :worldBook="activeBook"
-      :saveSlotId="smsSaveScopeId"
-      :dialogueHistory="dialogueScript"
-      :currentLine="currentLine"
-    />
-
-    <!-- 掌机 -->
-    <HandheldConsole
-      :worldBook="activeBook"
-      :saveSlotId="smsSaveScopeId"
-    />
-
-    <!-- 背包 -->
-    <Backpack
-      :worldBook="activeBook"
-      :saveSlotId="smsSaveScopeId"
-      :dialogueHistory="dialogueScript"
-      :currentLine="currentLine"
-    />
-
     <!-- CG 生成弹窗 -->
     <CGGeneratorModal
       :visible="showCGModal"

@@ -323,14 +323,33 @@ const mainStoryLoading = ref(false)
 const openMainStory = async (payload) => {
   // 如果有 worldBookId，直接进入游戏
   if (payload?.worldBookId) {
+    const targetWorldBookId = payload.worldBookId
     const narratorId = payload.narratorId || null
     // 查找主线存档
-    const slotId = await getMainStorySaveSlot(payload.worldBookId)
+    const slotId = await getMainStorySaveSlot(targetWorldBookId)
     if (slotId) {
       const result = await loadGame(slotId)
       if (result?.success && result.data) {
-        loadedSaveData.value = result.data
-        activeWorldBookId.value = payload.worldBookId
+        // 验证存档的 worldBookId 是否与请求的一致
+        const saveWorldBookId = result.data.game?.worldBookId
+        if (saveWorldBookId !== targetWorldBookId) {
+          // 存档映射错乱，忽略存档开始新游戏
+          console.warn(`[MainStory] 存档 worldBookId(${saveWorldBookId}) 与请求(${targetWorldBookId}) 不一致，忽略存档`)
+          loadedSaveData.value = null
+          activeWorldBookId.value = targetWorldBookId
+          activeNarratorId.value = narratorId
+          currentScreen.value = 'game'
+          return
+        }
+        // 存档有效，强制使用请求的 worldBookId（防止存档数据错乱）
+        loadedSaveData.value = {
+          ...result.data,
+          game: {
+            ...result.data.game,
+            worldBookId: targetWorldBookId,
+          },
+        }
+        activeWorldBookId.value = targetWorldBookId
         activeNarratorId.value = result.data.game?.narratorId || narratorId
         currentScreen.value = 'game'
         return
@@ -338,7 +357,7 @@ const openMainStory = async (payload) => {
     }
     // 无存档，开始新游戏
     loadedSaveData.value = null
-    activeWorldBookId.value = payload.worldBookId
+    activeWorldBookId.value = targetWorldBookId
     activeNarratorId.value = narratorId
     currentScreen.value = 'game'
     return
@@ -362,17 +381,35 @@ const closeMainStorySelector = () => {
 
 const selectMainStoryBook = async (book) => {
   closeMainStorySelector()
-  const worldBookId = book.id
+  const targetWorldBookId = book.id
   const narratorId = book.defaultNarratorId || null
 
   // 查找该世界书的主线存档
-  const slotId = await getMainStorySaveSlot(worldBookId)
+  const slotId = await getMainStorySaveSlot(targetWorldBookId)
   if (slotId) {
     // 有存档，加载它
     const result = await loadGame(slotId)
     if (result?.success && result.data) {
-      loadedSaveData.value = result.data
-      activeWorldBookId.value = worldBookId
+      // 验证存档的 worldBookId 是否与请求的一致
+      const saveWorldBookId = result.data.game?.worldBookId
+      if (saveWorldBookId !== targetWorldBookId) {
+        // 存档映射错乱，忽略存档开始新游戏
+        console.warn(`[MainStory] 存档 worldBookId(${saveWorldBookId}) 与请求(${targetWorldBookId}) 不一致，忽略存档`)
+        loadedSaveData.value = null
+        activeWorldBookId.value = targetWorldBookId
+        activeNarratorId.value = narratorId
+        currentScreen.value = 'game'
+        return
+      }
+      // 存档有效，强制使用请求的 worldBookId
+      loadedSaveData.value = {
+        ...result.data,
+        game: {
+          ...result.data.game,
+          worldBookId: targetWorldBookId,
+        },
+      }
+      activeWorldBookId.value = targetWorldBookId
       activeNarratorId.value = result.data.game?.narratorId || narratorId
       currentScreen.value = 'game'
       return
@@ -381,7 +418,7 @@ const selectMainStoryBook = async (book) => {
 
   // 无存档，开始新游戏
   loadedSaveData.value = null
-  activeWorldBookId.value = worldBookId
+  activeWorldBookId.value = targetWorldBookId
   activeNarratorId.value = narratorId
   currentScreen.value = 'game'
 }

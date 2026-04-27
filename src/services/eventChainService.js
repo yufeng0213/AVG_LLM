@@ -7,6 +7,8 @@ import { resolvePrompt } from '../llm/promptRegistry.js'
 import { addEvents } from '../memory/worldMemoryStore.js'
 import { acquireLlmSlot } from './llmThrottle.js'
 
+import { isSQLiteAvailable, getConfig } from '../db/db.js'
+
 const STORAGE_KEY = 'avg_llm_event_chain_config'
 const DEFAULT_COOLDOWN_MS = 30 * 60 * 1000
 const DEFAULT_MAX_DEPTH = 2
@@ -27,9 +29,14 @@ async function loadConfig() {
     maxChainsPerEvent: DEFAULT_MAX_CHAINS,
   }
   try {
-    const { kvStorage } = await import('../storage/index.js')
-    const stored = await kvStorage.get(STORAGE_KEY)
-    if (stored && typeof stored === 'object') return { ...defaults, ...stored }
+    if (isSQLiteAvailable()) {
+      const stored = await getConfig(STORAGE_KEY)
+      if (stored && typeof stored === 'object') return { ...defaults, ...stored }
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const stored = await kvStorage.get(STORAGE_KEY)
+      if (stored && typeof stored === 'object') return { ...defaults, ...stored }
+    }
   } catch {}
   return defaults
 }

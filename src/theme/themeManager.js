@@ -22,7 +22,7 @@ import midnightStar from '../themes/presets/midnight-star.json'
 import roseGarden from '../themes/presets/rose-garden.json'
 import electricStorm from '../themes/presets/electric-storm.json'
 import bamboo from '../themes/presets/bamboo.json'
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
 
 const ACTIVE_THEME_KEY = 'active_theme'
 const CUSTOM_THEMES_KEY = 'custom_themes'
@@ -235,7 +235,12 @@ const readJsonStorage = async (key) => {
   if (typeof window === 'undefined') return null
 
   try {
-    return await kvStorage.get(key)
+    if (isSQLiteAvailable()) {
+      return await getConfig(key)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      return await kvStorage.get(key)
+    }
   } catch {
     return null
   }
@@ -243,7 +248,12 @@ const readJsonStorage = async (key) => {
 
 const writeJsonStorage = async (key, value) => {
   if (typeof window === 'undefined') return
-  await kvStorage.set(key, value)
+  if (isSQLiteAvailable()) {
+    await setConfig(key, value)
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    await kvStorage.set(key, value)
+  }
 }
 
 export const getCustomThemes = async () => {
@@ -322,12 +332,22 @@ export const getThemeCatalog = async () => {
 
 export const getActiveThemeId = async () => {
   if (typeof window === 'undefined') return fallbackTheme.id
-  return (await kvStorage.get(ACTIVE_THEME_KEY)) || fallbackTheme.id
+  if (isSQLiteAvailable()) {
+    return (await getConfig(ACTIVE_THEME_KEY)) || fallbackTheme.id
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    return (await kvStorage.get(ACTIVE_THEME_KEY)) || fallbackTheme.id
+  }
 }
 
 const setActiveThemeId = async (themeId) => {
   if (typeof window === 'undefined') return
-  await kvStorage.set(ACTIVE_THEME_KEY, themeId)
+  if (isSQLiteAvailable()) {
+    await setConfig(ACTIVE_THEME_KEY, themeId)
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    await kvStorage.set(ACTIVE_THEME_KEY, themeId)
+  }
 }
 
 const applyTokensToDocument = (tokens) => {

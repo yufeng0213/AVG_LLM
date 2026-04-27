@@ -6,6 +6,7 @@ import { callChatCompletion, getValidatedActiveConfig } from '../llm/llmService.
 import { resolvePrompt } from '../llm/promptRegistry.js'
 import { addEvent } from '../memory/worldMemoryStore.js'
 import { acquireLlmSlot } from './llmThrottle.js'
+import { isSQLiteAvailable, getConfig } from '../db/db.js'
 
 const STORAGE_KEY = 'avg_llm_bond_event_config'
 
@@ -35,9 +36,14 @@ async function loadConfig() {
     minEmotionalImpact: 50, // 羁绊事件的 emotionalImpact 最小值
   }
   try {
-    const { kvStorage } = await import('../storage/index.js')
-    const stored = await kvStorage.get(STORAGE_KEY)
-    if (stored && typeof stored === 'object') return { ...defaults, ...stored }
+    if (isSQLiteAvailable()) {
+      const stored = await getConfig(STORAGE_KEY)
+      if (stored && typeof stored === 'object') return { ...defaults, ...stored }
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const stored = await kvStorage.get(STORAGE_KEY)
+      if (stored && typeof stored === 'object') return { ...defaults, ...stored }
+    }
   } catch {}
   return defaults
 }

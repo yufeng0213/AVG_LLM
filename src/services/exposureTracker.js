@@ -2,7 +2,7 @@
  * 角色曝光追踪服务
  * 追踪角色在对话中的出场/提及次数，计算曝光分数，检测转正候选
  */
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig, query, exec } from '../db/db.js'
 
 const STORAGE_KEY = 'avg_llm_character_exposure'
 const CONFIG_KEY = 'avg_llm_exposure_config'
@@ -12,8 +12,19 @@ const CONFIG_KEY = 'avg_llm_exposure_config'
  */
 export async function loadExposureData() {
   try {
-    const data = await kvStorage.get(STORAGE_KEY)
-    return data && typeof data === 'object' ? data : {}
+    if (isSQLiteAvailable()) {
+      const rows = await query('SELECT world_book_id, character_id, exposure_data FROM exposure_data')
+      const result = {}
+      for (const r of rows) {
+        if (!result[r.world_book_id]) result[r.world_book_id] = {}
+        result[r.world_book_id][r.character_id] = JSON.parse(r.exposure_data)
+      }
+      return result
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const data = await kvStorage.get(STORAGE_KEY)
+      return data && typeof data === 'object' ? data : {}
+    }
   } catch {
     return {}
   }
@@ -23,7 +34,20 @@ export async function loadExposureData() {
  * 保存曝光数据
  */
 export async function saveExposureData(data) {
-  await kvStorage.set(STORAGE_KEY, data)
+  if (isSQLiteAvailable()) {
+    await exec('DELETE FROM exposure_data')
+    for (const [worldBookId, chars] of Object.entries(data)) {
+      for (const [charId, entry] of Object.entries(chars)) {
+        await exec(
+          'INSERT INTO exposure_data (world_book_id, character_id, exposure_data) VALUES (?, ?, ?)',
+          [worldBookId, charId, JSON.stringify(entry)]
+        )
+      }
+    }
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    await kvStorage.set(STORAGE_KEY, data)
+  }
 }
 
 /**
@@ -43,8 +67,14 @@ export async function loadExposureConfig() {
     fadeOutThreshold: 30,
   }
   try {
-    const stored = await kvStorage.get(CONFIG_KEY)
-    return stored && typeof stored === 'object' ? { ...defaults, ...stored } : defaults
+    if (isSQLiteAvailable()) {
+      const stored = await getConfig(CONFIG_KEY)
+      return stored && typeof stored === 'object' ? { ...defaults, ...stored } : defaults
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const stored = await kvStorage.get(CONFIG_KEY)
+      return stored && typeof stored === 'object' ? { ...defaults, ...stored } : defaults
+    }
   } catch {
     return defaults
   }
@@ -54,7 +84,12 @@ export async function loadExposureConfig() {
  * 保存曝光配置
  */
 export async function saveExposureConfig(config) {
-  await kvStorage.set(CONFIG_KEY, config)
+  if (isSQLiteAvailable()) {
+    await setConfig(CONFIG_KEY, config)
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    await kvStorage.set(CONFIG_KEY, config)
+  }
 }
 
 /**

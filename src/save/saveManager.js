@@ -4,7 +4,8 @@
  * 支持跨平台：Electron、Android (Capacitor)、Web
  */
 
-import { kvStorage, saveStorage, backupStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
+import { saveStorage, backupStorage } from '../storage/index.js'
 import { isElectron, isNative } from '../utils/platform.js'
 
 // 存档数据结构版本
@@ -67,10 +68,15 @@ const getSaveList = async () => {
   if (isElectron() && window.avgLLM?.save?.getSaveList) {
     return await window.avgLLM.save.getSaveList()
   }
-  
+
   // 使用存储抽象层
   try {
-    const list = await kvStorage.get(SAVE_LIST_KEY)
+    let list
+    if (isSQLiteAvailable()) {
+      list = await getConfig(SAVE_LIST_KEY)
+    } else {
+      list = await kvStorageGet(SAVE_LIST_KEY)
+    }
     return list || []
   } catch {
     return []
@@ -82,7 +88,21 @@ const getSaveList = async () => {
  * @param {Array} saves - 存档列表
  */
 const updateSaveList = async (saves) => {
-  await kvStorage.set(SAVE_LIST_KEY, saves)
+  if (isSQLiteAvailable()) {
+    await setConfig(SAVE_LIST_KEY, saves)
+  } else {
+    await kvStorageSet(SAVE_LIST_KEY, saves)
+  }
+}
+
+async function kvStorageGet(key) {
+  const { kvStorage } = await import('../storage/index.js')
+  return kvStorage.get(key)
+}
+
+async function kvStorageSet(key, value) {
+  const { kvStorage } = await import('../storage/index.js')
+  return kvStorage.set(key, value)
 }
 
 /**
@@ -90,7 +110,12 @@ const updateSaveList = async (saves) => {
  */
 const getMainStorySaves = async () => {
   try {
-    const map = await kvStorage.get(MAIN_STORY_SAVES_KEY)
+    let map
+    if (isSQLiteAvailable()) {
+      map = await getConfig(MAIN_STORY_SAVES_KEY)
+    } else {
+      map = await kvStorageGet(MAIN_STORY_SAVES_KEY)
+    }
     return map || {}
   } catch {
     return {}
@@ -111,7 +136,11 @@ const getMainStorySaveSlot = async (worldBookId) => {
 const setMainStorySaveSlot = async (worldBookId, slotId) => {
   const map = await getMainStorySaves()
   map[worldBookId] = slotId
-  await kvStorage.set(MAIN_STORY_SAVES_KEY, map)
+  if (isSQLiteAvailable()) {
+    await setConfig(MAIN_STORY_SAVES_KEY, map)
+  } else {
+    await kvStorageSet(MAIN_STORY_SAVES_KEY, map)
+  }
 }
 
 /**
@@ -313,7 +342,7 @@ const createHistoryBackup = async (messages, backupName = null) => {
       }
     }
     
-    await kvStorage.set(BACKUP_LIST_KEY, trimmedBackups)
+    await kvStorageSet(BACKUP_LIST_KEY, trimmedBackups)
     
     return { success: true, id }
   } catch (error) {
@@ -333,7 +362,12 @@ const getBackupList = async () => {
   
   // 使用存储抽象层
   try {
-    const list = await kvStorage.get(BACKUP_LIST_KEY)
+    let list
+    if (isSQLiteAvailable()) {
+      list = await getConfig(BACKUP_LIST_KEY)
+    } else {
+      list = await kvStorageGet(BACKUP_LIST_KEY)
+    }
     return list || []
   } catch {
     return []
@@ -378,7 +412,7 @@ const deleteBackup = async (backupId) => {
     // 更新备份列表
     const backups = await getBackupList()
     const filteredBackups = backups.filter(b => b.id !== backupId)
-    await kvStorage.set(BACKUP_LIST_KEY, filteredBackups)
+    await kvStorageSet(BACKUP_LIST_KEY, filteredBackups)
     
     return { success: true }
   } catch (error) {

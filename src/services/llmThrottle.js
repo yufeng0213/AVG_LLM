@@ -2,7 +2,7 @@
  * LLM 调用节流器 — 所有活人感功能共享
  * 防止短时间内过多 LLM 调用导致 token 消耗失控
  */
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
 
 const STORAGE_KEY = 'avg_llm_throttle_config'
 
@@ -79,12 +79,18 @@ export function setThrottlePaused(paused) {
 }
 
 /**
- * 从 kvStorage 加载配置并初始化
+ * 从存储加载配置并初始化
  * @param {Object} opts - 同 initLlmThrottle
  */
 export async function initLlmThrottleWithConfig(opts = {}) {
   try {
-    const stored = await kvStorage.get(STORAGE_KEY)
+    let stored
+    if (isSQLiteAvailable()) {
+      stored = await getConfig(STORAGE_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      stored = await kvStorage.get(STORAGE_KEY)
+    }
     if (stored && typeof stored === 'object') {
       opts = { ...opts, ...stored }
     }
@@ -103,7 +109,13 @@ export async function saveThrottleConfig(config = {}) {
       maxCallsPerWindow: _state.maxCallsPerWindow,
       windowMs: _state.windowMs,
     } : {}
-    await kvStorage.set(STORAGE_KEY, { ...current, ...config })
+    const value = { ...current, ...config }
+    if (isSQLiteAvailable()) {
+      await setConfig(STORAGE_KEY, value)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.set(STORAGE_KEY, value)
+    }
   } catch (e) {
     console.warn('[LlmThrottle] save config failed:', e.message)
   }

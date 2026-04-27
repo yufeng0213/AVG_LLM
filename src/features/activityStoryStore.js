@@ -3,21 +3,26 @@
  * 处理活动专属剧情的存档隔离
  */
 
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, query, exec } from '../db/db.js'
 import { getActiveWorldBookId, loadWorldBooks } from '../worldbook/worldBookStore.js'
 
-// 存储键
+// 存储键（Web fallback）
 const ACTIVITY_STORY_SAVES_KEY = 'activity_story_saves'
 
 /**
  * 获取活动故事存档
- * @param {string} activityId - 活动 ID
- * @returns {Promise<Object|null>} 存档数据
  */
 export const getActivityStorySave = async (activityId) => {
   try {
-    const saves = await kvStorage.get(ACTIVITY_STORY_SAVES_KEY) || {}
-    return saves[activityId] || null
+    if (isSQLiteAvailable()) {
+      const rows = await query('SELECT save_data FROM activity_story_saves WHERE activity_id = ?', [activityId])
+      if (rows.length === 0) return null
+      return JSON.parse(rows[0].save_data)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const saves = await kvStorage.get(ACTIVITY_STORY_SAVES_KEY) || {}
+      return saves[activityId] || null
+    }
   } catch {
     return null
   }
@@ -25,17 +30,21 @@ export const getActivityStorySave = async (activityId) => {
 
 /**
  * 保存活动故事存档
- * @param {string} activityId - 活动 ID
- * @param {Object} saveData - 存档数据
  */
 export const saveActivityStory = async (activityId, saveData) => {
   try {
-    const saves = await kvStorage.get(ACTIVITY_STORY_SAVES_KEY) || {}
-    saves[activityId] = {
-      ...saveData,
-      timestamp: Date.now()
+    const dataToSave = { ...saveData, timestamp: Date.now() }
+    if (isSQLiteAvailable()) {
+      await exec(
+        'INSERT OR REPLACE INTO activity_story_saves (activity_id, save_data) VALUES (?, ?)',
+        [activityId, JSON.stringify(dataToSave)]
+      )
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const saves = await kvStorage.get(ACTIVITY_STORY_SAVES_KEY) || {}
+      saves[activityId] = dataToSave
+      await kvStorage.set(ACTIVITY_STORY_SAVES_KEY, saves)
     }
-    await kvStorage.set(ACTIVITY_STORY_SAVES_KEY, saves)
   } catch (e) {
     console.error('[activityStoryStore] 保存失败:', e)
   }
@@ -43,13 +52,17 @@ export const saveActivityStory = async (activityId, saveData) => {
 
 /**
  * 删除活动故事存档
- * @param {string} activityId - 活动 ID
  */
 export const deleteActivityStorySave = async (activityId) => {
   try {
-    const saves = await kvStorage.get(ACTIVITY_STORY_SAVES_KEY) || {}
-    delete saves[activityId]
-    await kvStorage.set(ACTIVITY_STORY_SAVES_KEY, saves)
+    if (isSQLiteAvailable()) {
+      await exec('DELETE FROM activity_story_saves WHERE activity_id = ?', [activityId])
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const saves = await kvStorage.get(ACTIVITY_STORY_SAVES_KEY) || {}
+      delete saves[activityId]
+      await kvStorage.set(ACTIVITY_STORY_SAVES_KEY, saves)
+    }
   } catch (e) {
     console.error('[activityStoryStore] 删除失败:', e)
   }

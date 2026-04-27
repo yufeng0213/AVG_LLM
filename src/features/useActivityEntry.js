@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig, query, exec } from '../db/db.js'
 import { loadCoverFile } from './activityCover.js'
 
 const ENABLED_KEY = 'avg_llm_enabled_activity_v1'
@@ -23,7 +23,14 @@ function isHtmlResponse(res) {
 async function load() {
   if (loaded) return enabledCover.value
 
-  const enabledId = await kvStorage.get(ENABLED_KEY)
+  let enabledId
+  if (isSQLiteAvailable()) {
+    const rows = await query('SELECT activity_id FROM activity_enabled LIMIT 1')
+    enabledId = rows[0]?.activity_id || null
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    enabledId = await kvStorage.get(ENABLED_KEY)
+  }
   if (!enabledId || typeof enabledId !== 'string') {
     enabledCover.value = null
     loaded = true
@@ -62,7 +69,14 @@ async function load() {
 
   // 2. 检查导入活动
   try {
-    const imported = await kvStorage.get(IMPORTED_KEY)
+    let imported
+    if (isSQLiteAvailable()) {
+      const rows = await query('SELECT activity_data FROM activity_imported')
+      imported = rows.map(r => JSON.parse(r.activity_data))
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      imported = await kvStorage.get(IMPORTED_KEY)
+    }
     if (Array.isArray(imported)) {
       const imp = imported.find(i => i.id === enabledId)
       if (imp && imp.json) {

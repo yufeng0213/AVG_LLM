@@ -7,6 +7,8 @@ import { resolvePrompt } from '../llm/promptRegistry.js'
 import { addEvent } from '../memory/worldMemoryStore.js'
 import { acquireLlmSlot } from './llmThrottle.js'
 
+import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
+
 const STORAGE_KEY = 'avg_llm_player_impact_config'
 const DEFAULT_FAVOR_THRESHOLD = 20
 
@@ -23,9 +25,14 @@ async function loadConfig() {
     scheduleInfluencePrompt: true,
   }
   try {
-    const { kvStorage } = await import('../storage/index.js')
-    const stored = await kvStorage.get(STORAGE_KEY)
-    if (stored && typeof stored === 'object') return { ...defaults, ...stored }
+    if (isSQLiteAvailable()) {
+      const stored = await getConfig(STORAGE_KEY)
+      if (stored && typeof stored === 'object') return { ...defaults, ...stored }
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const stored = await kvStorage.get(STORAGE_KEY)
+      if (stored && typeof stored === 'object') return { ...defaults, ...stored }
+    }
   } catch {}
   return defaults
 }

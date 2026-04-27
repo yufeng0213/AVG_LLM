@@ -1,10 +1,12 @@
 /**
  * 好感度数据管理核心
  * 负责好感度数据的存储、更新、查询和事件触发
+ * Android 端使用 SQLite（无需 debounce），Web 端回退到 kvStorage
  */
 
 import { reactive, ref, computed, watch } from 'vue'
 import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, exec, query, transaction } from '../db/db.js'
 import {
   RELATIONSHIP_MIN,
   RELATIONSHIP_MAX,
@@ -25,7 +27,6 @@ async function syncToCharacterState(characterId, deltas, reason) {
     _characterStateModule = await import('../../plugins/feature-character-state/src/services/characterStateStore.js')
   }
   try {
-    // 需要获取当前 worldBookId
     if (activeWorldBookId.value) {
       await _characterStateModule.updateCharacterState(activeWorldBookId.value, characterId, {
         favor: deltas.favor || 0,
@@ -38,30 +39,7 @@ async function syncToCharacterState(characterId, deltas, reason) {
   }
 }
 
-// --- 保存防抖：多次更新合并为一次写回 ---
-let _saveTimer = null
-const SAVE_DEBOUNCE_MS = 2000
-
-function scheduleSave() {
-  if (_saveTimer) clearTimeout(_saveTimer)
-  _saveTimer = setTimeout(() => {
-    _saveTimer = null
-    saveRelationshipToStorage()
-  }, SAVE_DEBOUNCE_MS)
-}
-
-/**
- * 立即刷回待保存的关系数据（如卸载前调用）
- */
-export function flushRelationshipSave() {
-  if (_saveTimer) {
-    clearTimeout(_saveTimer)
-    _saveTimer = null
-    saveRelationshipToStorage()
-  }
-}
-
-// 存储键
+// 存储键（Web fallback 用）
 const RELATIONSHIP_STORAGE_KEY = 'game_relationships'
 const RELATIONSHIP_HISTORY_KEY = 'relationship_history'
 const TRIGGERED_EVENTS_KEY = 'triggered_relationship_events'
@@ -73,11 +51,10 @@ export const createDefaultRelationshipBase = () => ({
   stance: 0,
 })
 
-// 默认关系数据
 export const createDefaultRelationshipData = () => ({
-  runtime: {}, // 运行时关系状态（覆盖世界书默认值）
-  history: [], // 关系变化历史
-  triggeredEvents: [], // 已触发的关系事件
+  runtime: {},
+  history: [],
+  triggeredEvents: [],
 })
 
 // 响应式状态
@@ -88,45 +65,87 @@ const relationshipState = reactive({
   isLoaded: false,
 })
 
-// 当前活跃的世界书ID（用于区分不同世界书的关系）
 const activeWorldBookId = ref(null)
 
-/**
- * 初始化好感度系统
- * @param {string} worldBookId - 世界书ID
- * @param {Object} initialRelationships - 初始关系数据（来自存档）
- */
-export const initRelationshipSystem = async (worldBookId, initialRelationships = null) => {
-  activeWorldBookId.value = worldBookId
-  
-  if (initialRelationships) {
-    // 从存档加载
-    relationshipState.runtime = initialRelationships.runtime || {}
-    relationshipState.history = initialRelationships.history || []
-    relationshipState.triggeredEvents = initialRelationships.triggeredEvents || []
-  } else {
-    // 从存储加载或创建默认
-    const storedData = await loadRelationshipFromStorage(worldBookId)
-    if (storedData) {
-      relationshipState.runtime = storedData.runtime || {}
-      relationshipState.history = storedData.history || []
-      relationshipState.triggeredEvents = storedData.triggeredEvents || []
-    } else {
-      relationshipState.runtime = {}
-      relationshipState.history = []
-      relationshipState.triggeredEvents = []
+// ============================================================
+// SQLite 存储层
+// ============================================================
+
+async function _loadRuntimeSQLite(worldBookId) {
+  const rows = await query(
+    'SELECT character_id, favor, trust, stance, last_updated FROM relationship_runtime WHERE world_book_id = ?',
+    [worldBookId]
+  )
+  const runtime = {}
+  for (const r of rows) {
+    runtime[r.character_id] = {
+      favor: r.favor,
+      trust: r.trust,
+      stance: r.stance,
+      lastUpdated: r.last_updated,
     }
   }
-  
-  relationshipState.isLoaded = true
+  return runtime
 }
 
-/**
- * 从存储加载关系数据
- * @param {string} worldBookId - 世界书ID
- * @returns {Promise<Object|null>} 关系数据
- */
-const loadRelationshipFromStorage = async (worldBookId) => {
+async function _loadHistorySQLite(worldBookId) {
+  const rows = await query(
+    'SELECT history_data FROM relationship_history WHERE world_book_id = ? ORDER BY id DESC LIMIT 200',
+    [worldBookId]
+  )
+  return rows.map(r => JSON.parse(r.history_data))
+}
+
+async function _loadTriggeredEventsSQLite(worldBookId) {
+  const rows = await query(
+    'SELECT event_id FROM relationship_triggered_events WHERE world_book_id = ?',
+    [worldBookId]
+  )
+  return rows.map(r => r.event_id)
+}
+
+async function _saveRuntimeSQLite(characterId, worldBookId, favor, trust, stance) {
+  const now = new Date().toISOString()
+  await exec(
+    `INSERT OR REPLACE INTO relationship_runtime (character_id, world_book_id, favor, trust, stance, last_updated)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [characterId, worldBookId, favor, trust, stance, now]
+  )
+}
+
+async function _addHistorySQLite(worldBookId, entry) {
+  await exec(
+    `INSERT INTO relationship_history (world_book_id, history_data) VALUES (?, ?)`,
+    [worldBookId, JSON.stringify(entry)]
+  )
+  // 保留最近 200 条
+  const [count] = await query(
+    'SELECT COUNT(*) as cnt FROM relationship_history WHERE world_book_id = ?',
+    [worldBookId]
+  )
+  if (count.cnt > 200) {
+    await exec(
+      `DELETE FROM relationship_history WHERE world_book_id = ? AND id IN (
+        SELECT id FROM relationship_history WHERE world_book_id = ?
+        ORDER BY id ASC LIMIT ?
+      )`,
+      [worldBookId, worldBookId, count.cnt - 200]
+    )
+  }
+}
+
+async function _addTriggeredEventSQLite(worldBookId, eventId) {
+  await exec(
+    `INSERT OR IGNORE INTO relationship_triggered_events (world_book_id, event_id) VALUES (?, ?)`,
+    [worldBookId, eventId]
+  )
+}
+
+// ============================================================
+// Web fallback: kvStorage
+// ============================================================
+
+async function _loadRelationshipFromWeb(worldBookId) {
   try {
     const key = `${RELATIONSHIP_STORAGE_KEY}_${worldBookId}`
     const data = await kvStorage.get(key)
@@ -136,17 +155,13 @@ const loadRelationshipFromStorage = async (worldBookId) => {
   }
 }
 
-/**
- * 保存关系数据到存储
- */
-const saveRelationshipToStorage = async () => {
+async function _saveRelationshipToWeb() {
   if (!activeWorldBookId.value) return
-  
   try {
     const key = `${RELATIONSHIP_STORAGE_KEY}_${activeWorldBookId.value}`
     await kvStorage.set(key, {
       runtime: relationshipState.runtime,
-      history: relationshipState.history.slice(-100), // 只保留最近100条
+      history: relationshipState.history.slice(-100),
       triggeredEvents: relationshipState.triggeredEvents,
     })
   } catch (error) {
@@ -154,17 +169,70 @@ const saveRelationshipToStorage = async () => {
   }
 }
 
+// ============================================================
+// 公共 API（保持原有签名）
+// ============================================================
+
+/**
+ * 初始化好感度系统
+ */
+export const initRelationshipSystem = async (worldBookId, initialRelationships = null) => {
+  activeWorldBookId.value = worldBookId
+
+  if (initialRelationships) {
+    // 从存档加载
+    relationshipState.runtime = initialRelationships.runtime || {}
+    relationshipState.history = initialRelationships.history || []
+    relationshipState.triggeredEvents = initialRelationships.triggeredEvents || []
+  } else {
+    // 从存储加载
+    if (isSQLiteAvailable()) {
+      try {
+        const [runtime, history, triggeredEvents] = await Promise.all([
+          _loadRuntimeSQLite(worldBookId),
+          _loadHistorySQLite(worldBookId),
+          _loadTriggeredEventsSQLite(worldBookId),
+        ])
+        relationshipState.runtime = runtime
+        relationshipState.history = history
+        relationshipState.triggeredEvents = triggeredEvents
+      } catch (e) {
+        console.error('[Relationship] SQLite init failed:', e.message)
+        // 回退到 Web 加载
+        const storedData = await _loadRelationshipFromWeb(worldBookId)
+        if (storedData) {
+          relationshipState.runtime = storedData.runtime || {}
+          relationshipState.history = storedData.history || []
+          relationshipState.triggeredEvents = storedData.triggeredEvents || []
+        } else {
+          relationshipState.runtime = {}
+          relationshipState.history = []
+          relationshipState.triggeredEvents = []
+        }
+      }
+    } else {
+      const storedData = await _loadRelationshipFromWeb(worldBookId)
+      if (storedData) {
+        relationshipState.runtime = storedData.runtime || {}
+        relationshipState.history = storedData.history || []
+        relationshipState.triggeredEvents = storedData.triggeredEvents || []
+      } else {
+        relationshipState.runtime = {}
+        relationshipState.history = []
+        relationshipState.triggeredEvents = []
+      }
+    }
+  }
+
+  relationshipState.isLoaded = true
+}
+
 /**
  * 获取角色的当前好感度状态
- * 合合世界书默认值 + 运行时变更
- * @param {string} characterId - 角色ID
- * @param {Object} characterBase - 角色的基础关系数据（来自世界书）
- * @returns {Object} 合合后的关系状态
  */
 export const getCharacterRelationship = (characterId, characterBase = null) => {
-  // 运行时值优先
   const runtimeValue = relationshipState.runtime[characterId]
-  
+
   if (runtimeValue) {
     return {
       favor: runtimeValue.favor,
@@ -173,8 +241,7 @@ export const getCharacterRelationship = (characterId, characterBase = null) => {
       lastUpdated: runtimeValue.lastUpdated,
     }
   }
-  
-  // 使用世界书默认值
+
   if (characterBase && characterBase.relationshipBase) {
     return {
       favor: characterBase.relationshipBase.favor || RELATIONSHIP_NEUTRAL,
@@ -183,38 +250,29 @@ export const getCharacterRelationship = (characterId, characterBase = null) => {
       lastUpdated: null,
     }
   }
-  
-  // 返回默认值
+
   return createDefaultRelationshipBase()
 }
 
 /**
  * 更新角色好感度
- * @param {string} characterId - 角色ID
- * @param {Object} deltas - 变化量 { favor, trust, stance }
- * @param {string} reason - 变化原因
- * @param {number} dialogueIndex - 对话索引（可选）
- * @returns {Object} 更新结果
  */
 export const updateRelationship = (characterId, deltas, reason, dialogueIndex = null) => {
   const oldValues = getCharacterRelationship(characterId)
-  
-  // 计算新值
+
   const newFavor = clampRelationshipValue(oldValues.favor + (deltas.favor || 0))
   const newTrust = clampRelationshipValue(oldValues.trust + (deltas.trust || 0))
   const newStance = clampRelationshipValue(oldValues.stance + (deltas.stance || 0))
-  
+
   const newValues = {
     favor: newFavor,
     trust: newTrust,
     stance: newStance,
     lastUpdated: new Date().toISOString(),
   }
-  
-  // 更新运行时状态
+
   relationshipState.runtime[characterId] = newValues
-  
-  // 记录历史
+
   const historyEntry = {
     timestamp: new Date().toISOString(),
     characterId,
@@ -229,17 +287,23 @@ export const updateRelationship = (characterId, deltas, reason, dialogueIndex = 
     dialogueIndex,
   }
   relationshipState.history.push(historyEntry)
-  
-  // 防抖保存到存储（多次更新合并为一次写回）
-  scheduleSave()
 
-  // 同步到角色状态存储
+  // SQLite 立即写入（不需要 debounce）
+  if (isSQLiteAvailable()) {
+    _saveRuntimeSQLite(characterId, activeWorldBookId.value, newFavor, newTrust, newStance)
+      .catch(e => console.error('[Relationship] SQLite save failed:', e.message))
+    _addHistorySQLite(activeWorldBookId.value, historyEntry)
+      .catch(e => console.error('[Relationship] SQLite history save failed:', e.message))
+  } else {
+    // Web: 使用原有 debounce 逻辑
+    scheduleWebSave()
+  }
+
   syncToCharacterState(characterId, deltas, reason)
-  
-  // 返回更新结果（包含变化幅度信息）
+
   const favorChange = getChangeMagnitude(deltas.favor || 0)
   const trustChange = getChangeMagnitude(deltas.trust || 0)
-  
+
   return {
     characterId,
     oldValues,
@@ -252,14 +316,33 @@ export const updateRelationship = (characterId, deltas, reason, dialogueIndex = 
   }
 }
 
+// --- Web debounce 保存（SQLite 不需要） ---
+let _saveTimer = null
+const SAVE_DEBOUNCE_MS = 2000
+
+function scheduleWebSave() {
+  if (_saveTimer) clearTimeout(_saveTimer)
+  _saveTimer = setTimeout(() => {
+    _saveTimer = null
+    _saveRelationshipToWeb()
+  }, SAVE_DEBOUNCE_MS)
+}
+
+export function flushRelationshipSave() {
+  if (isSQLiteAvailable()) return // SQLite 不需要 flush
+  if (_saveTimer) {
+    clearTimeout(_saveTimer)
+    _saveTimer = null
+    _saveRelationshipToWeb()
+  }
+}
+
 /**
  * 批量更新多个角色的好感度
- * @param {Array} updates - 更新列表 [{ characterId, deltas, reason }]
- * @returns {Array} 更新结果列表
  */
 export const batchUpdateRelationships = (updates) => {
   if (!Array.isArray(updates)) return []
-  
+
   const results = []
   for (const update of updates) {
     const result = updateRelationship(
@@ -270,49 +353,42 @@ export const batchUpdateRelationships = (updates) => {
     )
     results.push(result)
   }
-  
+
   return results
 }
 
 /**
  * 获取所有角色的关系状态
- * @param {Array} characters - 角色列表（来自世界书）
- * @returns {Object} 角色ID到关系状态的映射
  */
 export const getAllRelationships = (characters) => {
   const result = {}
-  
+
   if (Array.isArray(characters)) {
     for (const char of characters) {
       result[char.id] = getCharacterRelationship(char.id, char)
     }
   }
-  
+
   return result
 }
 
 /**
  * 获取关系变化历史
- * @param {string} characterId - 角色ID（可选，不提供则返回全部）
- * @param {number} limit - 返回条数限制
- * @returns {Array} 历史记录列表
  */
 export const getRelationshipHistory = (characterId = null, limit = 20) => {
   let history = relationshipState.history
-  
+
   if (characterId) {
     history = history.filter(entry => entry.characterId === characterId)
   }
-  
-  // 按时间倒序
+
   history = [...history].reverse()
-  
+
   return history.slice(0, limit)
 }
 
 /**
  * 获取最近的关系变化
- * @returns {Object|null} 最近的变化记录
  */
 export const getLatestRelationshipChange = () => {
   if (relationshipState.history.length === 0) return null
@@ -321,8 +397,6 @@ export const getLatestRelationshipChange = () => {
 
 /**
  * 检查是否已触发某关系事件
- * @param {string} eventId - 事件ID
- * @returns {boolean} 是否已触发
  */
 export const hasTriggeredRelationshipEvent = (eventId) => {
   return relationshipState.triggeredEvents.includes(eventId)
@@ -330,32 +404,32 @@ export const hasTriggeredRelationshipEvent = (eventId) => {
 
 /**
  * 标记关系事件已触发
- * @param {string} eventId - 事件ID
  */
 export const markRelationshipEventTriggered = (eventId) => {
   if (!relationshipState.triggeredEvents.includes(eventId)) {
     relationshipState.triggeredEvents.push(eventId)
-    saveRelationshipToStorage()
+    // SQLite 立即写入
+    if (isSQLiteAvailable()) {
+      _addTriggeredEventSQLite(activeWorldBookId.value, eventId)
+        .catch(e => console.error('[Relationship] SQLite triggered event save failed:', e.message))
+    } else {
+      _saveRelationshipToWeb()
+    }
   }
 }
 
 /**
  * 检查并获取可触发的阈值事件
- * @param {string} characterId - 角色ID
- * @param {Array} milestones - 角色的关系里程碑配置
- * @returns {Array} 可触发的事件列表
  */
 export const checkThresholdEvents = (characterId, milestones) => {
   if (!Array.isArray(milestones)) return []
-  
+
   const currentRel = getCharacterRelationship(characterId)
   const triggerableEvents = []
-  
+
   for (const milestone of milestones) {
-    // 已触发过则跳过
     if (hasTriggeredRelationshipEvent(milestone.id)) continue
-    
-    // 检查阈值条件
+
     if (milestone.favorThreshold !== undefined) {
       if (currentRel.favor >= milestone.favorThreshold) {
         triggerableEvents.push({
@@ -365,7 +439,7 @@ export const checkThresholdEvents = (characterId, milestones) => {
         })
       }
     }
-    
+
     if (milestone.trustThreshold !== undefined) {
       if (currentRel.trust >= milestone.trustThreshold) {
         triggerableEvents.push({
@@ -376,41 +450,38 @@ export const checkThresholdEvents = (characterId, milestones) => {
       }
     }
   }
-  
+
   return triggerableEvents
 }
 
 /**
  * 获取关系状态描述（用于Prompt）
- * @param {Array} characters - 场景角色列表
- * @returns {string} 关系状态描述文本
  */
 export const getRelationshipPromptContext = (characters) => {
   if (!Array.isArray(characters) || characters.length === 0) {
     return ''
   }
-  
+
   const lines = []
   lines.push('【角色关系状态】')
-  
+
   for (const char of characters) {
     const relationship = getCharacterRelationship(char.id, char)
     const level = getRelationshipLevel(relationship.favor)
     const desc = getRelationshipDescription(relationship, char)
-    
+
     lines.push(`- ${char.name} (好感度: ${relationship.favor}/${level.name}): ${desc}`)
   }
-  
+
   lines.push('')
   lines.push('【关系影响提示】')
   lines.push(getRelationshipInfluenceHint(characters, relationshipState.runtime))
-  
+
   return lines.join('\n')
 }
 
 /**
  * 获取关系快照（用于存档）
- * @returns {Object} 关系数据快照
  */
 export const getRelationshipSnapshot = () => {
   return {
@@ -422,7 +493,6 @@ export const getRelationshipSnapshot = () => {
 
 /**
  * 重置关系系统（用于新游戏）
- * @param {string} worldBookId - 新的世界书ID
  */
 export const resetRelationshipSystem = async (worldBookId) => {
   activeWorldBookId.value = worldBookId
@@ -430,25 +500,32 @@ export const resetRelationshipSystem = async (worldBookId) => {
   relationshipState.history = []
   relationshipState.triggeredEvents = []
   relationshipState.isLoaded = true
-  
+
   // 清除存储
-  try {
-    const key = `${RELATIONSHIP_STORAGE_KEY}_${worldBookId}`
-    await kvStorage.remove(key)
-  } catch {
-    // 忽略错误
+  if (isSQLiteAvailable()) {
+    try {
+      await exec('DELETE FROM relationship_runtime WHERE world_book_id = ?', [worldBookId])
+      await exec('DELETE FROM relationship_history WHERE world_book_id = ?', [worldBookId])
+      await exec('DELETE FROM relationship_triggered_events WHERE world_book_id = ?', [worldBookId])
+    } catch (e) {
+      console.error('[Relationship] SQLite reset failed:', e.message)
+    }
+  } else {
+    try {
+      const key = `${RELATIONSHIP_STORAGE_KEY}_${worldBookId}`
+      await kvStorage.remove(key)
+    } catch {
+      // 忽略
+    }
   }
 }
 
 /**
  * 应用关系变更数据（来自导演器）
- * @param {Array} deltas - 关系变更列表
- * @param {string} reason - 变更原因
- * @returns {Array} 更新结果
  */
 export const applyDirectorRelationshipDeltas = (deltas, reason = '导演器事件') => {
   if (!Array.isArray(deltas)) return []
-  
+
   const updates = deltas.map(delta => ({
     characterId: delta.characterId || delta.target,
     deltas: {
@@ -458,7 +535,7 @@ export const applyDirectorRelationshipDeltas = (deltas, reason = '导演器事�
     },
     reason,
   }))
-  
+
   return batchUpdateRelationships(updates)
 }
 
@@ -473,7 +550,6 @@ export const useRelationshipState = () => {
   }
 }
 
-// 导出所有函数
 export default {
   initRelationshipSystem,
   getCharacterRelationship,

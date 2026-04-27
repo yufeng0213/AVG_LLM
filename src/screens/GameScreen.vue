@@ -43,11 +43,8 @@ import {
   exportCardFromDataAndShare,
 } from '../cards/cardExportService'
 import { saveGame, createHistoryBackup, formatTimestamp } from '../save/saveManager'
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig, query, exec } from '../db/db.js'
 import { DEFAULT_NARRATOR_ID, loadNarratorProfiles, resolveNarratorProfile } from '../narrator/narratorStore'
-import Phone from '../components/Phone.vue'
-import HandheldConsole from '../components/HandheldConsole.vue'
-import Backpack from '../components/Backpack.vue'
 import RelationshipPanel from '../components/RelationshipPanel.vue'
 import RelationshipChangeToast from '../components/RelationshipChangeToast.vue'
 import {
@@ -139,8 +136,16 @@ const props = defineProps({
 
 // 世界书数据
 const worldBooks = ref([])
-// 使用传入的世界书ID，如果没有则使用存档中的或默认的
-const activeBookId = ref(props.worldBookId || props.saveData?.game?.worldBookId || 'default_world_book')
+// 使用传入的世界书ID（优先级最高），如果没有则使用默认的
+// 注意：不使用存档中的 worldBookId，因为存档可能是旧数据
+const activeBookId = ref(props.worldBookId || 'default_world_book')
+
+// 监听 props.worldBookId 变化，强制更新（防止存档中的旧 worldBookId 覆盖）
+watch(() => props.worldBookId, (newId) => {
+  if (newId && newId !== activeBookId.value) {
+    activeBookId.value = newId
+  }
+}, { immediate: true })
 // 叙事者数据（优先：本局覆盖 > 世界书默认 > 系统默认）
 const narratorProfiles = ref([])
 const sessionNarratorId = ref(props.sessionNarratorId || '')
@@ -148,18 +153,8 @@ const LLM_SETTINGS_STORAGE_PREFIX = 'game-llm-settings'
 const RELATIONSHIP_LEDGER_STORAGE_PREFIX = 'relationship-ledger'
 
 const SESSION_SCOPED_STORAGE_PREFIXES = [
-  'phone-sms-threads',
-  'phone-moments-feed',
-  'phone-forum-posts',
-  'phone-news-events',
-  'phone-map-data',
   LLM_SETTINGS_STORAGE_PREFIX,
   RELATIONSHIP_LEDGER_STORAGE_PREFIX,
-  'phone-clues',
-  'phone-settings',
-  'phone-wallet',
-  'phone-shop',
-  'backpack-items',
 ]
 const createSessionSmsScopeId = () => `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 const sanitizeSmsScopeId = (value) => String(value || '').trim()
@@ -169,29 +164,6 @@ const getScopedStorageKey = (prefix, worldBookId = activeBookId.value, scopeId =
   const normalizedWorldId = String(worldBookId || 'default_world_book').trim() || 'default_world_book'
   const normalizedScopeId = sanitizeSmsScopeId(scopeId) || 'session_default'
   return `${prefix}:${normalizedWorldId}:${normalizedScopeId}`
-}
-
-const syncPhoneSmsScopeAfterSave = async (nextSlotId) => {
-  const normalizedNextSlotId = sanitizeSmsScopeId(nextSlotId)
-  if (!normalizedNextSlotId) return
-
-  const previousScopeId = sanitizeSmsScopeId(smsSaveScopeId.value) || 'session_default'
-  if (previousScopeId !== normalizedNextSlotId) {
-    for (const prefix of SESSION_SCOPED_STORAGE_PREFIXES) {
-      const sourceKey = getScopedStorageKey(prefix, activeBookId.value, previousScopeId)
-      const targetKey = getScopedStorageKey(prefix, activeBookId.value, normalizedNextSlotId)
-      try {
-        const sourceData = await kvStorage.get(sourceKey)
-        if (sourceData !== undefined && sourceData !== null) {
-          await kvStorage.set(targetKey, sourceData)
-        }
-      } catch {
-        // no-op
-      }
-    }
-  }
-
-  smsSaveScopeId.value = normalizedNextSlotId
 }
 
 // 立绘图片缓存
@@ -763,7 +735,12 @@ const getCurrentLlmSettingsPayload = () => ({
 
 const persistLlmSettings = async () => {
   try {
-    await kvStorage.set(llmSettingsStorageKey.value, getCurrentLlmSettingsPayload())
+    if (isSQLiteAvailable()) {
+      await setConfig(llmSettingsStorageKey.value, getCurrentLlmSettingsPayload())
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.set(llmSettingsStorageKey.value, getCurrentLlmSettingsPayload())
+    }
   } catch {
     // no-op
   }
@@ -771,7 +748,13 @@ const persistLlmSettings = async () => {
 
 const loadLlmSettingsFromStorage = async () => {
   try {
-    const raw = await kvStorage.get(llmSettingsStorageKey.value)
+    let raw
+    if (isSQLiteAvailable()) {
+      raw = await getConfig(llmSettingsStorageKey.value)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      raw = await kvStorage.get(llmSettingsStorageKey.value)
+    }
     if (raw && typeof raw === 'object') {
       applyLlmSettingsPayload(raw)
       return true
@@ -1765,14 +1748,25 @@ const persistRelationshipLedger = async () => {
   try {
     const payload = normalizeRelationshipLedgerPayload(relationshipLedger.value, createEmptyRelationshipLedger())
     relationshipLedger.value = payload
-    await kvStorage.set(relationshipLedgerStorageKey.value, payload)
+    if (isSQLiteAvailable()) {
+      await setConfig(relationshipLedgerStorageKey.value, payload)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.set(relationshipLedgerStorageKey.value, payload)
+    }
   } catch {
     // no-op
   }
 }
 const loadRelationshipLedgerFromStorage = async () => {
   try {
-    const rawValue = await kvStorage.get(relationshipLedgerStorageKey.value)
+    let rawValue
+    if (isSQLiteAvailable()) {
+      rawValue = await getConfig(relationshipLedgerStorageKey.value)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      rawValue = await kvStorage.get(relationshipLedgerStorageKey.value)
+    }
     if (rawValue === undefined || rawValue === null) {
       return false
     }
@@ -3535,13 +3529,20 @@ const hasApiConfig = ref(false)
 // 加载 API 配置状态
 const loadApiConfigStatus = async () => {
   try {
-    const activeId = await kvStorage.get('active_api_id')
+    let activeId, configs
+    if (isSQLiteAvailable()) {
+      activeId = await getConfig('active_api_id')
+      configs = await getConfig('api_configs')
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      activeId = await kvStorage.get('active_api_id')
+      configs = await kvStorage.get('api_configs')
+    }
     if (!activeId) {
       hasApiConfig.value = false
       return
     }
 
-    const configs = await kvStorage.get('api_configs')
     hasApiConfig.value = Array.isArray(configs) && configs.some((item) => item?.id === activeId)
   } catch {
     hasApiConfig.value = false
@@ -4507,37 +4508,6 @@ const deleteCurrentDialogueLine = async () => {
   await quickSave({ silent: true })
 }
 
-const handleBackpackUseRequest = async (event) => {
-  const detail = event?.detail && typeof event.detail === 'object' ? event.detail : {}
-  const requestWorldId = String(detail.worldBookId || '').trim()
-  const requestSaveSlotId = String(detail.saveSlotId || '').trim()
-  const currentWorldId = String(activeBookId.value || '').trim()
-  const currentSaveSlotId = String(smsSaveScopeId.value || '').trim()
-
-  if (requestWorldId && requestWorldId !== currentWorldId) return
-  if (requestSaveSlotId && requestSaveSlotId !== currentSaveSlotId) return
-  if (isMiniTheaterMode.value) return
-  if (isGenerating.value) return
-
-  await loadApiConfigStatus()
-  if (!hasApiConfig.value) {
-    generateError.value = '请先在设置中配置并应用 API'
-    return
-  }
-
-  const itemName = String(detail.itemName || '').trim()
-  const promptText = String(detail.promptText || `使用了 ${itemName || '未知物品'}`).trim()
-  if (!promptText) return
-
-  showGeneratePanel.value = false
-  showChoicesPanel.value = false
-  currentChoices.value = null
-  selectedChoice.value = null
-  customInputText.value = ''
-
-  await handleGenerateStory(null, { overrideUserInput: promptText })
-}
-
 const handleMapTravelRequest = async (event) => {
   const detail = event?.detail && typeof event.detail === 'object' ? event.detail : {}
   const requestWorldId = String(detail.worldBookId || '').trim()
@@ -4812,7 +4782,6 @@ const handleSaveGame = async () => {
     const result = await saveGame(gameData)
     
     if (result.success) {
-      await syncPhoneSmsScopeAfterSave(result.id)
       saveSuccess.value = `存档成功！时间: ${formatTimestamp(Date.now())}`
       // 自动创建历史备份
       await createHistoryBackup(
@@ -4844,7 +4813,6 @@ const quickSave = async (options = {}) => {
     const result = await saveGame(gameData, slotId)
     
     if (result.success) {
-      await syncPhoneSmsScopeAfterSave(result.id)
       if (!silent) {
         // 简短提示
         saveSuccess.value = '快速存档成功！'
@@ -5057,7 +5025,6 @@ onMounted(async () => {
   await applyBackgroundByLineScene(currentLine.value, { allowFallback: true })
 
   if (typeof window !== 'undefined') {
-    window.addEventListener('backpack-use-request', handleBackpackUseRequest)
     window.addEventListener('phone-map-travel-request', handleMapTravelRequest)
   }
 
@@ -5130,7 +5097,6 @@ onUnmounted(() => {
     resizeClearTimer = null
   }
   if (typeof window !== 'undefined') {
-    window.removeEventListener('backpack-use-request', handleBackpackUseRequest)
     window.removeEventListener('phone-map-travel-request', handleMapTravelRequest)
     window.removeEventListener('resize', handleResizeClearTruncation)
   }

@@ -1,18 +1,18 @@
 /**
  * WorldMemory — 每个世界书独立维护的剧情记忆数据库
  * 存储：事件记录、角色个人记忆、世界状态标志
+ * Android 端使用 SQLite，Web 端回退到 kvStorage
  */
+import { isSQLiteAvailable, exec, query, transaction } from '../db/db.js'
 import { kvStorage } from '../storage/index.js'
 
 const STORAGE_KEY = 'world_memories'
 
-// --- 内存缓存层 ---
-let _cache = null
-let _dirty = false
-let _loaded = false
-const EVENT_MAX_COUNT = 500
+// ============================================================
+// Web fallback: 使用现有 kvStorage 逻辑
+// ============================================================
 
-function markDirty() { _dirty = true }
+const EVENT_MAX_COUNT = 500
 
 function _capEvents(memory) {
   const events = memory.events
@@ -26,10 +26,24 @@ function _capEvents(memory) {
   }
 }
 
-/**
- * 创建空记忆结构
- */
-function createEmptyMemory(worldBookId) {
+let _cache = null
+let _loaded = false
+
+async function _loadAllWeb() {
+  if (!_loaded) {
+    try {
+      const data = await kvStorage.get(STORAGE_KEY)
+      _cache = data && typeof data === 'object' ? data : {}
+      _loaded = true
+    } catch {
+      _cache = {}
+      _loaded = true
+    }
+  }
+  return _cache
+}
+
+function _createEmptyMemory(worldBookId) {
   return {
     worldBookId,
     events: [],
@@ -41,51 +55,142 @@ function createEmptyMemory(worldBookId) {
   }
 }
 
-/**
- * 加载所有世界书的记忆（带缓存）
- */
-export async function loadAllWorldMemories() {
-  if (typeof window === 'undefined') return {}
-  if (!_loaded) {
-    try {
-      const data = await kvStorage.get(STORAGE_KEY)
-      _cache = data && typeof data === 'object' ? data : {}
-      _loaded = true
-      _dirty = false
-    } catch {
-      _cache = {}
-      _loaded = true
-    }
+// ============================================================
+// SQLite 存储层
+// ============================================================
+
+function _sqliteMemoryFromRows(events, charMemories, flags, milestones) {
+  return {
+    events: events.map(e => JSON.parse(e.event_data)),
+    characterMemories: charMemories.reduce((acc, m) => {
+      if (!acc[m.character_id]) acc[m.character_id] = []
+      acc[m.character_id].push(JSON.parse(m.memory_data))
+      return acc
+    }, {}),
+    worldFlags: flags.reduce((acc, f) => {
+      acc[f.flag_name] = f.flag_value !== null ? JSON.parse(f.flag_value) : null
+      return acc
+    }, {}),
+    milestones: milestones.map(m => m.milestone_name),
   }
-  return _cache
 }
 
-/**
- * 获取指定世界书的记忆
- */
+async function _ensureMemorySQLite(worldBookId) {
+  // 检查是否已有事件（代表存在）
+  const [count] = await query(
+    'SELECT COUNT(*) as cnt FROM memory_events WHERE world_book_id = ?', [worldBookId]
+  )
+  if (count.cnt === 0) {
+    // 初始化提取配置字段
+    await exec(
+      `INSERT OR REPLACE INTO memory_extraction_config (key, config_data)
+       VALUES (?, ?)`,
+      [`last_extracted_${worldBookId}`, JSON.stringify({
+        lastExtractedAt: null,
+        lastExtractedLineCount: 0,
+      })]
+    )
+  }
+}
+
+async function _getWorldMemorySQLite(worldBookId) {
+  await _ensureMemorySQLite(worldBookId)
+  const events = await query('SELECT * FROM memory_events WHERE world_book_id = ?', [worldBookId])
+  const charMemories = await query('SELECT * FROM memory_character_memories WHERE world_book_id = ?', [worldBookId])
+  const flags = await query('SELECT * FROM memory_world_flags WHERE world_book_id = ?', [worldBookId])
+  const milestones = await query('SELECT milestone_name FROM memory_milestones WHERE world_book_id = ?', [worldBookId])
+
+  const memory = _sqliteMemoryFromRows(events, charMemories, flags, milestones)
+
+  // 提取配置
+  const [cfg] = await query(
+    'SELECT config_data FROM memory_extraction_config WHERE key = ?',
+    [`last_extracted_${worldBookId}`]
+  )
+  if (cfg) {
+    const extractData = JSON.parse(cfg.config_data)
+    memory.lastExtractedAt = extractData.lastExtractedAt || null
+    memory.lastExtractedLineCount = extractData.lastExtractedLineCount || 0
+  }
+  memory.worldBookId = worldBookId
+  return memory
+}
+
+function _safeJsonValue(str, fallback) {
+  if (!str) return fallback
+  try { return JSON.parse(str) } catch { return fallback }
+}
+
+// ============================================================
+// 公共 API（保持原有签名）
+// ============================================================
+
+export async function loadAllWorldMemories() {
+  if (typeof window === 'undefined') return {}
+  if (isSQLiteAvailable()) {
+    try {
+      const bookIds = await query('SELECT id FROM world_books')
+      const result = {}
+      for (const row of bookIds) {
+        result[row.id] = await _getWorldMemorySQLite(row.id)
+      }
+      return result
+    } catch (e) {
+      console.error('[worldMemory] SQLite loadAllWorldMemories failed:', e.message)
+    }
+  }
+  return _loadAllWeb()
+}
+
 export async function getWorldMemory(worldBookId) {
-  const all = await loadAllWorldMemories()
+  if (typeof window === 'undefined') return _createEmptyMemory(worldBookId)
+
+  if (isSQLiteAvailable()) {
+    try {
+      return await _getWorldMemorySQLite(worldBookId)
+    } catch (e) {
+      console.error('[worldMemory] SQLite getWorldMemory failed:', e.message)
+    }
+  }
+
+  // Web fallback
+  const all = await _loadAllWeb()
   if (!all[worldBookId]) {
-    all[worldBookId] = createEmptyMemory(worldBookId)
-    markDirty()
+    all[worldBookId] = _createEmptyMemory(worldBookId)
   }
   return all[worldBookId]
 }
 
-/**
- * 保存指定世界书的记忆
- */
 export async function saveWorldMemory(memory) {
   if (typeof window === 'undefined') return
-  _cache[memory.worldBookId] = memory
-  try {
-    await kvStorage.set(STORAGE_KEY, _cache)
-    _dirty = false
-  } catch (e) {
-    console.warn('[worldMemory] save failed:', e.message)
-    _dirty = true
+
+  if (isSQLiteAvailable()) {
+    try {
+      // 保存提取配置
+      await exec(
+        `INSERT OR REPLACE INTO memory_extraction_config (key, config_data) VALUES (?, ?)`,
+        [`last_extracted_${memory.worldBookId}`, JSON.stringify({
+          lastExtractedAt: memory.lastExtractedAt,
+          lastExtractedLineCount: memory.lastExtractedLineCount || 0,
+        })]
+      )
+      window.dispatchEvent(new CustomEvent('worldMemory:updated', {
+        detail: { worldBookId: memory.worldBookId, updateType: 'save', count: 1 }
+      }))
+      return
+    } catch (e) {
+      console.error('[worldMemory] SQLite saveWorldMemory failed:', e.message)
+    }
   }
 
+  // Web fallback
+  const all = await _loadAllWeb()
+  all[memory.worldBookId] = memory
+  try {
+    await kvStorage.set(STORAGE_KEY, all)
+  } catch (e) {
+    console.warn('[worldMemory] save failed:', e.message)
+  }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('worldMemory:updated', {
       detail: { worldBookId: memory.worldBookId, updateType: 'save', count: 1 }
@@ -93,150 +198,249 @@ export async function saveWorldMemory(memory) {
   }
 }
 
-/**
- * 将脏数据回写到存储
- */
 export async function flushDirty() {
-  if (_dirty && _loaded && typeof window !== 'undefined') {
+  // SQLite 不需要 flush，每次写入都是事务性的
+  if (!isSQLiteAvailable() && typeof window !== 'undefined') {
     try {
       await kvStorage.set(STORAGE_KEY, _cache)
-      _dirty = false
     } catch (e) {
       console.warn('[worldMemory] flush failed:', e.message)
     }
   }
 }
 
-/**
- * 删除指定世界书的记忆（世界书删除时调用）
- */
 export async function deleteWorldMemory(worldBookId) {
   if (typeof window === 'undefined') return
+
+  if (isSQLiteAvailable()) {
+    try {
+      await exec('DELETE FROM memory_events WHERE world_book_id = ?', [worldBookId])
+      await exec('DELETE FROM memory_character_memories WHERE world_book_id = ?', [worldBookId])
+      await exec('DELETE FROM memory_world_flags WHERE world_book_id = ?', [worldBookId])
+      await exec('DELETE FROM memory_milestones WHERE world_book_id = ?', [worldBookId])
+      await exec('DELETE FROM memory_extraction_config WHERE key = ?', [`last_extracted_${worldBookId}`])
+      return
+    } catch (e) {
+      console.error('[worldMemory] SQLite deleteWorldMemory failed:', e.message)
+    }
+  }
+
+  // Web fallback
   if (_loaded && _cache) {
     delete _cache[worldBookId]
-    markDirty()
   }
   await kvStorage.set(STORAGE_KEY, _cache)
-  _dirty = false
 }
 
-/**
- * 清除指定世界书的缓存条目
- */
 export function clearWorldMemoryCache(worldBookId) {
   if (_cache && worldBookId) {
     delete _cache[worldBookId]
-    markDirty()
   }
 }
 
 // ===== 事件操作 =====
 
-/**
- * 添加事件
- */
 export async function addEvent(worldBookId, event) {
-  const memory = await getWorldMemory(worldBookId)
   const newEvent = {
     id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     status: 'active',
     createdAt: new Date().toISOString(),
     ...event,
   }
+
+  if (isSQLiteAvailable()) {
+    try {
+      await exec(
+        `INSERT INTO memory_events (id, world_book_id, event_data, status, event_type, emotional_impact, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          newEvent.id, worldBookId, JSON.stringify(newEvent),
+          newEvent.status, newEvent.type || '', newEvent.emotionalImpact || 0,
+          newEvent.createdAt,
+        ]
+      )
+      // 事件数量限制
+      const [count] = await query(
+        'SELECT COUNT(*) as cnt FROM memory_events WHERE world_book_id = ?', [worldBookId]
+      )
+      if (count.cnt > EVENT_MAX_COUNT) {
+        await exec(
+          `DELETE FROM memory_events WHERE id IN (
+            SELECT id FROM memory_events WHERE world_book_id = ?
+            ORDER BY created_at ASC LIMIT ?
+          )`,
+          [worldBookId, count.cnt - EVENT_MAX_COUNT]
+        )
+      }
+      window.dispatchEvent(new CustomEvent('worldMemory:updated', {
+        detail: { worldBookId, updateType: 'event', count: 1 }
+      }))
+      return newEvent
+    } catch (e) {
+      console.error('[worldMemory] SQLite addEvent failed:', e.message)
+    }
+  }
+
+  // Web fallback
+  const memory = await getWorldMemory(worldBookId)
   memory.events.push(newEvent)
   _capEvents(memory)
-  markDirty()
-
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('worldMemory:updated', {
-      detail: { worldBookId, updateType: 'event', count: 1 }
-    }))
-  }
   return newEvent
 }
 
-/**
- * 批量添加事件
- */
 export async function addEvents(worldBookId, events) {
-  const memory = await getWorldMemory(worldBookId)
-  for (const event of events) {
-    const newEvent = {
-      id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      ...event,
-    }
-    memory.events.push(newEvent)
-  }
-  _capEvents(memory)
-  markDirty()
+  const newEvents = events.map(event => ({
+    id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    ...event,
+  }))
 
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('worldMemory:updated', {
-      detail: { worldBookId, updateType: 'events', count: events.length }
-    }))
+  if (isSQLiteAvailable()) {
+    try {
+      await transaction(async () => {
+        for (const e of newEvents) {
+          await exec(
+            `INSERT INTO memory_events (id, world_book_id, event_data, status, event_type, emotional_impact, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              e.id, worldBookId, JSON.stringify(e),
+              e.status, e.type || '', e.emotionalImpact || 0, e.createdAt,
+            ]
+          )
+        }
+        // 事件数量限制
+        const [count] = await query(
+          'SELECT COUNT(*) as cnt FROM memory_events WHERE world_book_id = ?', [worldBookId]
+        )
+        if (count.cnt > EVENT_MAX_COUNT) {
+          await exec(
+            `DELETE FROM memory_events WHERE id IN (
+              SELECT id FROM memory_events WHERE world_book_id = ?
+              ORDER BY created_at ASC LIMIT ?
+            )`,
+            [worldBookId, count.cnt - EVENT_MAX_COUNT]
+          )
+        }
+      })
+      window.dispatchEvent(new CustomEvent('worldMemory:updated', {
+        detail: { worldBookId, updateType: 'events', count: events.length }
+      }))
+      return
+    } catch (e) {
+      console.error('[worldMemory] SQLite addEvents failed:', e.message)
+    }
   }
+
+  // Web fallback
+  const memory = await getWorldMemory(worldBookId)
+  for (const event of newEvents) { memory.events.push(event) }
+  _capEvents(memory)
 }
 
-/**
- * 查询事件
- */
 export async function queryEvents(worldBookId, filters = {}) {
+  if (isSQLiteAvailable()) {
+    try {
+      let sql = 'SELECT * FROM memory_events WHERE world_book_id = ?'
+      const params = [worldBookId]
+
+      if (filters.participants?.length > 0) {
+        sql = 'SELECT * FROM memory_events WHERE world_book_id = ?'
+        // SQLite JSON 过滤：event_data.participants 包含任意指定 ID
+        const conditions = filters.participants.map(() => `json_extract(event_data, '$.participants') LIKE ?`).join(' OR ')
+        sql = `SELECT * FROM memory_events WHERE world_book_id = ? AND (${conditions})`
+        for (const p of filters.participants) {
+          params.push(`%"${p}"%`)
+        }
+      }
+      if (filters.type) {
+        sql += ` AND event_type = ?`
+        params.push(filters.type)
+      }
+      if (filters.status) {
+        sql += ` AND status = ?`
+        params.push(filters.status)
+      }
+      if (filters.minImpact) {
+        sql += ` AND emotional_impact >= ?`
+        params.push(filters.minImpact)
+      }
+      if (filters.excludeFading) {
+        sql += ` AND status NOT IN ('fading', 'resolved')`
+      }
+      sql += ' ORDER BY created_at DESC'
+      if (filters.limit) {
+        sql += ` LIMIT ?`
+        params.push(filters.limit)
+      }
+
+      const rows = await query(sql, params)
+      return rows.map(r => JSON.parse(r.event_data))
+    } catch (e) {
+      console.error('[worldMemory] SQLite queryEvents failed:', e.message)
+    }
+  }
+
+  // Web fallback
   const memory = await getWorldMemory(worldBookId)
   let results = memory.events
-
   if (filters.participants?.length > 0) {
     const ids = new Set(filters.participants)
     results = results.filter(e =>
       Array.isArray(e.participants) && e.participants.some(p => ids.has(p))
     )
   }
-  if (filters.type) {
-    results = results.filter(e => e.type === filters.type)
-  }
-  if (filters.status) {
-    results = results.filter(e => e.status === filters.status)
-  }
-  if (filters.minImpact) {
-    results = results.filter(e => (e.emotionalImpact || 0) >= filters.minImpact)
-  }
-  if (filters.excludeFading) {
-    results = results.filter(e => e.status !== 'fading' && e.status !== 'resolved')
-  }
-
-  // 按时间倒序
+  if (filters.type) results = results.filter(e => e.type === filters.type)
+  if (filters.status) results = results.filter(e => e.status === filters.status)
+  if (filters.minImpact) results = results.filter(e => (e.emotionalImpact || 0) >= filters.minImpact)
+  if (filters.excludeFading) results = results.filter(e => e.status !== 'fading' && e.status !== 'resolved')
   results = [...results].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-
-  // 限制数量
-  if (filters.limit) {
-    results = results.slice(0, filters.limit)
-  }
-
+  if (filters.limit) results = results.slice(0, filters.limit)
   return results
 }
 
-/**
- * 更新事件状态
- */
 export async function updateEventStatus(worldBookId, eventId, status) {
+  if (isSQLiteAvailable()) {
+    try {
+      await exec(
+        `UPDATE memory_events SET status = ?, event_data = json_set(event_data, '$.status', ?)
+         WHERE world_book_id = ? AND id = ?`,
+        [status, status, worldBookId, eventId]
+      )
+      return
+    } catch (e) {
+      console.error('[worldMemory] SQLite updateEventStatus failed:', e.message)
+    }
+  }
+
+  // Web fallback
   const memory = await getWorldMemory(worldBookId)
   const event = memory.events.find(e => e.id === eventId)
-  if (event) {
-    event.status = status
-    markDirty()
-  }
+  if (event) event.status = status
 }
 
-/**
- * 衰减标记：将超过天数且情感强度低的事件标记为 fading
- */
 export async function decayEvents(worldBookId, options = {}) {
   const { daysThreshold = 30, impactThreshold = 40 } = options
-  const memory = await getWorldMemory(worldBookId)
   const cutoff = Date.now() - daysThreshold * 24 * 60 * 60 * 1000
-  let changed = false
 
+  if (isSQLiteAvailable()) {
+    try {
+      await exec(
+        `UPDATE memory_events SET status = 'fading', event_data = json_set(event_data, '$.status', 'fading')
+         WHERE world_book_id = ? AND status = 'active'
+         AND emotional_impact < ?
+         AND CAST(json_extract(event_data, '$.createdAt') AS INTEGER) < ?`,
+        [worldBookId, impactThreshold, new Date(cutoff).toISOString()]
+      )
+      return
+    } catch (e) {
+      console.error('[worldMemory] SQLite decayEvents failed:', e.message)
+    }
+  }
+
+  // Web fallback
+  const memory = await getWorldMemory(worldBookId)
+  let changed = false
   for (const event of memory.events) {
     if (event.status === 'active') {
       const eventTime = new Date(event.createdAt).getTime()
@@ -246,98 +450,170 @@ export async function decayEvents(worldBookId, options = {}) {
       }
     }
   }
-
-  if (changed) markDirty()
 }
 
 // ===== 角色记忆操作 =====
 
-/**
- * 获取角色的个人记忆
- */
 export async function getCharacterMemories(worldBookId, characterId) {
+  if (isSQLiteAvailable()) {
+    try {
+      const rows = await query(
+        'SELECT * FROM memory_character_memories WHERE world_book_id = ? AND character_id = ?',
+        [worldBookId, characterId]
+      )
+      return rows.map(r => JSON.parse(r.memory_data))
+    } catch (e) {
+      console.error('[worldMemory] SQLite getCharacterMemories failed:', e.message)
+    }
+  }
+
+  // Web fallback
   const memory = await getWorldMemory(worldBookId)
   return memory.characterMemories[characterId] || []
 }
 
-/**
- * 添加角色记忆
- */
 export async function addCharacterMemory(worldBookId, characterId, memoryEntry) {
-  const memory = await getWorldMemory(worldBookId)
-  if (!memory.characterMemories[characterId]) {
-    memory.characterMemories[characterId] = []
-  }
   const entry = {
     id: `mem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
     ...memoryEntry,
   }
-  memory.characterMemories[characterId].push(entry)
-  markDirty()
 
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('worldMemory:updated', {
-      detail: { worldBookId, updateType: 'characterMemory', count: 1 }
-    }))
+  if (isSQLiteAvailable()) {
+    try {
+      await exec(
+        `INSERT INTO memory_character_memories (id, world_book_id, character_id, memory_data, about, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          entry.id, worldBookId, characterId, JSON.stringify(entry),
+          entry.about || '', entry.status || 'active', entry.createdAt,
+        ]
+      )
+      window.dispatchEvent(new CustomEvent('worldMemory:updated', {
+        detail: { worldBookId, updateType: 'characterMemory', count: 1 }
+      }))
+      return entry
+    } catch (e) {
+      console.error('[worldMemory] SQLite addCharacterMemory failed:', e.message)
+    }
   }
+
+  // Web fallback
+  const memory = await getWorldMemory(worldBookId)
+  if (!memory.characterMemories[characterId]) memory.characterMemories[characterId] = []
+  memory.characterMemories[characterId].push(entry)
   return entry
 }
 
-/**
- * 批量添加角色记忆（一次 getWorldMemory + 一次 markDirty）
- * @param {string} worldBookId
- * @param {{characterId: string, memoryEntry: Object}[]} items
- */
 export async function addCharacterMemoriesBatch(worldBookId, items) {
-  const memory = await getWorldMemory(worldBookId)
-  const entries = []
-  for (const { characterId, memoryEntry } of items) {
-    if (!memory.characterMemories[characterId]) {
-      memory.characterMemories[characterId] = []
+  const entries = items.map(({ characterId, memoryEntry }) => ({
+    id: `mem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    createdAt: new Date().toISOString(),
+    ...memoryEntry,
+    characterId,
+  }))
+
+  if (isSQLiteAvailable()) {
+    try {
+      await transaction(async () => {
+        for (const e of entries) {
+          await exec(
+            `INSERT INTO memory_character_memories (id, world_book_id, character_id, memory_data, about, status, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              e.id, worldBookId, e.characterId, JSON.stringify(e),
+              e.about || '', e.status || 'active', e.createdAt,
+            ]
+          )
+        }
+      })
+      if (items.length > 0) {
+        window.dispatchEvent(new CustomEvent('worldMemory:updated', {
+          detail: { worldBookId, updateType: 'characterMemory', count: items.length }
+        }))
+      }
+      return entries
+    } catch (e) {
+      console.error('[worldMemory] SQLite addCharacterMemoriesBatch failed:', e.message)
     }
+  }
+
+  // Web fallback
+  const memory = await getWorldMemory(worldBookId)
+  const resultEntries = []
+  for (const { characterId, memoryEntry } of items) {
+    if (!memory.characterMemories[characterId]) memory.characterMemories[characterId] = []
     const entry = {
       id: `mem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       createdAt: new Date().toISOString(),
       ...memoryEntry,
     }
     memory.characterMemories[characterId].push(entry)
-    entries.push(entry)
+    resultEntries.push(entry)
   }
-  markDirty()
-
-  if (typeof window !== 'undefined' && items.length > 0) {
-    window.dispatchEvent(new CustomEvent('worldMemory:updated', {
-      detail: { worldBookId, updateType: 'characterMemory', count: items.length }
-    }))
-  }
-  return entries
+  return resultEntries
 }
 
-/**
- * 查询两个角色之间的共享记忆（用于注入 LLM 上下文）
- */
 export async function getSharedContext(worldBookId, charA, charB) {
-  const memory = await getWorldMemory(worldBookId)
+  if (isSQLiteAvailable()) {
+    try {
+      // 共享事件
+      const eventRows = await query(
+        `SELECT * FROM memory_events WHERE world_book_id = ? AND status = 'active'
+         ORDER BY created_at DESC LIMIT 8`,
+        [worldBookId]
+      )
+      // 在 JS 层过滤双方参与的
+      const sharedEvents = eventRows
+        .map(r => JSON.parse(r.event_data))
+        .filter(e =>
+          Array.isArray(e.participants) &&
+          e.participants.includes(charA) &&
+          e.participants.includes(charB)
+        )
 
-  // 事件中找到双方都参与的
+      // A 关于 B 的记忆
+      const aRows = await query(
+        `SELECT * FROM memory_character_memories
+         WHERE world_book_id = ? AND character_id = ? AND status != 'resolved'
+         ORDER BY created_at DESC LIMIT 5`,
+        [worldBookId, charA]
+      )
+      const aAboutB = aRows
+        .map(r => JSON.parse(r.memory_data))
+        .filter(m => m.about === charB)
+
+      // B 关于 A 的记忆
+      const bRows = await query(
+        `SELECT * FROM memory_character_memories
+         WHERE world_book_id = ? AND character_id = ? AND status != 'resolved'
+         ORDER BY created_at DESC LIMIT 5`,
+        [worldBookId, charB]
+      )
+      const bAboutA = bRows
+        .map(r => JSON.parse(r.memory_data))
+        .filter(m => m.about === charA)
+
+      return { sharedEvents: sharedEvents.slice(-8), aAboutB: aAboutB.slice(-5), bAboutA: bAboutA.slice(-5) }
+    } catch (e) {
+      console.error('[worldMemory] SQLite getSharedContext failed:', e.message)
+    }
+  }
+
+  // Web fallback
+  const memory = await getWorldMemory(worldBookId)
   const sharedEvents = memory.events.filter(e =>
     Array.isArray(e.participants) &&
     e.participants.includes(charA) &&
     e.participants.includes(charB) &&
     e.status === 'active'
   )
-
-  // 角色 A 对 B 的记忆
   const aAboutB = (memory.characterMemories[charA] || [])
     .filter(m => m.about === charB && m.status !== 'resolved')
-
-  // 角色 B 对 A 的记忆
   const bAboutA = (memory.characterMemories[charB] || [])
     .filter(m => m.about === charA && m.status !== 'resolved')
-
   return {
-    sharedEvents: sharedEvents.slice(-8),  // 最近 8 条
+    sharedEvents: sharedEvents.slice(-8),
     aAboutB: aAboutB.slice(-5),
     bAboutA: bAboutA.slice(-5),
   }
@@ -345,43 +621,67 @@ export async function getSharedContext(worldBookId, charA, charB) {
 
 // ===== 世界标志操作 =====
 
-/**
- * 设置世界标志
- */
 export async function setWorldFlag(worldBookId, flagName, value) {
+  if (isSQLiteAvailable()) {
+    try {
+      await exec(
+        `INSERT OR REPLACE INTO memory_world_flags (world_book_id, flag_name, flag_value)
+         VALUES (?, ?, ?)`,
+        [worldBookId, flagName, JSON.stringify(value)]
+      )
+      window.dispatchEvent(new CustomEvent('worldMemory:updated', {
+        detail: { worldBookId, updateType: 'flag', count: 1 }
+      }))
+      return
+    } catch (e) {
+      console.error('[worldMemory] SQLite setWorldFlag failed:', e.message)
+    }
+  }
+
+  // Web fallback
   const memory = await getWorldMemory(worldBookId)
   memory.worldFlags[flagName] = value
-  markDirty()
-
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('worldMemory:updated', {
-      detail: { worldBookId, updateType: 'flag', count: 1 }
-    }))
-  }
 }
 
-/**
- * 获取世界标志
- */
 export async function getWorldFlag(worldBookId, flagName, defaultValue = null) {
+  if (isSQLiteAvailable()) {
+    try {
+      const [row] = await query(
+        'SELECT flag_value FROM memory_world_flags WHERE world_book_id = ? AND flag_name = ?',
+        [worldBookId, flagName]
+      )
+      if (!row) return defaultValue
+      return row.flag_value !== null ? JSON.parse(row.flag_value) : null
+    } catch (e) {
+      console.error('[worldMemory] SQLite getWorldFlag failed:', e.message)
+    }
+  }
+
+  // Web fallback
   const memory = await getWorldMemory(worldBookId)
   return memory.worldFlags[flagName] !== undefined ? memory.worldFlags[flagName] : defaultValue
 }
 
-/**
- * 添加里程碑
- */
 export async function addMilestone(worldBookId, name) {
-  const memory = await getWorldMemory(worldBookId)
-  if (!memory.milestones.includes(name)) {
-    memory.milestones.push(name)
-    markDirty()
-
-    if (typeof window !== 'undefined') {
+  if (isSQLiteAvailable()) {
+    try {
+      await exec(
+        `INSERT OR IGNORE INTO memory_milestones (world_book_id, milestone_name) VALUES (?, ?)`,
+        [worldBookId, name]
+      )
       window.dispatchEvent(new CustomEvent('worldMemory:updated', {
         detail: { worldBookId, updateType: 'milestone', count: 1 }
       }))
+      return
+    } catch (e) {
+      console.error('[worldMemory] SQLite addMilestone failed:', e.message)
     }
+  }
+
+  // Web fallback
+  const memory = await getWorldMemory(worldBookId)
+  if (!memory.milestones.includes(name)) {
+    memory.milestones.push(name)
   }
 }
 
@@ -389,12 +689,25 @@ export async function addMilestone(worldBookId, name) {
 
 const EXTRACTION_CONFIG_KEY = 'world_memories_config'
 
-/**
- * 获取记忆提取配置
- */
 export async function getExtractionConfig() {
   const defaults = { batchSize: 5 }
   if (typeof window === 'undefined') return defaults
+
+  if (isSQLiteAvailable()) {
+    try {
+      const [row] = await query(
+        'SELECT config_data FROM memory_extraction_config WHERE key = ?',
+        [EXTRACTION_CONFIG_KEY]
+      )
+      if (!row) return defaults
+      const cfg = JSON.parse(row.config_data)
+      return { ...defaults, ...cfg }
+    } catch (e) {
+      console.error('[worldMemory] SQLite getExtractionConfig failed:', e.message)
+    }
+  }
+
+  // Web fallback
   try {
     const cfg = await kvStorage.get(EXTRACTION_CONFIG_KEY)
     return cfg && typeof cfg === 'object' ? { ...defaults, ...cfg } : defaults
@@ -403,32 +716,52 @@ export async function getExtractionConfig() {
   }
 }
 
-/**
- * 保存记忆提取配置
- */
 export async function saveExtractionConfig(config) {
   const current = await getExtractionConfig()
+
+  if (isSQLiteAvailable()) {
+    try {
+      await exec(
+        `INSERT OR REPLACE INTO memory_extraction_config (key, config_data) VALUES (?, ?)`,
+        [EXTRACTION_CONFIG_KEY, JSON.stringify({ ...current, ...config })]
+      )
+      return
+    } catch (e) {
+      console.error('[worldMemory] SQLite saveExtractionConfig failed:', e.message)
+    }
+  }
+
+  // Web fallback
   await kvStorage.set(EXTRACTION_CONFIG_KEY, { ...current, ...config })
 }
 
-// ===== 提取记录 =====
-
-/**
- * 更新最后提取的记录
- */
 export async function recordExtraction(worldBookId, lineCount) {
+  if (isSQLiteAvailable()) {
+    try {
+      await exec(
+        `INSERT OR REPLACE INTO memory_extraction_config (key, config_data) VALUES (?, ?)`,
+        [`last_extracted_${worldBookId}`, JSON.stringify({
+          lastExtractedAt: new Date().toISOString(),
+          lastExtractedLineCount: lineCount,
+        })]
+      )
+      return
+    } catch (e) {
+      console.error('[worldMemory] SQLite recordExtraction failed:', e.message)
+    }
+  }
+
+  // Web fallback
   const memory = await getWorldMemory(worldBookId)
   memory.lastExtractedAt = new Date().toISOString()
   memory.lastExtractedLineCount = lineCount
-  markDirty()
 }
 
-// --- 跨页签同步：当其他页签修改 world_memories 时失效缓存 ---
+// --- 跨页签同步 ---
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === `avg_llm_${STORAGE_KEY}`) {
       _cache = null
-      _dirty = false
       _loaded = false
     }
   })

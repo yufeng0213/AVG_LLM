@@ -2,7 +2,7 @@
  * NPC 间短信服务
  * 两个角色在同一地点时，自动互相发短信
  */
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, query, exec } from '../db/db.js'
 import { callChatCompletion, getValidatedActiveConfig } from '../llm/llmService.core.js'
 import { resolvePrompt } from '../llm/promptRegistry.js'
 import { acquireLlmSlot } from './llmThrottle.js'
@@ -158,22 +158,29 @@ export async function generateNpcSmsThread(deps) {
  */
 export async function saveNpcSmsThread(charA, charB, messages, location) {
   try {
-    const threads = (await kvStorage.get(STORAGE_KEY)) || {}
-    const threadKey = `${charA.id}::${charB.id}`
-    const existing = threads[threadKey] || []
-    threads[threadKey] = [
-      ...existing,
-      {
-        id: `npcsms_thread_${Date.now()}`,
-        messages,
-        location,
-        charA: { id: charA.id, name: charA.name },
-        charB: { id: charB.id, name: charB.name },
-        createdAt: new Date().toISOString(),
-      },
-    ].slice(-20) // 最多保留 20 个线程
-
-    await kvStorage.set(STORAGE_KEY, threads)
+    const threadData = {
+      id: `npcsms_thread_${Date.now()}`,
+      messages,
+      location,
+      charA: { id: charA.id, name: charA.name },
+      charB: { id: charB.id, name: charB.name },
+      createdAt: new Date().toISOString(),
+    }
+    if (isSQLiteAvailable()) {
+      const threadKey = `${charA.id}::${charB.id}`
+      await exec(
+        `INSERT INTO npc_sms_threads (world_book_id, thread_key, thread_data, created_at)
+         VALUES (?, ?, ?, ?)`,
+        ['_global', threadKey, JSON.stringify(threadData), threadData.createdAt]
+      )
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const threads = (await kvStorage.get(STORAGE_KEY)) || {}
+      const threadKey = `${charA.id}::${charB.id}`
+      const existing = threads[threadKey] || []
+      threads[threadKey] = [...existing, threadData].slice(-20)
+      await kvStorage.set(STORAGE_KEY, threads)
+    }
     return true
   } catch (e) {
     console.warn('[NpcSms] save thread failed:', e.message)
@@ -183,25 +190,32 @@ export async function saveNpcSmsThread(charA, charB, messages, location) {
 
 /**
  * 加载 NPC 短信线程
- * @param {string} worldBookId
- * @param {Object} relationships — 用于过滤玩家可见的
- * @returns {Promise<Array>}
  */
 export async function loadNpcSmsThreads(worldBookId, relationships = {}) {
   try {
-    const threads = (await kvStorage.get(STORAGE_KEY)) || {}
-    const all = []
-
-    for (const [key, threadList] of Object.entries(threads)) {
-      if (!Array.isArray(threadList)) continue
-      for (const thread of threadList) {
-        // 只返回指定世界书的
+    let all = []
+    if (isSQLiteAvailable()) {
+      const rows = await query(
+        'SELECT thread_data FROM npc_sms_threads ORDER BY created_at DESC'
+      )
+      for (const r of rows) {
+        const thread = JSON.parse(r.thread_data)
         if (thread.charA?.id?.includes(worldBookId) || thread.charB?.id?.includes(worldBookId)) {
           all.push(thread)
         }
       }
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const threads = (await kvStorage.get(STORAGE_KEY)) || {}
+      for (const [key, threadList] of Object.entries(threads)) {
+        if (!Array.isArray(threadList)) continue
+        for (const thread of threadList) {
+          if (thread.charA?.id?.includes(worldBookId) || thread.charB?.id?.includes(worldBookId)) {
+            all.push(thread)
+          }
+        }
+      }
     }
-
     return all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   } catch {
     return []

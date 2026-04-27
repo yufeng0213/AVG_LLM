@@ -17,7 +17,6 @@ import {
   updateActivityStoryDialogue,
   buildActivityStoryPromptContext,
 } from '../features/activityStoryStore.js'
-import { kvStorage } from '../storage/index.js'
 
 const emit = defineEmits(['back'])
 

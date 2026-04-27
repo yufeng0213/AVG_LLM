@@ -2,7 +2,7 @@
  * 关系自动分析调度器
  * 基于世界记忆数据库的更新次数自动触发关系分析，区分 NPC-NPC 和 NPC-Player
  */
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
 import { decayEvents } from '../memory/worldMemoryStore.js'
 export { flushRelationshipSave } from '../relationship/index.js'
 
@@ -73,7 +73,13 @@ async function loadConfig() {
     significanceThreshold: 50,
   }
   try {
-    const stored = await kvStorage.get(STORAGE_KEY)
+    let stored
+    if (isSQLiteAvailable()) {
+      stored = await getConfig(STORAGE_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      stored = await kvStorage.get(STORAGE_KEY)
+    }
     if (stored && typeof stored === 'object') {
       return { ...defaults, ...stored }
     }
@@ -85,7 +91,12 @@ async function loadConfig() {
 
 async function saveConfig(config) {
   try {
-    await kvStorage.set(STORAGE_KEY, config)
+    if (isSQLiteAvailable()) {
+      await setConfig(STORAGE_KEY, config)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.set(STORAGE_KEY, config)
+    }
   } catch (e) {
     console.warn('[RelationshipScheduler] save config failed:', e.message)
   }

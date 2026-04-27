@@ -4,7 +4,7 @@
  */
 
 import { ref, computed } from 'vue'
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
 import { isNative } from '../utils/platform.js'
 
 // 背景文件夹路径
@@ -100,11 +100,20 @@ const saveMobileBackgrounds = async () => {
         }
       })
 
-    await kvStorage.set(MOBILE_BACKGROUND_STORAGE_KEY, {
+    if (isSQLiteAvailable()) {
+      await setConfig(MOBILE_BACKGROUND_STORAGE_KEY, {
       path: String(backgroundFolderPath.value || '移动端背景导入'),
       files,
       updatedAt: new Date().toISOString(),
     })
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.set(MOBILE_BACKGROUND_STORAGE_KEY, {
+        path: String(backgroundFolderPath.value || '移动端背景导入'),
+        files,
+        updatedAt: new Date().toISOString(),
+      })
+    }
   } catch (error) {
     console.warn('保存移动端背景列表失败:', error)
   }
@@ -155,7 +164,13 @@ const loadBackgroundAsDataUrl = async (bgEntry) => {
 
 const restoreMobileBackgrounds = async () => {
   try {
-    const saved = await kvStorage.get(MOBILE_BACKGROUND_STORAGE_KEY)
+    let saved
+    if (isSQLiteAvailable()) {
+      saved = await getConfig(MOBILE_BACKGROUND_STORAGE_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      saved = await kvStorage.get(MOBILE_BACKGROUND_STORAGE_KEY)
+    }
     if (!saved || !Array.isArray(saved.files) || saved.files.length === 0) {
       return { success: false, error: 'NO_MOBILE_BACKGROUNDS' }
     }

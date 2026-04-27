@@ -1,6 +1,6 @@
 ﻿<script setup>
 import { onMounted, reactive, ref, computed } from 'vue'
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
 import { isAndroid, isElectron, isWeb } from '../utils/platform.js'
 
 const DISPLAY_STORAGE_KEY = 'display_settings'
@@ -28,7 +28,13 @@ const isWebPlatform = computed(() => isWeb())
 
 const readLocalSettings = async () => {
   try {
-    const parsed = await kvStorage.get(DISPLAY_STORAGE_KEY)
+    let parsed
+    if (isSQLiteAvailable()) {
+      parsed = await getConfig(DISPLAY_STORAGE_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      parsed = await kvStorage.get(DISPLAY_STORAGE_KEY)
+    }
     if (parsed?.resolution) displayState.resolution = parsed.resolution
     if (parsed?.windowMode) displayState.windowMode = parsed.windowMode
     if (parsed?.fullscreen !== undefined) displayState.fullscreen = parsed.fullscreen
@@ -87,7 +93,12 @@ const applyDisplaySettings = async () => {
     landscapeMode: displayState.landscapeMode,
   }
 
-  await kvStorage.set(DISPLAY_STORAGE_KEY, payload)
+  if (isSQLiteAvailable()) {
+    await setConfig(DISPLAY_STORAGE_KEY, payload)
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    await kvStorage.set(DISPLAY_STORAGE_KEY, payload)
+  }
 
   // Android 平台提示
   if (isAndroidPlatform.value) {

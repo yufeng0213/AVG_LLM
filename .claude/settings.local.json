@@ -89,7 +89,10 @@
       "Bash(taskkill //IM electron.exe //F)",
       "Bash(curl -s \"http://localhost:5173/data/activities/%E5%BA%9F%E5%9C%9F%E5%A8%87%E5%AE%A0_%E5%A4%8F%E6%97%A5%E7%A5%AD/activity/index.html\")",
       "Bash(curl *)",
-      "WebFetch(domain:capacitorjs.com)"
+      "WebFetch(domain:capacitorjs.com)",
+      "Bash(./gradlew.bat assembleDebug)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)"
     ]
   }
 }

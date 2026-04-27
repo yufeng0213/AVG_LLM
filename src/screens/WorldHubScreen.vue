@@ -6,8 +6,8 @@ import { useGlobalUser } from '../composables/useGlobalUser.js'
 import { useAvatar } from '../../plugins/feature-dormitory/src/composables/useAvatar.js'
 import { useAvatarFrame } from '../../plugins/feature-dormitory/src/composables/useAvatarFrame.js'
 import { getWorldWallpaperCache, setWorldWallpaperCache, getWorldWallpaperUrl, isWorldWallpaperVideo } from '../../plugins/feature-phone/src/phone/composables/usePhoneData.js'
-import { loadWorldBooks, getActiveWorldBookId, setActiveWorldBookId } from '../worldbook/worldBookStore.js'
-import { kvStorage } from '../storage/index.js'
+import { loadWorldBooks, getActiveWorldBookId, setActiveWorldBookId, invalidateWorldBookCache } from '../worldbook/worldBookStore.js'
+import { isSQLiteAvailable, getConfig } from '../db/db.js'
 import { useActivityEntry } from '../features/useActivityEntry.js'
 
 defineOptions({ name: 'WorldHubScreen' })
@@ -58,6 +58,7 @@ const activeBookTitle = ref('')
 
 async function loadActiveBookInfo() {
   try {
+    invalidateWorldBookCache() // 强制失效缓存，确保读取最新数据
     const bookId = await getActiveWorldBookId()
     const books = await loadWorldBooks()
     worldBooks.value = books
@@ -141,7 +142,13 @@ async function loadWorldWallpaper() {
     console.log('[WorldHub] 从内存缓存加载')
     return
   }
-  const wp = await kvStorage.get('worldhub_wallpaper')
+  let wp
+  if (isSQLiteAvailable()) {
+    wp = await getConfig('worldhub_wallpaper')
+  } else {
+    const { kvStorage } = await import('../storage/index.js')
+    wp = await kvStorage.get('worldhub_wallpaper')
+  }
   console.log('[WorldHub] kvStorage:', wp ? `存在 isVideo=${wp.isVideo} len=${wp.dataUrl?.length}` : 'null')
   if (wp && wp.dataUrl) {
     worldWallpaperUrl.value = wp.dataUrl
@@ -174,8 +181,9 @@ onMounted(async () => {
   await activityEntry.load()
 })
 
-// keep-alive 激活时恢复视频播放 + 刷新活动封面
+// keep-alive 激活时恢复视频播放 + 刷新活动封面 + 刷新激活世界书
 onActivated(async () => {
+  await loadActiveBookInfo()
   activityEntry.reset()
   await activityEntry.load()
   if (!worldWallpaperIsVideo.value) return

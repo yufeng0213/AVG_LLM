@@ -21,6 +21,9 @@
     },
     "CapacitorHttp": {
       "enabled": true
+    },
+    "CapacitorSQLite": {
+      "androidIsEncryptionAvailable": false
     }
   }
 }

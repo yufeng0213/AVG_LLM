@@ -11,7 +11,7 @@
  * 在 Electron 环境下通过 IPC 代理请求，解决 CORS 问题
  */
 
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
 import { CapacitorHttp } from '@capacitor/core'
 
 // 存储 key 常量
@@ -165,7 +165,13 @@ export const getComfyUIConfig = async () => {
   if (typeof window === 'undefined') return DEFAULT_CONFIG
 
   try {
-    const raw = await kvStorage.get(COMFYUI_CONFIG_KEY)
+    let raw
+    if (isSQLiteAvailable()) {
+      raw = await getConfig(COMFYUI_CONFIG_KEY)
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      raw = await kvStorage.get(COMFYUI_CONFIG_KEY)
+    }
     if (raw) {
       return {
         ...DEFAULT_CONFIG,
@@ -190,10 +196,18 @@ export const saveComfyUIConfig = async (config) => {
   if (typeof window === 'undefined') return
 
   try {
-    await kvStorage.set(COMFYUI_CONFIG_KEY, {
+    if (isSQLiteAvailable()) {
+      await setConfig(COMFYUI_CONFIG_KEY, {
       ...config,
       workflowPath: normalizeWorkflowPath(config?.workflowPath),
     })
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      await kvStorage.set(COMFYUI_CONFIG_KEY, {
+        ...config,
+        workflowPath: normalizeWorkflowPath(config?.workflowPath),
+      })
+    }
   } catch {
     // 忽略存储错误
   }

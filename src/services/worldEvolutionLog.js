@@ -7,7 +7,9 @@ import { resolvePrompt } from '../llm/promptRegistry.js'
 import { queryEvents, addCharacterMemory } from '../memory/worldMemoryStore.js'
 import { acquireLlmSlot } from './llmThrottle.js'
 
-const STORAGE_KEY = 'avg_llm_evolution_logs_v1'
+import { isSQLiteAvailable, query, exec } from '../db/db.js'
+
+const KV_STORAGE_KEY = 'avg_llm_evolution_logs_v1'
 
 /**
  * 生成世界演化日志
@@ -77,17 +79,37 @@ export async function generateEvolutionLog(deps) {
     })
 
     // 本地持久化备份
-    const { kvStorage } = await import('../storage/index.js')
-    const logs = (await kvStorage.get(STORAGE_KEY)) || []
-    logs.push({
+    const logEntry = {
       text: logText,
       periodStart,
       periodEnd,
       eventCount: events.length,
       stats,
       createdAt: new Date().toISOString(),
-    })
-    await kvStorage.set(STORAGE_KEY, logs.slice(-50)) // 最多保留 50 条
+    }
+    if (isSQLiteAvailable()) {
+      await exec(
+        `INSERT INTO evolution_logs (id, log_data, period_start, period_end, event_count, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [logEntry.id || `evol_${Date.now()}`, JSON.stringify(logEntry),
+         periodStart, periodEnd, events.length, logEntry.createdAt]
+      )
+      // 保留最近 50 条
+      const [count] = await query('SELECT COUNT(*) as cnt FROM evolution_logs')
+      if (count.cnt > 50) {
+        await exec(
+          `DELETE FROM evolution_logs WHERE id IN (
+            SELECT id FROM evolution_logs ORDER BY created_at ASC LIMIT ?
+          )`,
+          [count.cnt - 50]
+        )
+      }
+    } else {
+      const { kvStorage } = await import('../storage/index.js')
+      const logs = (await kvStorage.get(KV_STORAGE_KEY)) || []
+      logs.push(logEntry)
+      await kvStorage.set(KV_STORAGE_KEY, logs.slice(-50))
+    }
   } catch (e) {
     console.warn('[EvolutionLog] save failed:', e.message)
   }
@@ -107,11 +129,16 @@ export async function generateEvolutionLog(deps) {
  * 加载历史日志
  */
 export async function loadEvolutionLogs() {
-  try {
-    const { kvStorage } = await import('../storage/index.js')
-    return (await kvStorage.get(STORAGE_KEY)) || []
-  } catch {
-    return []
+  if (isSQLiteAvailable()) {
+    const rows = await query('SELECT log_data FROM evolution_logs ORDER BY created_at DESC')
+    return rows.map(r => JSON.parse(r.log_data))
+  } else {
+    try {
+      const { kvStorage } = await import('../storage/index.js')
+      return (await kvStorage.get(KV_STORAGE_KEY)) || []
+    } catch {
+      return []
+    }
   }
 }
 

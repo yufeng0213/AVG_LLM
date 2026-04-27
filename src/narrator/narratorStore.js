@@ -1,4 +1,4 @@
-import { kvStorage } from '../storage/index.js'
+import { isSQLiteAvailable, query, exec } from '../db/db.js'
 
 export const NARRATOR_STORAGE_KEY = 'narrator_profiles'
 export const DEFAULT_NARRATOR_ID = 'default_narrator'
@@ -124,7 +124,13 @@ export const loadNarratorProfiles = async () => {
   }
 
   try {
-    const parsed = await kvStorage.get(NARRATOR_STORAGE_KEY)
+    let parsed
+    if (isSQLiteAvailable()) {
+      const rows = await query('SELECT profile_data FROM narrator_profiles ORDER BY is_default DESC, created_at')
+      parsed = rows.map(r => JSON.parse(r.profile_data))
+    } else {
+      parsed = await kvStorageGet(NARRATOR_STORAGE_KEY)
+    }
     const normalized = Array.isArray(parsed)
       ? parsed.map((profile, index) => normalizeNarratorProfile(profile, index))
       : []
@@ -136,7 +142,29 @@ export const loadNarratorProfiles = async () => {
 
 export const persistNarratorProfiles = async (profiles) => {
   if (typeof window === 'undefined') return
-  await kvStorage.set(NARRATOR_STORAGE_KEY, profiles)
+  if (isSQLiteAvailable()) {
+    await exec('DELETE FROM narrator_profiles')
+    for (const profile of profiles) {
+      await exec(
+        `INSERT INTO narrator_profiles (id, profile_data, is_default, enabled, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [profile.id, JSON.stringify(profile), profile.isDefault ? 1 : 0,
+         profile.enabled ? 1 : 0, profile.createdAt, profile.updatedAt]
+      )
+    }
+  } else {
+    await kvStorageSet(NARRATOR_STORAGE_KEY, profiles)
+  }
+}
+
+async function kvStorageGet(key) {
+  const { kvStorage } = await import('../storage/index.js')
+  return kvStorage.get(key)
+}
+
+async function kvStorageSet(key, value) {
+  const { kvStorage } = await import('../storage/index.js')
+  return kvStorage.set(key, value)
 }
 
 export const createNewNarratorProfile = (profiles = []) => {

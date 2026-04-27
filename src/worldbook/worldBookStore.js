@@ -1,6 +1,7 @@
 import { getEmotionLabel } from './emotionPresets'
 import { kvStorage } from '../storage/index.js'
 import { DEFAULT_NARRATOR_ID } from '../narrator/narratorStore'
+import { isSQLiteAvailable, exec, query, transaction, loadBookFull, loadAllBooksFull, insertBook, clearAllTables } from '../db/db.js'
 
 export const WORLD_BOOK_STORAGE_KEY = 'world_books'
 export const ACTIVE_WORLD_BOOK_KEY = 'active_world_book'
@@ -826,31 +827,158 @@ const ensureDefaultWorldBook = (books) => {
   return [createDefaultWorldBook(), ...books]
 }
 
-/**
- * 书架级轻量加载：仅读取世界书 id、title、summary、isDefault。
- * 用于书架列表展示，不需要角色、entries 等任何字段。
- */
-export const loadWorldBookTitles = async () => {
-  if (typeof window === 'undefined') {
-    return [createDefaultWorldBook()]
-  }
+// ============================================================
+// SQLite 存储层（Android） / kvStorage 回退（Web dev）
+// ============================================================
 
-  // 如果主缓存已存在，从中提取轻量数据
-  if (_normalizedCache) {
-    return _normalizedCache.map(b => ({
-      id: b.id,
-      title: b.title,
-      summary: b.summary,
-      isDefault: b.isDefault,
-    }))
-  }
+// --- Web fallback: 使用现有 kvStorage ---
 
+async function _loadRawBooksFromKV() {
   try {
     const parsed = await kvStorage.get(WORLD_BOOK_STORAGE_KEY)
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return [createDefaultWorldBook()]
-    }
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
 
+async function _saveRawBooksToKV(books) {
+  await kvStorage.set(WORLD_BOOK_STORAGE_KEY, books)
+}
+
+// --- SQLite 加载 ---
+
+async function _loadBooksSQLite() {
+  const books = await loadAllBooksFull()
+  return books.map(book => normalizeWorldBook(book, 0))
+}
+
+async function _getBookSQLite(bookId) {
+  const book = await loadBookFull(bookId)
+  return book ? normalizeWorldBook(book, 0) : null
+}
+
+// --- SQLite 保存 ---
+
+async function _saveBooksSQLite(books) {
+  await transaction(async () => {
+    await clearAllTables()
+    for (const book of books) {
+      await insertBook(book)
+    }
+  })
+}
+
+// --- 规范化书架轻量数据（从 SQLite 查询结果提取） ---
+
+async function _loadBookTitlesSQLite() {
+  const rows = await query(
+    'SELECT id, title, summary, is_default, created_at FROM world_books ORDER BY is_default DESC, created_at'
+  )
+  return rows.map(r => ({
+    id: r.id,
+    title: r.title,
+    summary: r.summary || '',
+    isDefault: !!r.is_default,
+  }))
+}
+
+async function _loadBookSummariesSQLite() {
+  const books = await query(
+    'SELECT id, title, summary, is_default FROM world_books ORDER BY is_default DESC, created_at'
+  )
+  if (books.length === 0) return []
+
+  const bookIds = books.map(b => b.id)
+  const chars = await query(
+    'SELECT id, world_book_id, name, nickname, identity, birthday, sms_avatar_path, sms_bg_path, voice_enabled, voice_id FROM characters WHERE world_book_id IN (' + bookIds.map(() => '?').join(',') + ')',
+    bookIds
+  )
+  const rels = await query(
+    'SELECT world_book_id, from_id, to_id, score, description, updated_at FROM relationships WHERE world_book_id IN (' + bookIds.map(() => '?').join(',') + ')',
+    bookIds
+  )
+  const stickers = await query(
+    'SELECT description, file_path, world_book_id FROM sms_stickers WHERE world_book_id IN (' + bookIds.map(() => '?').join(',') + ')',
+    bookIds
+  )
+
+  const charMap = {}
+  for (const c of chars) {
+    if (!charMap[c.world_book_id]) charMap[c.world_book_id] = []
+    charMap[c.world_book_id].push({
+      id: c.id,
+      name: c.name,
+      nickname: c.nickname || '',
+      identity: c.identity || '',
+      portraits: [],
+      smsAvatar: c.sms_avatar_path,
+      smsBg: c.sms_bg_path,
+      smsStickers: {},
+      voiceConfig: { enabled: !!c.voice_enabled, voiceId: c.voice_id || '' },
+      birthday: c.birthday || '',
+    })
+  }
+
+  const stickerMapByBook = {}
+  for (const s of stickers) {
+    if (!stickerMapByBook[s.world_book_id]) stickerMapByBook[s.world_book_id] = {}
+    stickerMapByBook[s.world_book_id][s.description] = s.file_path
+  }
+  for (const bookId of bookIds) {
+    const sd = stickerMapByBook[bookId] || {}
+    for (const c of (charMap[bookId] || [])) { c.smsStickers = { ...sd } }
+  }
+
+  const relMap = {}
+  for (const r of rels) {
+    if (!relMap[r.world_book_id]) relMap[r.world_book_id] = {}
+    if (!relMap[r.world_book_id][r.from_id]) relMap[r.world_book_id][r.from_id] = {}
+    relMap[r.world_book_id][r.from_id][r.to_id] = {
+      score: r.score,
+      description: r.description || '',
+      updatedAt: r.updated_at,
+    }
+  }
+
+  return books.map(b => ({
+    id: b.id,
+    title: b.title,
+    summary: b.summary || '',
+    isDefault: !!b.is_default,
+    characters: charMap[b.id] || [],
+    relationships: relMap[b.id] || {},
+  }))
+}
+
+// ============================================================
+// 公共 API（保持原有签名）
+// ============================================================
+
+/**
+ * 书架级轻量加载
+ */
+export const loadWorldBookTitles = async () => {
+  if (typeof window === 'undefined') return [createDefaultWorldBook()]
+
+  if (isSQLiteAvailable()) {
+    try {
+      const titles = await _loadBookTitlesSQLite()
+      return sortWorldBooks(ensureDefaultWorldBook(titles))
+    } catch (e) {
+      console.error('[worldBook] SQLite loadWorldBookTitles failed:', e.message)
+    }
+  }
+
+  // Web fallback
+  if (_normalizedCache) {
+    return _normalizedCache.map(b => ({
+      id: b.id, title: b.title, summary: b.summary, isDefault: b.isDefault,
+    }))
+  }
+  try {
+    const parsed = await _loadRawBooksFromKV()
+    if (parsed.length === 0) return [createDefaultWorldBook()]
     const titlesOnly = parsed.map((rawBook, index) => {
       const isDefault = Boolean(rawBook?.isDefault) || rawBook?.id === 'default_world_book'
       return {
@@ -860,7 +988,6 @@ export const loadWorldBookTitles = async () => {
         isDefault,
       }
     })
-
     return sortWorldBooks(ensureDefaultWorldBook(titlesOnly))
   } catch {
     return [createDefaultWorldBook()]
@@ -868,43 +995,35 @@ export const loadWorldBookTitles = async () => {
 }
 
 /**
- * 轻量加载：仅读取世界书 id、title、summary 和角色的基本信息。
- * 适用于联系人列表等不需要 entries/导演事件/场景等大字段的场景。
+ * 轻量加载：世界书 + 角色基本信息 + 关系
  */
 export const loadWorldBookSummaries = async () => {
-  if (typeof window === 'undefined') {
-    return [createDefaultWorldBook()]
+  if (typeof window === 'undefined') return [createDefaultWorldBook()]
+
+  if (isSQLiteAvailable()) {
+    try {
+      const summaries = await _loadBookSummariesSQLite()
+      return sortWorldBooks(ensureDefaultWorldBook(summaries))
+    } catch (e) {
+      console.error('[worldBook] SQLite loadWorldBookSummaries failed:', e.message)
+    }
   }
 
-  // 如果主缓存已存在，从中提取轻量摘要
+  // Web fallback
   if (_normalizedCache) {
     return _normalizedCache.map(b => ({
-      id: b.id,
-      title: b.title,
-      summary: b.summary,
-      isDefault: b.isDefault,
+      id: b.id, title: b.title, summary: b.summary, isDefault: b.isDefault,
       characters: b.characters.map(c => ({
-        id: c.id,
-        name: c.name,
-        nickname: c.nickname,
-        identity: c.identity,
-        portraits: c.portraits,
-        smsAvatar: c.smsAvatar,
-        smsBg: c.smsBg,
-        smsStickers: c.smsStickers,
-        voiceConfig: c.voiceConfig,
-        birthday: c.birthday,
+        id: c.id, name: c.name, nickname: c.nickname, identity: c.identity,
+        portraits: c.portraits, smsAvatar: c.smsAvatar, smsBg: c.smsBg,
+        smsStickers: c.smsStickers, voiceConfig: c.voiceConfig, birthday: c.birthday,
       })),
       relationships: b.relationships,
     }))
   }
-
   try {
-    const parsed = await kvStorage.get(WORLD_BOOK_STORAGE_KEY)
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return [createDefaultWorldBook()]
-    }
-
+    const parsed = await _loadRawBooksFromKV()
+    if (parsed.length === 0) return [createDefaultWorldBook()]
     const liteBooks = parsed.map((rawBook, index) => {
       const isDefault = Boolean(rawBook?.isDefault) || rawBook?.id === 'default_world_book'
       const chars = Array.isArray(rawBook?.characters) ? rawBook.characters : []
@@ -915,10 +1034,8 @@ export const loadWorldBookSummaries = async () => {
         summary: String(rawBook?.summary || ''),
         isDefault,
         characters: chars.filter(Boolean).map(c => ({
-          id: String(c?.id || ''),
-          name: String(c?.name || '未知角色'),
-          nickname: String(c?.nickname || ''),
-          identity: String(c?.identity || ''),
+          id: String(c?.id || ''), name: String(c?.name || '未知角色'),
+          nickname: String(c?.nickname || ''), identity: String(c?.identity || ''),
           portraits: Array.isArray(c?.portraits) ? c.portraits : [],
           smsAvatar: typeof c?.smsAvatar === 'string' ? c.smsAvatar : null,
           smsBg: typeof c?.smsBg === 'string' ? c.smsBg : null,
@@ -929,25 +1046,35 @@ export const loadWorldBookSummaries = async () => {
         relationships: normalizeRelationships(rawRelationships, chars),
       }
     })
-
     return sortWorldBooks(ensureDefaultWorldBook(liteBooks))
   } catch {
     return [createDefaultWorldBook()]
   }
 }
 
+/**
+ * 完整加载所有世界书
+ */
 export const loadWorldBooks = async () => {
-  if (typeof window === 'undefined') {
-    return [createDefaultWorldBook()]
-  }
+  if (typeof window === 'undefined') return [createDefaultWorldBook()]
 
   // 命中缓存直接返回
-  if (_normalizedCache) {
-    return _normalizedCache
+  if (_normalizedCache) return _normalizedCache
+
+  if (isSQLiteAvailable()) {
+    try {
+      _normalizedCache = await _loadBooksSQLite()
+      _normalizedCache = sortWorldBooks(ensureDefaultWorldBook(_normalizedCache))
+      _cacheVersion++
+      return _normalizedCache
+    } catch (e) {
+      console.error('[worldBook] SQLite loadWorldBooks failed:', e.message)
+    }
   }
 
+  // Web fallback
   try {
-    const parsed = await kvStorage.get(WORLD_BOOK_STORAGE_KEY)
+    const parsed = await _loadRawBooksFromKV()
     _normalizedCache = Array.isArray(parsed)
       ? parsed.map((book, index) => normalizeWorldBook(book, index))
       : []
@@ -959,26 +1086,48 @@ export const loadWorldBooks = async () => {
   }
 }
 
+/**
+ * 保存所有世界书
+ */
 export const persistWorldBooks = async (books) => {
   if (typeof window === 'undefined') return
-  await kvStorage.set(WORLD_BOOK_STORAGE_KEY, books)
-  // 失效缓存：下次 loadWorldBooks 将重新读取并规范化
+
+  if (isSQLiteAvailable()) {
+    try {
+      await _saveBooksSQLite(books)
+      _normalizedCache = null
+      _cacheVersion++
+      return
+    } catch (e) {
+      console.error('[worldBook] SQLite persistWorldBooks failed:', e.message)
+    }
+  }
+
+  // Web fallback
+  await _saveRawBooksToKV(books)
   _normalizedCache = null
   _cacheVersion++
 }
 
 /**
- * 按 ID 获取单本规范化的世界书，优先使用缓存。
+ * 按 ID 获取单本规范化的世界书
  */
 export const getNormalizedBook = async (bookId) => {
-  if (typeof window === 'undefined') {
-    return createDefaultWorldBook()
-  }
+  if (typeof window === 'undefined') return createDefaultWorldBook()
 
   // 优先从缓存查找
   if (_normalizedCache) {
     const cached = _normalizedCache.find(b => b.id === bookId)
     if (cached) return cached
+  }
+
+  if (isSQLiteAvailable()) {
+    try {
+      const book = await _getBookSQLite(bookId)
+      if (book) return book
+    } catch (e) {
+      console.error('[worldBook] SQLite getNormalizedBook failed:', e.message)
+    }
   }
 
   // 缓存未命中，回退到完整加载
@@ -1035,133 +1184,98 @@ export const createNewCharacter = (characters = []) => {
   return createCharacterSkeleton(nextIndex)
 }
 
-// 创建新场景（用于世界书编辑器）
 export const addNewScene = (scenes = []) => {
   const nextIndex = (Array.isArray(scenes) ? scenes.length : 0) + 1
   return createNewScene(nextIndex)
 }
 
-// 删除世界书（不能删除默认世界书）
 export const deleteWorldBook = (books, bookId) => {
   const bookToDelete = books.find((book) => book.id === bookId)
-  
-  // 不能删除默认世界书
+
   if (!bookToDelete || bookToDelete.isDefault || bookId === 'default_world_book') {
     return { success: false, message: '无法删除默认世界书', books }
   }
-  
+
   const filteredBooks = books.filter((book) => book.id !== bookId)
   const sortedBooks = sortWorldBooks(filteredBooks)
-  
+
   return { success: true, message: `已删除：${bookToDelete.title}`, books: sortedBooks }
 }
 
-// 导出世界书为JSON
 export const exportWorldBook = (book) => {
   const exportData = {
     version: '1.0',
     exportedAt: new Date().toISOString(),
     worldBook: {
       ...book,
-      // 移除内部ID相关字段，导入时会生成新ID
       _exportedId: book.id,
     }
   }
   return JSON.stringify(exportData, null, 2)
 }
 
-// 导入世界书
 export const importWorldBook = (jsonString, existingBooks = []) => {
   try {
     const data = JSON.parse(jsonString)
-
-    // 验证数据结构
     if (!data.worldBook && !data.title) {
       return { success: false, message: '无效的世界书格式', book: null }
     }
-
-    // 支持两种格式：带包装的和不带包装的
     const rawBook = data.worldBook || data
-
-    // 检查是否使用原有 ID（如果不冲突）
     const existingIds = new Set(existingBooks.map(b => b.id))
     const originalId = rawBook._exportedId || rawBook.id
     let newId
-
     if (originalId && !existingIds.has(originalId) && !originalId.startsWith('default_')) {
-      // 原有 ID 不冲突，保留使用
       newId = originalId
     } else {
-      // 生成新 ID
       newId = `world_book_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
     }
-
-    // 规范化并创建新世界书
     const normalizedBook = normalizeWorldBook({
       ...rawBook,
       id: newId,
-      isDefault: false, // 导入的世界书不可能是默认的
+      isDefault: false,
       title: rawBook.title || `导入的世界书 ${existingBooks.length}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-
     return { success: true, message: `已导入：${normalizedBook.title}`, book: normalizedBook }
   } catch (error) {
     return { success: false, message: `导入失败：${error.message}`, book: null }
   }
 }
 
-// 批量导入世界书
 export const importWorldBooks = (jsonString, existingBooks = []) => {
   try {
     const data = JSON.parse(jsonString)
-    
-    // 支持数组格式
     if (Array.isArray(data)) {
       const results = []
       for (const item of data) {
         const result = importWorldBook(JSON.stringify(item), existingBooks)
-        if (result.success && result.book) {
-          results.push(result.book)
-        }
+        if (result.success && result.book) results.push(result.book)
       }
-      return {
-        success: true,
-        message: `成功导入 ${results.length} 本世界书`,
-        books: results
-      }
+      return { success: true, message: `成功导入 ${results.length} 本世界书`, books: results }
     }
-    
-    // 支持带 worldBooks 字段的格式
     if (data.worldBooks && Array.isArray(data.worldBooks)) {
       const results = []
       for (const item of data.worldBooks) {
         const result = importWorldBook(JSON.stringify(item), existingBooks)
-        if (result.success && result.book) {
-          results.push(result.book)
-        }
+        if (result.success && result.book) results.push(result.book)
       }
-      return {
-        success: true,
-        message: `成功导入 ${results.length} 本世界书`,
-        books: results
-      }
+      return { success: true, message: `成功导入 ${results.length} 本世界书`, books: results }
     }
-    
-    // 单本世界书
     const result = importWorldBook(jsonString, existingBooks)
-    return {
-      success: result.success,
-      message: result.message,
-      books: result.book ? [result.book] : []
-    }
+    return { success: result.success, message: result.message, books: result.book ? [result.book] : [] }
   } catch (error) {
     return { success: false, message: `导入失败：${error.message}`, books: [] }
   }
 }
 
-// --- 跨页签同步：当其他页签修改世界书数据时失效缓存 ---
+export const invalidateWorldBookCache = () => {
+  _normalizedCache = null
+  _activeBookIdCache = null
+  _cacheVersion++
+}
+
+// --- 跨页签同步 ---
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === `avg_llm_${WORLD_BOOK_STORAGE_KEY}`) {
