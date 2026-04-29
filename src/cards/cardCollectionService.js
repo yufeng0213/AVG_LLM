@@ -1,11 +1,13 @@
 /**
  * 卡片收藏服务
  * 管理卡片收藏的保存、加载、删除和导出功能
+ * SQLite-only 存储模式
  */
 
-import { isSQLiteAvailable, getConfig, setConfig, removeConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 
-// 存储键（Web fallback）
+// 存储键
 const COLLECTION_KEY = 'card_collection'
 
 /**
@@ -30,10 +32,15 @@ export const saveCardToCollection = async (cardData, cardContent, metadata = {})
     if (!cardData || !cardContent) {
       return { success: false, error: '卡片数据缺失' }
     }
-    
+
+    if (!isSQLiteAvailable()) {
+      console.warn('[CardCollection] SQLite not available, cannot save card')
+      return { success: false, error: '存储不可用' }
+    }
+
     // 获取现有收藏
     const collection = await getCollection()
-    
+
     // 创建收藏记录
     const collectionItem = {
       collectionId: generateCollectionId(),
@@ -54,26 +61,22 @@ export const saveCardToCollection = async (cardData, cardContent, metadata = {})
       isFavorite: false,
       notes: '',
     }
-    
+
     // 添加到收藏列表
     collection.items.push(collectionItem)
     collection.totalCount = collection.items.length
     collection.updatedAt = new Date().toISOString()
-    
+
     // 更新统计
     updateCollectionStats(collection)
-    
+
     // 保存
-    if (isSQLiteAvailable()) {
-      await setConfig(COLLECTION_KEY, collection)
-    } else {
-      const { kvStorage } = await import('../storage/index.js')
-      await _saveCollection(collection)
-    }
-    
+    await appConfigRepo.set(COLLECTION_KEY, collection)
+    console.log('[CardCollection] Saved card', collectionItem.collectionId)
+
     return { success: true, collectionId: collectionItem.collectionId }
   } catch (error) {
-    console.error('保存卡片失败:', error)
+    console.error('[CardCollection] 保存卡片失败:', error)
     return { success: false, error: error.message || '保存失败' }
   }
 }
@@ -83,36 +86,31 @@ export const saveCardToCollection = async (cardData, cardContent, metadata = {})
  * @returns {Promise<Object>} 收藏数据
  */
 export const getCollection = async () => {
+  const defaultCollection = {
+    items: [],
+    totalCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    stats: {
+      byRarity: {},
+      byCategory: {},
+    },
+  }
+
+  if (!isSQLiteAvailable()) {
+    console.warn('[CardCollection] SQLite not available, returning default collection')
+    return defaultCollection
+  }
+
   try {
-    let collection
-    if (isSQLiteAvailable()) {
-      collection = await getConfig(COLLECTION_KEY)
-    } else {
-      const { kvStorage } = await import('../storage/index.js')
-      collection = await kvStorage.get(COLLECTION_KEY)
-    }
+    const collection = await appConfigRepo.get(COLLECTION_KEY)
     if (!collection) {
-      return {
-        items: [],
-        totalCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        stats: {
-          byRarity: {},
-          byCategory: {},
-        },
-      }
+      return defaultCollection
     }
     return collection
   } catch (error) {
-    console.error('获取收藏失败:', error)
-    return {
-      items: [],
-      totalCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      stats: {},
-    }
+    console.error('[CardCollection] 获取收藏失败:', error)
+    return defaultCollection
   }
 }
 
@@ -131,22 +129,26 @@ export const getCardFromCollection = async (collectionId) => {
   }
 }
 
+/**
+ * 内部保存函数
+ */
 async function _saveCollection(collection) {
-  if (isSQLiteAvailable()) {
-    await setConfig(COLLECTION_KEY, collection)
-  } else {
-    const { kvStorage } = await import('../storage/index.js')
-    await _saveCollection(collection)
+  if (!isSQLiteAvailable()) {
+    console.warn('[CardCollection] SQLite not available, cannot save collection')
+    return
   }
+  await appConfigRepo.set(COLLECTION_KEY, collection)
 }
 
+/**
+ * 内部删除函数
+ */
 async function _removeCollection() {
-  if (isSQLiteAvailable()) {
-    await removeConfig(COLLECTION_KEY)
-  } else {
-    const { kvStorage } = await import('../storage/index.js')
-    await _removeCollection()
+  if (!isSQLiteAvailable()) {
+    console.warn('[CardCollection] SQLite not available, cannot remove collection')
+    return
   }
+  await appConfigRepo.remove(COLLECTION_KEY)
 }
 
 /**
@@ -380,13 +382,18 @@ export const exportCollectionAsJSON = async () => {
  * @returns {Promise<{success: boolean, importedCount?: number, error?: string}>}
  */
 export const importCollectionFromJSON = async (jsonData, merge = false) => {
+  if (!isSQLiteAvailable()) {
+    console.warn('[CardCollection] SQLite not available, cannot import')
+    return { success: false, error: '存储不可用' }
+  }
+
   try {
     const importData = JSON.parse(jsonData)
-    
+
     if (!importData.collection || !importData.collection.items) {
       return { success: false, error: '无效的导入数据格式' }
     }
-    
+
     if (merge) {
       // 合并模式：添加到现有收藏
       const existingCollection = await getCollection()
@@ -398,18 +405,19 @@ export const importCollectionFromJSON = async (jsonData, merge = false) => {
       existingCollection.totalCount = existingCollection.items.length
       existingCollection.updatedAt = new Date().toISOString()
       updateCollectionStats(existingCollection)
-      await kvStorage.set(COLLECTION_KEY, existingCollection)
+      await appConfigRepo.set(COLLECTION_KEY, existingCollection)
     } else {
       // 替换模式：直接替换现有收藏
       const newCollection = importData.collection
       newCollection.updatedAt = new Date().toISOString()
       updateCollectionStats(newCollection)
-      await kvStorage.set(COLLECTION_KEY, newCollection)
+      await appConfigRepo.set(COLLECTION_KEY, newCollection)
     }
-    
+
+    console.log('[CardCollection] Imported', importData.collection.items.length, 'cards')
     return { success: true, importedCount: importData.collection.items.length }
   } catch (error) {
-    console.error('导入失败:', error)
+    console.error('[CardCollection] 导入失败:', error)
     return { success: false, error: error.message || '导入失败' }
   }
 }

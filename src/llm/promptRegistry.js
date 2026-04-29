@@ -4,7 +4,8 @@
  * 集中管理所有 LLM Prompt，支持用户自定义覆盖。
  * 默认值来自 promptDefaults.js，用户覆盖存储在 kvStorage('prompt_overrides')。
  */
-import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 import { PROMPT_DEFAULTS } from './promptDefaults.js'
 
 const STORAGE_KEY = 'prompt_overrides'
@@ -28,7 +29,7 @@ async function _loadOverrides() {
   if (_overridesCache !== null) return _overridesCache
   try {
     if (isSQLiteAvailable()) {
-      _overridesCache = await getConfig(STORAGE_KEY) || {}
+      _overridesCache = await appConfigRepo.get(STORAGE_KEY) || {}
     } else {
       const { kvStorage } = await import('../storage/index.js')
       _overridesCache = await kvStorage.get(STORAGE_KEY) || {}
@@ -75,7 +76,7 @@ export function resolvePromptSync(id) {
 
 async function _saveOverrides(overrides) {
   if (isSQLiteAvailable()) {
-    await setConfig(STORAGE_KEY, overrides)
+    await appConfigRepo.set(STORAGE_KEY, overrides)
   } else {
     const { kvStorage } = await import('../storage/index.js')
     await kvStorage.set(STORAGE_KEY, overrides)

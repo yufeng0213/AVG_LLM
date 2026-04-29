@@ -6,7 +6,7 @@
 import './TimelineViewScreen.css'
 import { computed, onMounted, ref } from 'vue'
 import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStore.js'
-import { getWorldMemory } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import { aggregateTodayTimeline } from '../services/timelineAggregator.js'
 import { useCharacterSchedule } from '../../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
 
@@ -36,7 +36,7 @@ async function loadData() {
     worldBook.value = books.find(b => b.id === activeId) || books[0] || null
 
     if (worldBook.value) {
-      worldMemory.value = await getWorldMemory(worldBook.value.id)
+      worldMemory.value = await useWorldMemoryStore().get(worldBook.value.id)
 
       const scheduleAPI = useCharacterSchedule()
       timeline.value = await aggregateTodayTimeline({

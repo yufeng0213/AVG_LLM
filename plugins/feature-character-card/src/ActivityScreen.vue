@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import JSZip from 'jszip'
 import { kvStorage } from '../../../src/storage/index.js'
 import { saveCoverFile, loadCoverFile, deleteCoverFile } from '../../../src/features/activityCover.js'
-import { useActivityEntry } from '../../../src/features/useActivityEntry.js'
+import { useActivityEntry } from '../../../src/stores/activityEntry.store.js'
 import ActivityRenderer from './components/ActivityRenderer.vue'
 
 const emit = defineEmits(['back', 'open-activity-story'])

@@ -8,8 +8,8 @@ import {
   setActiveWorldBookId,
 } from '../../../src/worldbook/worldBookStore.js'
 import { generatePhoneSmsReply, generateDormChatReply } from '../../../src/llm'
-import { getWorldMemory } from '../../../src/memory/worldMemoryStore.js'
-import { getCharacterRelationship } from '../../../src/relationship/index.js'
+import { useWorldMemoryStore } from '../../../src/stores/worldMemory.store.js'
+import { useRelationshipStore } from '../../../src/stores/relationship.store.js'
 import { getValidatedActiveConfig, callChatCompletion } from '../../../src/llm/llmService.core.js'
 import { isAndroid } from '../../../src/utils/platform.js'
 import RedPacket from './components/RedPacket.vue'
@@ -19,8 +19,8 @@ import { useDormDiary } from './composables/useDormDiary.js'
 import { useDormRedPacket } from './composables/useDormRedPacket.js'
 import { useDormAppointment } from './composables/useDormAppointment.js'
 import { useDormSubScene } from './composables/useDormSubScene.js'
-import { useGlobalUser } from '../../../src/composables/useGlobalUser.js'
-import { useBackStorage } from '../../../plugins/feature-back-storage/src/composables/useBackStorage.js'
+import { usePlayerState } from '../../../src/stores/playerState.store.js'
+import { useWorldBookData } from '../../../src/stores/worldBookData.store.js'
 import { useCharacterSchedule } from '../../../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
 import { useFridgeInventory } from '../../../plugins/feature-fridge/src/composables/useFridgeInventory.js'
 import { useTodoInventory } from '../../../plugins/feature-todo/src/composables/useTodoInventory.js'
@@ -1068,7 +1068,7 @@ const updateWorldBookEconomy = (bookId, updater) => {
 }
 
 // 当前背包物品（全局统一库存）
-const activeBookInventory = computed(() => backStorage.inventory.value || [])
+const activeBookInventory = computed(() => playerState.inventory || [])
 
 const isAndroidPlatform = computed(() => isAndroid())
 
@@ -1081,9 +1081,9 @@ const activeBook = computed(() => {
 })
 
 // 有效用户身份（全局用户 + 当前世界书覆写）
-// 内联 useEffectiveUser 逻辑：从全局用户和世界书数据合成
-const globalUserForEffective = useGlobalUser()
-const backStorage = useBackStorage()
+const playerState = usePlayerState()
+const rel = useRelationshipStore()
+const worldBookData = useWorldBookData()
 const characterSchedule = useCharacterSchedule()
 const fridge = useFridgeInventory()
 const todo = useTodoInventory()
@@ -1091,19 +1091,18 @@ const effectiveUser = computed(() => {
   const bookId = String(activeBook.value?.id || '').trim()
   if (!bookId) {
     return {
-      name: globalUserForEffective.username.value || '玩家',
+      name: playerState.username || '玩家',
       description: '',
-      avatar: globalUserForEffective.avatar.value,
-      avatarFrame: globalUserForEffective.avatarFrame.value,
+      avatar: playerState.avatar,
+      avatarFrame: playerState.avatarFrame,
     }
   }
-  const allBookData = JSON.parse(localStorage.getItem('avg_llm_world_book_data_v1') || '{}')
-  const bookData = allBookData[bookId] || {}
+  const bookData = worldBookData.getBookData(bookId)
   return {
-    name: bookData.userName || globalUserForEffective.username.value || '玩家',
+    name: bookData.userName || playerState.username || '玩家',
     description: bookData.userDescription || '',
-    avatar: globalUserForEffective.avatar.value,
-    avatarFrame: globalUserForEffective.avatarFrame.value,
+    avatar: playerState.avatar,
+    avatarFrame: playerState.avatarFrame,
   }
 })
 
@@ -2337,14 +2336,14 @@ const handleSendDormChat = async () => {
   try {
     // 加载世界记忆
     const bookId = activeBook.value?.id || 'default_world_book'
-    const worldMemories = await getWorldMemory(bookId)
+    const worldMemories = await useWorldMemoryStore().get(bookId)
 
     // 加载关系数据
     let relationshipSnapshot = null
     const charId = selectedCharacter.value?.id
     try {
       if (charId) {
-        const rel = getCharacterRelationship(charId)
+        const relData = rel.getCharacter(charId)
         if (rel) {
           relationshipSnapshot = {
             [charId]: { favor: rel.favor, trust: rel.trust, stance: rel.stance, level: rel.level },
@@ -2490,7 +2489,7 @@ const handleSendDormChat = async () => {
       // 处理角色送礼物给玩家
       if (result.giftToPlayer && typeof result.giftToPlayer === 'object') {
         const giftItem = result.giftToPlayer
-        const inventory = backStorage.inventory.value || []
+        const inventory = playerState.inventory || []
 
         // 在全局背包里查找匹配的物品（按名称）
         const matchedItem = inventory.find(inv =>

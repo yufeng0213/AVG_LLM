@@ -6,47 +6,6 @@ import { getValidatedActiveConfig, callChatCompletion } from './llmService.core.
 import { resolvePrompt } from './promptRegistry.js'
 
 /**
- * 将LLM原始响应写入本地日志文件（调试用，每次覆盖上一次）
- * 使用 Capacitor Filesystem（Android）或 localStorage（Web）存储
- */
-async function logLLMResponse(characterName, rawResponse, parseSuccess) {
-  const timestamp = new Date().toISOString()
-  const separator = '='.repeat(60)
-  const entry = [
-    separator,
-    `[${timestamp}] 角色: ${characterName} | 解析${parseSuccess ? '成功' : '失败'}`,
-    separator,
-    rawResponse,
-    '',
-  ].join('\n')
-
-  // 尝试 Capacitor Filesystem（Android 原生环境）
-  try {
-    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
-    // 确保目录存在
-    try {
-      await Filesystem.mkdir({ path: 'debug', directory: Directory.Documents, recursive: true })
-    } catch {}
-    await Filesystem.writeFile({
-      path: 'debug/schedule-llm-responses.log',
-      data: entry,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-    })
-    return
-  } catch {
-    // Capacitor 不可用，回退到 localStorage
-  }
-
-  // localStorage 回退（覆盖写入）
-  try {
-    localStorage.setItem('schedule_llm_debug_log', entry)
-  } catch (e) {
-    console.warn('[Schedule] 写入LLM响应日志失败:', e.message)
-  }
-}
-
-/**
  * 剥离 <thinking>...</thinking> 标签及其内容
  */
 function stripThinkingTags(content) {
@@ -87,6 +46,9 @@ export const generateCharacterSchedule = async (params = {}) => {
     ? character?.personalityProfile.behaviorTags.join('、')
     : ''
 
+  // 角色完整人设（补充 appearance, notes, speechStyle, relationships, schedule 等）
+  const fullProfileText = buildCharacterFullProfile(character)
+
   // 世界观摘要
   const worldTitle = String(worldBook?.title || '默认世界书').trim()
   const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
@@ -118,6 +80,7 @@ export const generateCharacterSchedule = async (params = {}) => {
     characterBackground ? `【角色背景】${characterBackground.slice(0, 200)}` : '',
     personalityText ? `【性格特征】${personalityText}` : '',
     behaviorTags ? `【行为标签】${behaviorTags}` : '',
+    fullProfileText ? `【角色完整人设】\n${fullProfileText}` : '',
     dormHint,
     `【生成日期】${scheduleDate}`,
     '',
@@ -132,11 +95,10 @@ export const generateCharacterSchedule = async (params = {}) => {
     temperature: options.temperature ?? 0.75,
     maxTokens: options.maxTokens ?? 2000,
     extraParams: options.extraParams,
+    label: 'Character Schedule',
   })
 
   if (!result.success) {
-    // API调用失败也记录日志
-    logLLMResponse(characterName, `API调用失败: ${result.error}`, false)
     return {
       success: false,
       error: result.error || '日程生成失败',
@@ -148,9 +110,6 @@ export const generateCharacterSchedule = async (params = {}) => {
   const cleaned = stripThinkingTags(result.data)
   const parsed = parseScheduleXml(cleaned)
   const parseOk = !!(parsed && parsed.hourEntries && parsed.hourEntries.length >= 24)
-
-  // 记录LLM原始响应到本地日志（包含解析结果）
-  logLLMResponse(characterName, result.data, parseOk)
 
   if (!parseOk) {
     return {
@@ -192,6 +151,71 @@ function buildPersonalityText(personalityProfile) {
   }
 
   return parts.join('，')
+}
+
+/**
+ * 构建角色完整人设文本（用于日程生成）
+ */
+function buildCharacterFullProfile(character) {
+  if (!character || typeof character !== 'object') return ''
+
+  const parts = []
+
+  const name = String(character.name || '').trim()
+  if (name) parts.push(`姓名: ${name}`)
+
+  const nickname = String(character.nickname || '').trim()
+  if (nickname) parts.push(`昵称: ${nickname}`)
+
+  const identity = String(character.identity || '').trim()
+  if (identity) parts.push(`身份: ${identity}`)
+
+  const appearance = String(character.appearance || '').trim()
+  if (appearance) parts.push(`外貌: ${appearance}`)
+
+  const background = String(character.background || '').trim()
+  if (background) parts.push(`背景: ${background}`)
+
+  const notes = String(character.notes || '').trim()
+  if (notes) parts.push(`备注: ${notes}`)
+
+  // 性格档案
+  const personality = character.personalityProfile && typeof character.personalityProfile === 'object'
+    ? character.personalityProfile : {}
+  const mbti = String(personality.mbti || '').trim()
+  if (mbti) parts.push(`MBTI: ${mbti}`)
+
+  const behaviorTags = Array.isArray(personality.behaviorTags)
+    ? personality.behaviorTags.filter(Boolean).slice(0, 15)
+    : []
+  if (behaviorTags.length > 0) parts.push(`行为特征: ${behaviorTags.join('、')}`)
+
+  const cognitiveDims = personality.cognitiveDimensions && typeof personality.cognitiveDimensions === 'object'
+    ? personality.cognitiveDimensions : {}
+  const dimEntries = Object.entries(cognitiveDims).slice(0, 10)
+  if (dimEntries.length > 0) parts.push(`认知维度: ${dimEntries.map(([k, v]) => `${k}:${v}`).join(' | ')}`)
+
+  const speechStyle = String(personality.speechStyle || character.speechStyle || '').trim()
+  if (speechStyle) parts.push(`说话风格: ${speechStyle}`)
+
+  const voiceConfig = character.voiceConfig && typeof character.voiceConfig === 'object' ? character.voiceConfig : {}
+  const voiceId = String(voiceConfig.voiceId || '').trim()
+  if (voiceId) parts.push(`语音ID: ${voiceId}`)
+
+  // 关系档案
+  if (character.relationships && Array.isArray(character.relationships) && character.relationships.length > 0) {
+    parts.push(`人物关系: ${character.relationships.slice(0, 5).map(r =>
+      `${r.from || '某人'} → ${r.to || '某人'} (${r.type || '未知'})`
+    ).join('; ')}`)
+  }
+
+  // 已有日程/习惯（帮助 LLM 参考）
+  if (character.schedule && typeof character.schedule === 'object') {
+    const habits = character.schedule.habits || character.schedule.routine || ''
+    if (typeof habits === 'string' && habits.trim()) parts.push(`日常习惯: ${habits.trim().slice(0, 200)}`)
+  }
+
+  return parts.join('\n')
 }
 
 /**

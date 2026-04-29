@@ -1,6 +1,7 @@
 ﻿<script setup>
 import { onMounted, reactive, ref, computed } from 'vue'
-import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 import { isAndroid, isElectron, isWeb } from '../utils/platform.js'
 
 const DISPLAY_STORAGE_KEY = 'display_settings'
@@ -30,7 +31,7 @@ const readLocalSettings = async () => {
   try {
     let parsed
     if (isSQLiteAvailable()) {
-      parsed = await getConfig(DISPLAY_STORAGE_KEY)
+      parsed = await appConfigRepo.get(DISPLAY_STORAGE_KEY)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       parsed = await kvStorage.get(DISPLAY_STORAGE_KEY)
@@ -94,7 +95,7 @@ const applyDisplaySettings = async () => {
   }
 
   if (isSQLiteAvailable()) {
-    await setConfig(DISPLAY_STORAGE_KEY, payload)
+    await appConfigRepo.set(DISPLAY_STORAGE_KEY, payload)
   } else {
     const { kvStorage } = await import('../storage/index.js')
     await kvStorage.set(DISPLAY_STORAGE_KEY, payload)

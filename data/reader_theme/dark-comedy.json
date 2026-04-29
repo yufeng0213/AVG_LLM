@@ -1,0 +1,45 @@
+{
+  "name": "黑色幽默",
+  "description": "适合黑色幽默、荒诞文学，强烈对比色，引号戏谑感，不协调的跳跃色彩",
+  "rules": [
+    {
+      "type": "dropCap",
+      "enabled": true,
+      "label": "首字下沉",
+      "description": "每段第一个字夸张放大"
+    },
+    {
+      "type": "quote",
+      "enabled": false,
+      "pattern": "[「「」『』\"\"\"\"\"]",
+      "label": "引号文字美化",
+      "description": "禁用：双引号\"会与HTML属性冲突导致截断",
+      "class": "reader-quote"
+    },
+    {
+      "type": "replace",
+      "enabled": true,
+      "find": "[…]{2,}|(\\.\\s*){3,}",
+      "replace": "<span class=\"reader-ellipsis\">…</span>",
+      "label": "省略号美化",
+      "description": "连续点号变成标准省略号"
+    },
+    {
+      "type": "replace",
+      "enabled": true,
+      "find": "——{1,2}",
+      "replace": "<span class=\"reader-dash\">—</span>",
+      "label": "破折号美化",
+      "description": "破折号红色突兀"
+    },
+    {
+      "type": "wrap",
+      "enabled": false,
+      "find": "([^<\\n]{1,4}[：:])(?!<\\/span>)",
+      "class": "reader-speak",
+      "label": "对话人名称",
+      "description": "禁用：会匹配到HTML标签内部导致截断"
+    }
+  ],
+  "styles": "\n.reader-quote {\n  font-style: italic;\n  color: #ffff00;\n  background: rgba(255, 255, 0, 0.08);\n  padding: 0 3px;\n  font-weight: 600;\n}\n.reader-ellipsis {\n  letter-spacing: 10px;\n  color: #ff6600;\n}\n.reader-dash {\n  letter-spacing: 4px;\n  color: #ff3333;\n  font-weight: 700;\n}\n.reader-speak {\n  color: #39ff14;\n  font-weight: 900;\n  font-size: 1.1em;\n}\n.reader-body :deep(.reader-dropcap) {\n  float: left;\n  font-size: 4em;\n  line-height: 0.65;\n  padding-right: 10px;\n  padding-top: 4px;\n  color: #ff3333;\n  font-weight: 900;\n  text-shadow: 2px 2px 0 #000;\n}\n"
+}

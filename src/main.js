@@ -1,10 +1,12 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import './style.css'
 import './theme/defaultThemeVariables.css'
 import App from './App.vue'
 import { initTheme, initCustomFonts } from './theme/themeManager'
 import { runStorageMigration } from './storage/storageMigration'
-import { openDatabase, createTables } from './db/db.js'
+import { openDatabase, createTables } from './db/connection.js'
 
 // 初始化 SQLite 数据库（Android 端）
 openDatabase()
@@ -24,4 +26,7 @@ initTheme()
   .then(() => initCustomFonts())
   .catch(console.error)
 
-createApp(App).mount('#app')
+const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate)
+
+createApp(App).use(pinia).mount('#app')

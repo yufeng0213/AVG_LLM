@@ -1,41 +1,15 @@
-﻿<script setup>
-import { onBeforeUnmount, onMounted, ref, computed, watch, nextTick, provide } from 'vue'
+<script setup>
+import { onBeforeUnmount, onMounted, watch, computed } from 'vue'
 import GameScreen from './screens/GameScreen.vue'
 import StartScreen from './screens/StartScreen.vue'
 import WorldHubScreen from './screens/WorldHubScreen.vue'
-import { getPlatform, isMobileDevice, isNative, isAndroid, isElectron } from './utils/platform'
-import { buildStartMenuRegistry, resolveStartMenuAction } from './features/startMenuRegistry'
-import { getLocalFeaturePluginManifests } from './features/localFeaturePluginManifests'
-import { getLocalFeaturePluginEntries } from './features/localFeaturePluginEntries'
-import { buildPluginScreenRegistry, resolvePluginScreenByRoute } from './features/pluginScreenRegistry'
-import {
-  getFeaturePluginRuntimeState,
-  filterEnabledFeaturePluginManifests,
-  subscribeFeaturePluginRuntimeState,
-} from './features/featurePluginRuntimeState'
-import { StatusBar, Style } from '@capacitor/status-bar'
-import { loadWorldBooks, getActiveWorldBookTags, getActiveWorldBookId } from './worldbook/worldBookStore.js'
-import { getSharedGameState, subscribeSharedGameState, setSharedGameStateFlag } from './features/sharedGameState.js'
-import { useActivityEntry } from './features/useActivityEntry.js'
-import { getMainStorySaveSlot, loadGame } from './save/saveManager.js'
-import GlobalMailbox from '../plugins/feature-mail/src/components/GlobalMailbox.vue'
-import CheckInScreen from '../plugins/feature-checkin/src/CheckInScreen.vue'
-import CheckIn7Screen from '../plugins/feature-checkin/src/CheckIn7Screen.vue'
-import AvatarFrameScreen from '../plugins/feature-dormitory/src/components/AvatarFrameScreen.vue'
-import MusicPlayerScreen from '../plugins/feature-music-player/src/MusicPlayerScreen.vue'
-import WorldMemoryScreen from '../plugins/feature-world-memory/src/WorldMemoryScreen.vue'
-import BaseBuildingScreen from '../plugins/feature-base-building/src/BaseBuildingScreen.vue'
-import WorldMapView from './screens/WorldMapView.vue'
-import DreamScreen from './screens/DreamScreen.vue'
-import TimelineViewScreen from './screens/TimelineViewScreen.vue'
-import EvolutionLogScreen from './screens/EvolutionLogScreen.vue'
-import Mascot from '../plugins/feature-mascot/src/Mascot.vue'
-import { useMascotStorage } from '../plugins/feature-mascot/src/composables/useMascotStorage.js'
-import {
-  createOverlay,
-  loadOverlayUrl,
-  setOverlayMascotData,
-} from '../plugins/feature-mascot/src/composables/useMascotOverlayAndroid.js'
+import { isNative, isElectron } from './utils/platform'
+import { useActivityEntry } from './stores/activityEntry.store.js'
+import { useUiState } from './stores/uiState.store.js'
+import { useGameSession } from './stores/gameSession.store.js'
+import { usePlayerState } from './stores/playerState.store.js'
+import { initGlobalApi } from './globalApi.js'
+import { useCardCollection } from '../plugins/feature-character-card/src/composables/useCardCollection.js'
 import { useCharacterSchedule } from '../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
 import {
   initAutoRefreshScheduler,
@@ -45,413 +19,115 @@ import {
 import { useBluetoothAudio } from '../plugins/feature-phone/src/phone/composables/useBluetoothAudio.js'
 import { useSpotCheckPush } from '../plugins/feature-phone/src/phone/composables/useSpotCheckPush.js'
 import { loadSmsThreads, saveSmsThreads } from '../plugins/feature-phone/src/phone/composables/usePhoneData.js'
-import { initGlobalApi } from './globalApi.js'
-import { useGlobalUser } from './composables/useGlobalUser.js'
-import { useCardCollection } from '../plugins/feature-character-card/src/composables/useCardCollection.js'
+import GlobalMailbox from '../plugins/feature-mail/src/components/GlobalMailbox.vue'
+import CheckInScreen from '../plugins/feature-checkin/src/CheckInScreen.vue'
+import CheckIn7Screen from '../plugins/feature-checkin/src/CheckIn7Screen.vue'
+import AvatarFrameScreen from '../plugins/feature-dormitory/src/components/AvatarFrameScreen.vue'
+import MusicPlayerScreen from '../plugins/feature-music-player/src/MusicPlayerScreen.vue'
+import WorldMemoryScreen from '../plugins/feature-world-memory/src/WorldMemoryScreen.vue'
+import BaseBuildingScreen from '../plugins/feature-base-building/src/BaseBuildingScreen.vue'
+import GameCenterScreen from '../plugins/feature-game/src/GameCenterScreen.vue'
+import ShopScreen from '../plugins/feature-shop/src/ShopScreen.vue'
+import TaskBoardScreen from '../plugins/feature-task/src/TaskBoardScreen.vue'
+import DormitoryScreen from '../plugins/feature-dormitory/src/DormitoryScreen.vue'
+import PhoneScreen from '../plugins/feature-phone/src/PhoneScreen.vue'
+import TRPGScreen from '../plugins/feature-trpg/src/TRPGScreen.vue'
+import AdventureGameScreen from '../plugins/feature-adventure-game/src/AdventureGameScreen.vue'
+import WorldBookScreen from '../plugins/feature-worldbook/src/WorldBookScreen.vue'
+import WorldBookEditorScreen from '../plugins/feature-worldbook/src/WorldBookEditorScreen.vue'
+import NarratorManagerScreen from '../plugins/feature-narrator-manager/src/NarratorManagerScreen.vue'
+import PluginManagerScreen from '../plugins/feature-plugin-manager/src/PluginManagerScreen.vue'
+import FaceToFaceScreen from '../plugins/feature-face-to-face/src/FaceToFaceScreen.vue'
+import StarrySkyScreen from '../plugins/feature-test/src/StarrySkyScreen.vue'
+import RoseScreen from '../plugins/feature-rose-particle/src/RoseScreen.vue'
+import BookScreen from '../plugins/feature-book-particle/src/BookScreen.vue'
+import HourglassScreen from '../plugins/feature-hourglass/src/HourglassScreen.vue'
+import MobiusScreen from '../plugins/feature-mobius-particle/src/MobiusScreen.vue'
+import CharacterCardScreen from '../plugins/feature-character-card/src/CharacterCardScreen.vue'
+import MementoCardScreen from '../plugins/feature-memento-card/src/MementoCardScreen.vue'
+import SettingsScreen from '../plugins/feature-settings/src/SettingsScreen.vue'
+import WorldMapView from './screens/WorldMapView.vue'
+import DreamScreen from './screens/DreamScreen.vue'
+import TimelineViewScreen from './screens/TimelineViewScreen.vue'
+import EvolutionLogScreen from './screens/EvolutionLogScreen.vue'
+import Mascot from '../plugins/feature-mascot/src/Mascot.vue'
 
-// Widget 事件处理：从 Android Widget 点击进入特定角色的寝室界面
-const handleWidgetOpenDormitory = (data) => {
+// Extracted composables
+import { useAndroidStatusBar } from './composables/useAndroidStatusBar.js'
+import { useMascotOverlay } from './composables/useMascotOverlay.js'
+import { usePluginRouting } from './composables/usePluginRouting.js'
+
+// ===== Pinia stores =====
+const ui = useUiState()
+const gameSession = useGameSession()
+const playerState = usePlayerState()
+const activityEntry = useActivityEntry()
+
+// 执行一次性数据迁移
+playerState.runMigration()
+
+// ===== Extracted: Android 状态栏 =====
+const android = useAndroidStatusBar()
+
+// ===== Extracted: 桌宠覆盖层 =====
+useMascotOverlay()
+
+// ===== Extracted: 插件路由 =====
+const routing = usePluginRouting()
+
+// ===== 游戏厅金币结算 =====
+const handleGameEconomyResult = (data) => {
+  if (!data) return
+  const net = (data.net != null) ? data.net : ((data.earned || 0) - (data.cost || 0))
+  if (net === 0) return
+  playerState.updateEconomy(prev => ({
+    ...prev,
+    coins: Math.max(0, Math.min(9999, prev.coins + net)),
+  }))
+}
+
+// ===== Widget 事件处理 =====
+const handleWidgetOpenDormitory = async (data) => {
   console.log('[App] Widget event received:', data)
   if (data?.characterId && data?.worldBookId) {
-    // 设置活跃世界书
-    activeWorldBookId.value = data.worldBookId
-    // 切换到寝室界面
-    currentScreen.value = 'dormitory'
-    // 通知寝室界面打开特定角色（通过全局事件）
+    await ui.setActiveWorldBook(data.worldBookId)
+    ui.currentScreen = 'dormitory'
     window.__avgDormitoryTargetCharacter = data.characterId
   }
 }
 
-// 注册全局 Widget 事件处理器
 if (typeof window !== 'undefined') {
   window.__avgWidgetHandler = handleWidgetOpenDormitory
 }
 
-// PC 端设计基准分辨率（16:9 横屏比例）
-const DESIGN_WIDTH = 1920
-const DESIGN_HEIGHT = 1080
-
-// Android 端设计基准分辨率（9:16 竖屏比例）
-const ANDROID_DESIGN_WIDTH = 1080
-const ANDROID_DESIGN_HEIGHT = 1920
-
-const currentScreen = ref('world-hub')
-const activeWorldBookId = ref('default_world_book')
-const activeWorldBookTags = ref([])
-const activeNarratorId = ref(null)
-const activityEntry = useActivityEntry()
-const uiScale = ref(1)
-const containerStyle = ref({})
-
-// 平台检测
-const platform = computed(() => getPlatform())
-const isMobile = computed(() => isMobileDevice())
+// ===== 平台检测 =====
+const platform = ui.platform
+const isMobile = ui.isMobile
 const isNativeApp = computed(() => isNative())
-const isAndroidPlatform = computed(() => isAndroid())
 const isElectronPlatform = computed(() => isElectron())
-const logAndroidLayoutSnapshot = async (source = 'unknown') => {
-  if (!isAndroidPlatform.value) return
 
-  const gameScreen = document.querySelector('.game-screen')
-  const gameTopbar = document.querySelector('.game-topbar')
-  const appShell = document.querySelector('.app-shell')
-  const bodyStyle = getComputedStyle(document.body)
-  const shellStyle = appShell ? getComputedStyle(appShell) : null
-  const topbarStyle = gameTopbar ? getComputedStyle(gameTopbar) : null
-  const viewport = window.visualViewport
-
-  let statusInfo = null
-  try {
-    statusInfo = await StatusBar.getInfo()
-  } catch {
-    statusInfo = null
-  }
-
-  const payload = {
-    source,
-    screen: currentScreen.value,
-    windowInner: { w: window.innerWidth, h: window.innerHeight },
-    visualViewport: viewport
-      ? {
-          w: Math.round(viewport.width),
-          h: Math.round(viewport.height),
-          offsetTop: Math.round(viewport.offsetTop),
-          offsetLeft: Math.round(viewport.offsetLeft),
-          scale: viewport.scale,
-        }
-      : null,
-    statusBar: statusInfo,
-    bodyClass: document.body.className,
-    bodyPaddingTop: bodyStyle.paddingTop,
-    bodyPaddingBottom: bodyStyle.paddingBottom,
-    appShellPaddingTop: shellStyle?.paddingTop || null,
-    gameScreenRect: gameScreen ? gameScreen.getBoundingClientRect() : null,
-    gameTopbarRect: gameTopbar ? gameTopbar.getBoundingClientRect() : null,
-    gameTopbarPaddingTop: topbarStyle?.paddingTop || null,
-    gameTopbarMarginTop: topbarStyle?.marginTop || null,
-  }
-
-  console.log('[LayoutDebug][Web]', payload)
-  return payload
-}
-
-const scheduleAndroidLayoutDebug = (source = 'unknown') => {
-  if (!isAndroidPlatform.value) return
-
-  requestAnimationFrame(() => {
-    void logAndroidLayoutSnapshot(`${source}:raf`)
-    window.setTimeout(() => {
-      void logAndroidLayoutSnapshot(`${source}:t300`)
-    }, 300)
-  })
-}
-
-/**
- * 获取 Android 状态栏高度并注入 CSS 变量 --safe-area-inset-top
- * 使 WebView 内容能正确避开刘海/相机区域
- * （主要靠 MainActivity.java 原生注入，此函数为备用）
- */
-const injectAndroidSafeAreaInsets = async () => {
-  if (!isAndroidPlatform.value) return
-
-  try {
-    const info = await StatusBar.getInfo()
-    if (info?.height) {
-      document.documentElement.style.setProperty('--safe-area-inset-top', `${info.height}px`)
-      document.documentElement.style.setProperty('--safe-area-inset-bottom', '0px')
-      document.documentElement.style.setProperty('--safe-area-inset-left', '0px')
-      document.documentElement.style.setProperty('--safe-area-inset-right', '0px')
-    }
-  } catch {
-    // 非原生环境或插件不可用时忽略
-  }
-}
-
-const applyAndroidStatusBarStyle = async () => {
-  if (!isAndroidPlatform.value) return
-
-  try {
-    await StatusBar.setOverlaysWebView({ overlay: false })
-    await StatusBar.setStyle({ style: Style.Light })
-    await StatusBar.setBackgroundColor({ color: '#0d0d1a' })
-    await StatusBar.show()
-    // 状态栏显示后注入高度
-    await injectAndroidSafeAreaInsets()
-  } catch {
-    // 非原生环境或插件不可用时忽略
-  }
-}
-
-const handleAndroidVisibilityChange = () => {
-  if (document.visibilityState === 'visible') {
-    void applyAndroidStatusBarStyle()
-    scheduleAndroidLayoutDebug('visibilitychange-visible')
-  }
-}
-
-const handleAndroidFocus = () => {
-  void applyAndroidStatusBarStyle()
-  scheduleAndroidLayoutDebug('window-focus')
-}
-
-const handleAndroidResize = () => {
-  scheduleAndroidLayoutDebug('window-resize')
-}
-
-// 存档数据（用于加载存档后传递给游戏界面）
-const loadedSaveData = ref(null)
-const localFeaturePluginManifests = getLocalFeaturePluginManifests()
-const localFeaturePluginEntries = getLocalFeaturePluginEntries()
-const featurePluginRuntimeState = ref(getFeaturePluginRuntimeState())
-const sharedGameState = ref(getSharedGameState())
-const enabledFeaturePluginManifests = computed(() => {
-  return filterEnabledFeaturePluginManifests(
-    localFeaturePluginManifests,
-    featurePluginRuntimeState.value,
-    activeWorldBookTags.value,
-  )
-})
-const startMenuRegistry = computed(() => buildStartMenuRegistry({
-  pluginManifests: enabledFeaturePluginManifests.value,
-}))
-const startMenuItems = computed(() => {
-  return startMenuRegistry.value.items
-})
-const startMenuActionMap = computed(() => {
-  return startMenuRegistry.value.actionMap
-})
-
-const openScreenByKey = (screenKey) => {
-  const next = String(screenKey || '').trim()
-  if (!next) return
-  // 桌宠不是路由页面，是悬浮层，不导航到
-  if (next === 'mascot') return
-  currentScreen.value = next
-}
-
-const handleStartMenuAction = (payload) => {
-  const itemId = typeof payload === 'string'
-    ? payload
-    : payload?.itemId
-  const action = payload?.action && typeof payload.action === 'object'
-    ? payload.action
-    : resolveStartMenuAction(startMenuActionMap.value, itemId)
-  // 桌宠点击菜单时：没有GIF则弹出导入，有GIF则不做操作（已悬浮显示）
-  if (itemId === 'feature-mascot') {
-    const { openImporter } = useMascotStorage()
-    if (!mascotHasGif.value) {
-      openImporter()
-    }
-    return
-  }
-  if (action.type === 'screen') {
-    openScreenByKey(action.screen)
-    return
-  }
-}
-
-const openNewGame = (payload = 'default_world_book') => {
-  const worldBookId = typeof payload === 'object' && payload
-    ? payload.worldBookId
-    : payload
-  const narratorId = typeof payload === 'object' && payload
-    ? payload.narratorId
-    : null
-
-  loadedSaveData.value = null // 新游戏清空存档数据
-  activeWorldBookId.value = worldBookId || 'default_world_book' // 设置新游戏使用的世界书
-  activeNarratorId.value = narratorId || null // 新游戏可选叙事者覆盖
-  currentScreen.value = 'game'
-}
-
-const openWorldBookEditor = (bookId) => {
-  activeWorldBookId.value = bookId || 'default_world_book'
-  currentScreen.value = 'worldbook-editor'
-}
-
-const backToWorldBookShelf = () => {
-  currentScreen.value = 'worldbook-shelf'
-}
-
-const backToStart = () => {
-  currentScreen.value = 'start'
-}
-
-const backToWorldHub = () => {
-  currentScreen.value = 'world-hub'
-}
-
-// WorldHubScreen 按钮处理
-const isMailboxOpen = ref(false)
-const isCheckInOpen = ref(false)
-const isCheckIn7Open = ref(false)
-const isAvatarSettingsOpen = ref(false)
-const isMusicPlayerOpen = ref(true)
-
-const isMusicPlayerEnabled = computed(() => {
-  const manifest = featurePluginManifestById.value.get('music-player')
-  if (!manifest) return false
-  const runtimeState = featurePluginRuntimeState.value
-  const hasOverride = Object.prototype.hasOwnProperty.call(runtimeState, 'music-player')
-  if (hasOverride) return Boolean(runtimeState['music-player'])
-  return manifest.enabledByDefault !== false
-})
-
-const isMascotEnabled = computed(() => {
-  const manifest = featurePluginManifestById.value.get('feature-mascot')
-  if (!manifest) return false
-  const runtimeState = featurePluginRuntimeState.value
-  const hasOverride = Object.prototype.hasOwnProperty.call(runtimeState, 'feature-mascot')
-  if (hasOverride) return Boolean(runtimeState['feature-mascot'])
-  return manifest.enabledByDefault !== false
-})
-
-const { mascotState: mascotStorageState, loadGifDataUrl } = useMascotStorage()
-const mascotHasGif = computed(() => !!mascotStorageState.value?.gifData)
-
-const featurePluginManifestById = computed(() => {
+// ===== 桌宠启用判断（供模板使用，实际逻辑在 useMascotOverlay 中） =====
+import { getLocalFeaturePluginManifests } from './features/localFeaturePluginManifests.js'
+const _mascotManifestById = computed(() => {
   const map = new Map()
-  localFeaturePluginManifests.forEach((p) => map.set(p.id, p))
+  getLocalFeaturePluginManifests().forEach((p) => map.set(p.id, p))
   return map
 })
+const isMascotEnabled = computed(() => {
+  const manifest = _mascotManifestById.value.get('feature-mascot')
+  if (!manifest) return false
+  const state = gameSession.pluginEnabled
+  if (Object.prototype.hasOwnProperty.call(state, 'feature-mascot')) return !!state['feature-mascot']
+  return manifest.enabledByDefault !== false
+})
 
-// 主线世界书选择器
-const showMainStorySelector = ref(false)
-const mainStoryBooks = ref([])
-const mainStoryLoading = ref(false)
-
-const openMainStory = async (payload) => {
-  // 如果有 worldBookId，直接进入游戏
-  if (payload?.worldBookId) {
-    const targetWorldBookId = payload.worldBookId
-    const narratorId = payload.narratorId || null
-    // 查找主线存档
-    const slotId = await getMainStorySaveSlot(targetWorldBookId)
-    if (slotId) {
-      const result = await loadGame(slotId)
-      if (result?.success && result.data) {
-        // 验证存档的 worldBookId 是否与请求的一致
-        const saveWorldBookId = result.data.game?.worldBookId
-        if (saveWorldBookId !== targetWorldBookId) {
-          // 存档映射错乱，忽略存档开始新游戏
-          console.warn(`[MainStory] 存档 worldBookId(${saveWorldBookId}) 与请求(${targetWorldBookId}) 不一致，忽略存档`)
-          loadedSaveData.value = null
-          activeWorldBookId.value = targetWorldBookId
-          activeNarratorId.value = narratorId
-          currentScreen.value = 'game'
-          return
-        }
-        // 存档有效，强制使用请求的 worldBookId（防止存档数据错乱）
-        loadedSaveData.value = {
-          ...result.data,
-          game: {
-            ...result.data.game,
-            worldBookId: targetWorldBookId,
-          },
-        }
-        activeWorldBookId.value = targetWorldBookId
-        activeNarratorId.value = result.data.game?.narratorId || narratorId
-        currentScreen.value = 'game'
-        return
-      }
-    }
-    // 无存档，开始新游戏
-    loadedSaveData.value = null
-    activeWorldBookId.value = targetWorldBookId
-    activeNarratorId.value = narratorId
-    currentScreen.value = 'game'
-    return
-  }
-
-  // 没有传入 worldBookId，显示选择器
-  mainStoryLoading.value = true
-  showMainStorySelector.value = true
-  try {
-    mainStoryBooks.value = await loadWorldBooks()
-  } catch (e) {
-    console.error('Failed to load world books for main story:', e)
-  } finally {
-    mainStoryLoading.value = false
-  }
-}
-
-const closeMainStorySelector = () => {
-  showMainStorySelector.value = false
-}
-
-const selectMainStoryBook = async (book) => {
-  closeMainStorySelector()
-  const targetWorldBookId = book.id
-  const narratorId = book.defaultNarratorId || null
-
-  // 查找该世界书的主线存档
-  const slotId = await getMainStorySaveSlot(targetWorldBookId)
-  if (slotId) {
-    // 有存档，加载它
-    const result = await loadGame(slotId)
-    if (result?.success && result.data) {
-      // 验证存档的 worldBookId 是否与请求的一致
-      const saveWorldBookId = result.data.game?.worldBookId
-      if (saveWorldBookId !== targetWorldBookId) {
-        // 存档映射错乱，忽略存档开始新游戏
-        console.warn(`[MainStory] 存档 worldBookId(${saveWorldBookId}) 与请求(${targetWorldBookId}) 不一致，忽略存档`)
-        loadedSaveData.value = null
-        activeWorldBookId.value = targetWorldBookId
-        activeNarratorId.value = narratorId
-        currentScreen.value = 'game'
-        return
-      }
-      // 存档有效，强制使用请求的 worldBookId
-      loadedSaveData.value = {
-        ...result.data,
-        game: {
-          ...result.data.game,
-          worldBookId: targetWorldBookId,
-        },
-      }
-      activeWorldBookId.value = targetWorldBookId
-      activeNarratorId.value = result.data.game?.narratorId || narratorId
-      currentScreen.value = 'game'
-      return
-    }
-  }
-
-  // 无存档，开始新游戏
-  loadedSaveData.value = null
-  activeWorldBookId.value = targetWorldBookId
-  activeNarratorId.value = narratorId
-  currentScreen.value = 'game'
-}
-
-const openShop = () => { currentScreen.value = 'shop' }
-const openTask = () => { currentScreen.value = 'task-board' }
-const openTest = () => { currentScreen.value = 'starry-sky' }
-const openCheckIn = () => { isCheckInOpen.value = true }
-const openCheckIn7 = () => { isCheckIn7Open.value = true }
-const openMailbox = () => { isMailboxOpen.value = true }
-
-const openPhone = () => { currentScreen.value = 'phone' }
-
-const openActivity = (activityId) => {
-  currentScreen.value = 'character-card'
-  activityEntry.requestOpenActivity(activityId)
-}
-
-const openDebugBaseBuilding = () => {
-  setSharedGameStateFlag('base_building_unlocked', true)
-  showDebugBaseBuilding.value = true
-}
-
-const showDebugBaseBuilding = ref(false)
-
-// ===== 全局蓝牙 + 查岗推送（常驻，不随 PhoneScreen 卸载） =====
-const { isBluetoothConnected, bluetoothDeviceName, isSupported: btSupported } = useBluetoothAudio()
+// ===== 全局蓝牙 + 查岗推送 =====
+const { isBluetoothConnected } = useBluetoothAudio()
 
 let _spotCheckAudio = null
 async function handleSpotCheckVoice({ contact, voiceMsg, audioUrl }) {
   console.log('[App] SpotCheck voice received:', contact.name)
 
-  // 写入 SMS threads（PhoneScreen 不在时也保存）
   try {
     const threads = await loadSmsThreads()
     const thread = threads[contact.id] || []
@@ -462,7 +138,6 @@ async function handleSpotCheckVoice({ contact, voiceMsg, audioUrl }) {
     console.warn('[App] Failed to save spot check SMS:', e)
   }
 
-  // 蓝牙已连接时自动播放
   if (isBluetoothConnected.value && audioUrl) {
     if (_spotCheckAudio) { _spotCheckAudio.pause() }
     const audio = new Audio(audioUrl)
@@ -472,7 +147,6 @@ async function handleSpotCheckVoice({ contact, voiceMsg, audioUrl }) {
     audio.play().catch(() => { _spotCheckAudio = null })
   }
 
-  // 系统通知
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications')
     const perm = await LocalNotifications.checkPermissions()
@@ -507,155 +181,40 @@ useSpotCheckPush({
   onNewVoiceMessage: handleSpotCheckVoice,
 })
 
-// =====
-
-// 加载存档后进入游戏
-const handleLoadSave = (saveData) => {
-  loadedSaveData.value = saveData
-  activeNarratorId.value = saveData?.game?.narratorId || null
-  currentScreen.value = 'game'
-}
-
-// 加载备份后进入游戏
-const handleLoadBackup = (backupData) => {
-  // 将备份数据转换为存档格式
-  loadedSaveData.value = {
-    version: backupData.version,
-    timestamp: backupData.timestamp,
-    metadata: {
-      chapter: '历史备份',
-      scene: backupData.name,
-      playTime: 0,
-      preview: '',
-    },
-    game: {
-      worldBookId: 'default_world_book',
-      narratorId: null,
-      currentLineIndex: 0,
-      dialogueScript: backupData.messages || [],
-      sceneCharacters: [],
-    },
-  }
-  currentScreen.value = 'game'
-}
-
-const pluginScreenRegistry = computed(() => buildPluginScreenRegistry({
-  pluginManifests: enabledFeaturePluginManifests.value,
-  pluginEntries: localFeaturePluginEntries,
-  activeWorldBookIdRef: activeWorldBookId,
-  onBackToStart: backToWorldHub,
-  onBackToWorldBookShelf: backToWorldBookShelf,
-  onLoadSave: handleLoadSave,
-  onLoadBackup: handleLoadBackup,
-  onOpenWorldBookEditor: openWorldBookEditor,
-  onNavigate: (screen) => { currentScreen.value = screen },
-}))
-
-const FULLSCREEN_SCREENS = new Set(['world-memory', 'world-map', 'dreams', 'timeline', 'evolution-log'])
-
-const activePluginScreen = computed(() => {
-  if (FULLSCREEN_SCREENS.has(currentScreen.value)) return null
-  return resolvePluginScreenByRoute(pluginScreenRegistry.value, currentScreen.value)
-})
-
-/**
- * 计算 UI 缩放比例
- * Android 竖屏模式下，使用 9:16 设计比例
- * PC/Web 端使用 16:9 横屏比例
- */
+// ===== UI 缩放 =====
 const updateUiScale = () => {
-  const windowWidth = window.innerWidth
-  const windowHeight = window.innerHeight
-  
-  // Android 原生平台特殊处理（竖屏）
-  if (isAndroidPlatform.value) {
-    // 竖屏模式：基于宽度缩放，高度自适应
-    // 设计基准：1080x1920 (9:16)
-    const widthBasedScale = windowWidth / ANDROID_DESIGN_WIDTH
-    
-    // Android 上限制缩放范围
-    // 典型手机：360-420px 宽度，缩放约 0.33-0.39
-    // 高端手机：480px+ 宽度，缩放约 0.44+
-    uiScale.value = Math.max(0.3, Math.min(0.6, Number(widthBasedScale.toFixed(3))))
-    
-    // 竖屏模式：宽度撑满，高度自适应
-    containerStyle.value = {
-      width: '100vw',
-      minHeight: '100vh',
-    }
-  } else {
-    // PC/Web 端：横屏逻辑
-    const widthScale = windowWidth / DESIGN_WIDTH
-    const heightScale = windowHeight / DESIGN_HEIGHT
-    const nextScale = Math.min(widthScale, heightScale)
-    
-    // Keep the UI in a practical range to avoid over-shrinking or over-blowing.
-    uiScale.value = Math.max(0.67, Math.min(1.5, Number(nextScale.toFixed(3))))
-    
-    containerStyle.value = {}
-  }
+  ui.updateUiScale()
 }
 
-const loadActiveWorldBookTags = async () => {
-  try {
-    activeWorldBookTags.value = await getActiveWorldBookTags()
-  } catch (e) {
-    console.error('[App] Failed to load active world book tags:', e)
-    activeWorldBookTags.value = []
-  }
-}
-
-// 从 worldBookStore 加载实际激活的世界书 ID
+// ===== 加载世界书 ID =====
 const loadActiveWorldBookId = async () => {
-  try {
-    const bookId = await getActiveWorldBookId()
-    console.log('[App] Loaded active world book ID:', bookId)
-    activeWorldBookId.value = bookId
-  } catch (e) {
-    console.error('[App] Failed to load active world book ID:', e)
-    activeWorldBookId.value = 'default_world_book'
-  }
+  await ui.loadActiveWorldBookId()
 }
 
-let unsubscribeFeaturePluginRuntime = null
-let unsubscribeSharedGameState = null
-
-const handleFeaturePluginRuntimeStateChange = (nextState) => {
-  featurePluginRuntimeState.value = nextState
-}
-
-const handleSharedGameStateChange = (nextState) => {
-  sharedGameState.value = nextState
-}
-
+// ===== Lifecycle =====
 onMounted(() => {
-  // 数据迁移已在 feature-back-storage 模块加载时自动执行
+  // 注意：不再清除 localStorage，因为玩家数据、存档等需要持久化
+  // SQLite 存储的数据不受 localStorage 影响
 
-  // 从 worldBookStore 加载实际激活的世界书 ID
+  console.log('[App] initial currentScreen:', ui.currentScreen, 'showDebugBaseBuilding:', ui.showDebugBaseBuilding)
+
+  // 强制重置到世界中心
+  ui.showDebugBaseBuilding = false
+  ui.currentScreen = 'world-hub'
+
+  console.log('[App] after reset, currentScreen:', ui.currentScreen, 'showDebugBaseBuilding:', ui.showDebugBaseBuilding)
   void loadActiveWorldBookId()
+  void ui.loadActiveNarratorId()
 
-  // 暴露 window.__avgLLM 供运行时活动 JS 调用
   initGlobalApi({
-    useGlobalUser,
+    usePlayerState,
     useCardCollection,
-    worldBookIdRef: activeWorldBookId,  // 传入 ref，而不是 value
+    worldBookIdRef: { get value() { return ui.activeWorldBookId }, set value(v) { void ui.setActiveWorldBook(v) } },
   })
 
   updateUiScale()
   window.addEventListener('resize', updateUiScale)
-  unsubscribeFeaturePluginRuntime = subscribeFeaturePluginRuntimeState(
-    handleFeaturePluginRuntimeStateChange,
-  )
-  unsubscribeSharedGameState = subscribeSharedGameState(
-    handleSharedGameStateChange,
-  )
 
-  // 加载当前世界书标签，用于插件条件启用
-  void loadActiveWorldBookTags()
-
-  // 向子组件提供共享状态
-  provide('sharedGameState', sharedGameState.value)
-  
   // 添加平台类名到 body
   const body = document.body
   body.classList.add(`platform-${platform.value}`)
@@ -665,31 +224,19 @@ onMounted(() => {
   if (isNativeApp.value) {
     body.classList.add('native-app')
   }
-  
+
   // Android 平台额外处理
-  if (isAndroidPlatform.value) {
+  if (ui.isAndroidPlatform) {
     body.classList.add('android-portrait')
-    // 阻止默认触摸行为（如双击缩放）
     document.addEventListener('touchstart', (e) => {
       if (e.touches.length > 1) {
         e.preventDefault()
       }
     }, { passive: false })
 
-    void applyAndroidStatusBarStyle()
-    document.addEventListener('visibilitychange', handleAndroidVisibilityChange)
-    window.addEventListener('focus', handleAndroidFocus)
-    window.addEventListener('resize', handleAndroidResize)
-    window.addEventListener('orientationchange', handleAndroidResize)
-
-    // 便于在远程调试控制台手动触发
-    window.__avgLayoutDebug = async () => {
-      const immediate = await logAndroidLayoutSnapshot('manual-trigger:direct')
-      scheduleAndroidLayoutDebug('manual-trigger')
-      return immediate
-    }
-
-    scheduleAndroidLayoutDebug('mounted-android')
+    void android.applyAndroidStatusBarStyle()
+    android.setupAndroidEvents()
+    android.scheduleAndroidLayoutDebug('mounted-android')
   }
 
   // 初始化并启动角色日程自动刷新调度器
@@ -700,346 +247,285 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateUiScale)
-  if (unsubscribeFeaturePluginRuntime) {
-    unsubscribeFeaturePluginRuntime()
-    unsubscribeFeaturePluginRuntime = null
-  }
-  if (unsubscribeSharedGameState) {
-    unsubscribeSharedGameState()
-    unsubscribeSharedGameState = null
+
+  if (ui.isAndroidPlatform) {
+    android.teardownAndroidEvents()
   }
 
-  if (isAndroidPlatform.value) {
-    document.removeEventListener('visibilitychange', handleAndroidVisibilityChange)
-    window.removeEventListener('focus', handleAndroidFocus)
-    window.removeEventListener('resize', handleAndroidResize)
-    window.removeEventListener('orientationchange', handleAndroidResize)
-    delete window.__avgLayoutDebug
-  }
-
-  // 停止角色日程自动刷新调度器
   stopAutoRefreshScheduler()
 })
 
-watch(currentScreen, (screen) => {
+watch(() => ui.currentScreen, (screen) => {
+  console.log('[App] currentScreen changed to:', screen)
   if (screen === 'game') {
-    scheduleAndroidLayoutDebug('screen-to-game')
+    android.scheduleAndroidLayoutDebug('screen-to-game')
   }
 })
 
-watch(activeWorldBookId, () => {
-  void loadActiveWorldBookTags()
+watch(() => routing.showDebugBaseBuilding, (v) => {
+  console.log('[App] showDebugBaseBuilding changed to:', v)
 })
 
-watch(activePluginScreen, (pluginScreen) => {
-  const screen = currentScreen.value
-  if (screen === 'start' || screen === 'game' || screen === 'world-hub' || screen === 'world-memory') {
-    return
-  }
-  if (!pluginScreen) {
-    currentScreen.value = 'world-hub'
-  }
-})
-
-// Electron 下通过独立窗口实现系统级桌宠覆盖层
-let mascotOverlayReady = false
-
-const ensureMascotOverlay = async () => {
-  if (!isElectron() || !window.avgLLM?.mascot) return
-  // 不检查 GIF 是否存在，启用时就创建窗口（没 GIF 时显示占位符）
-  if (!mascotOverlayReady) {
-    await window.avgLLM.mascot.create()
-    mascotOverlayReady = true
-  }
-  window.avgLLM.mascot.show()
-}
-
-const hideMascotOverlay = () => {
-  if (!isElectron() || !window.avgLLM?.mascot || !mascotOverlayReady) return
-  window.avgLLM.mascot.hide()
-}
-
-// Android 系统级悬浮窗
-let androidOverlayReady = false
-
-const getMascotScreenRect = () => {
-  // mascot 使用固定尺寸 80x80 CSS 像素
-  // 在 Android 上不渲染 Mascot.vue，所以无法从 DOM 获取
-  const dpr = window.devicePixelRatio || 1
-  const cssWidth = 80
-  const cssHeight = 80
-
-  // 位置从 storage 获取（CSS 像素）
-  const cssX = mascotStorageState.value.x
-  const cssY = mascotStorageState.value.y
-
-  // 转换为物理像素
-  const screenX = Math.round(cssX * dpr)
-  const screenY = Math.round(cssY * dpr)
-  const screenW = Math.round(cssWidth * dpr)
-  const screenH = Math.round(cssHeight * dpr)
-
-  console.log('[App] Mascot rect: cssPos=(' + cssX + ',' + cssY + ') cssSize=' + cssWidth + 'x' + cssHeight
-    + ' dpr=' + dpr + ' => physical=(' + screenX + ',' + screenY + ') size=' + screenW + 'x' + screenH)
-
-  return { x: screenX, y: screenY, width: screenW, height: screenH }
-}
-
-const ensureAndroidMascotOverlay = async () => {
-  if (!isAndroidPlatform.value) return
-  console.log('[App] Starting Android system overlay...')
-
-  try {
-    // Wait longer for DOM and mascot element to settle at correct position
-    await nextTick()
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    if (androidOverlayReady) {
-      console.log('[App] Android overlay already ready, restarting...')
-      await createOverlay()
-    }
-
-    // 获取 mascot 元素的实际屏幕位置
-    const rect = getMascotScreenRect()
-
-    mascotStorageState.value.visible = true
-
-    let gifDataUrl = ''
-    if (mascotStorageState.value.gifData) {
-      gifDataUrl = mascotStorageState.value.gifData.dataUrl || await loadGifDataUrl() || ''
-      console.log('[App] GIF dataUrl loaded:', gifDataUrl ? `length=${gifDataUrl.length}` : 'empty')
-    } else {
-      console.log('[App] No GIF data in storage')
-    }
-
-    const overlayData = {
-      x: rect.x,
-      y: rect.y,
-      overlayWidth: rect.width,
-      overlayHeight: rect.height,
-      visible: true,
-      gifData: mascotStorageState.value.gifData
-        ? { ...mascotStorageState.value.gifData, dataUrl: gifDataUrl }
-        : null,
-    }
-    await setOverlayMascotData(overlayData)
-
-    await createOverlay()
-
-    const url = import.meta.env.DEV
-      ? 'http://10.0.2.2:5173/src/mascot-overlay/index.html'
-      : 'file:///android_asset/public/src/mascot-overlay/index.html'
-
-    console.log('[App] Loading overlay URL:', url)
-    await loadOverlayUrl(url)
-    androidOverlayReady = true
-    console.log('[App] Android system overlay started')
-  } catch (e) {
-    console.error('[App] Failed to start Android system overlay:', e)
-  }
-}
-
-const hideAndroidMascotOverlay = () => {
-  if (!isAndroidPlatform.value) return
-  console.log('[App] Hiding Android system overlay...')
-  // Android 下不做 destroy，服务保持运行
-}
-
-// 启用状态变化
-watch(isMascotEnabled, (enabled) => {
-  if (enabled) {
-    ensureMascotOverlay()
-    ensureAndroidMascotOverlay()
-  } else {
-    hideMascotOverlay()
-    hideAndroidMascotOverlay()
-  }
-}, { immediate: true })
-
-// 通知 mascot 窗口状态变化（Electron + Android）
-// Only watch gifData and visible, not x/y position changes from dragging.
-// x/y is handled by the overlay itself via AndroidOverlay.updatePosition().
-watch(() => ({ gifData: mascotStorageState.value.gifData, visible: mascotStorageState.value.visible }), async (state) => {
-  if (isElectron() && window.avgLLM?.mascot && mascotOverlayReady) {
-    window.avgLLM.mascot.updateState({
-      x: mascotStorageState.value.x,
-      y: mascotStorageState.value.y,
-      visible: state.visible,
-      gifData: state.gifData,
-    })
-  }
-  if (isAndroidPlatform.value && androidOverlayReady && state.gifData) {
-    try {
-      const dpr = window.devicePixelRatio || 1
-      await setOverlayMascotData({
-        x: Math.round(mascotStorageState.value.x * dpr),
-        y: Math.round(mascotStorageState.value.y * dpr),
-        visible: state.visible,
-        gifData: state.gifData
-          ? { ...state.gifData, dataUrl: state.gifData.dataUrl || await loadGifDataUrl() || '' }
-          : null,
-      })
-    } catch (e) {
-      console.warn('[App] Failed to update Android overlay mascot data:', e)
-    }
-  }
-}, { deep: true })
+// Temporarily disabled: activePluginScreen watch caused infinite loop
+// watch(() => routing.activePluginScreen, (pluginScreen) => { ... })
 </script>
 
 <template>
-  <div class="app-stage" :class="[`platform-${platform}`, { 'android-portrait': isAndroidPlatform }]">
+  <!-- DEBUG: 实时显示状态 -->
+  <div style="position:fixed;top:0;right:0;z-index:9999;background:rgba(0,0,0,0.8);color:#0f0;padding:4px 8px;font-size:12px;font-family:monospace;">
+    screen:{{ ui.currentScreen }} debugBase:{{ routing.showDebugBaseBuilding }}
+  </div>
+  <div class="app-stage" :class="[`platform-${platform}`, { 'android-portrait': ui.isAndroidPlatform }]">
     <div
       class="app-shell"
-      :class="{ 'game-fullscreen': currentScreen === 'game' || currentScreen === 'face-to-face' || currentScreen === 'trpg' || currentScreen === 'world-memory' || currentScreen === 'world-map' }"
-      :style="{ '--ui-scale': uiScale, ...containerStyle }"
+      :class="{ 'game-fullscreen': ui.currentScreen === 'game' || ui.currentScreen === 'face-to-face' || ui.currentScreen === 'trpg' || ui.currentScreen === 'world-memory' || ui.currentScreen === 'world-map' }"
+      :style="{ '--ui-scale': ui.uiScale, ...ui.containerStyle }"
     >
       <keep-alive>
         <WorldHubScreen
-          v-if="currentScreen === 'world-hub'"
-          @open-main-story="openMainStory"
-          @open-dormitory="() => currentScreen = 'dormitory'"
-          @open-game-center="() => currentScreen = 'game-center'"
-          @open-trpg="() => currentScreen = 'trpg'"
-          @open-shop="openShop"
-          @open-task="openTask"
-          @open-checkin="openCheckIn"
-          @open-checkin7="openCheckIn7"
-          @open-mailbox="openMailbox"
-          @open-worldbook="() => currentScreen = 'worldbook-shelf'"
-          @open-world-map="() => currentScreen = 'world-map'"
-          @open-world-memory="() => currentScreen = 'world-memory'"
-          @open-dreams="() => currentScreen = 'dreams'"
-          @open-timeline="() => currentScreen = 'timeline'"
-          @open-evolution-log="() => currentScreen = 'evolution-log'"
-          @open-card-collection="() => currentScreen = 'memento-card'"
-          @open-character-card="() => currentScreen = 'character-card'"
-          @world-book-changed="(bookId) => activeWorldBookId = bookId"
-          @open-activity="openActivity"
-          @open-adventure="() => currentScreen = 'adventure-game'"
-          @open-narrator="() => currentScreen = 'narrator-manager'"
-          @open-plugin="() => currentScreen = 'plugin-manager'"
-          @open-settings="() => currentScreen = 'settings'"
-          @open-face-to-face="() => currentScreen = 'face-to-face'"
-          @open-phone="openPhone"
-          @open-avatar="isAvatarSettingsOpen = true"
-          @open-test="openTest"
-          @open-rose="() => currentScreen = 'rose'"
-          @open-book="() => currentScreen = 'book'"
-          @open-hourglass="() => currentScreen = 'hourglass'"
-          @open-mobius="() => currentScreen = 'mobius'"
-          @open-debug-base="openDebugBaseBuilding"
+          v-if="ui.currentScreen === 'world-hub'"
+          @open-main-story="(payload) => ui.openMainStory({ ...payload, narratorId: ui.activeNarratorId })"
+          @open-dormitory="() => ui.currentScreen = 'dormitory'"
+          @open-game-center="() => { console.log('[App] 处理 open-game-center, 当前 screen:', ui.currentScreen); ui.currentScreen = 'game-center'; console.log('[App] screen 已改为:', ui.currentScreen); }"
+          @open-trpg="() => ui.currentScreen = 'trpg'"
+          @open-shop="routing.openShop"
+          @open-task="routing.openTask"
+          @open-checkin="routing.openCheckIn"
+          @open-checkin7="routing.openCheckIn7"
+          @open-mailbox="routing.openMailbox"
+          @open-worldbook="() => ui.currentScreen = 'worldbook-shelf'"
+          @open-world-map="() => ui.currentScreen = 'world-map'"
+          @open-world-memory="() => ui.currentScreen = 'world-memory'"
+          @open-dreams="() => ui.currentScreen = 'dreams'"
+          @open-timeline="() => ui.currentScreen = 'timeline'"
+          @open-evolution-log="() => ui.currentScreen = 'evolution-log'"
+          @open-card-collection="() => ui.currentScreen = 'memento-card'"
+          @open-character-card="() => ui.currentScreen = 'character-card'"
+          @world-book-changed="(bookId) => void ui.setActiveWorldBook(bookId)"
+          @open-activity="routing.openActivity"
+          @open-adventure="() => ui.currentScreen = 'adventure-game'"
+          @open-narrator="() => ui.currentScreen = 'narrator-manager'"
+          @open-plugin="() => ui.currentScreen = 'plugin-manager'"
+          @open-settings="() => ui.currentScreen = 'settings'"
+          @open-face-to-face="() => ui.currentScreen = 'face-to-face'"
+          @open-phone="routing.openPhone"
+          @open-avatar="ui.isAvatarSettingsOpen = true"
+          @open-test="routing.openTest"
+          @open-rose="() => ui.currentScreen = 'rose'"
+          @open-book="() => ui.currentScreen = 'book'"
+          @open-hourglass="() => ui.currentScreen = 'hourglass'"
+          @open-mobius="() => ui.currentScreen = 'mobius'"
+          @open-debug-base="routing.openDebugBaseBuilding"
         />
       </keep-alive>
       <StartScreen
-        v-if="currentScreen === 'start'"
-        :menu-items="startMenuItems"
-        :menu-action-map="startMenuActionMap"
-        @open-new-game="openNewGame"
-        @menu-action="handleStartMenuAction"
+        v-if="ui.currentScreen === 'start'"
+        :menu-items="routing.startMenuItems"
+        :menu-action-map="routing.startMenuActionMap"
+        @open-new-game="routing.openNewGame"
+        @menu-action="routing.handleStartMenuAction"
       />
       <GameScreen
-        v-else-if="currentScreen === 'game'"
-        :save-data="loadedSaveData"
-        :world-book-id="activeWorldBookId"
-        :session-narrator-id="activeNarratorId"
-        @back="backToWorldHub"
+        v-else-if="ui.currentScreen === 'game'"
+        :save-data="ui.loadedSaveData"
+        :world-book-id="ui.activeWorldBookId"
+        :session-narrator-id="ui.activeNarratorId"
+        @back="routing.backToWorldHub"
       />
+      <!-- Plugin screen routing (direct v-else-if chain) -->
+      <GameCenterScreen
+        v-else-if="ui.currentScreen === 'game-center'"
+        :coins="playerState.economy?.coins ?? 0"
+        :inventory="playerState.inventory ?? []"
+        @spin-result="handleGameEconomyResult($event)"
+        @pachinko-result="handleGameEconomyResult($event)"
+        @dograce-result="handleGameEconomyResult($event)"
+        @farm-harvest="handleGameEconomyResult($event)"
+        @kitchen-result="handleGameEconomyResult($event)"
+        @xylophone-result="handleGameEconomyResult($event)"
+        @harmonica-result="handleGameEconomyResult($event)"
+        @match3-result="handleGameEconomyResult($event)"
+        @gacha-result="handleGameEconomyResult($event)"
+        @game-skin-buy="handleGameEconomyResult($event)"
+        @kitchen-consume="handleGameEconomyResult($event)"
+        @kitchen-produce="handleGameEconomyResult($event)"
+        @back="routing.backToWorldHub"
+      />
+      <ShopScreen
+        v-else-if="ui.currentScreen === 'shop'"
+        @back="routing.backToWorldHub"
+      />
+      <TaskBoardScreen
+        v-else-if="ui.currentScreen === 'task-board'"
+        @back="routing.backToWorldHub"
+      />
+      <DormitoryScreen
+        v-else-if="ui.currentScreen === 'dormitory'"
+        @back="routing.backToWorldHub"
+      />
+      <PhoneScreen
+        v-else-if="ui.currentScreen === 'phone'"
+        @back="routing.backToWorldHub"
+      />
+      <TRPGScreen
+        v-else-if="ui.currentScreen === 'trpg'"
+        @back="routing.backToWorldHub"
+      />
+      <AdventureGameScreen
+        v-else-if="ui.currentScreen === 'adventure-game'"
+        @back="routing.backToWorldHub"
+      />
+      <WorldBookScreen
+        v-else-if="ui.currentScreen === 'worldbook-shelf'"
+        @back="routing.backToWorldHub"
+        @open-book="ui.openWorldBookEditor"
+      />
+      <WorldBookEditorScreen
+        v-else-if="ui.currentScreen === 'worldbook-editor'"
+        :book-id="ui.editingWorldBookId"
+        @back="ui.currentScreen = 'worldbook-shelf'"
+      />
+      <NarratorManagerScreen
+        v-else-if="ui.currentScreen === 'narrator-manager'"
+        @back="routing.backToWorldHub"
+      />
+      <PluginManagerScreen
+        v-else-if="ui.currentScreen === 'plugin-manager'"
+        @back="routing.backToWorldHub"
+      />
+      <FaceToFaceScreen
+        v-else-if="ui.currentScreen === 'face-to-face'"
+        @back="routing.backToWorldHub"
+      />
+      <StarrySkyScreen
+        v-else-if="ui.currentScreen === 'starry-sky'"
+        @back="routing.backToWorldHub"
+      />
+      <RoseScreen
+        v-else-if="ui.currentScreen === 'rose'"
+        @back="routing.backToWorldHub"
+      />
+      <BookScreen
+        v-else-if="ui.currentScreen === 'book'"
+        @back="routing.backToWorldHub"
+      />
+      <HourglassScreen
+        v-else-if="ui.currentScreen === 'hourglass'"
+        @back="routing.backToWorldHub"
+      />
+      <MobiusScreen
+        v-else-if="ui.currentScreen === 'mobius'"
+        @back="routing.backToWorldHub"
+      />
+      <CharacterCardScreen
+        v-else-if="ui.currentScreen === 'character-card'"
+        @back="routing.backToWorldHub"
+      />
+      <MementoCardScreen
+        v-else-if="ui.currentScreen === 'memento-card'"
+        @back="routing.backToWorldHub"
+      />
+      <SettingsScreen
+        v-else-if="ui.currentScreen === 'settings'"
+        @back="routing.backToWorldHub"
+      />
+      <!-- Fallback: other plugin screens via dynamic routing -->
       <component
-        v-else-if="activePluginScreen"
-        :is="activePluginScreen.component"
-        v-bind="activePluginScreen.props"
-        v-on="activePluginScreen.events"
+        v-else-if="routing.activePluginScreen"
+        :is="routing.activePluginScreen.component"
+        v-bind="routing.activePluginScreen.props"
+        v-on="routing.activePluginScreen.events && Object.keys(routing.activePluginScreen.events).length ? routing.activePluginScreen.events : {}"
       />
 
       <!-- 签到（全屏，从 WorldHub 直接打开） -->
       <CheckInScreen
-        v-if="isCheckInOpen"
-        :coins="0"
-        @back="isCheckInOpen = false"
-        @checkin-daily-result="() => {}"
+        v-if="ui.isCheckInOpen"
+        :coins="playerState.economy?.coins ?? 0"
+        @back="ui.closeCheckIn"
+        @checkin-daily-result="(data) => { if (data?.earned) { playerState.updateEconomy(prev => ({ ...prev, coins: Math.min(9999, (prev.coins || 0) + data.earned) })) } }"
       />
       <CheckIn7Screen
-        v-if="isCheckIn7Open"
-        :coins="0"
-        @back="isCheckIn7Open = false"
-        @checkin7-result="() => {}"
+        v-if="ui.isCheckIn7Open"
+        :coins="playerState.economy?.coins ?? 0"
+        @back="ui.closeCheckIn7"
+        @checkin7-result="(data) => { if (data?.earned) { playerState.updateEconomy(prev => ({ ...prev, coins: Math.min(9999, (prev.coins || 0) + data.earned) })) } }"
       />
 
-      <!-- 基建调试（直接渲染，不走插件路由） -->
-      <BaseBuildingScreen
-        v-if="showDebugBaseBuilding"
-        :world-book-id="activeWorldBookId"
-        @back="showDebugBaseBuilding = false"
-      />
+      <!-- 基建调试（临时禁用） -->
+      <!-- <BaseBuildingScreen
+        v-if="routing.showDebugBaseBuilding"
+        :world-book-id="ui.activeWorldBookId"
+        @back="() => { console.log('[App] BaseBuildingScreen @back fired, closing'); ui.closeDebugBaseBuilding() }"
+      /> -->
 
       <!-- 世界记忆（全屏） -->
       <WorldMemoryScreen
-        v-else-if="currentScreen === 'world-memory'"
-        @back="currentScreen = 'world-hub'"
+        v-else-if="ui.currentScreen === 'world-memory'"
+        @back="ui.backToWorldHub"
       />
 
       <!-- 世界地图（全屏） -->
       <WorldMapView
-        v-else-if="currentScreen === 'world-map'"
-        @back="currentScreen = 'world-hub'"
+        v-else-if="ui.currentScreen === 'world-map'"
+        @back="ui.backToWorldHub"
       />
 
       <!-- 梦境（全屏） -->
       <DreamScreen
-        v-else-if="currentScreen === 'dreams'"
-        @back="currentScreen = 'world-hub'"
+        v-else-if="ui.currentScreen === 'dreams'"
+        @back="ui.backToWorldHub"
       />
 
       <!-- 时间线（全屏） -->
       <TimelineViewScreen
-        v-else-if="currentScreen === 'timeline'"
-        @back="currentScreen = 'world-hub'"
+        v-else-if="ui.currentScreen === 'timeline'"
+        @back="ui.backToWorldHub"
       />
 
       <!-- 世界演化日志（全屏） -->
       <EvolutionLogScreen
-        v-else-if="currentScreen === 'evolution-log'"
-        @back="currentScreen = 'world-hub'"
+        v-else-if="ui.currentScreen === 'evolution-log'"
+        @back="ui.backToWorldHub"
       />
     </div>
 
     <!-- 全局 Modal（Teleport 到 body，放在 app 外层） -->
     <GlobalMailbox
-      :is-open="isMailboxOpen"
-      @close="isMailboxOpen = false"
+      :is-open="ui.isMailboxOpen"
+      @close="ui.closeMailbox"
       @mail-affection-change="() => {}"
     />
     <AvatarFrameScreen
-      v-if="isAvatarSettingsOpen"
-      @close="isAvatarSettingsOpen = false"
+      v-if="ui.isAvatarSettingsOpen"
+      @close="ui.closeAvatarSettings"
     />
 
     <!-- 音乐播放器（全局悬浮） -->
     <MusicPlayerScreen
-      v-if="isMusicPlayerEnabled"
-      v-show="isMusicPlayerOpen"
-      @close="isMusicPlayerOpen = false"
+      v-if="routing.isMusicPlayerEnabled"
+      v-show="ui.isMusicPlayerOpen"
+      @close="ui.isMusicPlayerOpen = false"
     />
 
     <!-- 桌宠：Electron 下用独立覆盖层窗口，Android 下用系统级悬浮窗，其他平台用内嵌组件 -->
-    <Mascot v-if="isMascotEnabled && !isElectronPlatform && !isAndroidPlatform" />
+    <Mascot v-if="isMascotEnabled && !isElectronPlatform && !ui.isAndroidPlatform" />
 
     <!-- 主线世界书选择器 -->
-    <div v-if="showMainStorySelector" class="main-story-overlay" @click.self="closeMainStorySelector">
+    <div v-if="ui.showMainStorySelector" class="main-story-overlay" @click.self="ui.closeMainStorySelector">
       <div class="main-story-dialog">
         <div class="main-story-header">
           <h2 class="main-story-title">选择主线世界书</h2>
-          <button class="main-story-close" @click="closeMainStorySelector">✕</button>
+          <button class="main-story-close" @click="ui.closeMainStorySelector">✕</button>
         </div>
         <div class="main-story-body">
-          <p v-if="mainStoryLoading" class="main-story-loading">加载中...</p>
-          <p v-else-if="mainStoryBooks.length === 0" class="main-story-empty">暂无世界书</p>
+          <p v-if="ui.mainStoryLoading" class="main-story-loading">加载中...</p>
+          <p v-else-if="ui.mainStoryBooks.length === 0" class="main-story-empty">暂无世界书</p>
           <div v-else class="main-story-book-list">
             <div
-              v-for="book in mainStoryBooks"
+              v-for="book in ui.mainStoryBooks"
               :key="book.id"
               class="main-story-book-card"
-              @click="selectMainStoryBook(book)"
+              @click="ui.selectMainStoryBook(book)"
             >
               <div class="book-card-title">{{ book.title }}</div>
               <div class="book-card-summary">{{ book.summary?.slice(0, 60) || '无概述' }}</div>

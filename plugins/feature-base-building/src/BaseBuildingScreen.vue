@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { loadWorldBooks } from '../../../src/worldbook/worldBookStore.js'
+import { useGameSession } from '../../../src/stores/gameSession.store.js'
 import { useBaseBuilding } from './composables/useBaseBuilding.js'
 import ResourceBar from './components/ResourceBar.vue'
 import BuildingGrid from './components/BuildingGrid.vue'
@@ -8,15 +9,14 @@ import BuildingDetail from './components/BuildingDetail.vue'
 import EventPanel from './components/EventPanel.vue'
 import BaseIntroScreen from './components/BaseIntroScreen.vue'
 
+console.log('[BaseBuildingScreen] 组件被创建了!')
+
 const props = defineProps({
   worldBookId: { type: String, default: 'default_world_book' },
   onBack: { type: Function, default: () => {} },
 })
 
-const sharedGameStateRaw = inject('sharedGameState', { flags: {} })
-const sharedGameState = computed(() => {
-  return sharedGameStateRaw.value || sharedGameStateRaw
-})
+const gameSession = useGameSession()
 
 const worldBookIdRef = computed(() => props.worldBookId)
 const worldBook = ref({})
@@ -41,7 +41,7 @@ const {
   worldBookId: worldBookIdRef,
   worldBook,
   userProfile,
-  sharedGameState: sharedGameState.value,
+  sharedGameState: { flags: gameSession.flags },
 })
 
 const activeTab = ref('resources') // resources | buildings | events
@@ -75,6 +75,8 @@ function handleRemoveWorker(charId) {
 }
 
 onMounted(async () => {
+  console.log('[BaseBuildingScreen] onMounted - isUnlocked:', isUnlocked.value, 'flags:', JSON.stringify(gameSession.flags))
+  console.log('[BaseBuildingScreen] onMounted - props:', props)
   // Load world book data
   try {
     const books = await loadWorldBooks()
@@ -165,7 +167,7 @@ onUnmounted(() => {
       <span class="lock-icon">🔒</span>
       <p>基地建设尚未解锁</p>
       <p class="lock-hint">请继续推进主线剧情</p>
-      <button class="base-back-btn-standalone" @click="onBack">返回</button>
+      <button class="base-back-btn-standalone" @click="() => { console.log('[BaseBuilding] 返回按钮被点击!'); onBack(); }">返回</button>
     </div>
   </div>
 </template>

@@ -20,7 +20,7 @@
 
 import { ref } from 'vue'
 import { generateDormItemGiftReply } from '../../../../src/llm'
-import { useBackStorage } from '../../../feature-back-storage/src/composables/useBackStorage.js'
+import { usePlayerState } from '../../../../src/stores/playerState.store.js'
 
 const DORM_AFFECTION_MIN = 0
 const DORM_AFFECTION_MAX = 100
@@ -130,8 +130,8 @@ export function useDormGift(deps) {
 
       // 从背包中移除物品（减少数量）
       if (item.id) {
-        const backStorage = useBackStorage()
-        backStorage.removeFromInventory(item.id, 1)
+        const playerState = usePlayerState()
+        playerState.removeFromInventory(item.id, 1)
       }
 
       // 更新寝室状态：好感度、日记

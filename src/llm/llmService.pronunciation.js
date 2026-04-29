@@ -141,6 +141,7 @@ export async function generatePronunciationLesson(params = {}) {
     temperature: 0.75,
     maxTokens: 3000,
     timeout: 180000,
+    label: 'Pronunciation Lesson',
   })
 
   if (!result.success) {

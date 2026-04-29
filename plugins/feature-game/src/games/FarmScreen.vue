@@ -6,6 +6,7 @@
 
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Toast from '../Toast.vue'
+import { useGameAudio } from '../composables/useGameAudio.js'
 
 const emit = defineEmits(['back', 'farm-harvest'])
 const props = defineProps({
@@ -110,6 +111,7 @@ const showSeedPicker = ref(false)
 
 // 收获动画
 const harvestingPlot = ref(null)
+const audio = useGameAudio()
 
 // 阳台温室联动 Buff
 const balconyBuffActive = computed(() => {
@@ -378,6 +380,7 @@ function plantSeed(index) {
     fertility: state.value.plots[index].fertility || 1.0,
   }
 
+  audio.playSFX('farm_plant')
   showToast(`🌱 种下了 ${crop.icon} ${crop.name}`, 'info')
   isPlantingMode.value = false
   selectedSeed.value = null
@@ -514,6 +517,7 @@ async function harvestPlot(index) {
   emit('farm-harvest', { cost: 0, earned: reward })
   state.value.totalHarvests++
   state.value.totalEarned += reward
+  audio.playSFX('farm_harvest')
 
   // 检查成就
   const newAchievement = [...ACHIEVEMENTS].reverse().find(a =>
@@ -589,6 +593,7 @@ async function harvestAll() {
   }
 
   emit('farm-harvest', { cost: 0, earned: totalReward })
+  audio.playSFX('farm_harvest')
 
   // 成就检查
   const newAchievement = [...ACHIEVEMENTS].reverse().find(a =>
@@ -662,7 +667,7 @@ defineExpose({ saveState })
   <div class="farm-screen">
     <!-- Header -->
     <header class="farm-header">
-      <button type="button" class="farm-back-btn" @click="emit('back')">
+      <button type="button" class="farm-back-btn" @click="audio.playSFX('back'); emit('back')">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>

@@ -1,0 +1,45 @@
+{
+  "name": "修仙玄幻",
+  "description": "适合修仙、玄幻小说，金色+红色，道韵仙气，首字大气磅礴",
+  "rules": [
+    {
+      "type": "dropCap",
+      "enabled": true,
+      "label": "首字下沉",
+      "description": "每段第一个字金色放大，仙气飘飘"
+    },
+    {
+      "type": "quote",
+      "enabled": false,
+      "pattern": "[「「」『』\"\"\"\"\"]",
+      "label": "引号文字美化",
+      "description": "禁用：双引号\"会与HTML属性冲突导致截断",
+      "class": "reader-quote"
+    },
+    {
+      "type": "replace",
+      "enabled": true,
+      "find": "[…]{2,}|(\\.\\s*){3,}",
+      "replace": "<span class=\"reader-ellipsis\">…</span>",
+      "label": "省略号美化",
+      "description": "连续点号变成标准省略号"
+    },
+    {
+      "type": "replace",
+      "enabled": true,
+      "find": "——{1,2}",
+      "replace": "<span class=\"reader-dash\">—</span>",
+      "label": "破折号美化",
+      "description": "破折号红色灵气"
+    },
+    {
+      "type": "wrap",
+      "enabled": false,
+      "find": "([^<\\n]{1,4}[：:])(?!<\\/span>)",
+      "class": "reader-speak",
+      "label": "对话人名称",
+      "description": "禁用：会匹配到HTML标签内部导致截断"
+    }
+  ],
+  "styles": "\n.reader-quote {\n  font-style: normal;\n  color: #ffd700;\n  text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);\n  font-weight: 500;\n}\n.reader-ellipsis {\n  letter-spacing: 8px;\n  color: #daa520;\n  text-shadow: 0 0 4px rgba(218, 165, 32, 0.3);\n}\n.reader-dash {\n  letter-spacing: 4px;\n  color: #dc143c;\n  text-shadow: 0 0 6px rgba(220, 20, 60, 0.4);\n}\n.reader-speak {\n  color: #ffd700;\n  font-weight: 900;\n  text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);\n}\n.reader-body :deep(.reader-dropcap) {\n  float: left;\n  font-size: 3.6em;\n  line-height: 0.7;\n  padding-right: 10px;\n  padding-top: 6px;\n  color: #ffd700;\n  font-weight: 900;\n  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.2);\n  font-family: 'STKaiti', 'KaiTi', serif;\n}\n"
+}

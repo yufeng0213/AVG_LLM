@@ -109,14 +109,18 @@ export const buildPluginScreenRegistry = (options = {}) => {
 }
 
 export const resolvePluginScreenByRoute = (registry, route) => {
-  if (!registry || typeof registry !== 'object') return null
+  console.log('[pluginScreenRegistry] resolvePluginScreenByRoute called, registry keys:', Object.keys(registry), ', route:', route)
+  if (!registry || typeof registry !== 'object') { console.log('[pluginScreenRegistry] registry invalid'); return null }
   const routeKey = String(route || '').trim()
-  if (!routeKey) return null
+  if (!routeKey) { console.log('[pluginScreenRegistry] routeKey empty'); return null }
 
   const entry = registry[routeKey]
-  if (!entry || typeof entry !== 'object' || !entry.component) return null
+  console.log('[pluginScreenRegistry] entry for', routeKey, ':', entry)
+  if (!entry || typeof entry !== 'object' || !entry.component) { console.log('[pluginScreenRegistry] entry missing component'); return null }
 
+  console.log('[pluginScreenRegistry] entry.component:', entry.component?.__name || 'has-component')
   const props = typeof entry.props === 'function' ? entry.props() : entry.props
+  console.log('[pluginScreenRegistry] props resolved:', props)
   const events = typeof entry.events === 'function' ? entry.events() : entry.events
   return {
     component: entry.component,

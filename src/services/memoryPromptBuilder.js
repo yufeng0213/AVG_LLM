@@ -1,7 +1,7 @@
 /**
  * 世界记忆采样：为 prompt 构建近期事件 + 加权随机回忆
  */
-import { getWorldMemory } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 
 const RECENT_COUNT = 15
 const RANDOM_COUNT = 5
@@ -13,7 +13,8 @@ const RANDOM_COUNT = 5
  * @returns {Promise<string>} 格式化后的记忆文本，若无事件则返回空串
  */
 export async function sampleMemoryForPrompt(worldBookId, worldBook) {
-  const memory = await getWorldMemory(worldBookId)
+  const mem = useWorldMemoryStore()
+  const memory = await mem.get(worldBookId)
   const allEvents = (memory.events || [])
     .filter(e => e.status === 'active')
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))

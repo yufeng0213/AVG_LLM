@@ -18,6 +18,8 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+reference
+
 # Local environment
 .env
 .env.*

@@ -4,7 +4,7 @@
  */
 
 import { computed, ref } from 'vue'
-import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
+import { usePlayerState } from '../../../../src/stores/playerState.store.js'
 import { loadWorldBooks } from '../../../../src/worldbook/worldBookStore.js'
 import { generateDormShopItems } from '../../../../src/llm'
 import { DORM_SHOP_CATEGORIES, DORM_SHOP_ITEM_TEMPLATES, generateShopItems } from './shopConstants.js'
@@ -44,7 +44,7 @@ function persistGlobalShopItems(items) {
 }
 
 export function useGlobalShop() {
-  const globalUser = useGlobalUser()
+  const playerState = usePlayerState()
 
   const shopSelectedCategory = ref('all')
   const isShopRefreshing = ref(false)
@@ -52,11 +52,11 @@ export function useGlobalShop() {
   const isWorldBookShopOpen = ref(false)
 
   // 全局经济
-  const activeBookEconomyCoins = computed(() => globalUser.economy.value?.coins ?? 0)
-  const activeBookEconomyCrystals = computed(() => globalUser.economy.value?.crystals ?? 0)
+  const activeBookEconomyCoins = computed(() => playerState.economy?.coins ?? 0)
+  const activeBookEconomyCrystals = computed(() => playerState.economy?.crystals ?? 0)
 
   // 全局背包
-  const activeBookInventory = computed(() => globalUser.inventory.value || [])
+  const activeBookInventory = computed(() => playerState.inventory || [])
 
   // 商店商品（全局）
   const shopItems = ref(readGlobalShopItems())
@@ -156,7 +156,7 @@ export function useGlobalShop() {
     }
 
     // 扣金币（全局经济）
-    globalUser.updateEconomy(prev => ({
+    playerState.updateEconomy(prev => ({
       ...prev,
       coins: Math.max(0, (prev.coins || 0) - item.price),
     }))
@@ -167,7 +167,7 @@ export function useGlobalShop() {
       ...item,
       scope: item.bookId ? 'book' : 'global',
     }
-    globalUser.addToInventory(purchasedItem)
+    playerState.addItemToInventory(purchasedItem)
 
     // 从商店移除
     const filtered = shopItems.value.filter(i => i.id !== item.id)

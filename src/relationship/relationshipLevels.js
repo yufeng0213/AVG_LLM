@@ -417,7 +417,7 @@ export const getRelationshipInfluenceHint = (characters, runtimeRelationships) =
   }
   
   if (hints.length === 0) {
-    return '所有角色对玩家保持中立态度，对话风格正常。'
+    return '所有角色对玩家保持中立/初识态度。对话风格：礼貌但保持社交距离，不主动分享私人信息，不表现出过度热情或关心，回答简短务实，像刚认识的人一样正常交流。严禁出现撒娇、暧昧、主动示好等行为。'
   }
   
   return `根据当前好感度，角色的对话应该表现出以下特点：\n${hints.join('\n')}`

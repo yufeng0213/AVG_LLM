@@ -2,26 +2,21 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { getLocalFeaturePluginManifests } from '../../../src/features/localFeaturePluginManifests.js'
 import {
-  getFeaturePluginRuntimeState,
   isFeaturePluginEnabled,
-  setFeaturePluginEnabled,
-  replaceFeaturePluginRuntimeState,
-  resetFeaturePluginEnabledOverride,
-  resetFeaturePluginRuntimeState,
-  subscribeFeaturePluginRuntimeState,
 } from '../../../src/features/featurePluginRuntimeState.js'
 import { getActiveWorldBookTags } from '../../../src/worldbook/worldBookStore.js'
+import { useGameSession } from '../../../src/stores/gameSession.store.js'
 
 const emit = defineEmits(['back'])
 
 const message = ref({ type: '', text: '' })
-const featurePluginStatusVersion = ref(0)
 const localFeaturePlugins = getLocalFeaturePluginManifests()
-const featurePluginRuntimeState = ref(getFeaturePluginRuntimeState())
 const activeWorldBookTags = ref([])
 const featurePluginManifestById = new Map(
   localFeaturePlugins.map((plugin) => [plugin.id, plugin]),
 )
+
+const gameSession = useGameSession()
 
 const PluginStatus = { DISABLED: 'disabled', ENABLED: 'enabled' }
 
@@ -46,18 +41,18 @@ const getPluginDisableReason = (plugin) => {
 
 const featurePlugins = computed(() => {
   return localFeaturePlugins.map((plugin) => {
-    const enabled = isFeaturePluginEnabled(plugin, featurePluginRuntimeState.value, activeWorldBookTags.value)
+    const enabled = isFeaturePluginEnabled(plugin, gameSession.pluginEnabled, activeWorldBookTags.value)
     const disableReason = enabled ? null : getPluginDisableReason(plugin)
     return { ...plugin, enabled, disableReason }
   })
 })
 
 const featurePluginOverrideCount = computed(() => {
-  return Object.keys(featurePluginRuntimeState.value || {}).length
+  return Object.keys(gameSession.pluginEnabled || {}).length
 })
 
 const featurePluginOverrideJson = computed(() => {
-  return JSON.stringify(featurePluginRuntimeState.value || {}, null, 2)
+  return JSON.stringify(gameSession.pluginEnabled || {}, null, 2)
 })
 
 const copyingFeatureOverrides = ref(false)
@@ -65,11 +60,6 @@ const applyingFeatureOverrides = ref(false)
 const importingFeatureOverrides = ref(false)
 const exportingFeatureOverrides = ref(false)
 const featurePluginOverrideInput = ref(featurePluginOverrideJson.value)
-
-const refreshFeaturePluginRuntimeState = (nextState = null) => {
-  featurePluginRuntimeState.value = nextState || getFeaturePluginRuntimeState()
-  featurePluginStatusVersion.value += 1
-}
 
 // 显示消息
 const showMessage = (type, text) => {
@@ -80,10 +70,9 @@ const showMessage = (type, text) => {
 }
 
 const getFeaturePluginStatus = (pluginId) => {
-  featurePluginStatusVersion.value
   const plugin = featurePluginManifestById.get(pluginId)
   if (!plugin) return PluginStatus.DISABLED
-  return isFeaturePluginEnabled(plugin, featurePluginRuntimeState.value)
+  return isFeaturePluginEnabled(plugin, gameSession.pluginEnabled)
     ? PluginStatus.ENABLED
     : PluginStatus.DISABLED
 }
@@ -92,7 +81,7 @@ const hasFeaturePluginOverride = (pluginId) => {
   const normalizedPluginId = String(pluginId || '').trim()
   if (!normalizedPluginId) return false
   return Object.prototype.hasOwnProperty.call(
-    featurePluginRuntimeState.value || {},
+    gameSession.pluginEnabled || {},
     normalizedPluginId,
   )
 }
@@ -112,9 +101,8 @@ const toggleFeaturePlugin = (pluginId) => {
     return
   }
 
-  const currentlyEnabled = isFeaturePluginEnabled(plugin, featurePluginRuntimeState.value)
-  const nextState = setFeaturePluginEnabled(pluginId, !currentlyEnabled)
-  refreshFeaturePluginRuntimeState(nextState)
+  const currentlyEnabled = isFeaturePluginEnabled(plugin, gameSession.pluginEnabled)
+  gameSession.setPluginEnabled(pluginId, !currentlyEnabled)
   showMessage('success', `${plugin.name}已${currentlyEnabled ? '禁用' : '启用'}`)
 }
 
@@ -129,8 +117,7 @@ const handleResetSingleFeaturePluginDefault = (pluginId) => {
     return
   }
 
-  const nextState = resetFeaturePluginEnabledOverride(pluginId)
-  refreshFeaturePluginRuntimeState(nextState)
+  gameSession.resetPluginOverride(pluginId)
   const defaultEnabled = plugin.enabledByDefault !== false
   showMessage('success', `${plugin.name}已恢复默认（默认${defaultEnabled ? '启用' : '禁用'}）`)
 }
@@ -140,8 +127,7 @@ const handleResetFeaturePluginDefaults = () => {
     showMessage('error', '当前没有可恢复的功能插件覆盖配置')
     return
   }
-  const nextState = resetFeaturePluginRuntimeState()
-  refreshFeaturePluginRuntimeState(nextState)
+  gameSession.resetAllPlugins()
   showMessage('success', '功能插件已恢复默认启用状态')
 }
 
@@ -254,14 +240,12 @@ const applyFeaturePluginOverridesSource = (source, options = {}) => {
     }
   }
   applyingFeatureOverrides.value = true
-  let runtimeState = {}
   try {
-    runtimeState = replaceFeaturePluginRuntimeState(nextState)
-    refreshFeaturePluginRuntimeState(runtimeState)
+    gameSession.pluginEnabled = nextState
   } finally {
     applyingFeatureOverrides.value = false
   }
-  featurePluginOverrideInput.value = JSON.stringify(runtimeState, null, 2)
+  featurePluginOverrideInput.value = JSON.stringify(gameSession.pluginEnabled, null, 2)
   const appliedCount = Object.keys(nextState).length
   let successText = `覆盖配置已应用（${appliedCount} 项）`
   if (unknownPluginKeys.length > 0) {
@@ -351,20 +335,20 @@ const goBack = () => {
   emit('back')
 }
 
-let unsubscribeFeaturePluginRuntime = null
+let unwatchGameSession = null
 
 onMounted(() => {
-  unsubscribeFeaturePluginRuntime = subscribeFeaturePluginRuntimeState((nextState) => {
-    refreshFeaturePluginRuntimeState(nextState)
+  unwatchGameSession = gameSession.$subscribe(() => {
+    featurePluginOverrideInput.value = JSON.stringify(gameSession.pluginEnabled || {}, null, 2)
   })
-  refreshFeaturePluginRuntimeState()
+  featurePluginOverrideInput.value = JSON.stringify(gameSession.pluginEnabled || {}, null, 2)
   void loadWorldBookTags()
 })
 
 onBeforeUnmount(() => {
-  if (unsubscribeFeaturePluginRuntime) {
-    unsubscribeFeaturePluginRuntime()
-    unsubscribeFeaturePluginRuntime = null
+  if (unwatchGameSession) {
+    unwatchGameSession()
+    unwatchGameSession = null
   }
 })
 </script>

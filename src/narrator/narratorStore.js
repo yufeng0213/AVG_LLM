@@ -1,6 +1,6 @@
-import { isSQLiteAvailable, query, exec } from '../db/db.js'
+import { isSQLiteAvailable, query, exec } from '../db/connection.js'
 
-export const NARRATOR_STORAGE_KEY = 'narrator_profiles'
+export const NARRATOR_ACTIVE_KEY = 'narrator_active_id'
 export const DEFAULT_NARRATOR_ID = 'default_narrator'
 
 const nowIso = () => new Date().toISOString()
@@ -118,31 +118,45 @@ const ensureDefaultNarratorProfile = (profiles) => {
   return [createDefaultNarratorProfile(), ...profiles]
 }
 
+/**
+ * 加载叙事者配置列表
+ * 直接从 narrator_profiles 表读取，不回退到 kvStorage（避免被 App.vue 清除）
+ */
 export const loadNarratorProfiles = async () => {
   if (typeof window === 'undefined') {
     return [createDefaultNarratorProfile()]
   }
 
   try {
-    let parsed
-    if (isSQLiteAvailable()) {
-      const rows = await query('SELECT profile_data FROM narrator_profiles ORDER BY is_default DESC, created_at')
-      parsed = rows.map(r => JSON.parse(r.profile_data))
-    } else {
-      parsed = await kvStorageGet(NARRATOR_STORAGE_KEY)
+    if (!isSQLiteAvailable()) {
+      console.warn('[NarratorStore] SQLite not available, returning default narrator')
+      return [createDefaultNarratorProfile()]
     }
+
+    const rows = await query('SELECT profile_data FROM narrator_profiles ORDER BY is_default DESC, created_at')
+    const parsed = rows.map(r => JSON.parse(r.profile_data))
     const normalized = Array.isArray(parsed)
       ? parsed.map((profile, index) => normalizeNarratorProfile(profile, index))
       : []
     return sortNarratorProfiles(ensureDefaultNarratorProfile(normalized))
-  } catch {
+  } catch (e) {
+    console.error('[NarratorStore] Failed to load profiles:', e.message)
     return [createDefaultNarratorProfile()]
   }
 }
 
+/**
+ * 持久化叙事者配置列表
+ * 直接写入 narrator_profiles 表，不回退到 kvStorage（避免被 App.vue 清除）
+ */
 export const persistNarratorProfiles = async (profiles) => {
   if (typeof window === 'undefined') return
-  if (isSQLiteAvailable()) {
+  if (!isSQLiteAvailable()) {
+    console.warn('[NarratorStore] SQLite not available, cannot persist narrator profiles')
+    return
+  }
+
+  try {
     await exec('DELETE FROM narrator_profiles')
     for (const profile of profiles) {
       await exec(
@@ -152,19 +166,10 @@ export const persistNarratorProfiles = async (profiles) => {
          profile.enabled ? 1 : 0, profile.createdAt, profile.updatedAt]
       )
     }
-  } else {
-    await kvStorageSet(NARRATOR_STORAGE_KEY, profiles)
+    console.log('[NarratorStore] Persisted', profiles.length, 'narrator profiles to SQLite')
+  } catch (e) {
+    console.error('[NarratorStore] Failed to persist profiles:', e.message)
   }
-}
-
-async function kvStorageGet(key) {
-  const { kvStorage } = await import('../storage/index.js')
-  return kvStorage.get(key)
-}
-
-async function kvStorageSet(key, value) {
-  const { kvStorage } = await import('../storage/index.js')
-  return kvStorage.set(key, value)
 }
 
 export const createNewNarratorProfile = (profiles = []) => {
@@ -410,5 +415,44 @@ export const getNarratorFullPrompt = (profile) => {
     return `${summaryPart}\n\n${itemsPrompt}`
   }
   return itemsPrompt || summaryPart || ''
+}
+
+/**
+ * 获取当前激活的叙事者ID
+ * 直接从 app_config 表读取，不回退到 kvStorage（避免被 App.vue 清除）
+ */
+export const getActiveNarratorId = async () => {
+  try {
+    if (!isSQLiteAvailable()) {
+      console.warn('[NarratorStore] SQLite not available, cannot get active narrator')
+      return ''
+    }
+    const rows = await query('SELECT value FROM app_config WHERE key = ?', [NARRATOR_ACTIVE_KEY])
+    console.log('[NarratorStore] getActiveNarratorId from SQLite:', rows[0]?.value || '(empty)')
+    return rows[0]?.value || ''
+  } catch (e) {
+    console.error('[NarratorStore] getActiveNarratorId failed:', e)
+    return ''
+  }
+}
+
+/**
+ * 设置当前激活的叙事者ID
+ * 直接写入 app_config 表，不回退到 kvStorage（避免被 App.vue 清除）
+ */
+export const setActiveNarratorId = async (id) => {
+  try {
+    if (!isSQLiteAvailable()) {
+      console.warn('[NarratorStore] SQLite not available, cannot set active narrator')
+      return
+    }
+    await exec(
+      'INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)',
+      [NARRATOR_ACTIVE_KEY, id || '']
+    )
+    console.log('[NarratorStore] setActiveNarratorId wrote to SQLite:', id || '(empty)')
+  } catch (e) {
+    console.error('[NarratorStore] setActiveNarratorId failed:', e)
+  }
 }
 

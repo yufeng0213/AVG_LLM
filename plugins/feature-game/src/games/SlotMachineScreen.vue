@@ -5,6 +5,7 @@
  */
 
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useGameAudio } from '../composables/useGameAudio.js'
 import Toast from '../Toast.vue'
 import GameSkinSelector from '../components/GameSkinSelector.vue'
 import { useGameSkin } from '../composables/useGameSkin'
@@ -57,6 +58,8 @@ const slotThemeStyle = computed(() => {
     '--slot-glow': theme.glowColor || 'rgba(255, 215, 0, 0.15)',
   }
 })
+
+const audio = useGameAudio()
 
 // ====== 常量 ======
 const SPIN_COST = 30
@@ -202,6 +205,7 @@ function checkWin(results) {
 async function handleSpin() {
   if (!canSpin.value) return
 
+  audio.playSFX('slot_spin')
   isSpinning.value = true
   isAnimating.value = true
   toastVisible.value = false
@@ -286,6 +290,7 @@ async function handleSpin() {
   let resultMessage = ''
 
   if (win) {
+    audio.playSFX('slot_win')
     winAmount = SPIN_COST * win.multiplier
 
     // 命运审判中奖翻倍
@@ -317,6 +322,7 @@ async function handleSpin() {
       resultMessage += ' | 🍀 幸运时刻！下次免费！'
     }
   } else {
+    audio.playSFX('slot_lose')
     consecutiveLosses.value++
     spinsSinceLastWin.value++
     consecutiveWins.value = 0
@@ -425,7 +431,7 @@ defineExpose({
   <div class="slot-machine-screen" :class="{ 'jackpot-flash': toastVisible && lastResultType === 'jackpot' }" :style="slotThemeStyle">
     <!-- Header -->
     <header class="slot-header">
-      <button type="button" class="slot-back-btn" @click="emit('back')" aria-label="返回">
+      <button type="button" class="slot-back-btn" @click="audio.playSFX('back'); emit('back')" aria-label="返回">
         <svg class="slot-back-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>

@@ -4,7 +4,7 @@
  */
 
 import { computed, ref } from 'vue'
-import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
+import { usePlayerState } from '../../../../src/stores/playerState.store.js'
 import { loadWorldBooks } from '../../../../src/worldbook/worldBookStore.js'
 import { generateTaskBoardTasks } from '../../../../src/llm'
 import {
@@ -48,7 +48,7 @@ function persistGlobalTaskBoard(board) {
 }
 
 export function useGlobalTaskBoard() {
-  const globalUser = useGlobalUser()
+  const playerState = usePlayerState()
 
   const isTaskBoardOpen = ref(false)
   const taskBoardTasks = ref([])
@@ -156,20 +156,20 @@ export function useGlobalTaskBoard() {
     // 发放奖励到全局经济
     if (task.rewardType === 'coins') {
       const amount = Math.floor(task.rewardAmount)
-      globalUser.updateEconomy(prev => ({
+      playerState.updateEconomy(prev => ({
         ...prev,
         coins: Math.min(9999, (prev.coins || 0) + amount),
       }))
       taskBoardFeedback.value = `任务完成！获得 💰 ${amount} 金币`
     } else if (task.rewardType === 'crystals') {
       const amount = Math.floor(task.rewardAmount)
-      globalUser.updateEconomy(prev => ({
+      playerState.updateEconomy(prev => ({
         ...prev,
         crystals: Math.min(9999, (prev.crystals || 0) + amount),
       }))
       taskBoardFeedback.value = `任务完成！获得 💎 ${amount} 晶石`
     } else if (task.rewardType === 'item') {
-      globalUser.addToInventory({
+      playerState.addToInventory({
         id: `task_item_${Date.now()}`,
         name: task.name + ' 奖励',
         description: `完成任务「${task.name}」获得的物品`,
@@ -280,7 +280,7 @@ export function useGlobalTaskBoard() {
 
     // Bonus coins based on reasoning points
     const bonusCoins = Math.max(10, Math.floor(reasoningPoints * 0.5))
-    globalUser.updateEconomy(prev => ({
+    playerState.updateEconomy(prev => ({
       ...prev,
       coins: Math.min(9999, (prev.coins || 0) + bonusCoins),
     }))
@@ -303,7 +303,7 @@ export function useGlobalTaskBoard() {
     persistGlobalTaskBoard(updated)
 
     const bonusCoins = Math.max(10, Math.floor(score * 0.5))
-    globalUser.updateEconomy(prev => ({
+    playerState.updateEconomy(prev => ({
       ...prev,
       coins: Math.min(9999, (prev.coins || 0) + bonusCoins),
     }))

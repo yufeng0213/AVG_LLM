@@ -57,7 +57,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { loadWorldBooks } from '../../../src/worldbook/worldBookStore.js'
-import { getWorldMemory, getExtractionConfig, saveExtractionConfig } from '../../../src/memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../../../src/stores/worldMemory.store.js'
 import MemoryViewer from './components/MemoryViewer.vue'
 
 defineProps({
@@ -77,16 +77,17 @@ const bookStats = ref({})
 const batchSize = ref(5)
 
 onMounted(async () => {
-  const cfg = await getExtractionConfig()
+  const mem = useWorldMemoryStore()
+  const cfg = await mem.getExtractionConfig()
   batchSize.value = cfg.batchSize ?? 5
 
   books.value = await loadWorldBooks()
   // Load stats for each book
   for (const book of books.value) {
-    const mem = await getWorldMemory(book.id)
+    const m = await mem.get(book.id)
     bookStats.value[book.id] = {
-      events: (mem.events || []).length,
-      memories: Object.values(mem.characterMemories || {}).reduce((s, a) => s + a.length, 0),
+      events: (m.events || []).length,
+      memories: Object.values(m.characterMemories || {}).reduce((s, a) => s + a.length, 0),
     }
   }
 })
@@ -94,7 +95,7 @@ onMounted(async () => {
 async function saveBatchSize() {
   const v = Math.max(1, Math.min(30, batchSize.value))
   batchSize.value = v
-  await saveExtractionConfig({ batchSize: v })
+  await useWorldMemoryStore().saveExtractionConfig({ batchSize: v })
 }
 
 function goBack() {
@@ -110,12 +111,12 @@ function goBack() {
 async function selectBook(bookId) {
   selectedBookId.value = bookId
   selectedBook.value = books.value.find(b => b.id === bookId)
-  worldMemory.value = await getWorldMemory(bookId)
+  worldMemory.value = await useWorldMemoryStore().get(bookId)
 }
 
 async function loadMemory() {
   if (!selectedBookId.value) return
-  worldMemory.value = await getWorldMemory(selectedBookId.value)
+  worldMemory.value = await useWorldMemoryStore().get(selectedBookId.value)
   // Update stats too
   const mem = worldMemory.value
   bookStats.value[selectedBookId.value] = {

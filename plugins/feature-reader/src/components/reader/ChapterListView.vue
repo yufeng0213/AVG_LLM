@@ -5,9 +5,12 @@
  */
 import { ref, onMounted } from 'vue'
 import {
+  loadStoryChapters,
+  isSQLiteAvailable,
   loadStories,
   saveStories,
   updateStory,
+  deleteChapter as _deleteChapter,
   formatReaderTime,
 } from '../../composables/useReaderData.js'
 
@@ -19,8 +22,11 @@ const emit = defineEmits(['back', 'open-chapter'])
 const currentStory = ref(null)
 
 onMounted(async () => {
-  const stories = await loadStories()
-  currentStory.value = stories.find(s => s.id === props.story.id)
+  const chapters = await loadStoryChapters(props.story.id)
+  // 合并故事元数据
+  const storyData = await loadStories()
+  const meta = storyData.find(s => s.id === props.story.id)
+  currentStory.value = { ...meta, chapters }
 })
 
 function getChapterWordCount(chapter) {
@@ -31,16 +37,20 @@ async function deleteChapter(index) {
   if (!currentStory.value) return
   if (!confirm(`确定要删除「${currentStory.value.chapters[index].title}」吗？`)) return
 
-  const stories = await loadStories()
-  const story = stories.find(s => s.id === currentStory.value.id)
-  if (!story) return
-
-  story.chapters.splice(index, 1)
-  story.updatedAt = new Date().toISOString()
-
-  const updated = updateStory(stories, story.id, { chapters: story.chapters })
-  currentStory.value = updated.find(s => s.id === story.id)
-  await saveStories(updated)
+  if (isSQLiteAvailable()) {
+    const chapterIdx = index
+    await _deleteChapter(currentStory.value.id, chapterIdx)
+    currentStory.value.chapters = await loadStoryChapters(currentStory.value.id)
+  } else {
+    const stories = await loadStories()
+    const story = stories.find(s => s.id === currentStory.value.id)
+    if (!story) return
+    story.chapters.splice(index, 1)
+    story.updatedAt = new Date().toISOString()
+    const updated = updateStory(stories, story.id, { chapters: story.chapters })
+    currentStory.value = updated.find(s => s.id === story.id)
+    await saveStories(updated)
+  }
 }
 </script>
 

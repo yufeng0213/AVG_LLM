@@ -92,7 +92,15 @@
       "WebFetch(domain:capacitorjs.com)",
       "Bash(./gradlew.bat assembleDebug)",
       "Read(//c/Program Files/**)",
-      "Read(//c/Program Files \\(x86\\)/**)"
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(sed -n '/^<\\\\/script>/,/^<\\\\/style>$/p')",
+      "Read(//tmp/**)",
+      "Bash(sed -i 's|getConfig\\(|appConfigRepo.get\\(|g' src/screens/GameScreen.vue)",
+      "Bash(sed -i 's|setConfig\\(|appConfigRepo.set\\(|g' src/screens/GameScreen.vue)",
+      "Bash(sed -i 's|getConfig\\(|appConfigRepo.get\\(|g' src/services/exposureTracker.js)",
+      "Bash(sed -i 's|setConfig\\(|appConfigRepo.set\\(|g' src/services/exposureTracker.js)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

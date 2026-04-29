@@ -2,13 +2,14 @@
 import './WorldHubScreen.css'
 import { computed, nextTick, onActivated, onMounted, ref, watch } from 'vue'
 import { isNative } from '../utils/platform.js'
-import { useGlobalUser } from '../composables/useGlobalUser.js'
+import { usePlayerState } from '../stores/playerState.store.js'
 import { useAvatar } from '../../plugins/feature-dormitory/src/composables/useAvatar.js'
 import { useAvatarFrame } from '../../plugins/feature-dormitory/src/composables/useAvatarFrame.js'
 import { getWorldWallpaperCache, setWorldWallpaperCache, getWorldWallpaperUrl, isWorldWallpaperVideo } from '../../plugins/feature-phone/src/phone/composables/usePhoneData.js'
 import { loadWorldBooks, getActiveWorldBookId, setActiveWorldBookId, invalidateWorldBookCache } from '../worldbook/worldBookStore.js'
-import { isSQLiteAvailable, getConfig } from '../db/db.js'
-import { useActivityEntry } from '../features/useActivityEntry.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
+import { useActivityEntry } from '../stores/activityEntry.store.js'
 
 defineOptions({ name: 'WorldHubScreen' })
 
@@ -48,7 +49,7 @@ const emit = defineEmits([
   'open-debug-base',
 ])
 
-const { username, avatar: globalAvatar, economy } = useGlobalUser()
+const playerState = usePlayerState()
 const { activeAvatarDataUrl } = useAvatar()
 const { activeFrame, loadFrameDataUrl } = useAvatarFrame()
 
@@ -76,7 +77,7 @@ function openParticle(key) {
 }
 
 // 使用全局头像（优先）或 fallback 到 avatar composable
-const displayAvatar = computed(() => globalAvatar.value || activeAvatarDataUrl.value)
+const displayAvatar = computed(() => playerState.avatar || activeAvatarDataUrl.value)
 
 // 头像框：需要处理 Android 原生环境 dataUrl 为 null 的情况
 const displayFrameUrl = ref(null)
@@ -103,13 +104,13 @@ watch(() => activeFrame.value?.id, () => {
 })
 
 // 显示用户名
-const displayName = computed(() => username.value || '玩家')
+const displayName = computed(() => playerState.username || '玩家')
 
 // 金币
-const displayCoins = computed(() => economy.value?.coins ?? 0)
+const displayCoins = computed(() => playerState.economy?.coins ?? 0)
 
 // 钻石
-const displayCrystals = computed(() => economy.value?.crystals ?? 0)
+const displayCrystals = computed(() => playerState.economy?.crystals ?? 0)
 
 // 活动入口封面
 const activityEntry = useActivityEntry()
@@ -144,7 +145,7 @@ async function loadWorldWallpaper() {
   }
   let wp
   if (isSQLiteAvailable()) {
-    wp = await getConfig('worldhub_wallpaper')
+    wp = await appConfigRepo.get('worldhub_wallpaper')
   } else {
     const { kvStorage } = await import('../storage/index.js')
     wp = await kvStorage.get('worldhub_wallpaper')
@@ -295,11 +296,11 @@ onActivated(async () => {
 
       <!-- 右侧按钮 -->
       <div class="hub-button-column hub-column-right">
-        <button type="button" class="hub-scatter-btn" @click="emit('open-game-center')">
+        <button type="button" class="hub-scatter-btn" @click="() => { console.log('[WorldHub] 游戏厅按钮被点击!'); emit('open-game-center'); console.log('[WorldHub] emit 完成'); }">
           <img src="/data/icon/worldhub_games_icon.png" alt="游戏厅" class="hub-png-icon" />
           <span class="hub-btn-label">游戏厅</span>
         </button>
-        <button type="button" class="hub-scatter-btn" @click="emit('open-shop')">
+        <button type="button" class="hub-scatter-btn" @click="() => { console.log('[WorldHub] 商店按钮被点击!'); emit('open-shop'); console.log('[WorldHub] emit 完成'); }">
           <img src="/data/icon/worldhub_shop_icon.png" alt="商店" class="hub-png-icon" />
           <span class="hub-btn-label">商店</span>
         </button>

@@ -7,6 +7,7 @@ const props = defineProps({
   chatBgUrl: { type: String, default: '' },
   chatBgUrlInput: { type: String, default: '' },
   contextMessages: { type: Number, default: 8 },
+  smsMaxTokens: { type: Number, default: 2000 },
   bubbleCssFile: { type: String, default: null },
   spotCheckEnabled: { type: Boolean, default: true },
   spotCheckMinMin: { type: Number, default: 40 },
@@ -21,6 +22,7 @@ const emit = defineEmits([
   'update:chatBgUrl',
   'update:chatBgUrlInput',
   'update:contextMessages',
+  'update:smsMaxTokens',
   'update:spotCheckEnabled',
   'update:spotCheckMinMin',
   'update:spotCheckMinMax',
@@ -33,6 +35,8 @@ const emit = defineEmits([
   'bg-file-select',
   'bg-url-import',
   'bg-clear',
+  'import-event-pool',
+  'export-event-pool',
 ])
 </script>
 
@@ -118,6 +122,23 @@ const emit = defineEmits([
           </span>
         </div>
 
+        <label class="settings-label" style="margin-top: 16px;">短信生成最大 tokens</label>
+        <div class="context-messages-row">
+          <input
+            :value="smsMaxTokens"
+            @input="emit('update:smsMaxTokens', Number($event.target.value))"
+            class="context-messages-input"
+            type="number"
+            min="100"
+            max="8000"
+            step="100"
+            placeholder="tokens..."
+          />
+          <span class="context-messages-hint">
+            {{ smsMaxTokens >= 2000 ? `当前 ${smsMaxTokens} tokens（推荐 2000+）` : `当前 ${smsMaxTokens} tokens（建议提高到 2000+）` }}
+          </span>
+        </div>
+
         <!-- 聊天背景 -->
         <label class="settings-label" style="margin-top: 16px;">聊天背景</label>
 
@@ -169,6 +190,20 @@ const emit = defineEmits([
           <code>.sms-bubble</code> — 通用气泡<br/>
           <code>.sms-time</code> — 时间分隔线
         </div>
+
+        <!-- SMS 事件池 -->
+        <label class="settings-label" style="margin-top: 24px;">聊天事件池</label>
+        <p class="event-pool-desc">
+          导入事件池后，聊天时会随机（30%概率）触发事件话题，让对话更有活人感。
+        </p>
+        <div class="event-pool-actions">
+          <label class="event-btn event-btn--import">
+            导入 JSON
+            <input type="file" accept=".json" @change="emit('import-event-pool', $event)" />
+          </label>
+          <button class="event-btn event-btn--export" @click="emit('export-event-pool')">导出事件池</button>
+        </div>
+        <p class="event-pool-status">当前未加载事件池（需导入 JSON 文件）</p>
       </div>
 
       <div class="settings-footer">
@@ -750,5 +785,52 @@ const emit = defineEmits([
 }
 .platform-android.android-portrait .context-messages-input {
   background: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 事件池 */
+.event-pool-desc {
+  font-size: 0.75rem;
+  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  margin: 6px 0 10px;
+  line-height: 1.5;
+}
+.event-pool-actions {
+  display: flex;
+  gap: 8px;
+}
+.event-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #0a84ff;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.event-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.event-btn input {
+  display: none;
+}
+.event-btn--export {
+  color: #30d158;
+  border-color: rgba(48, 209, 88, 0.3);
+}
+.event-btn--export:hover {
+  background: rgba(48, 209, 88, 0.1);
+}
+.event-pool-status {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
 }
 </style>

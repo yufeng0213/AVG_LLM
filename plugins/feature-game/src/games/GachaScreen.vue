@@ -5,6 +5,7 @@
  */
 
 import { ref, computed, onMounted, watch } from 'vue'
+import { useGameAudio } from '../composables/useGameAudio.js'
 import Toast from '../Toast.vue'
 import GameSkinSelector from '../components/GameSkinSelector.vue'
 import { useGameSkin } from '../composables/useGameSkin'
@@ -87,6 +88,8 @@ function handleGachaSkinBuy({ skinId, price }) {
     showToast('金币不足！', 'error')
   }
 }
+
+const audio = useGameAudio()
 
 // ====== 状态 ======
 const isAnimating = ref(false)
@@ -323,6 +326,7 @@ async function animatePull(rarity, prize) {
   currentPrize.value = prize
   currentRarity.value = rarity
   showPrize.value = true
+  audio.playSFX('gacha_pop')
 
   await delay(300)
 
@@ -371,6 +375,7 @@ async function animatePull(rarity, prize) {
 
 async function handleSinglePull() {
   if (!canSinglePull.value) return
+  audio.playSFX('gacha_roll')
   const result = singlePull()
   await animatePull(result.rarity, result.prize)
   isAnimating.value = false
@@ -378,6 +383,7 @@ async function handleSinglePull() {
 
 async function handleMultiPull() {
   if (!canMultiPull.value) return
+  audio.playSFX('gacha_roll')
   const result = multiPull()
 
   isAnimating.value = true
@@ -521,7 +527,7 @@ defineExpose({ saveState })
   <div class="gacha-screen" :class="{ 'ssr-flash': showPrize && currentRarity === 'SSR' }" :style="gachaThemeStyle">
     <!-- Header -->
     <header class="gacha-header">
-      <button type="button" class="gacha-back-btn" @click="emit('back')">
+      <button type="button" class="gacha-back-btn" @click="audio.playSFX('back'); emit('back')">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>

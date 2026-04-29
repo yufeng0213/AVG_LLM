@@ -3,7 +3,7 @@
  * 存储：事件记录、角色个人记忆、世界状态标志
  * Android 端使用 SQLite，Web 端回退到 kvStorage
  */
-import { isSQLiteAvailable, exec, query, transaction } from '../db/db.js'
+import { isSQLiteAvailable, exec, query, transaction } from '../db/connection.js'
 import { kvStorage } from '../storage/index.js'
 
 const STORAGE_KEY = 'world_memories'

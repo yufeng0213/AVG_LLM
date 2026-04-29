@@ -11,12 +11,18 @@ import {
   deleteNarratorItem,
   updateNarratorItem,
   moveNarratorItem,
+  getActiveNarratorId,
+  setActiveNarratorId,
 } from '../../../src/narrator/narratorStore'
+import { useUiState } from '../../../src/stores/uiState.store.js'
 
 const emit = defineEmits(['back'])
 
+const ui = useUiState()
+
 const narratorProfiles = ref([])
 const activeNarratorId = ref('')
+const activatedNarratorId = ref('')
 const statusMessage = ref('可在这里维护全局叙事者风格模板。')
 const isSaving = ref(false)
 const importInputRef = ref(null)
@@ -47,8 +53,28 @@ const ensureActiveSelection = () => {
 
 const loadProfiles = async () => {
   narratorProfiles.value = await loadNarratorProfiles()
+  activatedNarratorId.value = await getActiveNarratorId()
   ensureActiveSelection()
 }
+
+const toggleActivation = async () => {
+  if (!activeNarrator.value) return
+  if (activatedNarratorId.value === activeNarrator.value.id) {
+    // 取消激活
+    activatedNarratorId.value = ''
+    await setActiveNarratorId('')
+    await ui.setActiveNarrator(null)
+    statusMessage.value = '已取消激活'
+  } else {
+    // 激活当前
+    activatedNarratorId.value = activeNarrator.value.id
+    await setActiveNarratorId(activeNarrator.value.id)
+    await ui.setActiveNarrator(activeNarrator.value.id)
+    statusMessage.value = `已激活叙事者：${activeNarrator.value.name}`
+  }
+}
+
+const isActivated = computed(() => activeNarrator.value && activatedNarratorId.value === activeNarrator.value.id)
 
 const markActiveUpdated = () => {
   if (!activeNarrator.value) return
@@ -233,9 +259,13 @@ onMounted(async () => {
       <div class="narrator-selector-row">
         <select class="narrator-select" :value="activeNarratorId" @change="onNarratorSelect">
           <option v-for="profile in narratorProfiles" :key="profile.id" :value="profile.id">
-            {{ profile.name }} {{ profile.isDefault ? '(默认)' : '' }}
+            {{ profile.name }}{{ profile.id === activatedNarratorId ? ' [已激活]' : '' }}{{ profile.isDefault ? '(默认)' : '' }}
           </option>
         </select>
+        <button type="button" class="narrator-selector-btn" @click="toggleActivation" :class="{ 'narrator-selector-btn--active': isActivated }" :title="isActivated ? '取消激活' : '激活此叙事者'">
+          <svg v-if="isActivated" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="none"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </button>
         <button type="button" class="narrator-selector-btn" @click="addNarrator" title="新增叙事者">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>

@@ -4,6 +4,7 @@
  */
 
 import { ref, shallowRef, watch } from 'vue'
+import { useGameAudio } from './composables/useGameAudio.js'
 import SlotMachineScreen from './games/SlotMachineScreen.vue'
 import GachaScreen from './games/GachaScreen.vue'
 import PachinkoScreen from './games/PachinkoScreen.vue'
@@ -46,7 +47,7 @@ const GAME_CATEGORIES = [
       { key: 'kitchen', icon: '🍳', name: '厨房' },
       { key: 'xylophone', icon: '🎵', name: '木琴' },
       { key: 'harmonica', icon: '🎶', name: '口琴' },
-      { key: 'match3', icon: '💎', name: '三消' },
+      { key: 'match3', icon: '💎', name: '三消', entryFee: 3 },
     ],
   },
 ]
@@ -54,6 +55,8 @@ const GAME_CATEGORIES = [
 const allGames = GAME_CATEGORIES.flatMap(c => c.games)
 const gameMap = {}
 for (const g of allGames) gameMap[g.key] = g
+
+const audio = useGameAudio()
 
 // ====== 状态 ======
 const activeGame = ref(null) // null = 显示选择网格, 'slot'/'gacha'/... = 当前游戏
@@ -64,6 +67,7 @@ function launchGame(key) {
   const game = gameMap[key]
   if (!game) return
   if (game.entryFee && props.coins < game.entryFee) return
+  audio.playSFX('click')
   activeGame.value = key
   // SlotMachine 每日首次免费
   if (key === 'slot') {
@@ -75,6 +79,7 @@ function launchGame(key) {
 }
 
 function backToCenter() {
+  audio.playSFX('back')
   // 保存游戏状态
   if (gameRef.value?.saveStats) gameRef.value.saveStats()
   if (gameRef.value?.saveState) gameRef.value.saveState()
@@ -117,7 +122,7 @@ watch(activeGame, (key) => {
     <!-- 选择网格 -->
     <template v-if="!activeGame">
       <header class="game-center-header">
-        <button type="button" class="game-center-back-btn" @click="emit('back')">
+        <button type="button" class="game-center-back-btn" @click="audio.playSFX('back'); emit('back')">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"/>
           </svg>

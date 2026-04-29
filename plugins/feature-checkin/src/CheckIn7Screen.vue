@@ -6,11 +6,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCheckIn7 } from './composables/useCheckIn7.js'
 import { CHECKIN_ITEMS, LEVEL_7DAY } from './checkInItems.js'
+import { usePlayerState } from '../../../src/stores/playerState.store.js'
 
 const emit = defineEmits(['back', 'checkin7-result'])
 const props = defineProps({
   coins: { type: Number, default: 0 },
 })
+
+const playerState = usePlayerState()
 
 const {
   currentLevel,
@@ -51,6 +54,20 @@ function handleSignIn() {
 
   // 通知父组件加金币
   emit('checkin7-result', { cost: 0, earned: reward.totalCoins })
+
+  // 将物品添加到背包
+  if (reward.items && reward.items.length > 0) {
+    for (const item of reward.items) {
+      playerState.addItemToInventory({
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        description: item.description || '',
+        quantity: item.quantity || 1,
+      })
+    }
+    console.log('[CheckIn7] Added items to inventory:', reward.items.map(i => `${i.name}×${i.quantity}`).join(', '))
+  }
 
   // 延迟显示结果
   setTimeout(() => {

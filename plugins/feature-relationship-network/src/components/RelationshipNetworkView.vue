@@ -139,7 +139,7 @@
 import { computed, ref, watch } from 'vue'
 import { useForceLayout } from '../composables/useForceLayout.js'
 import { scoreToColor, scoreToWidth, scoreToOpacity, favorToColor, favorToLevel, trustToWidth, stanceToDasharray } from '../composables/useRelationship.js'
-import { getCharacterRelationship } from '../../../../src/relationship/relationshipStore.js'
+import { useRelationshipStore } from '../../../../src/stores/relationship.store.js'
 import RelationshipTooltip from './RelationshipTooltip.vue'
 
 const props = defineProps({
@@ -148,6 +148,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['selectCharacter', 'open-detail'])
+
+const rel = useRelationshipStore()
 
 // 画布尺寸
 const canvasWidth = 900
@@ -198,7 +200,7 @@ function buildEdges() {
   const edges = []
 
   for (const char of chars) {
-    const rel = getCharacterRelationship(char.id, char)
+    const rel = rel.getCharacter(char.id, char)
     const favor = rel.favor ?? 0
 
     edges.push({
@@ -313,7 +315,7 @@ const nodePositions = computed(() => positions.value)
 const nodeLevelMap = computed(() => {
   const map = {}
   for (const char of props.worldBook?.characters || []) {
-    const rel = getCharacterRelationship(char.id, char)
+    const rel = rel.getCharacter(char.id, char)
     map[char.id] = favorToLevel(rel.favor ?? 0)
   }
   return map

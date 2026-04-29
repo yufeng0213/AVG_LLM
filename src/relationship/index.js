@@ -22,27 +22,8 @@ export {
   getRelationshipInfluenceHint,
 } from './relationshipLevels.js'
 
-// 数据管理核心
-export {
-  initRelationshipSystem,
-  getCharacterRelationship,
-  updateRelationship,
-  batchUpdateRelationships,
-  getAllRelationships,
-  getRelationshipHistory,
-  getLatestRelationshipChange,
-  hasTriggeredRelationshipEvent,
-  markRelationshipEventTriggered,
-  checkThresholdEvents,
-  getRelationshipPromptContext,
-  getRelationshipSnapshot,
-  resetRelationshipSystem,
-  applyDirectorRelationshipDeltas,
-  useRelationshipState,
-  createDefaultRelationshipBase,
-  createDefaultRelationshipData,
-  flushRelationshipSave,
-} from './relationshipStore.js'
+// 数据管理核心 — Pinia Store
+export { useRelationshipStore } from '../stores/relationship.store.js'
 
 // 关系事件配置
 export {
@@ -71,7 +52,6 @@ export {
 
 // 默认导出
 export default {
-  // 从 relationshipLevels
   RELATIONSHIP_MIN: -100,
   RELATIONSHIP_MAX: 100,
   RELATIONSHIP_NEUTRAL: 0,

@@ -178,6 +178,7 @@ const apps = [
   { id: 'todo', name: '待办', icon: '📋', color: 'linear-gradient(135deg, #ff6b6b, #ee5a24)' },
   { id: 'moments', name: '朋友圈', icon: '🌍', color: 'linear-gradient(135deg, #00b4db, #0083b0)' },
   { id: 'relationship', name: '关系网', icon: '🔗', color: 'linear-gradient(135deg, #5856d6, #af52de)' },
+  { id: 'scrapbook', name: '手帐', icon: '📓', color: 'linear-gradient(135deg, #f5af19, #f12711)' },
 ]
 
 // Dock 栏

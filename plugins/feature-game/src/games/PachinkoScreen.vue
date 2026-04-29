@@ -8,6 +8,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import Toast from '../Toast.vue'
 import GameSkinSelector from '../components/GameSkinSelector.vue'
 import { useGameSkin } from '../composables/useGameSkin'
+import { useGameAudio } from '../composables/useGameAudio.js'
 
 const emit = defineEmits(['back', 'pachinko-result', 'game-skin-buy'])
 const props = defineProps({
@@ -26,6 +27,7 @@ const {
 } = useGameSkin(GAME_KEY)
 
 const showSkinSelector = ref(false)
+const audio = useGameAudio()
 
 function handlePachinkoSkinBuy({ skinId, price }) {
   const result = pachinkoBuySkin(skinId, props.coins)
@@ -264,6 +266,8 @@ function updatePhysics() {
 
       // 钉子发光效果
       pinGlows.push({ x: pin.x, y: pin.y, radius: pin.radius * 3, alpha: 1, color: ball.golden ? '#ffd700' : '#ffffff' })
+      // 钉子碰撞音效
+      if (pinGlows.length % 3 === 0) audio.playSFX('pinball_hit')
     }
   }
 
@@ -289,6 +293,8 @@ function landBall() {
     }
   }
   if (!hitSlot) hitSlot = slots[4] // 默认中间
+
+  audio.playSFX('pinball_score')
 
   let reward = hitSlot.reward
   let multiplier = 1
@@ -619,6 +625,7 @@ function launch(angle, power) {
   goldenBallActive.value = Math.random() < 0.1
 
   ball = createBall(angle, power)
+  audio.playSFX('pinball_launch')
 
   // 超时保护：先让弹珠加速下落，再判定
   let timeoutPhase = 0
@@ -742,6 +749,7 @@ onUnmounted(() => {
 })
 
 function handleBack() {
+  audio.playSFX('back')
   if (animFrame) cancelAnimationFrame(animFrame)
   emit('back')
 }

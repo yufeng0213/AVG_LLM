@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
-  createDefaultRelationshipBase,
+  createDefaultWorldbookRelationshipBase,
   getActiveWorldBookId,
   loadWorldBooks,
   normalizeDirectorEvents,
@@ -24,6 +24,7 @@ import {
   toGameScript,
   hasChoices,
   extractChoices,
+  getActiveApiConfig,
 } from '../llm'
 import {
   drawRandomCard,
@@ -43,31 +44,17 @@ import {
   exportCardFromDataAndShare,
 } from '../cards/cardExportService'
 import { saveGame, createHistoryBackup, formatTimestamp } from '../save/saveManager'
-import { isSQLiteAvailable, getConfig, setConfig, query, exec } from '../db/db.js'
-import { DEFAULT_NARRATOR_ID, loadNarratorProfiles, resolveNarratorProfile } from '../narrator/narratorStore'
+import { isSQLiteAvailable, query, exec } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
+import { DEFAULT_NARRATOR_ID, loadNarratorProfiles, resolveNarratorProfile, getActiveNarratorId } from '../narrator/narratorStore'
 import RelationshipPanel from '../components/RelationshipPanel.vue'
 import RelationshipChangeToast from '../components/RelationshipChangeToast.vue'
-import {
-  initRelationshipSystem,
-  getCharacterRelationship,
-  updateRelationship,
-  getAllRelationships,
-  getRelationshipSnapshot,
-  getRelationshipPromptContext,
-  resetRelationshipSystem,
-} from '../relationship/index.js'
+import { useRelationshipStore } from '../stores/relationship.store.js'
 import {
   doesFavorMeetLevelCondition,
   getLevelRange,
 } from '../relationship/relationshipLevels.js'
-import {
-  getWorldMemory,
-  addEvents,
-  addCharacterMemoriesBatch,
-  recordExtraction,
-  getExtractionConfig,
-  deleteWorldMemory,
-} from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import {
   extractWorldMemory,
 } from '../llm'
@@ -77,12 +64,7 @@ import { generateCG, getImageBase64 } from '../comfyui/comfyuiService.js'
 import { isAndroid, isNative } from '../utils/platform.js'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { importCardDirectoryNative } from '../native/cardImportPlugin'
-import {
-  applyWorldBookBackgroundAssets,
-  loadBackgroundFolder,
-  switchBackground,
-  currentBackgroundUrl
-} from '../background/backgroundStore'
+import { useBackgroundStore } from '../stores/background.store.js'
 import {
   initScheduleConsumer,
 } from '../services/scheduleStateConsumer.js'
@@ -116,6 +98,8 @@ import {
   sampleMemoryForPrompt,
 } from '../services/memoryPromptBuilder.js'
 
+const mem = useWorldMemoryStore()
+
 const emit = defineEmits(['back'])
 
 // 接收存档数据 prop
@@ -134,6 +118,11 @@ const props = defineProps({
   },
 })
 
+// 背景 Store
+const bg = useBackgroundStore()
+// 好感度 Store
+const rel = useRelationshipStore()
+
 // 世界书数据
 const worldBooks = ref([])
 // 使用传入的世界书ID（优先级最高），如果没有则使用默认的
@@ -146,9 +135,10 @@ watch(() => props.worldBookId, (newId) => {
     activeBookId.value = newId
   }
 }, { immediate: true })
-// 叙事者数据（优先：本局覆盖 > 世界书默认 > 系统默认）
+// 叙事者数据（优先：本局覆盖 > 全局激活 > 世界书默认 > 系统默认）
 const narratorProfiles = ref([])
 const sessionNarratorId = ref(props.sessionNarratorId || '')
+const activeNarratorId = ref('')
 const LLM_SETTINGS_STORAGE_PREFIX = 'game-llm-settings'
 const RELATIONSHIP_LEDGER_STORAGE_PREFIX = 'relationship-ledger'
 
@@ -300,7 +290,7 @@ const memoryLastExtractedLineCount = ref(0)
 
 // 批量提取阈值：从 kvStorage 读取，默认 5
 let MEMORY_EXTRACT_BATCH_SIZE = 5
-getExtractionConfig().then(cfg => {
+mem.getExtractionConfig().then(cfg => {
   MEMORY_EXTRACT_BATCH_SIZE = cfg.batchSize ?? 5
 })
 
@@ -736,7 +726,7 @@ const getCurrentLlmSettingsPayload = () => ({
 const persistLlmSettings = async () => {
   try {
     if (isSQLiteAvailable()) {
-      await setConfig(llmSettingsStorageKey.value, getCurrentLlmSettingsPayload())
+      await appConfigRepo.set(llmSettingsStorageKey.value, getCurrentLlmSettingsPayload())
     } else {
       const { kvStorage } = await import('../storage/index.js')
       await kvStorage.set(llmSettingsStorageKey.value, getCurrentLlmSettingsPayload())
@@ -750,7 +740,7 @@ const loadLlmSettingsFromStorage = async () => {
   try {
     let raw
     if (isSQLiteAvailable()) {
-      raw = await getConfig(llmSettingsStorageKey.value)
+      raw = await appConfigRepo.get(llmSettingsStorageKey.value)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       raw = await kvStorage.get(llmSettingsStorageKey.value)
@@ -1531,7 +1521,7 @@ const applyBackgroundByLineScene = async (line, options = {}) => {
   const matchedScene = resolveSceneFromWorldBook(sceneInput)
 
   if (matchedScene?.background) {
-    await switchBackground(matchedScene)
+    await bg.switchBackground(matchedScene)
     return
   }
 
@@ -1539,7 +1529,7 @@ const applyBackgroundByLineScene = async (line, options = {}) => {
     const sceneObject = typeof sceneInput === 'string'
       ? { id: sceneInput, name: sceneInput, background: '' }
       : sceneInput
-    await switchBackground(sceneObject)
+    await bg.switchBackground(sceneObject)
     return
   }
 
@@ -1547,7 +1537,7 @@ const applyBackgroundByLineScene = async (line, options = {}) => {
     const fallbackScene = (activeBook.value?.scenes || []).find((item) => item?.background)
     if (fallbackScene?.background) {
       updateCurrentSceneName(fallbackScene)
-      await switchBackground(fallbackScene)
+      await bg.switchBackground(fallbackScene)
     }
   }
 }
@@ -1582,8 +1572,10 @@ const activeBook = computed(() =>
   worldBooks.value.find((book) => book.id === activeBookId.value) || null,
 )
 const effectiveNarrator = computed(() => {
-  const preferredId = String(sessionNarratorId.value || activeBook.value?.defaultNarratorId || DEFAULT_NARRATOR_ID)
-  return resolveNarratorProfile(narratorProfiles.value, preferredId)
+  const preferredId = String(sessionNarratorId.value || activeNarratorId.value || activeBook.value?.defaultNarratorId || DEFAULT_NARRATOR_ID)
+  const result = resolveNarratorProfile(narratorProfiles.value, preferredId)
+  console.log('[GameScreen] effectiveNarrator - sessionNarratorId:', sessionNarratorId.value || '(empty)', '| activeNarratorId:', activeNarratorId.value || '(empty)', '| bookDefaultNarrator:', activeBook.value?.defaultNarratorId || '(empty)', '| preferredId:', preferredId, '| resolved:', result?.name || '(none)')
+  return result
 })
 const activeNarratorIdForSave = computed(() => {
   return String(sessionNarratorId.value || activeBook.value?.defaultNarratorId || effectiveNarrator.value?.id || DEFAULT_NARRATOR_ID)
@@ -1604,7 +1596,7 @@ const toFiniteNumber = (value, fallback = 0) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
 }
-const normalizeRelationshipLedgerMetrics = (value, fallback = createDefaultRelationshipBase()) => {
+const normalizeRelationshipLedgerMetrics = (value, fallback = createDefaultWorldbookRelationshipBase()) => {
   const source = value && typeof value === 'object' && !Array.isArray(value)
     ? value
     : {}
@@ -1640,7 +1632,7 @@ const resolveRelationshipCharacterName = (characterId, fallbackName = '') => {
   return normalizeText(fallbackName) || normalizedId
 }
 const normalizeRelationshipLedgerRow = (rawRow, rowIndex = 0) => {
-  const defaultMetrics = createDefaultRelationshipBase()
+  const defaultMetrics = createDefaultWorldbookRelationshipBase()
   const before = normalizeRelationshipLedgerMetrics(rawRow?.before, defaultMetrics)
   const after = normalizeRelationshipLedgerMetrics(rawRow?.after, before)
   const fallbackDelta = {
@@ -1749,7 +1741,7 @@ const persistRelationshipLedger = async () => {
     const payload = normalizeRelationshipLedgerPayload(relationshipLedger.value, createEmptyRelationshipLedger())
     relationshipLedger.value = payload
     if (isSQLiteAvailable()) {
-      await setConfig(relationshipLedgerStorageKey.value, payload)
+      await appConfigRepo.set(relationshipLedgerStorageKey.value, payload)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       await kvStorage.set(relationshipLedgerStorageKey.value, payload)
@@ -1762,7 +1754,7 @@ const loadRelationshipLedgerFromStorage = async () => {
   try {
     let rawValue
     if (isSQLiteAvailable()) {
-      rawValue = await getConfig(relationshipLedgerStorageKey.value)
+      rawValue = await appConfigRepo.get(relationshipLedgerStorageKey.value)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       rawValue = await kvStorage.get(relationshipLedgerStorageKey.value)
@@ -1816,7 +1808,7 @@ const buildRelationshipLedgerRowsFromDiff = ({
 
   return characterIds
     .map((characterId, index) => {
-      const beforeMetrics = normalizeRelationshipLedgerMetrics(beforeRuntime[characterId], createDefaultRelationshipBase())
+      const beforeMetrics = normalizeRelationshipLedgerMetrics(beforeRuntime[characterId], createDefaultWorldbookRelationshipBase())
       const afterMetrics = normalizeRelationshipLedgerMetrics(afterRuntime[characterId], beforeMetrics)
       const delta = {
         favor: afterMetrics.favor - beforeMetrics.favor,
@@ -1897,7 +1889,7 @@ const buildDefaultRelationshipStateFromBook = (book) => {
   for (const char of characters) {
     const characterId = normalizeText(char?.id)
     if (!characterId) continue
-    result[characterId] = normalizeRelationshipBase(char?.relationshipBase || createDefaultRelationshipBase())
+    result[characterId] = normalizeRelationshipBase(char?.relationshipBase || createDefaultWorldbookRelationshipBase())
   }
 
   return result
@@ -1911,7 +1903,7 @@ const mergeRelationshipStateWithBook = (book, rawState) => {
     for (const [rawKey, rawValue] of Object.entries(rawState)) {
       const key = normalizeText(rawKey)
       if (!key) continue
-      const fallback = defaults[key] || createDefaultRelationshipBase()
+      const fallback = defaults[key] || createDefaultWorldbookRelationshipBase()
       const source = rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue)
         ? rawValue
         : fallback
@@ -1936,7 +1928,7 @@ const buildRelationshipSnapshotForPrompt = (relationshipOverride = null) => {
 
   return characters.map((char) => {
     const characterId = normalizeText(char?.id)
-    const fallback = normalizeRelationshipBase(char?.relationshipBase || createDefaultRelationshipBase())
+    const fallback = normalizeRelationshipBase(char?.relationshipBase || createDefaultWorldbookRelationshipBase())
     const metrics = characterId && runtimeState[characterId]
       ? normalizeRelationshipBase(runtimeState[characterId])
       : fallback
@@ -2048,7 +2040,7 @@ const doesRelationshipRuleMatch = (rule, runtimeState) => {
 
   if (!targetKey) return false
 
-  const metrics = normalizeRelationshipBase(stateSource[targetKey] || createDefaultRelationshipBase())
+  const metrics = normalizeRelationshipBase(stateSource[targetKey] || createDefaultWorldbookRelationshipBase())
   return verifyMetrics(metrics)
 }
 
@@ -2116,7 +2108,7 @@ const doesDirectorConditionMatch = (condition, context) => {
 }
 
 const applyRelationshipDelta = (metrics, delta) => {
-  const base = normalizeRelationshipBase(metrics || createDefaultRelationshipBase())
+  const base = normalizeRelationshipBase(metrics || createDefaultWorldbookRelationshipBase())
   return normalizeRelationshipBase({
     favor: base.favor + (Number.isFinite(delta?.favor) ? delta.favor : 0),
     trust: base.trust + (Number.isFinite(delta?.trust) ? delta.trust : 0),
@@ -2263,20 +2255,23 @@ const loadWorldBookData = async () => {
 }
 
 const loadNarratorData = async () => {
+  console.log('[GameScreen] loadNarratorData START')
   narratorProfiles.value = await loadNarratorProfiles()
+  activeNarratorId.value = await getActiveNarratorId()
+  console.log('[GameScreen] loadNarratorData END - profiles:', narratorProfiles.value.map(p => p.name), 'activeId:', activeNarratorId.value)
 }
 
 const applyBackgroundAssetsFromActiveBook = async () => {
   const assets = Array.isArray(activeBook.value?.backgroundAssets) ? activeBook.value.backgroundAssets : []
   if (assets.length > 0) {
-    await applyWorldBookBackgroundAssets(
+    await bg.applyWorldBookBackgroundAssets(
       assets,
       `世界书背景：${String(activeBook.value?.title || '未命名世界书')}`,
     )
     return
   }
 
-  await loadBackgroundFolder()
+  await bg.loadBackgroundFolder()
 }
 
 // 根据角色ID获取角色数据（支持 USER 和 Char）
@@ -2544,13 +2539,15 @@ const dismissRelationshipChangeNotification = () => {
 // 新增：处理导演器关系变更
 const handleDirectorRelationshipDeltas = (deltas, reason = '导演器事件') => {
   if (!deltas || deltas.length === 0) return
-  
+
   const results = applyDirectorRelationshipDeltas(deltas, reason)
-  
+
   // 显示变化提示
   for (const result of results) {
     const character = activeBook.value?.characters?.find(c => c.id === result.characterId)
-    if (character && result.changes.favor.delta !== 0) {
+    if (!character) continue
+
+    if (result.changes.favor.delta !== 0) {
       showRelationshipChangeNotification({
         characterId: result.characterId,
         characterName: character.name,
@@ -2560,8 +2557,51 @@ const handleDirectorRelationshipDeltas = (deltas, reason = '导演器事件') =>
         newValue: result.newValues.favor,
         reason: reason,
       })
-      // 通知活人感系统关系变化
-      onRelationshipDelta(result.characterId, result.deltas, reason)
+    }
+    if (result.changes.trust.delta !== 0) {
+      showRelationshipChangeNotification({
+        characterId: result.characterId,
+        characterName: character.name,
+        characterPortrait: character.portraits?.[0]?.filePath || '',
+        metric: 'trust',
+        delta: result.deltas.trust,
+        newValue: result.newValues.trust,
+        reason: reason,
+      })
+    }
+
+    // 通知活人感系统关系变化
+    onRelationshipDelta(result.characterId, result.deltas, reason)
+  }
+}
+
+/**
+ * 检查角色八维（cognitiveDimensions）变化并触发通知
+ */
+const checkCognitiveDimensionChanges = (beforeBook, afterBook) => {
+  if (!beforeBook?.characters || !afterBook?.characters) return
+  for (const afterChar of afterBook.characters) {
+    const beforeChar = beforeBook.characters.find(c => c.id === afterChar.id)
+    if (!beforeChar) continue
+    const beforeDims = beforeChar.personalityProfile?.cognitiveDimensions || {}
+    const afterDims = afterChar.personalityProfile?.cognitiveDimensions || {}
+    for (const [dimKey, afterVal] of Object.entries(afterDims)) {
+      const beforeVal = beforeDims[dimKey]
+      if (beforeVal !== undefined && afterVal !== beforeVal) {
+        const delta = afterVal - beforeVal
+        if (delta !== 0) {
+          showRelationshipChangeNotification({
+            characterId: afterChar.id,
+            characterName: afterChar.name,
+            characterPortrait: afterChar.portraits?.[0]?.filePath || '',
+            metric: 'cognitive',
+            dimension: dimKey,
+            delta,
+            newValue: afterVal,
+            reason: '剧情成长',
+          })
+        }
+      }
     }
   }
 }
@@ -3029,48 +3069,6 @@ const extractFallbackDialoguesFromRawContent = (rawContent, fallbackStoryTime = 
   }]
 }
 
-// 保存 LLM 请求/响应到 debug 目录（调试用）
-async function logStoryLlmDebug(prompt, rawResponse, parseSuccess) {
-  const timestamp = new Date().toISOString()
-  const separator = '='.repeat(60)
-  const entry = [
-    separator,
-    `[${timestamp}] AVG 剧情生成 | 解析${parseSuccess ? '成功' : '失败'}`,
-    separator,
-    '',
-    '--- INPUT PROMPT ---',
-    prompt,
-    '',
-    '--- OUTPUT RESPONSE ---',
-    typeof rawResponse === 'string' ? rawResponse : JSON.stringify(rawResponse, null, 2),
-    '',
-  ].join('\n')
-
-  // Capacitor Filesystem（Android 原生环境）
-  try {
-    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
-    try {
-      await Filesystem.mkdir({ path: 'debug', directory: Directory.Documents, recursive: true })
-    } catch {}
-    await Filesystem.writeFile({
-      path: 'debug/story-llm-debug.log',
-      data: entry,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-    })
-    return
-  } catch {
-    // Capacitor 不可用，回退到 localStorage
-  }
-
-  // localStorage 回退（覆盖写入）
-  try {
-    localStorage.setItem('story_llm_debug_log', entry)
-  } catch (e) {
-    console.warn('[Story] 写入LLM响应日志失败:', e.message)
-  }
-}
-
 // 生成剧情
 const handleGenerateStory = async (choiceToApply = null, options = {}) => {
   if (isGenerating.value) return
@@ -3089,6 +3087,10 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
     const overrideUserInput = String(options?.overrideUserInput || '').trim()
     const effectiveUserInput = overrideUserInput || userPromptInput.value
     const relationshipBeforeGeneration = mergeRelationshipStateWithBook(activeBook.value, relationshipState.value)
+    // 快照世界书角色数据（用于生成后对比八维变化）
+    const worldBookSnapshot = activeBook.value?.characters
+      ? { characters: JSON.parse(JSON.stringify(activeBook.value.characters)) }
+      : null
     const relationshipChoiceText = truncateRelationshipLedgerText(
       choiceToApply?.text || effectiveUserInput,
       90,
@@ -3159,9 +3161,6 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       }
     }
 
-    // 调试日志：保存 LLM 输入输出到文件
-    logStoryLlmDebug(prompt, rawModelContent, parsed.success && Array.isArray(parsed.dialogues) && parsed.dialogues.length > 0)
-
     // 转换为游戏脚本格式并添加到对话列表
     let newDialogues = toGameScript(normalizedDialogues)
     newDialogues = ensureLastDialogueHasChoices(newDialogues)
@@ -3170,6 +3169,58 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       if (directorPreview.changed) {
         relationshipState.value = directorPreview.relationshipState
         directorState.value = directorPreview.directorState
+
+        // 计算关系变更 delta 并触发游戏式通知，同时持久化到 SQLite
+        const before = relationshipBeforeGeneration
+        const after = directorPreview.relationshipState
+        if (before && after) {
+          for (const charId of Object.keys(after)) {
+            const beforeEntry = before[charId] || {}
+            const afterEntry = after[charId] || {}
+            const favorDelta = (afterEntry.favor || 0) - (beforeEntry.favor || 0)
+            const trustDelta = (afterEntry.trust || 0) - (beforeEntry.trust || 0)
+            const stanceDelta = (afterEntry.stance || 0) - (beforeEntry.stance || 0)
+            const reason = directorPreview.triggeredEventNames.length > 0
+              ? directorPreview.triggeredEventNames.join('、')
+              : '剧情推进'
+
+            // 写入 SQLite（关系 store 负责持久化）
+            if (favorDelta !== 0 || trustDelta !== 0 || stanceDelta !== 0) {
+              rel.update(charId, { favor: favorDelta, trust: trustDelta, stance: stanceDelta }, reason)
+            }
+
+            // 界面通知：favor
+            if (favorDelta !== 0) {
+              const character = activeBook.value?.characters?.find(c => c.id === charId)
+              if (character) {
+                showRelationshipChangeNotification({
+                  characterId: charId,
+                  characterName: character.name,
+                  characterPortrait: character.portraits?.[0]?.filePath || '',
+                  metric: 'favor',
+                  delta: favorDelta,
+                  newValue: afterEntry.favor,
+                  reason,
+                })
+              }
+            }
+            // 界面通知：trust
+            if (trustDelta !== 0) {
+              const character = activeBook.value?.characters?.find(c => c.id === charId)
+              if (character) {
+                showRelationshipChangeNotification({
+                  characterId: charId,
+                  characterName: character.name,
+                  characterPortrait: character.portraits?.[0]?.filePath || '',
+                  metric: 'trust',
+                  delta: trustDelta,
+                  newValue: afterEntry.trust,
+                  reason,
+                })
+              }
+            }
+          }
+        }
       }
 
       const currentTimelineStoryTime = String(storyTimelineLabel.value || '').trim()
@@ -3237,6 +3288,11 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
           triggeredEvents: directorPreview.triggeredEventNames,
         })
         await appendRelationshipLedgerRows(relationshipRows)
+      }
+
+      // 检查八维（cognitiveDimensions）变化并触发通知
+      if (worldBookSnapshot) {
+        checkCognitiveDimensionChanges(worldBookSnapshot, activeBook.value)
       }
       
       // 自动跳转到第一条新对话
@@ -3329,7 +3385,7 @@ async function triggerMemoryExtraction(currentTotalLines) {
   const book = worldBooks.value.find(b => b.id === activeBookId.value)
   if (!book) return
 
-  const memory = await getWorldMemory(activeBookId.value)
+  const memory = await mem.get(activeBookId.value)
   const lastCount = memory.lastExtractedLineCount || 0
 
   // 取上次提取之后的新对话
@@ -3346,7 +3402,7 @@ async function triggerMemoryExtraction(currentTotalLines) {
     if (result.success) {
       // 写入事件
       if (result.events?.length > 0) {
-        await addEvents(activeBookId.value, result.events)
+        await mem.addEvents(activeBookId.value, result.events)
       }
       // 写入角色记忆（批量）
       if (result.characterMemories) {
@@ -3359,7 +3415,7 @@ async function triggerMemoryExtraction(currentTotalLines) {
           }
         }
         if (memoryItems.length > 0) {
-          await addCharacterMemoriesBatch(activeBookId.value, memoryItems)
+          await mem.addCharacterMemoriesBatch(activeBookId.value, memoryItems)
         }
       }
       // 写入新发现的地点
@@ -3378,7 +3434,7 @@ async function triggerMemoryExtraction(currentTotalLines) {
         console.warn('[GameScreen] highlight collection failed:', e.message)
       }
       // 更新提取记录
-      await recordExtraction(activeBookId.value, currentTotalLines)
+      await mem.recordExtraction(activeBookId.value, currentTotalLines)
       memoryLastExtractedLineCount.value = currentTotalLines
 
       // 曝光追踪：更新角色曝光分数，检测转正候选
@@ -3395,14 +3451,15 @@ async function triggerMemoryExtraction(currentTotalLines) {
         // 处理转正
         for (const promo of promotions) {
           try {
+            const exposureData = await import('../services/exposureTracker.js').then(m => m.loadExposureData())
+            const exposureEntry = exposureData[activeBookId.value]?.[promo.id]
+            const mentionContexts = (exposureEntry?.mentionContexts || []).slice(-5)
             const cardResult = await generateCharacterCard({
               name: promo.name || promo.id,
               worldBookEntries: bookForExposure.entries,
-              mentionContexts: [], // 曝光数据在 storage 中，这里简化处理
+              mentionContexts,
             })
             if (cardResult.success && cardResult.characterCard) {
-              const exposureData = await import('../services/exposureTracker.js').then(m => m.loadExposureData())
-              const exposureEntry = exposureData[activeBookId.value]?.[promo.id]
               await promoteCharacter(bookForExposure, exposureEntry || {}, cardResult.characterCard)
             }
           } catch (e) {
@@ -3529,21 +3586,8 @@ const hasApiConfig = ref(false)
 // 加载 API 配置状态
 const loadApiConfigStatus = async () => {
   try {
-    let activeId, configs
-    if (isSQLiteAvailable()) {
-      activeId = await getConfig('active_api_id')
-      configs = await getConfig('api_configs')
-    } else {
-      const { kvStorage } = await import('../storage/index.js')
-      activeId = await kvStorage.get('active_api_id')
-      configs = await kvStorage.get('api_configs')
-    }
-    if (!activeId) {
-      hasApiConfig.value = false
-      return
-    }
-
-    hasApiConfig.value = Array.isArray(configs) && configs.some((item) => item?.id === activeId)
+    const config = await getActiveApiConfig()
+    hasApiConfig.value = !!config
   } catch {
     hasApiConfig.value = false
   }
@@ -4728,9 +4772,9 @@ const handleRestart = async () => {
   try {
     const worldId = activeBookId.value
     // 1. 清空世界记忆
-    await deleteWorldMemory(worldId)
+    await mem.delete(worldId)
     // 2. 重置关系系统（含本地存储）
-    await resetRelationshipSystem(worldId)
+    await rel.reset(worldId)
     // 3. 重置对话脚本为开场白
     dialogueScript.value = [...defaultOpeningDialogue]
     currentLineIndex.value = 0
@@ -4913,7 +4957,7 @@ const loadSaveData = async () => {
   }
 
   // 恢复世界记忆提取位置
-  const mem = await getWorldMemory(activeBookId.value)
+  const mem = await mem.get(activeBookId.value)
   memoryLastExtractedLineCount.value = mem.lastExtractedLineCount || 0
   if (props.saveData.game.narratorId) {
     sessionNarratorId.value = props.saveData.game.narratorId
@@ -4974,11 +5018,11 @@ watch(currentLine, async (newLine) => {
 
 // 背景样式计算
 const backgroundStyle = computed(() => {
-  if (!currentBackgroundUrl.value) {
+  if (!bg.currentBackgroundUrl) {
     return {}
   }
   return {
-    backgroundImage: `url(${currentBackgroundUrl.value})`,
+    backgroundImage: `url(${bg.currentBackgroundUrl})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
@@ -4987,7 +5031,7 @@ const backgroundStyle = computed(() => {
 
 // 是否有自定义背景
 const hasCustomBackground = computed(() => {
-  return Boolean(currentBackgroundUrl.value)
+  return Boolean(bg.currentBackgroundUrl)
 })
 
 onMounted(async () => {
@@ -5001,7 +5045,10 @@ onMounted(async () => {
   // Phase 2: 依赖 worldBooks 的操作
   await updatePortraitUrls()
   await applyBackgroundAssetsFromActiveBook()
-  
+
+  // 初始化关系 store（设置 worldBookId，否则 SQLite 写入时 world_book_id 为 null）
+  await rel.init(activeBookId.value)
+
   // 如果有存档数据，加载它
   if (props.saveData) {
     await loadSaveData()
@@ -5032,7 +5079,7 @@ onMounted(async () => {
   initScheduleConsumer()
   initRelationshipScheduler({
     getWorldBook: () => activeBook.value,
-    getWorldMemory: async (bookId) => await getWorldMemory(bookId),
+    getWorldMemory: async (bookId) => await mem.get(bookId),
     runRelationshipAnalysis: generateRelationshipAnalysis,
     runNpcNpcAnalysis: generateNpcNpcAnalysis,
     saveRelationships: async (wb) => {
@@ -5041,10 +5088,10 @@ onMounted(async () => {
       if (idx >= 0) books[idx] = wb
     },
     addWorldMemoryEvent: async (bookId, event) => {
-      await addEvents(bookId, [event])
+      await mem.addEvents(bookId, [event])
     },
     syncToRuntime: async (charId, deltas, reason) => {
-      updateRelationship(charId, deltas, reason, null)
+      rel.update(charId, deltas, reason, null)
     },
     notifyPlayer: (text) => {
       // 作为旁白追加到对话
@@ -5065,7 +5112,7 @@ onMounted(async () => {
   initAlivenessServices({
     isGenerating: () => isGenerating.value,
     getWorldBook: () => activeBook.value,
-    getWorldMemory: async (bookId) => await getWorldMemory(bookId),
+    getWorldMemory: async (bookId) => await mem.get(bookId),
     getScheduleFn: (bookId, charId) => scheduleAPI.scheduleState?.scheduleMap?.[`${bookId}::${charId}`],
     getRelationships: () => activeBook.value?.relationships || {},
     getRecentEvents: () => {
@@ -5083,7 +5130,7 @@ onMounted(async () => {
   hasMountedGameScreen.value = true
 })
 
-onUnmounted(() => {
+onUnmounted(async () => {
   stopCurrentTtsPlayback()
   stopRelationshipScheduler()
   flushRelationshipSave()
@@ -5103,6 +5150,10 @@ onUnmounted(() => {
   if (typewriterTimer) {
     clearTimeout(typewriterTimer)
     typewriterTimer = null
+  }
+  // 退出时自动保存当前进度
+  if (dialogueScript.value.length > 0) {
+    await quickSave({ silent: true })
   }
 })
 

@@ -6,7 +6,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { loadWorldBooks } from '../../../src/worldbook/worldBookStore.js'
 import TRPGPanel from './TRPGPanel.vue'
-import { useGlobalUser } from '../../../src/composables/useGlobalUser.js'
+import { usePlayerState } from '../../../src/stores/playerState.store.js'
 import { getPlatform, isAndroid } from '../../../src/utils/platform.js'
 
 const platform = getPlatform()
@@ -15,7 +15,7 @@ const isAndroidPlatform = isAndroid()
 const emit = defineEmits(['back'])
 
 const trpgPanelRef = ref(null)
-const globalUser = useGlobalUser()
+const playerState = usePlayerState()
 
 // 世界书
 const worldBooks = ref([])
@@ -159,7 +159,7 @@ defineExpose({
       ref="trpgPanelRef"
       :is-open="true"
       :active-book="null"
-      :user-name="globalUser.username.value || '玩家'"
+      :user-name="playerState.username || '玩家'"
       :selected-characters="selectedCharacters"
       :no-teleport="true"
       @close="handleClose"

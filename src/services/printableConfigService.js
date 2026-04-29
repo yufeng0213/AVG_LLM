@@ -3,7 +3,8 @@
  * 参考 cardService.js 的模式，使用 SQLite/kvStorage 持久化路径
  */
 
-import { isSQLiteAvailable, getConfig, setConfig, removeConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 
 const PRINTABLE_BASE_DIR_KEY = 'printable_base_dir'
 const PRINTABLE_DISPLAY_PATH_KEY = 'printable_display_path'
@@ -17,8 +18,8 @@ const NATIVE_PREFIX = 'native://'
 export async function setPrintableDir(baseDir, displayPath) {
   try {
     if (isSQLiteAvailable()) {
-      await setConfig(PRINTABLE_BASE_DIR_KEY, baseDir)
-      if (displayPath) await setConfig(PRINTABLE_DISPLAY_PATH_KEY, displayPath)
+      await appConfigRepo.set(PRINTABLE_BASE_DIR_KEY, baseDir)
+      if (displayPath) await appConfigRepo.set(PRINTABLE_DISPLAY_PATH_KEY, displayPath)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       await kvStorage.set(PRINTABLE_BASE_DIR_KEY, baseDir)
@@ -39,7 +40,7 @@ export async function getPrintableDir() {
   try {
     let val
     if (isSQLiteAvailable()) {
-      val = await getConfig(PRINTABLE_BASE_DIR_KEY)
+      val = await appConfigRepo.get(PRINTABLE_BASE_DIR_KEY)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       val = await kvStorage.get(PRINTABLE_BASE_DIR_KEY)
@@ -57,7 +58,7 @@ export async function getPrintableDisplayPath() {
   try {
     let val
     if (isSQLiteAvailable()) {
-      val = await getConfig(PRINTABLE_DISPLAY_PATH_KEY)
+      val = await appConfigRepo.get(PRINTABLE_DISPLAY_PATH_KEY)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       val = await kvStorage.get(PRINTABLE_DISPLAY_PATH_KEY)
@@ -74,8 +75,8 @@ export async function getPrintableDisplayPath() {
 export async function clearPrintableDir() {
   try {
     if (isSQLiteAvailable()) {
-      await removeConfig(PRINTABLE_BASE_DIR_KEY)
-      await removeConfig(PRINTABLE_DISPLAY_PATH_KEY)
+      await appConfigRepo.remove(PRINTABLE_BASE_DIR_KEY)
+      await appConfigRepo.remove(PRINTABLE_DISPLAY_PATH_KEY)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       await kvStorage.remove(PRINTABLE_BASE_DIR_KEY)

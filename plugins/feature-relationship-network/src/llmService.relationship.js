@@ -2,58 +2,6 @@ import { callChatCompletion, getValidatedActiveConfig } from '../../../src/llm/l
 import { resolvePrompt } from '../../../src/llm/promptRegistry.js'
 
 /**
- * 将LLM原始响应写入本地日志文件（调试用，每次覆盖上一次）
- */
-async function logLLMResponse(context, rawResponse, parseSuccess) {
-  const timestamp = new Date().toISOString()
-  const separator = '='.repeat(60)
-  const entry = [
-    separator,
-    `[${timestamp}] 关系分析 | ${context} | 解析${parseSuccess ? '成功' : '失败'}`,
-    separator,
-    rawResponse,
-    '',
-  ].join('\n')
-
-  // Web 浏览器直接用 localStorage
-  if (typeof window !== 'undefined' && !window.Capacitor) {
-    try {
-      localStorage.setItem('relationship_llm_debug_log', entry)
-      return
-    } catch (e) {
-      console.warn('[Relationship] localStorage 写入失败:', e.message)
-      return
-    }
-  }
-
-  // 尝试 Capacitor Filesystem（Android 原生环境）
-  try {
-    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
-    try {
-      await Filesystem.mkdir({ path: 'debug', directory: Directory.Documents, recursive: true })
-    } catch {}
-    const result = await Filesystem.writeFile({
-      path: 'debug/relationship-llm-responses.log',
-      data: entry,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-    })
-    // Capacitor 5+ writeFile 在浏览器中可能返回 undefined 或空对象
-    if (result && result.uri) return
-    // 没有 uri 说明没真正写入，回退到 localStorage
-  } catch {
-    // Capacitor 不可用
-  }
-
-  // localStorage 回退
-  try {
-    localStorage.setItem('relationship_llm_debug_log', entry)
-  } catch (e) {
-    console.warn('[Relationship] 写入LLM响应日志失败:', e.message)
-  }
-}
-
-/**
  * 剥离 <thinking>...</thinking> 标签及其内容
  */
 function stripThinkingTags(content) {
@@ -274,6 +222,7 @@ export async function generateRelationshipAnalysis(params = {}) {
     temperature: 0.3,
     maxTokens: 8000,
     timeout: 180000,
+    label: 'Relationship Analysis',
   })
 
   if (!result.success) {
@@ -299,10 +248,6 @@ export async function generateRelationshipAnalysis(params = {}) {
     }
   }
   const parseOk = !!normalized
-
-  // 记录LLM原始响应到本地日志
-  const worldTitle = worldBook?.title || '未知'
-  logLLMResponse(worldTitle, result.data, parseOk)
 
   if (!parseOk) {
     return { success: false, error: '关系分析解析失败', relationships: null, data: result.data }
@@ -374,6 +319,7 @@ export async function generateNpcNpcAnalysis(params = {}) {
     temperature: 0.3,
     maxTokens: 3000,
     timeout: 120000,
+    label: 'NPC-NPC Analysis',
   })
 
   if (!result.success) {

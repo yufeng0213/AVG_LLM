@@ -43,6 +43,8 @@
     "lottie-web": "^5.13.0",
     "marked": "^18.0.0",
     "music-metadata-browser": "^2.5.11",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.7.1",
     "three": "^0.183.2",
     "vue": "^3.5.30"
   },

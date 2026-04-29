@@ -3,8 +3,8 @@
  */
 import { onScheduleEvent } from '../../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
 import { applyDelta as applyStateDelta } from '../../plugins/feature-character-state/src/services/characterStateStore.js'
-import { updateRelationship } from '../../src/relationship/relationshipStore.js'
-import { addEvent } from '../../src/memory/worldMemoryStore.js'
+import { useRelationshipStore } from '../stores/relationship.store.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import { loadWorldBooks } from '../../src/worldbook/worldBookStore.js'
 
 /**
@@ -44,7 +44,8 @@ async function applyScheduleEffects(bookId, charId, executedHours) {
   // 2. 更新 relationship
   if (effects.totalAffectionDelta !== 0) {
     try {
-      await updateRelationship(charId, {
+      const rel = useRelationshipStore()
+      rel.update(charId, {
         favor: effects.totalAffectionDelta,
       }, `日程活动结算 (${effects.summary})`, null)
     } catch (e) {
@@ -55,7 +56,8 @@ async function applyScheduleEffects(bookId, charId, executedHours) {
   // 3. 写入世界记忆
   if (effects.summary) {
     try {
-      await addEvent(bookId, {
+      const mem = useWorldMemoryStore()
+      await mem.addEvent(bookId, {
         type: 'daily_activity',
         participants: [charId],
         summary: `${charName} ${effects.summary}`,

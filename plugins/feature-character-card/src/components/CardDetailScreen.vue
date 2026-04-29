@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCardCollection } from '../composables/useCardCollection.js'
 import { getRarityConfig, CHARACTER_CARD_DEFS } from '../services/cardData.js'
-import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
+import { usePlayerState } from '../../../../src/stores/playerState.store.js'
 import ActivityStoryScreen from '../../../../src/screens/ActivityStoryScreen.vue'
 
 const props = defineProps({
@@ -11,7 +11,7 @@ const props = defineProps({
 
 const emit = defineEmits(['back'])
 
-const { economy, updateEconomy, inventory, removeFromInventory } = useGlobalUser()
+const playerState = usePlayerState()
 const collection = useCardCollection()
 
 const detail = ref(null)
@@ -24,7 +24,7 @@ const currentStoryData = ref(null) // 当前阅读的剧情数据
 
 // 背包中的礼品列表
 const giftItems = computed(() => {
-  const items = inventory.value || []
+  const items = playerState.inventory || []
   return items.filter(item => item.category === 'gift')
 })
 
@@ -93,13 +93,13 @@ async function handleLevelUp() {
     alert('已达等级上限')
     return
   }
-  const coins = economy.value?.coins ?? 0
+  const coins = playerState.economy?.coins ?? 0
   if (coins < cost) {
     alert(`金币不足（需要${cost}）`)
     return
   }
 
-  updateEconomy(prev => ({ ...prev, coins: prev.coins - cost }))
+  playerState.updateEconomy(prev => ({ ...prev, coins: prev.coins - cost }))
   await collection.levelUp(detail.value.card.instanceId, 100)
   refreshDetail()
 }
@@ -202,7 +202,7 @@ function closeStoryScreen() {
 
 // 调试：添加金币
 function addCoinsDebug(amount = 10000) {
-  updateEconomy(prev => ({ ...prev, coins: prev.coins + amount }))
+  playerState.updateEconomy(prev => ({ ...prev, coins: prev.coins + amount }))
 }
 
 // 送礼功能
@@ -222,7 +222,7 @@ async function handleSendGift(giftItem) {
   const bonus = getGiftAffinityBonus(giftItem)
 
   // 消耗礼品
-  removeFromInventory(giftItem.id, 1)
+  playerState.removeFromInventory(giftItem.id, 1)
 
   // 增加好感度
   const result = await collection.addAffinity(detail.value.card.instanceId, bonus)
@@ -267,7 +267,7 @@ onMounted(async () => {
       </button>
       <h2 class="detail-title">卡牌详情</h2>
       <div class="detail-spacer">
-        <span class="detail-coins">💰 {{ economy.coins }}</span>
+        <span class="detail-coins">💰 {{ playerState.coins }}</span>
         <button class="debug-add-btn" @click="addCoinsDebug(10000)">+💰</button>
       </div>
     </header>

@@ -29,6 +29,7 @@ import worldMemoryManifest from '../../plugins/feature-world-memory/plugin.json'
 import characterStateManifest from '../../plugins/feature-character-state/plugin.json'
 import characterCardManifest from '../../plugins/feature-character-card/plugin.json'
 import baseBuildingManifest from '../../plugins/feature-base-building/plugin.json'
+import scrapbookManifest from '../../plugins/feature-scrapbook/plugin.json'
 
 const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   loadSaveManifest,
@@ -61,6 +62,7 @@ const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   characterStateManifest,
   baseBuildingManifest,
   characterCardManifest,
+  scrapbookManifest,
 ]
 
 export const getLocalFeaturePluginManifests = () => {

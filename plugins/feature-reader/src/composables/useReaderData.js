@@ -1,39 +1,100 @@
 /**
  * useReaderData.js - 书城数据层
- * 提供故事、章节、设置的 kvStorage 读写。
+ * SQLite 优先，Web 端回退到 kvStorage。
  */
+import { isSQLiteAvailable as _isSQLiteAvailable } from '../../../../src/db/connection.js'
+
+// 重新导出给组件用
+export const isSQLiteAvailable = _isSQLiteAvailable
+export {
+  _deleteChapter as deleteChapter,
+  _rewriteChapters as rewriteChapters,
+  _insertStory as insertStory,
+  _insertChapter as insertChapter,
+}
+import {
+  loadStories as _loadStories,
+  insertStory as _insertStory,
+  updateStory as _updateStoryDb,
+  deleteStory as _deleteStory,
+  loadChapters,
+  loadChapter as _loadChapter,
+  loadChapterCount,
+  insertChapter as _insertChapter,
+  deleteChapter as _deleteChapter,
+  rewriteChapters as _rewriteChapters,
+  saveSettings as _saveSettings,
+  loadSettings as _loadSettings,
+  saveStoryMemories as _saveStoryMemories,
+  loadStoryMemories as _loadStoryMemories,
+} from '../../../../src/db/repos/reader.repo.js'
 import { kvStorage } from '../../../../src/storage/index.js'
 
 const STORIES_KEY = 'reader_stories'
 const SETTINGS_KEY = 'reader_settings'
 
+const DEFAULT_SETTINGS = {
+  fontSize: 16,
+  lineHeight: 1.8,
+  theme: 'dark',
+  contextChapters: 1,
+  memoryThreshold: 0,
+}
+
 // ===== 故事管理 =====
 
 export async function loadStories() {
-  return await kvStorage.get(STORIES_KEY) || []
+  if (!isSQLiteAvailable()) {
+    return await kvStorage.get(STORIES_KEY) || []
+  }
+  const stories = await _loadStories()
+  // 加载每个故事的章节数量（不加载内容）
+  for (const story of stories) {
+    const count = await loadChapterCount(story.id)
+    story.chapters = new Array(count) // 占位，用 length 表示数量
+    story.lastReadChapter = story.lastReadChapter ?? 0
+    story.settings = story.settings || { fontSize: 16, lineHeight: 1.8, theme: 'dark' }
+  }
+  return stories
 }
 
 export async function saveStories(stories) {
-  await kvStorage.set(STORIES_KEY, stories)
+  if (!isSQLiteAvailable()) {
+    await kvStorage.set(STORIES_KEY, stories)
+    return
+  }
+  // SQLite 模式下：这个函数通常用于保存新建故事后的完整数据
+  //  stories 数组的第一个元素是新创建的故事，带有 chapters
+  for (const story of stories) {
+    if (story.chapters && story.chapters.length > 0) {
+      // 检查是否已存在（通过 chapter count 判断）
+      const count = await loadChapterCount(story.id)
+      if (count === 0) {
+        // 新故事，插入故事和所有章节
+        await _insertStory(story)
+        for (const ch of story.chapters) {
+          await _insertChapter(story.id, ch)
+        }
+      }
+    }
+  }
 }
 
 export function addStory(stories, story) {
-  return [
-    {
-      id: `story_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      chapters: [],
-      lastReadChapter: 0,
-      settings: {
-        fontSize: 16,
-        lineHeight: 1.8,
-        theme: 'dark',
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ...story,
+  const newStory = {
+    id: `story_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    chapters: [],
+    lastReadChapter: 0,
+    settings: {
+      fontSize: 16,
+      lineHeight: 1.8,
+      theme: 'dark',
     },
-    ...stories,
-  ]
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...story,
+  }
+  return [newStory, ...stories]
 }
 
 export function updateStory(stories, storyId, updates) {
@@ -42,7 +103,10 @@ export function updateStory(stories, storyId, updates) {
   )
 }
 
-export function deleteStory(stories, storyId) {
+export async function deleteStory(stories, storyId) {
+  if (isSQLiteAvailable()) {
+    await _deleteStory(storyId)
+  }
   return stories.filter(s => s.id !== storyId)
 }
 
@@ -63,8 +127,27 @@ export function addChapter(story, chapter) {
   return newChapter
 }
 
+export async function loadStoryChapters(storyId) {
+  if (isSQLiteAvailable()) {
+    return await loadChapters(storyId)
+  }
+  // Web fallback: load from kvStorage
+  const stories = await kvStorage.get(STORIES_KEY) || []
+  const story = stories.find(s => s.id === storyId)
+  return story?.chapters || []
+}
+
+export async function loadStoryChapter(storyId, index) {
+  if (isSQLiteAvailable()) {
+    return await _loadChapter(storyId, index)
+  }
+  const stories = await kvStorage.get(STORIES_KEY) || []
+  const story = stories.find(s => s.id === storyId)
+  return story?.chapters?.[index] || null
+}
+
 export function getChapter(story, index) {
-  return story.chapters[index] || null
+  return story.chapters?.[index] || null
 }
 
 export function getChapterWordCount(story, index) {
@@ -75,19 +158,25 @@ export function getChapterWordCount(story, index) {
 
 // ===== 设置 =====
 
-const DEFAULT_SETTINGS = {
-  fontSize: 16,
-  lineHeight: 1.8,
-  theme: 'dark',
-  contextChapters: 1, // 生成下一章时参考的前文章节数
-}
-
 export async function loadSettings() {
-  return { ...DEFAULT_SETTINGS, ...(await kvStorage.get(SETTINGS_KEY) || {}) }
+  const raw = isSQLiteAvailable()
+    ? await _loadSettings()
+    : await kvStorage.get(SETTINGS_KEY) || {}
+  return { ...DEFAULT_SETTINGS, ...raw }
 }
 
 export async function saveSettings(settings) {
-  await kvStorage.set(SETTINGS_KEY, settings)
+  await _saveSettings(settings)
+}
+
+// ===== 故事级剧情记忆 =====
+
+export async function loadStoryMemories(storyId) {
+  return await _loadStoryMemories(storyId)
+}
+
+export async function saveStoryMemories(storyId, memories) {
+  await _saveStoryMemories(storyId, memories)
 }
 
 // ===== 时间格式化 =====

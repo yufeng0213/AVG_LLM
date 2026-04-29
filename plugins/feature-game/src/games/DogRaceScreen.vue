@@ -9,6 +9,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import Toast from '../Toast.vue'
 import GameSkinSelector from '../components/GameSkinSelector.vue'
 import { useGameSkin } from '../composables/useGameSkin'
+import { useGameAudio } from '../composables/useGameAudio.js'
 
 const emit = defineEmits(['back', 'dograce-result', 'game-skin-buy'])
 const props = defineProps({
@@ -27,6 +28,7 @@ const {
 } = useGameSkin(GAME_KEY)
 
 const showSkinSelector = ref(false)
+const audio = useGameAudio()
 
 function handleDogSkinBuy({ skinId, price }) {
   const result = dogBuySkin(skinId, props.coins)
@@ -279,6 +281,7 @@ function beginRunning() {
   raceState.value = 'racing'
   let raceStartTime = Date.now()
   let finishOrder = 0
+  audio.playSFX('race_start')
 
   function gameLoop() {
     const now = Date.now()
@@ -372,6 +375,7 @@ function beginRunning() {
 
 function finishRace() {
   raceState.value = 'finished'
+  audio.playSFX('race_finish')
 
   // 排序
   const sorted = [...dogs.value].sort((a, b) => a.finishTime - b.finishTime)
@@ -702,7 +706,7 @@ defineExpose({ saveStats })
   <div class="dograce-screen" :style="dogThemeStyle">
     <!-- Header -->
     <header class="dograce-header">
-      <button type="button" class="dograce-back-btn" @click="emit('back')">
+      <button type="button" class="dograce-back-btn" @click="audio.playSFX('back'); emit('back')">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>

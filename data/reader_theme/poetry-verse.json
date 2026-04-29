@@ -1,0 +1,45 @@
+{
+  "name": "诗歌韵文",
+  "description": "适合诗歌、散文诗的排版，关闭段落首字下沉，引号淡雅，强调行间距感",
+  "rules": [
+    {
+      "type": "dropCap",
+      "enabled": false,
+      "label": "首字下沉",
+      "description": "诗歌不需要首字下沉"
+    },
+    {
+      "type": "quote",
+      "enabled": false,
+      "pattern": "[「「」『』\"\"\"\"\"]",
+      "label": "引号文字美化",
+      "description": "禁用：双引号\"会与HTML属性冲突导致截断",
+      "class": "reader-quote"
+    },
+    {
+      "type": "replace",
+      "enabled": true,
+      "find": "[…]{2,}|(\\.\\s*){3,}",
+      "replace": "<span class=\"reader-ellipsis\">…</span>",
+      "label": "省略号美化",
+      "description": "连续点号变成标准省略号"
+    },
+    {
+      "type": "replace",
+      "enabled": false,
+      "find": "——{1,2}",
+      "replace": "<span class=\"reader-dash\">—</span>",
+      "label": "破折号美化",
+      "description": "诗歌中破折号保留原样"
+    },
+    {
+      "type": "wrap",
+      "enabled": false,
+      "find": "([^<\\n]{1,4}[：:])(?!<\\/span>)",
+      "class": "reader-speak",
+      "label": "对话人名称",
+      "description": "诗歌不需要对话人加粗"
+    }
+  ],
+  "styles": "\n.reader-quote {\n  font-style: normal;\n  color: var(--reader-accent-start, #88c0d0);\n  letter-spacing: 1px;\n}\n.reader-ellipsis {\n  letter-spacing: 6px;\n  opacity: 0.4;\n}\n.reader-dash {\n  letter-spacing: 2px;\n  opacity: 0.5;\n}\n"
+}

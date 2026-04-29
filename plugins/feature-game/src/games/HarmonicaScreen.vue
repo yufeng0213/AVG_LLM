@@ -6,11 +6,14 @@
 
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Toast from '../Toast.vue'
+import { useGameAudio } from '../composables/useGameAudio.js'
 
 const emit = defineEmits(['back', 'harmonica-result'])
 const props = defineProps({
   coins: { type: Number, default: 0 },
 })
+
+const audio = useGameAudio()
 
 // ====== 口琴音高映射（C调10孔，每孔吹/吸） ======
 
@@ -432,7 +435,7 @@ defineExpose({ noteStart, noteStop })
   <div class="harmonica-screen">
     <!-- Header -->
     <header class="harmo-header">
-      <button type="button" class="harmo-back-btn" @click="emit('back')">
+      <button type="button" class="harmo-back-btn" @click="audio.playSFX('back'); emit('back')">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>

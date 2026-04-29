@@ -1,4 +1,4 @@
-import { isSQLiteAvailable, query, exec } from '../db/db.js'
+import { isSQLiteAvailable, query, exec } from '../db/connection.js'
 
 const MAX_ARCHIVE = 150
 const AUTO_ANALYSE_MIN = 100

@@ -3,7 +3,7 @@
  * 负责保存、加载、删除剧情券生成的完整剧情
  */
 
-import { isSQLiteAvailable, query, exec } from '../db/db.js'
+import { isSQLiteAvailable, query, exec } from '../db/connection.js'
 
 const KV_ARCHIVE_KEY = 'story_ticket_archives'
 

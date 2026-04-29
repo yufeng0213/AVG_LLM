@@ -180,6 +180,7 @@ export const generateBackpackUseResult = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.78,
     maxTokens,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Backpack Use',
   })
 
   if (!result.success) {
@@ -323,6 +324,7 @@ export const generateHandheldBrickLevel = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.78,
     maxTokens: params.options?.maxTokens ?? 260,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Brick Level',
   })
 
   if (!result.success) {
@@ -483,6 +485,7 @@ export const generateHandheldPetProfile = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? 280,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Pet Profile',
   })
 
   if (!result.success) {
@@ -561,6 +564,7 @@ export const generateHandheldPetReply = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.88,
     maxTokens: params.options?.maxTokens ?? 140,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Pet Reply',
   })
 
   if (!result.success) {
@@ -1465,6 +1469,7 @@ export const generateHandheldDungeonMap = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? 1900,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Dungeon Map',
   })
 
   if (!result.success) {
@@ -1534,6 +1539,7 @@ export const generateHandheldDungeonScene = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.84,
     maxTokens: params.options?.maxTokens ?? 360,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Dungeon Scene',
   })
 
   if (!result.success) {
@@ -1599,6 +1605,7 @@ export const generateHandheldDungeonBanter = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? 120,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Dungeon Banter',
   })
 
   if (!result.success) {
@@ -1673,6 +1680,7 @@ export const generateHandheldCampfireCompanions = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.82,
     maxTokens: params.options?.maxTokens ?? 380,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Campfire Companions',
   })
 
   if (!result.success) {
@@ -1860,6 +1868,7 @@ export const generateWorldBookOpeningDialogue = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.84,
     maxTokens: params.options?.maxTokens ?? 1500,
     extraParams: params.options?.extraParams,
+    label: 'World Book Opening',
   })
 
   if (!result.success) {
@@ -2140,6 +2149,7 @@ export const generateBedroomFurnitureItems = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.88,
     maxTokens: params.options?.maxTokens ?? 1800,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Bedroom Furniture',
   })
 
   if (!result.success) {
@@ -2320,6 +2330,7 @@ export const generateMerchantItems = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: params.options?.maxTokens ?? 900,
     extraParams: params.options?.extraParams,
+    label: 'Handheld Merchant Items',
   })
 
   if (!result.success) {

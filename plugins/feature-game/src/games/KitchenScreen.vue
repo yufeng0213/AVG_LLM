@@ -8,6 +8,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import Toast from '../Toast.vue'
 import GameSkinSelector from '../components/GameSkinSelector.vue'
 import { useGameSkin } from '../composables/useGameSkin'
+import { useGameAudio } from '../composables/useGameAudio.js'
 
 const emit = defineEmits(['back', 'kitchen-result', 'kitchen-consume', 'kitchen-produce', 'game-skin-buy'])
 const props = defineProps({
@@ -27,6 +28,7 @@ const {
 } = useGameSkin(GAME_KEY)
 
 const showSkinSelector = ref(false)
+const audio = useGameAudio()
 
 function handleKitchenSkinBuy({ skinId, price }) {
   const result = kitchenBuySkin(skinId, props.coins)
@@ -285,6 +287,8 @@ function startCooking() {
   // 消耗原料
   consumeMaterials(recipe)
 
+  audio.playSFX('kitchen_chop')
+
   // 根据难度设定速度
   const matCount = recipe.materials.length
   cookingSpeed = 1.5 + matCount * 0.5 // 3原料=3度/帧, 5原料=4度/帧
@@ -308,6 +312,7 @@ function finishCooking() {
     cookingAnimFrame = null
   }
   isCooking.value = false
+  audio.playSFX('kitchen_done')
 
   const recipe = selectedRecipe.value
   if (!recipe) return
@@ -463,7 +468,7 @@ defineExpose({ saveStats })
   <div class="kitchen-screen" :style="kitchenThemeStyle">
     <!-- Header -->
     <header class="kitchen-header">
-      <button type="button" class="kitchen-back-btn" @click="emit('back')">
+      <button type="button" class="kitchen-back-btn" @click="audio.playSFX('back'); emit('back')">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>

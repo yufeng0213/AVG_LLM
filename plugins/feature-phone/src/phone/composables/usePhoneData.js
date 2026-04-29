@@ -15,6 +15,7 @@ const CALENDAR_EVENTS_KEY = 'phone_calendar_events_v1'
 
 const DEFAULT_SMS_SETTINGS = {
   contextMessages: 8, // 发送上下文消息数（双方完整记录）
+  maxTokens: 2000, // 短信生成最大 tokens
 }
 
 // ===== 手机壁纸内存缓存 =====

@@ -22,7 +22,8 @@ import midnightStar from '../themes/presets/midnight-star.json'
 import roseGarden from '../themes/presets/rose-garden.json'
 import electricStorm from '../themes/presets/electric-storm.json'
 import bamboo from '../themes/presets/bamboo.json'
-import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 
 const ACTIVE_THEME_KEY = 'active_theme'
 const CUSTOM_THEMES_KEY = 'custom_themes'
@@ -236,7 +237,7 @@ const readJsonStorage = async (key) => {
 
   try {
     if (isSQLiteAvailable()) {
-      return await getConfig(key)
+      return await appConfigRepo.get(key)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       return await kvStorage.get(key)
@@ -249,7 +250,7 @@ const readJsonStorage = async (key) => {
 const writeJsonStorage = async (key, value) => {
   if (typeof window === 'undefined') return
   if (isSQLiteAvailable()) {
-    await setConfig(key, value)
+    await appConfigRepo.set(key, value)
   } else {
     const { kvStorage } = await import('../storage/index.js')
     await kvStorage.set(key, value)
@@ -333,7 +334,7 @@ export const getThemeCatalog = async () => {
 export const getActiveThemeId = async () => {
   if (typeof window === 'undefined') return fallbackTheme.id
   if (isSQLiteAvailable()) {
-    return (await getConfig(ACTIVE_THEME_KEY)) || fallbackTheme.id
+    return (await appConfigRepo.get(ACTIVE_THEME_KEY)) || fallbackTheme.id
   } else {
     const { kvStorage } = await import('../storage/index.js')
     return (await kvStorage.get(ACTIVE_THEME_KEY)) || fallbackTheme.id
@@ -343,7 +344,7 @@ export const getActiveThemeId = async () => {
 const setActiveThemeId = async (themeId) => {
   if (typeof window === 'undefined') return
   if (isSQLiteAvailable()) {
-    await setConfig(ACTIVE_THEME_KEY, themeId)
+    await appConfigRepo.set(ACTIVE_THEME_KEY, themeId)
   } else {
     const { kvStorage } = await import('../storage/index.js')
     await kvStorage.set(ACTIVE_THEME_KEY, themeId)

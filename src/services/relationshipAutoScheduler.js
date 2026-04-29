@@ -2,9 +2,18 @@
  * 关系自动分析调度器
  * 基于世界记忆数据库的更新次数自动触发关系分析，区分 NPC-NPC 和 NPC-Player
  */
-import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
-import { decayEvents } from '../memory/worldMemoryStore.js'
-export { flushRelationshipSave } from '../relationship/index.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
+
+/**
+ * 立即保存好感度数据（Web 端清除 debounce 计时器）
+ */
+export function flushRelationshipSave() {
+  import('../stores/relationship.store.js').then(({ useRelationshipStore }) => {
+    useRelationshipStore().flushSave()
+  })
+}
 
 const STORAGE_KEY = 'avg_llm_relationship_auto_config'
 const CHECK_INTERVAL_MS = 5 * 60 * 1000 // 每 5 分钟检查一次
@@ -14,27 +23,16 @@ let _state = null
 /**
  * 初始化调度器
  * @param {Object} api - 依赖注入
- * @param {Function} api.getWorldBook - 获取当前世界书
- * @param {Function} api.getWorldMemory - 获取世界记忆
- * @param {Function} api.runRelationshipAnalysis - NPC-Player 关系分析
- * @param {Function} api.runNpcNpcAnalysis - NPC-NPC 关系分析
- * @param {Function} api.saveRelationships - 保存关系数据
- * @param {Function} api.addWorldMemoryEvent - 添加世界记忆事件
- * @param {Function} api.syncToRuntime - 同步到 relationship runtime
- * @param {Function} api.notifyPlayer - 通知玩家
- * @param {Function} api.isGenerating - 是否正在生成（返回 boolean）
  */
 export function initRelationshipScheduler(api) {
   if (_state) return
   _state = { api, intervalId: null, running: false, pendingUpdates: 0 }
 
-  // 监听世界记忆更新事件
-  if (typeof window !== 'undefined') {
-    window.addEventListener('worldMemory:updated', (e) => {
-      const count = e.detail?.count || 1
-      _state.pendingUpdates += count
-    })
-  }
+  // 通过 Pinia store 的 pendingUpdateCount 替代 CustomEvent
+  const memStore = useWorldMemoryStore()
+  memStore.$subscribe(() => {
+    _state.pendingUpdates += memStore.consumePendingUpdates()
+  })
 }
 
 /**
@@ -75,7 +73,7 @@ async function loadConfig() {
   try {
     let stored
     if (isSQLiteAvailable()) {
-      stored = await getConfig(STORAGE_KEY)
+      stored = await appConfigRepo.get(STORAGE_KEY)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       stored = await kvStorage.get(STORAGE_KEY)
@@ -92,7 +90,7 @@ async function loadConfig() {
 async function saveConfig(config) {
   try {
     if (isSQLiteAvailable()) {
-      await setConfig(STORAGE_KEY, config)
+      await appConfigRepo.set(STORAGE_KEY, config)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       await kvStorage.set(STORAGE_KEY, config)
@@ -110,7 +108,7 @@ async function _check() {
   const worldBook = _state.api.getWorldBook()
   if (worldBook) {
     try {
-      await decayEvents(worldBook.id)
+      await useWorldMemoryStore().decayEvents(worldBook.id)
     } catch (e) {
       console.warn('[RelationshipScheduler] event decay failed:', e.message)
     }

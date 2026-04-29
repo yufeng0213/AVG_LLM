@@ -6,7 +6,7 @@ import CardDetailScreen from './components/CardDetailScreen.vue'
 import ActivityScreen from './ActivityScreen.vue'
 import ActivityStoryScreen from '../../../src/screens/ActivityStoryScreen.vue'
 import { CHARACTER_CARD_DEFS, getRarityConfig } from './services/cardData.js'
-import { useActivityEntry } from '../../../src/features/useActivityEntry.js'
+import { useActivityEntry } from '../../../src/stores/activityEntry.store.js'
 
 const props = defineProps({
   worldBookId: { type: String, default: 'default_world_book' }

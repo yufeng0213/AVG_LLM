@@ -27,6 +27,7 @@ import worldMemoryEntry from '../../plugins/feature-world-memory/src/entry.js'
 import characterStateEntry from '../../plugins/feature-character-state/src/entry.js'
 import characterCardEntry from '../../plugins/feature-character-card/src/entry.js'
 import baseBuildingEntry from '../../plugins/feature-base-building/src/entry.js'
+import scrapbookEntry from '../../plugins/feature-scrapbook/src/entry.js'
 
 const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   backStorageEntry,
@@ -58,6 +59,7 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   characterStateEntry,
   baseBuildingEntry,
   characterCardEntry,
+  scrapbookEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {

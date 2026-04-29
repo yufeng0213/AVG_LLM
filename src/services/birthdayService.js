@@ -2,7 +2,7 @@
  * 角色生日服务
  * 检测今天过生日的角色，触发生日事件（世界记忆、短信等）
  */
-import { addEvent } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import { acquireLlmSlot } from './llmThrottle.js'
 
 const STORAGE_KEY = 'avg_llm_birthday_tracker_v1'
@@ -52,7 +52,8 @@ export async function triggerBirthdayEvent(deps) {
 
   // 写入世界记忆事件
   try {
-    await addEvent(worldBook.id, {
+    const mem = useWorldMemoryStore()
+    await mem.addEvent(worldBook.id, {
       type: 'birthday',
       participants: [charId],
       summary: `今天是 ${charName} 的生日！🎂`,

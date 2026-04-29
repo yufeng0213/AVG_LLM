@@ -4,10 +4,11 @@
  */
 import { callChatCompletion, getValidatedActiveConfig } from '../llm/llmService.core.js'
 import { resolvePrompt } from '../llm/promptRegistry.js'
-import { addEvent, addCharacterMemory } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import { acquireLlmSlot } from './llmThrottle.js'
 
-import { isSQLiteAvailable, getConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 
 const STORAGE_KEY = 'avg_llm_dream_config'
 
@@ -25,7 +26,7 @@ async function loadConfig() {
   }
   try {
     if (isSQLiteAvailable()) {
-      const stored = await getConfig(STORAGE_KEY)
+      const stored = await appConfigRepo.get(STORAGE_KEY)
       if (stored && typeof stored === 'object') return { ...defaults, ...stored }
     } else {
       const { kvStorage } = await import('../storage/index.js')
@@ -166,8 +167,9 @@ export async function runDreamGeneration(deps) {
 
     if (result.success && result.dream) {
       try {
+        const mem = useWorldMemoryStore()
         // 写入世界记忆事件
-        await addEvent(deps.worldBook.id, {
+        await mem.addEvent(deps.worldBook.id, {
           type: 'character_dream',
           participants: [char.id],
           summary: result.dream,
@@ -176,7 +178,7 @@ export async function runDreamGeneration(deps) {
         })
 
         // 写入角色个人记忆（自己的梦）
-        await addCharacterMemory(deps.worldBook.id, char.id, {
+        await mem.addCharacterMemory(deps.worldBook.id, char.id, {
           about: char.id,
           content: result.dream,
           sentiment: 0,

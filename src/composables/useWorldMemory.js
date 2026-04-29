@@ -3,7 +3,7 @@
  * 将对话存档与 WorldMemory 数据库打通
  */
 import { getDialogueArchive } from './useDialogueArchive.js'
-import { getWorldMemory, addEvents, addCharacterMemoriesBatch, recordExtraction } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import { extractWorldMemory } from '../llm/llmService.memory.js'
 
 /**
@@ -14,8 +14,10 @@ import { extractWorldMemory } from '../llm/llmService.memory.js'
 export async function extractMemoriesFromArchive(worldBookId) {
   if (!worldBookId) return { success: false, eventsExtracted: 0, memoriesExtracted: 0 }
 
+  const mem = useWorldMemoryStore()
+
   // 1. 加载当前世界记忆，获取上次提取记录
-  const memory = await getWorldMemory(worldBookId)
+  const memory = await mem.get(worldBookId)
   const lastLineCount = memory.lastExtractedLineCount || 0
 
   // 2. 获取全部对话存档
@@ -28,7 +30,6 @@ export async function extractMemoriesFromArchive(worldBookId) {
   const newDialogue = archive.slice(lastLineCount)
 
   // 4. 调用 LLM 提取
-  // 需要世界书数据 — 使用 getNormalizedBook 直接获取单本，不走全量扫描
   const { getNormalizedBook } = await import('../worldbook/worldBookStore.js')
   const worldBook = await getNormalizedBook(worldBookId)
   if (!worldBook || worldBook.id !== worldBookId) {
@@ -42,29 +43,28 @@ export async function extractMemoriesFromArchive(worldBookId) {
   })
 
   if (!result.success || (result.events.length === 0 && Object.keys(result.characterMemories).length === 0)) {
-    // 即使没有提取到内容，也更新最后提取记录，避免反复尝试
-    await recordExtraction(worldBookId, archive.length)
+    await mem.recordExtraction(worldBookId, archive.length)
     return { success: true, eventsExtracted: 0, memoriesExtracted: 0 }
   }
 
   // 5. 保存事件
   if (result.events.length > 0) {
-    await addEvents(worldBookId, result.events)
+    await mem.addEvents(worldBookId, result.events)
   }
 
-  // 6. 批量保存角色记忆（合并为一次 getWorldMemory + 一次 markDirty）
+  // 6. 批量保存角色记忆
   const memoryItems = []
   for (const [charId, memories] of Object.entries(result.characterMemories)) {
-    for (const mem of memories) {
-      memoryItems.push({ characterId: charId, memoryEntry: mem })
+    for (const memEntry of memories) {
+      memoryItems.push({ characterId: charId, memoryEntry: memEntry })
     }
   }
   if (memoryItems.length > 0) {
-    await addCharacterMemoriesBatch(worldBookId, memoryItems)
+    await mem.addCharacterMemoriesBatch(worldBookId, memoryItems)
   }
 
   // 7. 更新最后提取记录
-  await recordExtraction(worldBookId, archive.length)
+  await mem.recordExtraction(worldBookId, archive.length)
 
   return {
     success: true,
@@ -80,7 +80,9 @@ export async function extractMemoriesFromArchive(worldBookId) {
  * @returns {Promise<string>} 记忆摘要文本
  */
 export async function getMemoryContext(worldBookId, characterId) {
-  const memory = await getWorldMemory(worldBookId)
+  const mem = useWorldMemoryStore()
+
+  const memory = await mem.get(worldBookId)
   const parts = []
 
   // 最近事件
@@ -98,18 +100,17 @@ export async function getMemoryContext(worldBookId, characterId) {
 
   // 角色记忆
   if (characterId) {
-    const { getSharedContext } = await import('../memory/worldMemoryStore.js')
-    const shared = await getSharedContext(worldBookId, characterId, '__player__')
+    const shared = await mem.getSharedContext(worldBookId, characterId, '__player__')
     if (shared.sharedEvents.length > 0 || shared.aAboutB.length > 0 || shared.bAboutA.length > 0) {
       parts.push('【共享记忆】')
       for (const evt of shared.sharedEvents) {
         parts.push(`- ${evt.summary}`)
       }
-      for (const mem of shared.aAboutB) {
-        parts.push(`- 你对他/她的印象: ${mem.content}`)
+      for (const m of shared.aAboutB) {
+        parts.push(`- 你对他/她的印象: ${m.content}`)
       }
-      for (const mem of shared.bAboutA) {
-        parts.push(`- 他/她对你的印象: ${mem.content}`)
+      for (const m of shared.bAboutA) {
+        parts.push(`- 他/她对你的印象: ${m.content}`)
       }
     }
   }

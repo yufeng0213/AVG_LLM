@@ -64,6 +64,7 @@ const metricLabel = computed(() => {
     favor: '好感度',
     trust: '信任度',
     stance: '立场',
+    cognitive: `${props.change.dimension || '八维'}`,
   }
   return metricMap[props.change.metric] || props.change.metric
 })
@@ -78,12 +79,14 @@ const characterName = computed(() => {
 
 // 动画类名
 const animationClass = computed(() => {
+  const isCognitive = props.change.metric === 'cognitive'
   return {
     'toast-enter': animationPhase.value === 'enter',
     'toast-stable': animationPhase.value === 'stable',
     'toast-exit': animationPhase.value === 'exit',
-    'positive-change': isPositive.value,
-    'negative-change': !isPositive.value,
+    'positive-change': !isCognitive && isPositive.value,
+    'negative-change': !isCognitive && !isPositive.value,
+    'cognitive-change': isCognitive,
     'small-change': magnitude.delta <= 5,
     'medium-change': magnitude.delta > 5 && magnitude.delta <= 15,
     'large-change': magnitude.delta > 15,
@@ -165,10 +168,10 @@ onUnmounted(() => {
       <!-- 动画层 -->
       <div v-if="showAnimation" class="animation-layer">
         <!-- 心形上升动画（正向变化） -->
-        <div 
-          v-for="heart in hearts" 
+        <div
+          v-for="heart in hearts"
           :key="heart.id"
-          v-if="isPositive"
+          v-if="isPositive && change.metric !== 'cognitive'"
           class="floating-heart"
           :style="{
             left: `${heart.x}%`,
@@ -178,12 +181,12 @@ onUnmounted(() => {
         >
           ❤️
         </div>
-        
+
         <!-- 心形破碎动画（负向变化） -->
-        <div 
-          v-for="heart in hearts" 
+        <div
+          v-for="heart in hearts"
           :key="heart.id"
-          v-if="!isPositive"
+          v-if="!isPositive && change.metric !== 'cognitive'"
           class="breaking-heart"
           :style="{
             left: `${heart.x}%`,
@@ -192,6 +195,21 @@ onUnmounted(() => {
           }"
         >
           💔
+        </div>
+
+        <!-- 星光闪烁动画（八维变化） -->
+        <div
+          v-for="heart in hearts"
+          :key="heart.id"
+          v-if="change.metric === 'cognitive'"
+          class="floating-star"
+          :style="{
+            left: `${heart.x}%`,
+            animationDelay: `${heart.delay}ms`,
+            animationDuration: `${heart.duration}ms`,
+          }"
+        >
+          ✨
         </div>
       </div>
       
@@ -215,7 +233,7 @@ onUnmounted(() => {
           <span class="character-name">{{ characterName }}</span>
           <div class="change-value">
             <span class="metric-label">{{ metricLabel }}</span>
-            <span class="delta-value" :class="changeType">
+            <span class="delta-value" :class="change.metric === 'cognitive' ? 'cognitive' : changeType">
               {{ formattedDelta }}
             </span>
           </div>
@@ -325,6 +343,21 @@ onUnmounted(() => {
   background: linear-gradient(90deg, transparent, #8b0000, transparent);
 }
 
+/* 八维变化样式 */
+.cognitive-change {
+  border-color: rgba(0, 255, 255, 0.3);
+}
+
+.cognitive-change::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+}
+
 /* 变化幅度样式 */
 .large-change {
   animation: pulse 0.5s ease-in-out;
@@ -386,6 +419,29 @@ onUnmounted(() => {
   }
   100% {
     transform: translateY(30px) scale(0.5) rotate(15deg);
+    opacity: 0;
+  }
+}
+
+.floating-star {
+  position: absolute;
+  bottom: -20px;
+  font-size: 16px;
+  animation: floatUpSparkle ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes floatUpSparkle {
+  0% {
+    transform: translateY(0) scale(0.3) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1) rotate(90deg);
+  }
+  100% {
+    transform: translateY(-100px) scale(0.8) rotate(180deg);
     opacity: 0;
   }
 }
@@ -457,6 +513,10 @@ onUnmounted(() => {
 
 .delta-value.negative {
   color: #8b0000;
+}
+
+.delta-value.cognitive {
+  color: #00ffff;
 }
 
 .change-reason {

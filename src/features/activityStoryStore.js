@@ -3,7 +3,7 @@
  * 处理活动专属剧情的存档隔离
  */
 
-import { isSQLiteAvailable, query, exec } from '../db/db.js'
+import { isSQLiteAvailable, query, exec } from '../db/connection.js'
 import { getActiveWorldBookId, loadWorldBooks } from '../worldbook/worldBookStore.js'
 
 // 存储键（Web fallback）

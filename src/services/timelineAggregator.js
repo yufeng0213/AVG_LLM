@@ -2,7 +2,7 @@
  * 时间线聚合器
  * 聚合今天所有事件：日程执行、世界记忆、NPC 互动、羁绊事件、梦境
  */
-import { queryEvents } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 
 const ENTRY_TYPE_META = {
   schedule: { emoji: '📅', label: '日程' },

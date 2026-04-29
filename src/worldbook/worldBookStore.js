@@ -1,9 +1,8 @@
 import { getEmotionLabel } from './emotionPresets'
-import { kvStorage } from '../storage/index.js'
 import { DEFAULT_NARRATOR_ID } from '../narrator/narratorStore'
-import { isSQLiteAvailable, exec, query, transaction, loadBookFull, loadAllBooksFull, insertBook, clearAllTables } from '../db/db.js'
+import { isSQLiteAvailable, exec, query, batchExecute } from '../db/connection.js'
+import { loadBookFull, loadAllBooksFull, insertBook, clearAllTables } from '../db/repos/worldBook.repo.js'
 
-export const WORLD_BOOK_STORAGE_KEY = 'world_books'
 export const ACTIVE_WORLD_BOOK_KEY = 'active_world_book'
 
 // --- 规范化结果缓存 ---
@@ -126,7 +125,12 @@ const clampRelationshipMetric = (value, fallback = 0) => {
   return Math.min(RELATIONSHIP_METRIC_MAX, Math.max(RELATIONSHIP_METRIC_MIN, Math.round(parsed)))
 }
 
-export const createDefaultRelationshipBase = () => ({
+/**
+ * 世界书角色模板的关系基础默认值
+ * 默认为 50（友好基线），不同于 relationshipStore 的 0（绝对中立）。
+ * 新角色在世界书中初始状态为"略有印象"，而非"完全陌生"。
+ */
+export const createDefaultWorldbookRelationshipBase = () => ({
   favor: 50,
   trust: 50,
   stance: 0,
@@ -269,7 +273,7 @@ export const normalizePersonalityProfile = (rawProfile) => {
 }
 
 export const normalizeRelationshipBase = (rawBase) => {
-  const fallback = createDefaultRelationshipBase()
+  const fallback = createDefaultWorldbookRelationshipBase()
   return {
     favor: clampRelationshipMetric(rawBase?.favor, fallback.favor),
     trust: clampRelationshipMetric(rawBase?.trust, fallback.trust),
@@ -536,7 +540,7 @@ export const createCharacterSkeleton = (index = 1) => ({
   background: '',
   notes: '',
   personalityProfile: createDefaultPersonalityProfile(),
-  relationshipBase: createDefaultRelationshipBase(),
+  relationshipBase: createDefaultWorldbookRelationshipBase(),
   voiceConfig: createDefaultCharacterVoiceConfig(),
   portraits: [],  // 新增：立绘列表
   birthday: (() => {
@@ -828,23 +832,8 @@ const ensureDefaultWorldBook = (books) => {
 }
 
 // ============================================================
-// SQLite 存储层（Android） / kvStorage 回退（Web dev）
+// SQLite 存储层
 // ============================================================
-
-// --- Web fallback: 使用现有 kvStorage ---
-
-async function _loadRawBooksFromKV() {
-  try {
-    const parsed = await kvStorage.get(WORLD_BOOK_STORAGE_KEY)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-async function _saveRawBooksToKV(books) {
-  await kvStorage.set(WORLD_BOOK_STORAGE_KEY, books)
-}
 
 // --- SQLite 加载 ---
 
@@ -861,12 +850,12 @@ async function _getBookSQLite(bookId) {
 // --- SQLite 保存 ---
 
 async function _saveBooksSQLite(books) {
-  await transaction(async () => {
-    await clearAllTables()
-    for (const book of books) {
-      await insertBook(book)
-    }
-  })
+  const stmts = []
+  await clearAllTables(null, stmts)
+  for (const book of books) {
+    await insertBook(book, null, stmts)
+  }
+  await batchExecute(stmts)
 }
 
 // --- 规范化书架轻量数据（从 SQLite 查询结果提取） ---
@@ -961,35 +950,16 @@ async function _loadBookSummariesSQLite() {
 export const loadWorldBookTitles = async () => {
   if (typeof window === 'undefined') return [createDefaultWorldBook()]
 
-  if (isSQLiteAvailable()) {
-    try {
-      const titles = await _loadBookTitlesSQLite()
-      return sortWorldBooks(ensureDefaultWorldBook(titles))
-    } catch (e) {
-      console.error('[worldBook] SQLite loadWorldBookTitles failed:', e.message)
-    }
+  if (!isSQLiteAvailable()) {
+    console.warn('[worldBook] SQLite not available, returning default world book')
+    return [createDefaultWorldBook()]
   }
 
-  // Web fallback
-  if (_normalizedCache) {
-    return _normalizedCache.map(b => ({
-      id: b.id, title: b.title, summary: b.summary, isDefault: b.isDefault,
-    }))
-  }
   try {
-    const parsed = await _loadRawBooksFromKV()
-    if (parsed.length === 0) return [createDefaultWorldBook()]
-    const titlesOnly = parsed.map((rawBook, index) => {
-      const isDefault = Boolean(rawBook?.isDefault) || rawBook?.id === 'default_world_book'
-      return {
-        id: String(rawBook?.id || `world_book_${Date.now()}_${index}`),
-        title: String(rawBook?.title || (isDefault ? '默认世界书' : `世界书 ${index + 1}`)),
-        summary: String(rawBook?.summary || ''),
-        isDefault,
-      }
-    })
-    return sortWorldBooks(ensureDefaultWorldBook(titlesOnly))
-  } catch {
+    const titles = await _loadBookTitlesSQLite()
+    return sortWorldBooks(ensureDefaultWorldBook(titles))
+  } catch (e) {
+    console.error('[worldBook] SQLite loadWorldBookTitles failed:', e.message)
     return [createDefaultWorldBook()]
   }
 }
@@ -1000,54 +970,16 @@ export const loadWorldBookTitles = async () => {
 export const loadWorldBookSummaries = async () => {
   if (typeof window === 'undefined') return [createDefaultWorldBook()]
 
-  if (isSQLiteAvailable()) {
-    try {
-      const summaries = await _loadBookSummariesSQLite()
-      return sortWorldBooks(ensureDefaultWorldBook(summaries))
-    } catch (e) {
-      console.error('[worldBook] SQLite loadWorldBookSummaries failed:', e.message)
-    }
+  if (!isSQLiteAvailable()) {
+    console.warn('[worldBook] SQLite not available, returning default world book')
+    return [createDefaultWorldBook()]
   }
 
-  // Web fallback
-  if (_normalizedCache) {
-    return _normalizedCache.map(b => ({
-      id: b.id, title: b.title, summary: b.summary, isDefault: b.isDefault,
-      characters: b.characters.map(c => ({
-        id: c.id, name: c.name, nickname: c.nickname, identity: c.identity,
-        portraits: c.portraits, smsAvatar: c.smsAvatar, smsBg: c.smsBg,
-        smsStickers: c.smsStickers, voiceConfig: c.voiceConfig, birthday: c.birthday,
-      })),
-      relationships: b.relationships,
-    }))
-  }
   try {
-    const parsed = await _loadRawBooksFromKV()
-    if (parsed.length === 0) return [createDefaultWorldBook()]
-    const liteBooks = parsed.map((rawBook, index) => {
-      const isDefault = Boolean(rawBook?.isDefault) || rawBook?.id === 'default_world_book'
-      const chars = Array.isArray(rawBook?.characters) ? rawBook.characters : []
-      const rawRelationships = rawBook?.relationships && typeof rawBook.relationships === 'object' ? rawBook.relationships : {}
-      return {
-        id: String(rawBook?.id || `world_book_${Date.now()}_${index}`),
-        title: String(rawBook?.title || (isDefault ? '默认世界书' : `世界书 ${index + 1}`)),
-        summary: String(rawBook?.summary || ''),
-        isDefault,
-        characters: chars.filter(Boolean).map(c => ({
-          id: String(c?.id || ''), name: String(c?.name || '未知角色'),
-          nickname: String(c?.nickname || ''), identity: String(c?.identity || ''),
-          portraits: Array.isArray(c?.portraits) ? c.portraits : [],
-          smsAvatar: typeof c?.smsAvatar === 'string' ? c.smsAvatar : null,
-          smsBg: typeof c?.smsBg === 'string' ? c.smsBg : null,
-          smsStickers: c?.smsStickers && typeof c.smsStickers === 'object' ? c.smsStickers : {},
-          voiceConfig: c?.voiceConfig && typeof c.voiceConfig === 'object' ? c.voiceConfig : { enabled: false, voiceId: '' },
-          birthday: String(c?.birthday || ''),
-        })),
-        relationships: normalizeRelationships(rawRelationships, chars),
-      }
-    })
-    return sortWorldBooks(ensureDefaultWorldBook(liteBooks))
-  } catch {
+    const summaries = await _loadBookSummariesSQLite()
+    return sortWorldBooks(ensureDefaultWorldBook(summaries))
+  } catch (e) {
+    console.error('[worldBook] SQLite loadWorldBookSummaries failed:', e.message)
     return [createDefaultWorldBook()]
   }
 }
@@ -1061,27 +993,18 @@ export const loadWorldBooks = async () => {
   // 命中缓存直接返回
   if (_normalizedCache) return _normalizedCache
 
-  if (isSQLiteAvailable()) {
-    try {
-      _normalizedCache = await _loadBooksSQLite()
-      _normalizedCache = sortWorldBooks(ensureDefaultWorldBook(_normalizedCache))
-      _cacheVersion++
-      return _normalizedCache
-    } catch (e) {
-      console.error('[worldBook] SQLite loadWorldBooks failed:', e.message)
-    }
+  if (!isSQLiteAvailable()) {
+    console.warn('[worldBook] SQLite not available, returning default world book')
+    return [createDefaultWorldBook()]
   }
 
-  // Web fallback
   try {
-    const parsed = await _loadRawBooksFromKV()
-    _normalizedCache = Array.isArray(parsed)
-      ? parsed.map((book, index) => normalizeWorldBook(book, index))
-      : []
+    _normalizedCache = await _loadBooksSQLite()
     _normalizedCache = sortWorldBooks(ensureDefaultWorldBook(_normalizedCache))
     _cacheVersion++
     return _normalizedCache
-  } catch {
+  } catch (e) {
+    console.error('[worldBook] SQLite loadWorldBooks failed:', e.message)
     return [createDefaultWorldBook()]
   }
 }
@@ -1092,21 +1015,19 @@ export const loadWorldBooks = async () => {
 export const persistWorldBooks = async (books) => {
   if (typeof window === 'undefined') return
 
-  if (isSQLiteAvailable()) {
-    try {
-      await _saveBooksSQLite(books)
-      _normalizedCache = null
-      _cacheVersion++
-      return
-    } catch (e) {
-      console.error('[worldBook] SQLite persistWorldBooks failed:', e.message)
-    }
+  if (!isSQLiteAvailable()) {
+    console.warn('[worldBook] SQLite not available, cannot persist world books')
+    return
   }
 
-  // Web fallback
-  await _saveRawBooksToKV(books)
-  _normalizedCache = null
-  _cacheVersion++
+  try {
+    await _saveBooksSQLite(books)
+    _normalizedCache = null
+    _cacheVersion++
+    console.log('[worldBook] Persisted', books.length, 'world books to SQLite')
+  } catch (e) {
+    console.error('[worldBook] SQLite persistWorldBooks failed:', e.message)
+  }
 }
 
 /**
@@ -1121,13 +1042,16 @@ export const getNormalizedBook = async (bookId) => {
     if (cached) return cached
   }
 
-  if (isSQLiteAvailable()) {
-    try {
-      const book = await _getBookSQLite(bookId)
-      if (book) return book
-    } catch (e) {
-      console.error('[worldBook] SQLite getNormalizedBook failed:', e.message)
-    }
+  if (!isSQLiteAvailable()) {
+    console.warn('[worldBook] SQLite not available, returning default world book')
+    return createDefaultWorldBook()
+  }
+
+  try {
+    const book = await _getBookSQLite(bookId)
+    if (book) return book
+  } catch (e) {
+    console.error('[worldBook] SQLite getNormalizedBook failed:', e.message)
   }
 
   // 缓存未命中，回退到完整加载
@@ -1138,16 +1062,40 @@ export const getNormalizedBook = async (bookId) => {
 export const getActiveWorldBookId = async () => {
   if (typeof window === 'undefined') return 'default_world_book'
   if (_activeBookIdCache !== null) return _activeBookIdCache
-  const id = (await kvStorage.get(ACTIVE_WORLD_BOOK_KEY)) || 'default_world_book'
-  _activeBookIdCache = id
-  return id
+
+  if (!isSQLiteAvailable()) {
+    console.warn('[worldBook] SQLite not available, returning default world book id')
+    return 'default_world_book'
+  }
+
+  try {
+    const rows = await query('SELECT value FROM app_config WHERE key = ?', [ACTIVE_WORLD_BOOK_KEY])
+    const id = rows[0]?.value || 'default_world_book'
+    _activeBookIdCache = id
+    console.log('[worldBook] getActiveWorldBookId from SQLite:', id)
+    return id
+  } catch (e) {
+    console.error('[worldBook] getActiveWorldBookId failed:', e.message)
+    return 'default_world_book'
+  }
 }
 
 export const setActiveWorldBookId = async (bookId) => {
   if (typeof window === 'undefined') return
   const id = bookId || 'default_world_book'
-  await kvStorage.set(ACTIVE_WORLD_BOOK_KEY, id)
-  _activeBookIdCache = id
+
+  if (!isSQLiteAvailable()) {
+    console.warn('[worldBook] SQLite not available, cannot set active world book id')
+    return
+  }
+
+  try {
+    await exec('INSERT OR REPLACE INTO app_config (key, value) VALUES (?, ?)', [ACTIVE_WORLD_BOOK_KEY, id])
+    _activeBookIdCache = id
+    console.log('[worldBook] setActiveWorldBookId wrote to SQLite:', id)
+  } catch (e) {
+    console.error('[worldBook] setActiveWorldBookId failed:', e.message)
+  }
 }
 
 export const getActiveWorldBookTags = async () => {
@@ -1273,14 +1221,4 @@ export const invalidateWorldBookCache = () => {
   _normalizedCache = null
   _activeBookIdCache = null
   _cacheVersion++
-}
-
-// --- 跨页签同步 ---
-if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e) => {
-    if (e.key === `avg_llm_${WORLD_BOOK_STORAGE_KEY}`) {
-      _normalizedCache = null
-      _cacheVersion++
-    }
-  })
 }

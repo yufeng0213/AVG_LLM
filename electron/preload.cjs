@@ -85,6 +85,12 @@ const bridgeApi = {
     // 新增：扫描活动目录
     scan: () => ipcRenderer.invoke('activity:scan'),
   },
+  storage: {
+    get: (key) => ipcRenderer.invoke('kv-storage:get', key),
+    set: (key, value) => ipcRenderer.invoke('kv-storage:set', key, value),
+    remove: (key) => ipcRenderer.invoke('kv-storage:remove', key),
+    keys: () => ipcRenderer.invoke('kv-storage:keys'),
+  },
 }
 
 try {

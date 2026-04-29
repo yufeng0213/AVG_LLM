@@ -14,10 +14,7 @@ import {
   getRelationshipInfluenceHint,
   RELATIONSHIP_LEVELS,
 } from '../relationship/relationshipLevels.js'
-import {
-  getCharacterRelationship,
-  getAllRelationships,
-} from '../relationship/relationshipStore.js'
+import { useRelationshipStore } from '../stores/relationship.store.js'
 import { getNarratorFullPrompt } from '../narrator/narratorStore.js'
 
 const personalityDimensionDefs = CHARACTER_PERSONALITY_DIMENSION_DEFS
@@ -380,6 +377,11 @@ const buildInstructionSection = (
   const lines = ['## 生成指令']
   lines.push('')
   lines.push('请根据以上世界设定、角色信息和剧情上下文，生成接下来的剧情发展。')
+  lines.push('')
+  lines.push('### 叙事视角')
+  lines.push('- 旁白描写中使用第二人称"你"来指代玩家，增强代入感')
+  lines.push('- 玩家尽量少说话，多通过旁白描写和角色对玩家的回应来体现玩家的存在')
+  lines.push('- 交互决策通过选项（choices）由玩家做出')
   const normalizedCurrentStoryTime = normalizeStoryTimeText(currentStoryTime)
   if (normalizedCurrentStoryTime) {
     lines.push(`当前剧情时间：${normalizedCurrentStoryTime}`)
@@ -397,11 +399,19 @@ const buildInstructionSection = (
 
   lines.push('')
   lines.push('### 思考步骤（输出 XML 前）')
-  lines.push('1. 当前剧情进展到哪里？')
-  lines.push('2. 接下来发生什么比较合理？')
-  lines.push('3. 哪些角色会参与？各自的情感/态度是什么？')
+  lines.push('注意：<thinking> 中必须用编剧/叙事者的内心独白方式思考，像在脑海中构思剧情。禁止出现"我应该"、"我需要生成"、"用户要求"、"作为AI"等元话术。')
+  lines.push('1. 当前剧情进展到哪里？角色的情绪和处境如何？')
+  lines.push('2. 接下来发生什么比较合理又有意外的张力？')
+  lines.push('3. 哪些角色会参与？各自的情感/态度/潜台词是什么？')
   lines.push(`4. 建议生成 ${messageCount} 条对话，剧情时间应该如何推进？`)
   lines.push('5. 是否需要场景切换？')
+  lines.push('')
+  lines.push('### 每轮自检（在 <thinking> 中回答）')
+  lines.push('1. 这轮推动了什么价值变化？（好感/信任/局势/角色成长，至少一项）')
+  lines.push('2. 内心独白够不够？（角色需要有内在反应，不只外部动作）')
+  lines.push('3. 信息是螺旋式释放的吗？（别一次性全抖出来，保留悬念和未揭部分）')
+  lines.push('4. 有没有意外感？（哪怕日常场景也要有一点小转折或出人意料之处）')
+  lines.push('5. 下一轮的钩子埋好了吗？（留一个让读者想知道后续的点）')
   lines.push('')
   lines.push('### 输出格式（紧凑 XML）')
   lines.push('在 <thinking> 之后，用以下 XML 标签输出，不要 markdown、不要 JSON、不要解释：')

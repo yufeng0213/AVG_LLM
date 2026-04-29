@@ -6,7 +6,7 @@
 
 import { reactive, ref, computed, watch } from 'vue'
 import { kvStorage } from '../storage/index.js'
-import { isSQLiteAvailable, exec, query, transaction } from '../db/db.js'
+import { isSQLiteAvailable, exec, query, transaction } from '../db/connection.js'
 import {
   RELATIONSHIP_MIN,
   RELATIONSHIP_MAX,

@@ -1,0 +1,45 @@
+{
+  "name": "侦探悬疑",
+  "description": "适合侦探、黑色小说，打字机风格，棕褐色怀旧色调",
+  "rules": [
+    {
+      "type": "dropCap",
+      "enabled": true,
+      "label": "首字下沉",
+      "description": "每段第一个字打字机风格"
+    },
+    {
+      "type": "quote",
+      "enabled": false,
+      "pattern": "[「「」『』\"\"\"\"\"]",
+      "label": "引号文字美化",
+      "description": "禁用：双引号\"会与HTML属性冲突导致截断",
+      "class": "reader-quote"
+    },
+    {
+      "type": "replace",
+      "enabled": true,
+      "find": "[…]{2,}|(\\.\\s*){3,}",
+      "replace": "<span class=\"reader-ellipsis\">…</span>",
+      "label": "省略号美化",
+      "description": "连续点号变成标准省略号"
+    },
+    {
+      "type": "replace",
+      "enabled": true,
+      "find": "——{1,2}",
+      "replace": "<span class=\"reader-dash\">—</span>",
+      "label": "破折号美化",
+      "description": "破折号打字机风格"
+    },
+    {
+      "type": "wrap",
+      "enabled": false,
+      "find": "([^<\\n]{1,4}[：:])(?!<\\/span>)",
+      "class": "reader-speak",
+      "label": "对话人名称",
+      "description": "禁用：会匹配到HTML标签内部导致截断"
+    }
+  ],
+  "styles": "\n.reader-quote {\n  font-style: normal;\n  color: #c9a96e;\n  font-family: 'Courier New', 'Consolas', monospace;\n  text-decoration: underline;\n  text-decoration-style: dotted;\n  text-underline-offset: 3px;\n}\n.reader-ellipsis {\n  letter-spacing: 6px;\n  color: #b8976a;\n}\n.reader-dash {\n  letter-spacing: 4px;\n  color: #9a7a4a;\n  font-family: 'Courier New', monospace;\n}\n.reader-speak {\n  color: #d4b87a;\n  font-weight: 700;\n  font-variant: small-caps;\n  font-family: 'Courier New', monospace;\n}\n.reader-body :deep(.reader-dropcap) {\n  float: left;\n  font-size: 3em;\n  line-height: 0.75;\n  padding-right: 8px;\n  padding-top: 4px;\n  color: #b8976a;\n  font-weight: 900;\n  font-family: 'Courier New', monospace;\n  border-bottom: 2px solid #b8976a;\n}\n"
+}

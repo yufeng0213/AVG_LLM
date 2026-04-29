@@ -260,18 +260,143 @@ const tryParseSmsReplies = (rawContent) => {
 
 /**
  * 将世界记忆数据格式化为短信 prompt 可读的文本
+ * 包含：近期事件（含描述）+ 角色记忆（按角色分组）
  */
-function buildWorldMemoryContext(memories) {
+function buildWorldMemoryContext(memories, contactId) {
   if (!memories) return ''
   const parts = []
 
-  // 最近事件
-  const events = (memories.events || []).filter(e => e.status === 'active').slice(-5)
+  // 角色记忆（当前角色的专属记忆）
+  if (contactId && memories.characterMemories) {
+    const charMems = memories.characterMemories[contactId]
+    if (charMems && Array.isArray(charMems) && charMems.length > 0) {
+      parts.push('【角色专属记忆】')
+      for (const mem of charMems.slice(-8)) {
+        const memText = typeof mem === 'string' ? mem : (mem.summary || mem.description || mem.content || JSON.stringify(mem))
+        if (memText) {
+          parts.push(`- ${memText}`)
+        }
+      }
+    }
+  }
+
+  // 全局角色记忆（其他角色的）
+  if (memories.characterMemories) {
+    const otherChars = Object.keys(memories.characterMemories).filter(id => id !== contactId)
+    if (otherChars.length > 0) {
+      parts.push('【其他角色记忆】')
+      for (const charId of otherChars.slice(0, 3)) {
+        const charMems = memories.characterMemories[charId]
+        if (charMems && charMems.length > 0) {
+          const lastMem = charMems[charMems.length - 1]
+          const memText = typeof lastMem === 'string' ? lastMem : (lastMem.summary || lastMem.description || lastMem.content || '')
+          if (memText) {
+            parts.push(`- [${charId}] ${memText.slice(0, 100)}`)
+          }
+        }
+      }
+    }
+  }
+
+  // 近期事件（含描述，不限制 status）
+  const events = (memories.events || []).slice(-8)
   if (events.length > 0) {
     parts.push('【近期事件】')
     for (const evt of events) {
-      parts.push(`- ${evt.summary || ''}`)
+      const title = evt.title || evt.summary || ''
+      const desc = evt.description || evt.details || ''
+      const statusTag = evt.status && evt.status !== 'active' ? `[${evt.status}]` : ''
+      if (desc) {
+        parts.push(`- ${title} ${statusTag}: ${desc}`)
+      } else if (title) {
+        parts.push(`- ${title} ${statusTag}`)
+      }
     }
+  }
+
+  // 世界标志
+  if (memories.worldFlags && Object.keys(memories.worldFlags).length > 0) {
+    parts.push('【世界状态】')
+    for (const [key, val] of Object.entries(memories.worldFlags).slice(0, 6)) {
+      if (val !== null && val !== undefined) {
+        parts.push(`- ${key}: ${typeof val === 'object' ? JSON.stringify(val) : val}`)
+      }
+    }
+  }
+
+  // 里程碑
+  if (memories.milestones && memories.milestones.length > 0) {
+    parts.push(`【里程碑】${memories.milestones.slice(-3).join(' → ')}`)
+  }
+
+  return parts.join('\n')
+}
+
+/**
+ * 从世界书中查找角色的完整人设信息
+ */
+function buildCharacterFullProfile(contactId, contact, worldBook) {
+  const chars = Array.isArray(worldBook?.characters) ? worldBook.characters : []
+  const char = chars.find(c =>
+    c.id === contactId ||
+    String(c.name || '').trim() === contact.name ||
+    c.id === contact.id
+  )
+  if (!char) return ''
+
+  const parts = []
+  const name = String(char.name || contact.name || '').trim()
+  if (name) parts.push(`姓名: ${name}`)
+
+  const nickname = String(char.nickname || '').trim()
+  if (nickname) parts.push(`昵称: ${nickname}`)
+
+  const identity = String(char.identity || '').trim()
+  if (identity) parts.push(`身份: ${identity}`)
+
+  const appearance = String(char.appearance || '').trim()
+  if (appearance) parts.push(`外貌: ${appearance}`)
+
+  const background = String(char.background || '').trim()
+  if (background) parts.push(`背景: ${background}`)
+
+  const notes = String(char.notes || '').trim()
+  if (notes) parts.push(`备注: ${notes}`)
+
+  // 性格档案
+  const personality = char.personalityProfile && typeof char.personalityProfile === 'object'
+    ? char.personalityProfile : {}
+  const mbti = String(personality.mbti || '').trim()
+  if (mbti) parts.push(`MBTI: ${mbti}`)
+
+  const behaviorTags = Array.isArray(personality.behaviorTags)
+    ? personality.behaviorTags.filter(Boolean).slice(0, 15)
+    : []
+  if (behaviorTags.length > 0) parts.push(`行为特征: ${behaviorTags.join('、')}`)
+
+  const cognitiveDims = personality.cognitiveDimensions && typeof personality.cognitiveDimensions === 'object'
+    ? personality.cognitiveDimensions : {}
+  const dimEntries = Object.entries(cognitiveDims).slice(0, 10)
+  if (dimEntries.length > 0) parts.push(`认知维度: ${dimEntries.map(([k, v]) => `${k}:${v}`).join(' | ')}`)
+
+  const speechStyle = String(personality.speechStyle || char.speechStyle || '').trim()
+  if (speechStyle) parts.push(`说话风格: ${speechStyle}`)
+
+  const voiceConfig = char.voiceConfig && typeof char.voiceConfig === 'object' ? char.voiceConfig : {}
+  const voiceId = String(voiceConfig.voiceId || '').trim()
+  if (voiceId) parts.push(`语音ID: ${voiceId}`)
+
+  // 关系档案
+  if (char.relationships && Array.isArray(char.relationships) && char.relationships.length > 0) {
+    parts.push(`人物关系: ${char.relationships.slice(0, 5).map(r =>
+      `${r.from || '某人'} → ${r.to || '某人'} (${r.type || '未知'})`
+    ).join('; ')}`)
+  }
+
+  // 日程/习惯
+  if (char.schedule && typeof char.schedule === 'object') {
+    const habits = char.schedule.habits || char.schedule.routine || ''
+    if (typeof habits === 'string' && habits.trim()) parts.push(`日常习惯: ${habits.trim().slice(0, 200)}`)
   }
 
   return parts.join('\n')
@@ -291,6 +416,9 @@ function buildRelationshipContext(relationship, contact) {
   if (entry.stance !== undefined) parts.push(`立场: ${entry.stance}`)
   if (entry.level !== undefined) parts.push(`关系等级: ${entry.level}`)
   if (entry.lastInteraction) parts.push(`最近互动: ${entry.lastInteraction}`)
+  if (entry.firstMet) parts.push(`初识时间: ${entry.firstMet}`)
+  if (entry.affection !== undefined && entry.affection !== entry.favor) parts.push(`好感值: ${entry.affection}`)
+  if (entry.intimacy !== undefined) parts.push(`亲密度: ${entry.intimacy}`)
 
   return parts.join('，')
 }
@@ -449,6 +577,7 @@ async function selectPrintableType(printableTypes, contactName, contextMessages)
     userPrompt,
     temperature: 0.5,
     maxTokens: 64,
+    label: 'Phone SMS File',
   })
 
   if (!result.success) return null
@@ -484,6 +613,7 @@ async function generateFileVariables(promptJson, contact, worldBook, contextMess
     userPrompt,
     temperature: 0.8,
     maxTokens: 1024,
+    label: 'Phone SMS File',
   })
 
   if (!result.success) return null
@@ -594,7 +724,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
   const currentLine = params.currentLine && typeof params.currentLine === 'object' ? params.currentLine : null
   const smsHistoryLimit = clampPromptLineCount(params.options?.historyLimit, 8, 300)
   const dialogueHistoryLimit = clampPromptLineCount(params.options?.dialogueLimit, 4, 180)
-  const smsMaxTokens = clampMaxTokens(params.options?.maxTokens, 420)
+  const smsMaxTokens = clampMaxTokens(params.options?.maxTokens, 2000)
   const forwardedClues = Array.isArray(params.forwardedClues)
     ? params.forwardedClues
         .map((item) => ({
@@ -612,6 +742,12 @@ export const generatePhoneSmsReply = async (params = {}) => {
         .slice(0, 6)
     : []
 
+  // SMS 事件上下文（随机抽取的聊天事件）
+  const eventCtx = params.eventContext && typeof params.eventContext === 'object' ? params.eventContext : null
+  const eventPromptText = eventCtx && eventCtx.event
+    ? `【当前事件触发】\n你正在经历以下事件，请自然地以此为背景展开对话。在 <thinking> 中先根据关键词，结合世界书背景和角色身份，确立这个事件在当前对话中的具体表现形式，然后再展开短信回复。\n- 时间：${eventCtx.time || '未指定'}\n- 地点：${eventCtx.location || '未指定'}\n- 事件：${eventCtx.event}\n- 情绪/动机：${eventCtx.emotion || '自然'}\n- 引入方式：${eventCtx.entryStyle || '自然提及'}\n- 关系推进：${eventCtx.socialLine || '顺其自然'}`
+    : ''
+
   const recentSms = (smsHistoryLimit > 0 ? history.slice(-smsHistoryLimit) : [])
     .map((item) => `${item?.role === 'assistant' ? contact.name : '玩家'}: ${String(item?.text || '').trim()}`)
     .filter(Boolean)
@@ -628,7 +764,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     .join('\n')
 
   const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
-  const roleSummary = String(contact?.identity || contact?.subtitle || '').trim()
+  const characterFullProfile = buildCharacterFullProfile(contact?.id, contact, worldBook)
   const styleHint = String(worldBook?.defaultNarratorId || '').trim()
 
   // 使用有效用户身份（全局用户 + 世界书覆写），由调用方传入
@@ -654,7 +790,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
   const currentTimeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
   // 世界记忆文本
-  const worldMemoryText = buildWorldMemoryContext(worldMemories)
+  const worldMemoryText = buildWorldMemoryContext(worldMemories, contact?.id)
   // 关系数据文本
   const relationshipText = buildRelationshipContext(relationshipSnapshot, contact)
 
@@ -662,7 +798,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     `【世界书标题】${String(worldBook?.title || '默认世界书').trim()}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
     `【角色名】${contact.name}`,
-    roleSummary ? `【角色信息】${roleSummary}` : '',
+    characterFullProfile ? `【角色完整人设】\n${characterFullProfile}` : '',
     styleHint ? `【叙事风格ID参考】${styleHint}` : '',
     `【当前发信人】${smsPlayerName}`,
     `【当前时间】${currentTimeStr}`,
@@ -672,6 +808,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     worldMemoryText ? `【共享记忆】\n${worldMemoryText}` : '',
     relationshipText ? `【你对玩家的印象】\n${relationshipText}` : '',
     forwardedClueText ? `【本次转发线索】\n${forwardedClueText}` : '',
+    eventPromptText ? eventPromptText : '',
     stickerText ? stickerText : '',
     `【玩家刚发送】${userMessage}`,
     forwardedClueText
@@ -688,6 +825,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: smsMaxTokens,
     extraParams: params.options?.extraParams,
+    label: 'Phone SMS Reply',
   })
 
   if (!result.success) {
@@ -798,7 +936,7 @@ export const generateDormChatReply = async (params = {}) => {
     .join('\n')
 
   const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
-  const roleSummary = String(contact?.identity || contact?.subtitle || '').trim()
+  const characterFullProfile = buildCharacterFullProfile(contact?.id, contact, worldBook)
 
   // 使用有效用户身份（全局用户 + 世界书覆写），由调用方传入
   const effectiveUser = params.effectiveUser && typeof params.effectiveUser === 'object' ? params.effectiveUser : null
@@ -808,7 +946,7 @@ export const generateDormChatReply = async (params = {}) => {
   const playerDescription = effectiveUser ? String(effectiveUser.description || '').trim() : ''
 
   // 世界记忆上下文
-  const worldMemoryText = buildWorldMemoryContext(worldMemories)
+  const worldMemoryText = buildWorldMemoryContext(worldMemories, contact?.id)
   // 关系数据上下文
   const relationshipText = buildRelationshipContext(relationshipSnapshot, contact)
 
@@ -816,7 +954,7 @@ export const generateDormChatReply = async (params = {}) => {
     `【世界书标题】${String(worldBook?.title || '默认世界书').trim()}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
     `【角色名】${contact.name}`,
-    roleSummary ? `【角色信息】${roleSummary}` : '',
+    characterFullProfile ? `【角色完整人设】\n${characterFullProfile}` : '',
     `【玩家名】${playerDisplayName}`,
     playerDescription ? `【玩家简介】${playerDescription}` : '',
     recentChat ? `【最近聊天】\n${recentChat}` : '',
@@ -838,6 +976,7 @@ export const generateDormChatReply = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.85,
     maxTokens,
     extraParams: params.options?.extraParams,
+    label: 'Phone Dorm Chat',
   })
 
   if (!result.success) {
@@ -953,7 +1092,7 @@ export const generatePhoneCallReply = async (params = {}) => {
     .join('\n')
 
   const worldSummary = String(worldBook?.summary || worldBook?.entries?.overview || '').trim()
-  const roleSummary = String(contact?.identity || contact?.subtitle || '').trim()
+  const characterFullProfile = buildCharacterFullProfile(contact?.id, contact, worldBook)
 
   const effectiveUser = params.effectiveUser && typeof params.effectiveUser === 'object' ? params.effectiveUser : null
   const playerDisplayName = effectiveUser
@@ -965,7 +1104,7 @@ export const generatePhoneCallReply = async (params = {}) => {
     `【世界书标题】${String(worldBook?.title || '默认世界书').trim()}`,
     worldSummary ? `【世界背景】${worldSummary}` : '',
     `【角色名】${contact.name}`,
-    roleSummary ? `【角色信息】${roleSummary}` : '',
+    characterFullProfile ? `【角色完整人设】\n${characterFullProfile}` : '',
     `【玩家名】${playerDisplayName}`,
     playerDescription ? `【玩家简介】${playerDescription}` : '',
     recentChat ? `【最近通话记录】\n${recentChat}` : '',
@@ -983,6 +1122,7 @@ export const generatePhoneCallReply = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.85,
     maxTokens,
     extraParams: params.options?.extraParams,
+    label: 'Phone Call',
   })
 
   if (!result.success) {
@@ -1204,6 +1344,7 @@ export const generatePhoneMomentsReplies = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? 380,
     extraParams: params.options?.extraParams,
+    label: 'Phone Moments Replies',
   })
 
   if (!result.success) {
@@ -1313,6 +1454,7 @@ export const generatePhoneMomentsReply = async (params = {}) => {
     ].filter(Boolean).join('\n'),
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: params.options?.maxTokens ?? 60,
+    label: 'Phone Moments',
   })
 
   if (!result.success) {
@@ -1364,6 +1506,7 @@ export const generatePhoneContactSignature = async (params = {}) => {
     ].filter(Boolean).join('\n'),
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? 80,
+    label: 'Phone Contact Signature',
   })
 
   if (!result.success) {
@@ -1570,6 +1713,7 @@ export const generatePhoneMomentsBatchReplies = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? Math.min(980, 260 + pendingReplies.length * 120),
     extraParams: params.options?.extraParams,
+    label: 'Phone Moments Batch',
   })
 
   if (!result.success) {
@@ -1967,6 +2111,7 @@ export const generatePhoneForumPosts = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.92,
     maxTokens: params.options?.maxTokens ?? Math.min(2200, 500 + postCount * 250),
     extraParams: params.options?.extraParams,
+    label: 'Phone Forum Posts',
   })
 
   if (!result.success) {
@@ -2367,6 +2512,7 @@ export const generatePhoneNewsFeed = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? Math.min(2600, 620 + eventCount * versionsPerEvent * 180),
     extraParams: params.options?.extraParams,
+    label: 'Phone News Feed',
   })
 
   if (!result.success) {
@@ -2879,6 +3025,7 @@ export const generatePhoneMapData = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.84,
     maxTokens: params.options?.maxTokens ?? Math.min(2400, 900 + locationCount * 160),
     extraParams: params.options?.extraParams,
+    label: 'Phone Map Data',
   })
 
   if (!result.success) {
@@ -3073,6 +3220,7 @@ export const generateRedditPosts = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? Math.min(2000, 400 + postCount * 300),
     extraParams: params.options?.extraParams,
+    label: 'Reddit Posts',
   })
 
   if (!result.success) {
@@ -3201,6 +3349,7 @@ export const generateRedditCommentReplies = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.9,
     maxTokens: params.options?.maxTokens ?? 500,
     extraParams: params.options?.extraParams,
+    label: 'Reddit Comment Replies',
   })
 
   if (!result.success) {
@@ -3446,6 +3595,7 @@ export const generatePhoneShopItems = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: params.options?.maxTokens ?? Math.min(3000, 700 + resultCount * 170),
     extraParams: params.options?.extraParams,
+    label: 'Phone Shop Items',
   })
 
   if (!result.success) {
@@ -3674,6 +3824,7 @@ export const generateDormShopItems = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: params.options?.maxTokens ?? Math.min(2500, 500 + resultCount * 150),
     extraParams: params.options?.extraParams,
+    label: 'Phone Dorm Shop Items',
   })
 
   if (!result.success) {
@@ -3877,6 +4028,7 @@ export const generateTaskBoardTasks = async (params = {}) => {
     userPrompt,
     temperature: 0.9,
     maxTokens: 1500,
+    label: 'Phone Task Board',
   })
 
   if (!result.success) {
@@ -4102,6 +4254,7 @@ export const generateDormItemGiftReply = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.82,
     maxTokens: params.options?.maxTokens ?? 600,
     extraParams: params.options?.extraParams,
+    label: 'Phone Dorm Gift Reply',
   })
 
   if (!result.success) {
@@ -4220,6 +4373,7 @@ export const generateCharacterVisit = async (params = {}) => {
       temperature,
       maxTokens,
       extraParams,
+      label: 'Phone Character Visit',
     })
 
     const parsed = tryParseCharacterVisit(result.data)
@@ -4426,6 +4580,7 @@ export const generateCharacterDiary = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: params.options?.maxTokens ?? maxWords + 200,
     extraParams: params.options?.extraParams,
+    label: 'Phone Character Diary',
   })
 
   if (!result.success) {
@@ -4779,8 +4934,8 @@ export const generateGroupChatReply = async (params = {}) => {
   }
   const privateChatsText = privateChatsParts.length > 0 ? privateChatsParts.join('\n\n') : ''
 
-  // 世界记忆上下文
-  const worldMemoryText = buildWorldMemoryContext(worldMemories)
+  // 世界记忆上下文（群聊无单一角色，获取全部记忆）
+  const worldMemoryText = buildWorldMemoryContext(worldMemories, undefined)
 
   // 群成员关系上下文
   const memberRelationshipsText = buildGroupMemberRelationshipsContext(memberRelationships, members, playerName)
@@ -4809,6 +4964,7 @@ export const generateGroupChatReply = async (params = {}) => {
     temperature: params.options?.temperature ?? 0.88,
     maxTokens: params.options?.maxTokens ?? Math.min(1500, 300 + members.length * 180),
     extraParams: params.options?.extraParams,
+    label: 'Phone Group Chat',
   })
 
   if (!result.success) {

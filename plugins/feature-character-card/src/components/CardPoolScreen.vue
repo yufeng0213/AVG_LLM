@@ -2,16 +2,16 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useCardCollection } from '../composables/useCardCollection.js'
 import { useCardPool } from '../composables/useCardPool.js'
-import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
+import { usePlayerState } from '../../../../src/stores/playerState.store.js'
 
 const emit = defineEmits(['back'])
 
-const { economy, updateEconomy } = useGlobalUser()
+const playerState = usePlayerState()
 const collection = useCardCollection()
 const pool = useCardPool({
-  getCrystals: () => economy.value?.crystals ?? 0,
+  getCrystals: () => playerState.economy?.crystals ?? 0,
   updateCrystals: (val) => {
-    updateEconomy((prev) => ({ ...prev, crystals: Math.max(0, val) }))
+    playerState.updateEconomy((prev) => ({ ...prev, crystals: Math.max(0, val) }))
   },
 })
 

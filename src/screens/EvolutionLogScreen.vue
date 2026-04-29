@@ -6,7 +6,7 @@
 import './EvolutionLogScreen.css'
 import { onMounted, ref } from 'vue'
 import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStore.js'
-import { getWorldMemory } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import { generateEvolutionLog, loadEvolutionLogs } from '../services/worldEvolutionLog.js'
 
 const emit = defineEmits(['back'])
@@ -28,7 +28,7 @@ async function loadData() {
     worldBook.value = books.find(b => b.id === activeId) || books[0] || null
 
     if (worldBook.value) {
-      worldMemory.value = await getWorldMemory(worldBook.value.id)
+      worldMemory.value = await useWorldMemoryStore().get(worldBook.value.id)
     }
 
     // 加载历史日志

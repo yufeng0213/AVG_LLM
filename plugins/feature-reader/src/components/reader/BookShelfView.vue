@@ -25,7 +25,7 @@ async function deleteStoryItem(storyId, storyTitle) {
   if (!confirm(`确定要删除「${storyTitle}」吗？此操作不可恢复。`)) return
 
   const stories = await loadStories()
-  const updated = deleteStory(stories, storyId)
+  const updated = await deleteStory(stories, storyId)
   stories.length = 0
   stories.push(...updated)
   await saveStories(updated)

@@ -146,6 +146,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useCharacterSchedule } from '../../plugins/feature-character-schedule/src/composables/useCharacterSchedule.js'
 import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 
 const props = defineProps({
   worldBookId: { type: String, default: '' },
@@ -344,8 +345,8 @@ function gatherLocations() {
 async function loadWorldEvents() {
   if (!worldBook.value) return
   try {
-    const { getWorldMemory } = await import('../memory/worldMemoryStore.js')
-    const memory = await getWorldMemory(worldBook.value.id)
+    const mem = useWorldMemoryStore()
+    const memory = await mem.get(worldBook.value.id)
     worldEvents.value = (memory.events || []).slice(-50).reverse()
   } catch (e) {
     console.warn('[WorldMap] load events failed:', e.message)

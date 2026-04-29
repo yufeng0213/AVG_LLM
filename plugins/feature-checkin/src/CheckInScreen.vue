@@ -6,11 +6,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCheckInDaily } from './composables/useCheckInDaily.js'
 import { MONTHLY_REWARDS } from './checkInItems.js'
+import { usePlayerState } from '../../../src/stores/playerState.store.js'
 
 const emit = defineEmits(['back', 'checkin-daily-result'])
 const props = defineProps({
   coins: { type: Number, default: 0 },
 })
+
+const playerState = usePlayerState()
 
 const {
   currentYear,
@@ -64,6 +67,20 @@ function handleSignIn() {
   rewardResult.value = reward
   emit('checkin-daily-result', { cost: 0, earned: reward.baseCoins })
 
+  // 将物品添加到背包
+  if (reward.items && reward.items.length > 0) {
+    for (const item of reward.items) {
+      playerState.addItemToInventory({
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        description: item.description || '',
+        quantity: item.quantity || 1,
+      })
+    }
+    console.log('[CheckIn] Added items to inventory:', reward.items.map(i => `${i.name}×${i.quantity}`).join(', '))
+  }
+
   setTimeout(() => {
     isAnimating.value = false
     const itemNames = reward.items.length > 0
@@ -84,6 +101,21 @@ function handleClaimBonus() {
   const result = claimMonthBonus(worldBookId.value)
   if (result) {
     emit('checkin-daily-result', { cost: 0, earned: result.coins })
+
+    // 将物品添加到背包
+    if (result.items && result.items.length > 0) {
+      for (const item of result.items) {
+        playerState.addItemToInventory({
+          id: item.id,
+          name: item.name,
+          icon: item.icon,
+          description: item.description || '',
+          quantity: item.quantity || 1,
+        })
+      }
+      console.log('[CheckIn] Monthly bonus items added to inventory:', result.items.map(i => `${i.name}×${i.quantity}`).join(', '))
+    }
+
     const itemNames = result.items.length > 0
       ? result.items.map(i => `${i.icon}${i.name}×${i.quantity}`).join(' + ')
       : ''

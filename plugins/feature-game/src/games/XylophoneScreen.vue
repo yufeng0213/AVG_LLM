@@ -6,11 +6,14 @@
 
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Toast from '../Toast.vue'
+import { useGameAudio } from '../composables/useGameAudio.js'
 
 const emit = defineEmits(['back', 'xylophone-result'])
 const props = defineProps({
   coins: { type: Number, default: 0 },
 })
+
+const audio = useGameAudio()
 
 // ====== 音符定义 ======
 
@@ -291,7 +294,7 @@ defineExpose({
   <div class="xylophone-screen">
     <!-- Header -->
     <header class="xylo-header">
-      <button type="button" class="xylo-back-btn" @click="emit('back')">
+      <button type="button" class="xylo-back-btn" @click="audio.playSFX('back'); emit('back')">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>

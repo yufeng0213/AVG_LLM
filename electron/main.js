@@ -1461,6 +1461,57 @@ app.whenReady().then(() => {
     }
   })
 
+  // ========== 键值存储 IPC（Electron 持久化存储，基于文件系统）==========
+
+  const KV_STORAGE_DIR = path.join(app.getPath('userData'), 'kv-storage')
+  console.log('[kv-storage] KV_STORAGE_DIR:', KV_STORAGE_DIR)
+
+  ipcMain.handle('kv-storage:get', async (_event, key) => {
+    try {
+      await ensureDir(KV_STORAGE_DIR)
+      const filePath = path.join(KV_STORAGE_DIR, `${key}.json`)
+      const content = await fsPromises.readFile(filePath, 'utf-8')
+      console.log('[kv-storage] get OK:', key, 'from', filePath)
+      return JSON.parse(content)
+    } catch (e) {
+      console.log('[kv-storage] get MISS:', key, e.message)
+      return null
+    }
+  })
+
+  ipcMain.handle('kv-storage:set', async (_event, key, value) => {
+    try {
+      await ensureDir(KV_STORAGE_DIR)
+      const filePath = path.join(KV_STORAGE_DIR, `${key}.json`)
+      await fsPromises.writeFile(filePath, JSON.stringify(value), 'utf-8')
+      console.log('[kv-storage] set OK:', key, '->', filePath)
+      return { ok: true, path: filePath }
+    } catch (error) {
+      console.error('[kv-storage] set FAIL:', key, error.message)
+      return { ok: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('kv-storage:remove', async (_event, key) => {
+    try {
+      const filePath = path.join(KV_STORAGE_DIR, `${key}.json`)
+      await fsPromises.unlink(filePath)
+      return true
+    } catch {
+      return false
+    }
+  })
+
+  ipcMain.handle('kv-storage:keys', async () => {
+    try {
+      await ensureDir(KV_STORAGE_DIR)
+      const files = await fsPromises.readdir(KV_STORAGE_DIR)
+      return files.filter(f => f.endsWith('.json')).map(f => f.replace('.json', ''))
+    } catch {
+      return []
+    }
+  })
+
   // ==================== Mascot Window IPC ====================
 
   ipcMain.handle('mascot:create', () => {

@@ -2,7 +2,8 @@
  * LLM 调用节流器 — 所有活人感功能共享
  * 防止短时间内过多 LLM 调用导致 token 消耗失控
  */
-import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 
 const STORAGE_KEY = 'avg_llm_throttle_config'
 
@@ -86,7 +87,7 @@ export async function initLlmThrottleWithConfig(opts = {}) {
   try {
     let stored
     if (isSQLiteAvailable()) {
-      stored = await getConfig(STORAGE_KEY)
+      stored = await appConfigRepo.get(STORAGE_KEY)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       stored = await kvStorage.get(STORAGE_KEY)
@@ -111,7 +112,7 @@ export async function saveThrottleConfig(config = {}) {
     } : {}
     const value = { ...current, ...config }
     if (isSQLiteAvailable()) {
-      await setConfig(STORAGE_KEY, value)
+      await appConfigRepo.set(STORAGE_KEY, value)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       await kvStorage.set(STORAGE_KEY, value)

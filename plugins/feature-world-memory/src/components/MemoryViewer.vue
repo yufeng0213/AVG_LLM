@@ -94,7 +94,6 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { extractMemoriesFromArchive } from '../../../../src/composables/useWorldMemory.js'
-import { getWorldMemory } from '../../../../src/memory/worldMemoryStore.js'
 
 const props = defineProps({
   worldBook: Object,

@@ -3,7 +3,8 @@
  * 负责加载卡片配置、随机抽取卡片模板
  */
 
-import { isSQLiteAvailable, getConfig, setConfig, removeConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem'
 
 // 默认卡片配置路径
@@ -79,13 +80,13 @@ export const getCardBaseDir = async () => {
  */
 export const setCardConfigPath = async (configPath, baseDir = null) => {
   if (isSQLiteAvailable()) {
-    await setConfig(CARD_CONFIG_STORAGE_KEY, configPath)
+    await appConfigRepo.set(CARD_CONFIG_STORAGE_KEY, configPath)
   } else {
     await kvStorageSet(CARD_CONFIG_STORAGE_KEY, configPath)
   }
   if (baseDir) {
     if (isSQLiteAvailable()) {
-      await setConfig(CARD_BASE_DIR_KEY, baseDir)
+      await appConfigRepo.set(CARD_BASE_DIR_KEY, baseDir)
     } else {
       await kvStorageSet(CARD_BASE_DIR_KEY, baseDir)
     }
@@ -102,8 +103,8 @@ export const setCardConfigPath = async (configPath, baseDir = null) => {
 export const setCustomCardConfig = async (baseDir, sourceName = '自定义') => {
   try {
     if (isSQLiteAvailable()) {
-      await setConfig(CARD_BASE_DIR_KEY, baseDir)
-      await setConfig(CARD_CONFIG_STORAGE_KEY, sourceName)
+      await appConfigRepo.set(CARD_BASE_DIR_KEY, baseDir)
+      await appConfigRepo.set(CARD_CONFIG_STORAGE_KEY, sourceName)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       await kvStorage.set(CARD_BASE_DIR_KEY, baseDir)
@@ -125,8 +126,8 @@ export const setCustomCardConfig = async (baseDir, sourceName = '自定义') => 
 export const clearCustomCardConfig = async () => {
   try {
     if (isSQLiteAvailable()) {
-      await removeConfig(CARD_BASE_DIR_KEY)
-      await removeConfig(CARD_CONFIG_STORAGE_KEY)
+      await appConfigRepo.remove(CARD_BASE_DIR_KEY)
+      await appConfigRepo.remove(CARD_CONFIG_STORAGE_KEY)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       await kvStorage.remove(CARD_BASE_DIR_KEY)
@@ -141,7 +142,7 @@ export const clearCustomCardConfig = async () => {
 
 async function kvStorageGet(key) {
   if (isSQLiteAvailable()) {
-    return await getConfig(key)
+    return await appConfigRepo.get(key)
   } else {
     const { kvStorage } = await import('../storage/index.js')
     return kvStorage.get(key)
@@ -150,7 +151,7 @@ async function kvStorageGet(key) {
 
 async function kvStorageSet(key, value) {
   if (isSQLiteAvailable()) {
-    await setConfig(key, value)
+    await appConfigRepo.set(key, value)
   } else {
     const { kvStorage } = await import('../storage/index.js')
     await kvStorage.set(key, value)

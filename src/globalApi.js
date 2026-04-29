@@ -173,24 +173,24 @@ async function getActivityFileUrlCapacitor(activityId, relativePath) {
 
 /**
  * 在 Vue 应用初始化后调用，注入依赖 composables 的 API。
- * @param {Object} hooks - { useGlobalUser, useCardCollection, worldBookIdRef }
+ * @param {Object} hooks - { usePlayerState, useCardCollection, worldBookIdRef }
  */
 export function initGlobalApi(hooks) {
-  const { useGlobalUser, useCardCollection, worldBookIdRef } = hooks
+  const { usePlayerState, useCardCollection, worldBookIdRef } = hooks
 
-  const globalUser = useGlobalUser()
+  const playerState = usePlayerState()
 
   // ─── 经济系统 ────────────────────────────────────────────
   window.__avgLLM.economy = {
-    economy: globalUser.economy,
-    updateEconomy: globalUser.updateEconomy,
-    getCrystals: () => globalUser.economy.value?.crystals ?? 0,
-    getCoins: () => globalUser.economy.value?.coins ?? 0,
+    economy: computed(() => playerState.economy),
+    updateEconomy: playerState.updateEconomy,
+    getCrystals: () => playerState.economy?.crystals ?? 0,
+    getCoins: () => playerState.economy?.coins ?? 0,
     updateCrystals: (val) => {
-      globalUser.updateEconomy(prev => ({ ...prev, crystals: Math.max(0, val) }))
+      playerState.updateEconomy(prev => ({ ...prev, crystals: Math.max(0, val) }))
     },
     updateCoins: (val) => {
-      globalUser.updateEconomy(prev => ({ ...prev, coins: Math.max(0, val) }))
+      playerState.updateEconomy(prev => ({ ...prev, coins: Math.max(0, val) }))
     },
   }
 
@@ -250,14 +250,13 @@ export function initGlobalApi(hooks) {
   window.__avgLLM.activity = activityApi
 
   // ─── iframe postMessage bridge ─────────────────────────
-  initIframeBridge(globalUser, worldBookIdRef, getCardCollectionByWorldBook)
+  initIframeBridge(playerState, worldBookIdRef, getCardCollectionByWorldBook)
 }
 
 /**
  * 监听来自 iframe 的 postMessage 请求，转发到真实的 __avgLLM API。
- * 让 blob URL / 同域 iframe 中的活动代码可以访问 storage、economy 等。
  */
-function initIframeBridge(globalUser, worldBookIdRef, getCardCollectionByWorldBook) {
+function initIframeBridge(playerState, worldBookIdRef, getCardCollectionByWorldBook) {
   window.addEventListener('message', async (e) => {
     if (!e.data || !e.data.__avgLLM || e.data.type === 'bridge-ready') return
 
@@ -275,10 +274,10 @@ function initIframeBridge(globalUser, worldBookIdRef, getCardCollectionByWorldBo
       }
       else if (mod === 'economy') {
         if (fn === 'get') {
-          result = { coins: globalUser.economy.value?.coins ?? 0, crystals: globalUser.economy.value?.crystals ?? 0 }
+          result = { coins: playerState.economy?.coins ?? 0, crystals: playerState.economy?.crystals ?? 0 }
         }
         else if (fn === 'update') {
-          globalUser.updateEconomy(prev => ({ ...prev, ...args[0] }))
+          playerState.updateEconomy(prev => ({ ...prev, ...args[0] }))
           result = true
         }
       }

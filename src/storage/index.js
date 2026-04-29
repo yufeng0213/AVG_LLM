@@ -30,9 +30,12 @@ export const kvStorage = {
    */
   async get(key) {
     const fullKey = STORAGE_PREFIX + key
-    
+
     if (isElectron() && window.avgLLM?.storage?.get) {
-      return await window.avgLLM.storage.get(fullKey)
+      console.log('[kvStorage] Electron get:', fullKey)
+      const result = await window.avgLLM.storage.get(fullKey)
+      console.log('[kvStorage] Electron get result:', result ? 'found' : 'null')
+      return result
     }
     
     if (isNative()) {
@@ -77,9 +80,12 @@ export const kvStorage = {
   async set(key, value) {
     const fullKey = STORAGE_PREFIX + key
     const serialized = JSON.stringify(value)
-    
+
     if (isElectron() && window.avgLLM?.storage?.set) {
-      return await window.avgLLM.storage.set(fullKey, serialized)
+      console.log('[kvStorage] Electron set:', fullKey, '(length:', serialized.length, ')')
+      const result = await window.avgLLM.storage.set(fullKey, serialized)
+      console.log('[kvStorage] Electron set result:', result)
+      return result
     }
     
     if (isNative()) {

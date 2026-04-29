@@ -1,11 +1,13 @@
 <script setup>
 /**
- * Match3Screen.vue - 宝石三消小游戏
- * 8×8 网格，滑动交换，连锁消除，特殊宝石，关卡系统
+ * Match3Screen.vue - 宝石三消小游戏（无尽模式）
+ * 8×8 网格，滑动交换，连锁消除，特殊宝石
+ * 无等级限制，每局消耗 3 金币，高分可获少量金币回报
  */
 
 import { ref, computed, onMounted, nextTick } from 'vue'
 import Toast from '../Toast.vue'
+import { useGameAudio } from '../composables/useGameAudio.js'
 
 const emit = defineEmits(['back', 'match3-result'])
 const props = defineProps({
@@ -16,6 +18,7 @@ const props = defineProps({
 
 const GRID_SIZE = 8
 const GEM_TYPES = 6
+const ENTRY_FEE = 3
 
 const GEMS = [
   { emoji: '💎', name: '红宝石', baseScore: 10, color: '#ff4444',  glow: 'rgba(255,68,68,0.5)' },
@@ -29,17 +32,17 @@ const GEMS = [
 const MAX_MOVES = 20
 const MATCH_MIN = 3
 
-const LEVELS = [
-  { level: 1, target: 500,  reward: 30,  cost: 10 },
-  { level: 2, target: 800,  reward: 40,  cost: 15 },
-  { level: 3, target: 1200, reward: 55,  cost: 20 },
-  { level: 4, target: 1800, reward: 75,  cost: 25 },
-  { level: 5, target: 2500, reward: 100, cost: 30 },
+// 金币回报阈值：达到指定分数才给少量金币（保守发放）
+const COIN_MILESTONES = [
+  { score: 500,  reward: 1 },
+  { score: 1200, reward: 1 },
+  { score: 2500, reward: 2 },
+  { score: 5000, reward: 2 },
+  { score: 8000, reward: 3 },
 ]
 
 // ====== 状态 ======
 
-// grid[row][col] = { type: 0-5, special: null|'row'|'col'|'rainbow', id: string }
 const grid = ref([])
 const isProcessing = ref(false)
 const movesLeft = ref(MAX_MOVES)
@@ -51,11 +54,21 @@ function makeGem(type, special = null) {
   return { type, special, id: `gem_${++gemIdCounter}` }
 }
 
-// ====== 关卡 ======
+// ====== 金币 ======
 
-const currentLevel = ref(1)
-const levelData = computed(() => LEVELS[Math.min(currentLevel.value - 1, LEVELS.length - 1)])
-const progressPercent = computed(() => Math.min(score.value / levelData.value.target * 100, 100))
+const sessionCoins = ref(0)
+
+function checkCoinMilestones() {
+  let earned = 0
+  for (const m of COIN_MILESTONES) {
+    if (score.value >= m.score) earned = m.reward
+  }
+  if (earned > sessionCoins.value) {
+    const delta = earned - sessionCoins.value
+    sessionCoins.value = earned
+    showToast(`累计 ${score.value} 分，获得 +${delta}💰`, 'success')
+  }
+}
 
 // ====== 提示 ======
 
@@ -114,7 +127,6 @@ function fillGrid() {
 }
 
 function shuffleGrid() {
-  // 重新生成一个无匹配且有可用移动的网格（不触发 cascade 计分）
   fillGrid()
 }
 
@@ -205,6 +217,12 @@ async function cascade() {
     combo++
     comboMultiplier.value = 1 + (combo - 1) * 0.5
 
+    if (combo >= 3) {
+      audio.playSFX('match3_combo', { combo: Math.min(combo, 6) })
+    } else {
+      audio.playSFX('match3_match')
+    }
+
     // === 检测特殊宝石生成 ===
     const specialsToCreate = [] // { r, c, type, special }
     const processedForSpecial = new Set()
@@ -283,6 +301,9 @@ async function cascade() {
     }
     stepScore = Math.floor(stepScore * comboMultiplier.value)
     score.value += stepScore
+
+    // 检查金币里程碑
+    checkCoinMilestones()
 
     // === 消除动画 ===
     const matchKeys = [...matches.keys()]
@@ -400,8 +421,6 @@ async function handlePointerUp(event) {
 
     if (otherGem.special === 'rainbow') {
       // 彩虹+彩虹 → 全场清除
-      isProcessing.value = false
-      // 简单处理：清掉所有
       for (let r = 0; r < GRID_SIZE; r++)
         for (let c = 0; c < GRID_SIZE; c++)
           activeGems.value.add(`${r},${c}`)
@@ -410,6 +429,7 @@ async function handlePointerUp(event) {
         for (let c = 0; c < GRID_SIZE; c++)
           grid.value[r][c] = null
       score.value += 500
+      checkCoinMilestones()
       await delay(200)
       for (let r = 0; r < GRID_SIZE; r++)
         for (let c = 0; c < GRID_SIZE; c++)
@@ -431,6 +451,7 @@ async function handlePointerUp(event) {
     activeGems.value = cleared
     await delay(250)
     score.value += cleared.size * 20
+    checkCoinMilestones()
     for (const key of cleared) {
       const [r, c] = key.split(',').map(Number)
       grid.value[r][c] = null
@@ -466,22 +487,18 @@ async function handlePointerUp(event) {
     activeGems.value = new Set([`${r1},${c1}`, `${r2},${c2}`])
     await delay(150)
     activeGems.value = new Set()
+    audio.playSFX('match3_fail')
     isProcessing.value = false
     return
   }
 
   // 有效交换
   movesLeft.value--
+  audio.playSFX('match3_swap')
   activeGems.value = new Set()
   await cascade()
   activeGems.value = new Set()
   isProcessing.value = false
-
-  // 检查关卡
-  if (score.value >= levelData.value.target) {
-    handleLevelComplete()
-    return
-  }
 
   // 检查步数
   if (movesLeft.value <= 0) {
@@ -497,28 +514,32 @@ async function handlePointerUp(event) {
   }
 }
 
-// ====== 关卡结算 ======
-
-function handleLevelComplete() {
-  const reward = levelData.value.reward
-  emit('match3-result', { cost: 0, earned: reward })
-  showToast(`过关！+${reward}💰`, 'success')
-  currentLevel.value = Math.min(currentLevel.value + 1, LEVELS.length)
-  movesLeft.value = MAX_MOVES
-  score.value = 0
-  setTimeout(() => {
-    fillGrid()
-  }, 1000)
-}
+// ====== 游戏结束 ======
 
 function handleGameOver() {
-  showToast(`步数用完！目标 ${levelData.value.target}，得分 ${score.value}`, 'error')
-  // 重新开始当前关卡
+  const earned = sessionCoins.value
+  const cost = ENTRY_FEE
+  if (earned > 0) {
+    emit('match3-result', { cost, earned })
+    showToast(`步数用完！得分 ${score.value}，获得 ${earned}💰`, 'success')
+  } else {
+    emit('match3-result', { cost, earned: 0 })
+    showToast(`步数用完！得分 ${score.value}，未达金币回报线`, 'info')
+  }
+  // 3 秒后自动重开
+  setTimeout(() => {
+    startNewGame()
+  }, 3000)
+}
+
+// ====== 新游戏 ======
+
+function startNewGame() {
   movesLeft.value = MAX_MOVES
   score.value = 0
-  setTimeout(() => {
-    fillGrid()
-  }, 1500)
+  sessionCoins.value = 0
+  comboMultiplier.value = 1
+  fillGrid()
 }
 
 // ====== 工具 ======
@@ -533,6 +554,7 @@ const toastMessage = ref('')
 const toastType = ref('success')
 const toastVisible = ref(false)
 let toastKey = 0
+const audio = useGameAudio()
 
 function showToast(msg, type = 'success') {
   toastKey++
@@ -553,7 +575,6 @@ async function handleReshuffle() {
   isProcessing.value = true
   showToast('重排中...', 'info')
   await delay(300)
-  // 动画：全部缩小
   for (let r = 0; r < GRID_SIZE; r++)
     for (let c = 0; c < GRID_SIZE; c++)
       activeGems.value.add(`${r},${c}`)
@@ -567,7 +588,7 @@ async function handleReshuffle() {
 // ====== 初始化 ======
 
 onMounted(async () => {
-  fillGrid()
+  startNewGame()
 })
 </script>
 
@@ -575,12 +596,12 @@ onMounted(async () => {
   <div class="match3-screen">
     <!-- Header -->
     <header class="match3-header">
-      <button type="button" class="match3-back-btn" @click="emit('back')">
+      <button type="button" class="match3-back-btn" @click="audio.playSFX('back'); emit('back')">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
       </button>
-      <h2 class="match3-title">💎 宝石消除</h2>
+      <h2 class="match3-title">💎 宝石三消</h2>
       <div class="match3-coin-box">
         <span class="match3-coin-icon">💰</span>
         <span class="match3-coin-value">{{ coins }}</span>
@@ -589,13 +610,9 @@ onMounted(async () => {
 
     <!-- 状态栏 -->
     <div class="match3-status">
-      <div class="status-item status-level">
-        <span class="status-label">关卡</span>
-        <span class="status-value">Lv.{{ currentLevel }}</span>
-      </div>
-      <div class="status-item status-target">
-        <span class="status-label">目标</span>
-        <span class="status-value">{{ levelData.target }}</span>
+      <div class="status-item status-mode">
+        <span class="status-label">模式</span>
+        <span class="status-value">无尽</span>
       </div>
       <div class="status-item status-score">
         <span class="status-label">得分</span>
@@ -605,14 +622,26 @@ onMounted(async () => {
         <span class="status-label">步数</span>
         <span class="status-value" :class="{ 'moves-danger': movesLeft <= 5 }">{{ movesLeft }}</span>
       </div>
+      <div class="status-item status-coins">
+        <span class="status-label">本局金币</span>
+        <span class="status-value coin-value">{{ sessionCoins }}</span>
+      </div>
     </div>
 
-    <!-- 进度条 -->
-    <div class="match3-progress">
-      <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
-      </div>
-      <span class="progress-label">{{ score }} / {{ levelData.target }}</span>
+    <!-- 金币回报进度 -->
+    <div class="milestone-bar">
+      <template v-for="(m, i) in COIN_MILESTONES" :key="i">
+        <div
+          class="milestone-dot"
+          :class="{ 'milestone-reached': score >= m.score }"
+        >
+          <span class="milestone-score">{{ m.score }}</span>
+          <span class="milestone-reward">+{{ m.reward }}💰</span>
+        </div>
+        <div v-if="i < COIN_MILESTONES.length - 1" class="milestone-line">
+          <div class="milestone-line-fill" :style="{ width: (score >= COIN_MILESTONES[i + 1].score ? 100 : score >= m.score ? Math.min((score - m.score) / (COIN_MILESTONES[i + 1].score - m.score) * 100, 100) : 0) + '%' }"></div>
+        </div>
+      </template>
     </div>
 
     <!-- 连锁提示 -->
@@ -773,6 +802,11 @@ onMounted(async () => {
   text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
 }
 
+.coin-value {
+  color: #4ade80;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+
 .moves-danger {
   color: #ef4444 !important;
   animation: danger-pulse 0.8s ease infinite;
@@ -783,35 +817,50 @@ onMounted(async () => {
   50% { opacity: 0.5; }
 }
 
-/* Progress */
-.match3-progress {
+/* Milestone bar */
+.milestone-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
   padding: 6px 16px;
+  gap: 2px;
+  overflow-x: auto;
 }
 
-.progress-bar {
-  flex: 1;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
-  overflow: hidden;
+.milestone-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.35;
+  transition: opacity 0.3s;
+  flex-shrink: 0;
 }
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #ffd700, #ff8c00);
-  border-radius: 4px;
-  transition: width 0.4s ease;
+.milestone-dot.milestone-reached {
+  opacity: 1;
 }
-
-.progress-label {
-  font-size: 11px;
+.milestone-score {
+  font-size: 9px;
   color: rgba(255, 255, 255, 0.5);
   font-weight: 600;
-  min-width: 80px;
-  text-align: right;
+}
+.milestone-reward {
+  font-size: 10px;
+  color: #ffd700;
+  font-weight: 700;
+}
+
+.milestone-line {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 10px;
+}
+.milestone-line-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd700, #4ade80);
+  border-radius: 2px;
+  transition: width 0.4s ease;
 }
 
 /* Combo */

@@ -4,11 +4,8 @@
  * 显示所有角色的好感度状态和历史记录
  */
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { 
-  getCharacterRelationship,
-  getRelationshipHistory,
-  useRelationshipState,
-} from '../relationship/index.js'
+import { useRelationshipStore } from '../stores/relationship.store.js'
+import { useRelationshipState } from '../relationship/relationshipStore.js'
 import RelationshipIndicator from './RelationshipIndicator.vue'
 
 const props = defineProps({
@@ -36,6 +33,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'character-click'])
 
+const rel = useRelationshipStore()
+
 // 响应式状态
 const { runtime, history } = useRelationshipState()
 
@@ -54,7 +53,7 @@ const sortedCharacters = computed(() => {
   // 筛选
   if (filterLevel.value !== 'all') {
     list = list.filter(char => {
-      const rel = getCharacterRelationship(char.id, char)
+      const rel = rel.getCharacter(char.id, char)
       // 根据好感度等级筛选
       if (filterLevel.value === 'positive') return rel.favor > 0
       if (filterLevel.value === 'negative') return rel.favor < 0
@@ -67,8 +66,8 @@ const sortedCharacters = computed(() => {
   
   // 排序
   list.sort((a, b) => {
-    const relA = getCharacterRelationship(a.id, a)
-    const relB = getCharacterRelationship(b.id, b)
+    const relA = rel.getCharacter(a.id, a)
+    const relB = rel.getCharacter(b.id, b)
     
     if (sortOption.value === 'favor') {
       return relB.favor - relA.favor // 高好感度优先
@@ -87,7 +86,7 @@ const sortedCharacters = computed(() => {
 
 // 计算最近的历史记录
 const recentHistory = computed(() => {
-  return getRelationshipHistory(null, 10)
+  return rel.getHistory(null, 10)
 })
 
 // 计算选中角色的详情
@@ -99,12 +98,12 @@ const selectedCharacter = computed(() => {
 const selectedRelationship = computed(() => {
   if (!selectedCharacterId.value) return null
   const char = selectedCharacter.value
-  return getCharacterRelationship(selectedCharacterId.value, char)
+  return rel.getCharacter(selectedCharacterId.value, char)
 })
 
 const selectedCharacterHistory = computed(() => {
   if (!selectedCharacterId.value) return []
-  return getRelationshipHistory(selectedCharacterId.value, 5)
+  return rel.getHistory(selectedCharacterId.value, 5)
 })
 
 // 统计信息
@@ -115,7 +114,7 @@ const stats = computed(() => {
   let neutral = 0
   
   for (const char of props.characters) {
-    const rel = getCharacterRelationship(char.id, char)
+    const rel = rel.getCharacter(char.id, char)
     if (rel.favor > 0) positive++
     else if (rel.favor < 0) negative++
     else neutral++
@@ -251,7 +250,7 @@ onUnmounted(() => {
             v-for="character in sortedCharacters"
             :key="character.id"
             :character="character"
-            :relationship="getCharacterRelationship(character.id, character)"
+            :relationship="rel.getCharacter(character.id, character)"
             :show-values="showDetails"
             :class="{ selected: selectedCharacterId === character.id }"
             @click="handleCharacterClick"

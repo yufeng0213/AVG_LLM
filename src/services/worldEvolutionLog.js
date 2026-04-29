@@ -4,10 +4,11 @@
  */
 import { callChatCompletion, getValidatedActiveConfig } from '../llm/llmService.core.js'
 import { resolvePrompt } from '../llm/promptRegistry.js'
-import { queryEvents, addCharacterMemory } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
+const getMem = () => useWorldMemoryStore()
 import { acquireLlmSlot } from './llmThrottle.js'
 
-import { isSQLiteAvailable, query, exec } from '../db/db.js'
+import { isSQLiteAvailable, query, exec } from '../db/connection.js'
 
 const KV_STORAGE_KEY = 'avg_llm_evolution_logs_v1'
 
@@ -65,7 +66,7 @@ export async function generateEvolutionLog(deps) {
 
   // 存入世界记忆
   try {
-    await addCharacterMemory(worldBook.id, '__world__', {
+    await getMem().addCharacterMemory(worldBook.id, '__world__', {
       about: '__world__',
       content: logText,
       sentiment: 0,

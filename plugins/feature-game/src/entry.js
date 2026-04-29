@@ -1,5 +1,5 @@
 import GameCenterScreen from './GameCenterScreen.vue'
-import { useGlobalUser } from '../../../src/composables/useGlobalUser.js'
+import { usePlayerState } from '../../../src/stores/playerState.store.js'
 
 import { ref } from 'vue'
 
@@ -20,14 +20,14 @@ const GameFeatureEntry = {
   },
   resolveRouteConfig(context = {}) {
     const onBack = context.onBackToStart || (() => {})
-    const globalUser = useGlobalUser()
+    const playerState = usePlayerState()
 
     // 金币增减处理
     const updateCoins = (data) => {
       if (!data) return
       const net = (data.net != null) ? data.net : ((data.earned || 0) - (data.cost || 0))
       if (net !== 0) {
-        globalUser.updateEconomy(prev => ({
+        playerState.updateEconomy(prev => ({
           ...prev,
           coins: clampInt(prev.coins + net, 0, 9999, prev.coins),
         }))
@@ -36,12 +36,12 @@ const GameFeatureEntry = {
 
     // 背包增减处理
     const addToInventory = (item) => {
-      if (item) globalUser.addToInventory(item)
+      if (item) playerState.addItemToInventory(item)
     }
 
     // 游戏皮肤购买
     const handleSkinBuy = ({ cost }) => {
-      globalUser.updateEconomy(prev => ({
+      playerState.updateEconomy(prev => ({
         ...prev,
         coins: clampInt(prev.coins - cost, 0, 9999, prev.coins),
       }))
@@ -50,10 +50,10 @@ const GameFeatureEntry = {
     return {
       component: GameCenterScreen,
       props: () => {
-        const { economy, inventory } = useGlobalUser()
+        const ps = usePlayerState()
         return {
-          coins: economy.value?.coins ?? 0,
-          inventory: inventory.value ?? [],
+          coins: ps.economy?.coins ?? 0,
+          inventory: ps.inventory ?? [],
         }
       },
       events: {
@@ -95,9 +95,8 @@ const GameFeatureEntry = {
         'kitchen-consume': (data) => {
           if (data?.materialKey) {
             // 从背包中移除对应的农场材料
-            const inv = globalUser.inventory.value
-            const item = inv.find(i => i.id && i.id.includes(data.materialKey))
-            if (item) globalUser.removeFromInventory(item.id, 1)
+            const item = playerState.inventory.find(i => i.id && i.id.includes(data.materialKey))
+            if (item) playerState.removeFromInventory(item.id, 1)
           }
         },
         // 皮肤购买

@@ -2,7 +2,8 @@
  * 角色曝光追踪服务
  * 追踪角色在对话中的出场/提及次数，计算曝光分数，检测转正候选
  */
-import { isSQLiteAvailable, getConfig, setConfig, query, exec } from '../db/db.js'
+import { isSQLiteAvailable, query, exec } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 
 const STORAGE_KEY = 'avg_llm_character_exposure'
 const CONFIG_KEY = 'avg_llm_exposure_config'
@@ -68,7 +69,7 @@ export async function loadExposureConfig() {
   }
   try {
     if (isSQLiteAvailable()) {
-      const stored = await getConfig(CONFIG_KEY)
+      const stored = await appConfigRepo.get(CONFIG_KEY)
       return stored && typeof stored === 'object' ? { ...defaults, ...stored } : defaults
     } else {
       const { kvStorage } = await import('../storage/index.js')
@@ -85,7 +86,7 @@ export async function loadExposureConfig() {
  */
 export async function saveExposureConfig(config) {
   if (isSQLiteAvailable()) {
-    await setConfig(CONFIG_KEY, config)
+    await appConfigRepo.set(CONFIG_KEY, config)
   } else {
     const { kvStorage } = await import('../storage/index.js')
     await kvStorage.set(CONFIG_KEY, config)
@@ -111,12 +112,31 @@ export async function processNewDialogue(worldBookId, newLines, startLineIndex, 
     name: String(c.name || ''),
     nickname: String(c.nickname || ''),
   }))
+  const knownNameSet = new Set(knownChars.map(c => c.name).filter(Boolean))
+  const knownNicknameSet = new Set(knownChars.map(c => c.nickname).filter(Boolean))
+  // 世界书已有的名字（用于排除新角色检测）
+  const existingNames = new Set([...knownNameSet, ...knownNicknameSet, '旁白'])
 
   for (let i = 0; i < newLines.length; i++) {
     const line = newLines[i]
     const lineIndex = startLineIndex + i
     const lineText = String(line?.text || '')
     const lineSpeaker = String(line?.speaker || '')
+
+    // 检测未在世界书中的角色（通过 speaker 字段）
+    if (lineSpeaker && lineSpeaker !== '旁白' && !existingNames.has(lineSpeaker)) {
+      // 用名字作为临时 ID
+      const newCharId = `npc_${lineSpeaker}`
+      const entry = ensureEntry(wbData, newCharId)
+      entry.displayName = lineSpeaker
+      entry.appearanceCount++
+      entry.lastSeenAt = new Date().toISOString()
+      entry.lastSeenLineIndex = lineIndex
+      // 记录上下文
+      entry.mentionContexts = entry.mentionContexts || []
+      entry.mentionContexts.push(lineText.slice(0, 100))
+      if (entry.mentionContexts.length > 10) entry.mentionContexts.shift()
+    }
 
     for (const char of knownChars) {
       if (!char.id) continue
@@ -178,17 +198,21 @@ function checkForPromotions(wbData, knownChars, config) {
   const knownIds = new Set(knownChars.map(c => c.id))
 
   for (const [id, entry] of Object.entries(wbData)) {
-    if (!knownIds.has(id)) continue
-
-    // 0 → 1: 开始追踪
-    if (entry.stage === 0 && entry.exposureScore >= config.thresholdToTracked) {
-      entry.stage = 1
-    }
-
-    // 1 → 2: 可互动
-    if (entry.stage === 1 && entry.exposureScore >= config.thresholdToInteractive) {
-      promotions.push({ id, stage: 2, score: entry.exposureScore, name: getCharName(id, knownChars) })
-      entry.stage = 2
+    // 已知角色：stage 1 → 2 转正
+    if (knownIds.has(id)) {
+      if (entry.stage === 0 && entry.exposureScore >= config.thresholdToTracked) {
+        entry.stage = 1
+      }
+      if (entry.stage === 1 && entry.exposureScore >= config.thresholdToInteractive) {
+        promotions.push({ id, stage: 2, score: entry.exposureScore, name: getCharName(id, knownChars) })
+        entry.stage = 2
+      }
+    } else if (entry.displayName) {
+      // 未在世界书中的新角色：曝光达标后直接转正
+      if (entry.stage === 0 && entry.exposureScore >= config.thresholdToInteractive) {
+        promotions.push({ id, stage: 2, score: entry.exposureScore, name: entry.displayName, isNewCharacter: true })
+        entry.stage = 2
+      }
     }
   }
 

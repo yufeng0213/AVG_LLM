@@ -51,7 +51,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { favorToLevel, favorToColor } from '../composables/useRelationship.js'
-import { getCharacterRelationship } from '../../../../src/relationship/relationshipStore.js'
+import { useRelationshipStore } from '../../../../src/stores/relationship.store.js'
 import { RELATIONSHIP_LEVELS } from '../../../../src/relationship/relationshipLevels.js'
 
 const props = defineProps({
@@ -59,6 +59,8 @@ const props = defineProps({
 })
 
 defineEmits(['open-detail'])
+
+const rel = useRelationshipStore()
 
 const expandedGroups = ref(new Set([8, 7, 6, 5, 4, 3, 2, 1, 0]))
 
@@ -84,7 +86,7 @@ function stanceColor(stance) {
 const groups = computed(() => {
   const chars = props.worldBook?.characters || []
   const charData = chars.map(c => {
-    const rel = getCharacterRelationship(c.id, c)
+    const relData = rel.getCharacter(c.id, c)
     const favor = rel.favor ?? 0
     const levelInfo = favorToLevel(favor)
     return {

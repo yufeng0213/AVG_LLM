@@ -4,9 +4,11 @@
  */
 import { callChatCompletion, getValidatedActiveConfig } from '../llm/llmService.core.js'
 import { resolvePrompt } from '../llm/promptRegistry.js'
-import { addEvent } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
+const getMem = () => useWorldMemoryStore()
 import { acquireLlmSlot } from './llmThrottle.js'
-import { isSQLiteAvailable, getConfig } from '../db/db.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
+import { isSQLiteAvailable } from '../db/connection.js'
 
 const STORAGE_KEY = 'avg_llm_bond_event_config'
 
@@ -37,7 +39,7 @@ async function loadConfig() {
   }
   try {
     if (isSQLiteAvailable()) {
-      const stored = await getConfig(STORAGE_KEY)
+      const stored = await appConfigRepo.get(STORAGE_KEY)
       if (stored && typeof stored === 'object') return { ...defaults, ...stored }
     } else {
       const { kvStorage } = await import('../storage/index.js')
@@ -204,7 +206,7 @@ export async function runBondEventCheck(deps) {
 
     if (result.success && result.event) {
       try {
-        await addEvent(deps.worldBook.id, {
+        await getMem().addEvent(deps.worldBook.id, {
           type: 'bond_event',
           participants: [crossing.fromId, crossing.toId],
           summary: result.event,
@@ -229,8 +231,7 @@ export async function runBondEventCheck(deps) {
 
 async function getRecentEventsForPair(worldBookId, charA, charB) {
   try {
-    const { getWorldMemory } = await import('../memory/worldMemoryStore.js')
-    const memory = await getWorldMemory(worldBookId)
+    const memory = await getMem().get(worldBookId)
     return (memory.events || []).filter(e => {
       const p = e.participants || []
       return p.includes(charA) || p.includes(charB)

@@ -291,8 +291,8 @@ export async function extractWorldMemory(params = {}) {
     return { success: false, error: '缺少世界书数据或无新对话', events: [], characterMemories: {} }
   }
 
-  // 只取最后的新增条目（避免重复处理）
-  const slice = lastLineCount > 0 ? newDialogue.slice(-Math.min(newDialogue.length, 30)) : newDialogue
+  // 发送所有新增的对话，不做截断
+  const slice = newDialogue
 
   const validated = await getValidatedActiveConfig()
   if (!validated.success) {
@@ -308,6 +308,7 @@ export async function extractWorldMemory(params = {}) {
     temperature: 0.2,
     maxTokens: 4000,
     timeout: 90000,
+    label: 'World Memory Extract',
   })
 
   if (!result.success) {

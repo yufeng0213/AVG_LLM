@@ -1,0 +1,45 @@
+{
+  "name": "末日废土",
+  "description": "适合末日、废土、生存小说，铁锈橙+沙土黄，粗粝破旧感",
+  "rules": [
+    {
+      "type": "dropCap",
+      "enabled": true,
+      "label": "首字下沉",
+      "description": "每段第一个字铁锈色放大"
+    },
+    {
+      "type": "quote",
+      "enabled": false,
+      "pattern": "[「「」『』\"\"\"\"\"]",
+      "label": "引号文字美化",
+      "description": "禁用：双引号\"会与HTML属性冲突导致截断",
+      "class": "reader-quote"
+    },
+    {
+      "type": "replace",
+      "enabled": true,
+      "find": "[…]{2,}|(\\.\\s*){3,}",
+      "replace": "<span class=\"reader-ellipsis\">…</span>",
+      "label": "省略号美化",
+      "description": "连续点号变成标准省略号"
+    },
+    {
+      "type": "replace",
+      "enabled": true,
+      "find": "——{1,2}",
+      "replace": "<span class=\"reader-dash\">—</span>",
+      "label": "破折号美化",
+      "description": "破折号铁锈色"
+    },
+    {
+      "type": "wrap",
+      "enabled": false,
+      "find": "([^<\\n]{1,4}[：:])(?!<\\/span>)",
+      "class": "reader-speak",
+      "label": "对话人名称",
+      "description": "禁用：会匹配到HTML标签内部导致截断"
+    }
+  ],
+  "styles": "\n.reader-quote {\n  font-style: normal;\n  color: #cc7722;\n  border-left: 3px solid #cc7722;\n  padding-left: 6px;\n  font-weight: 500;\n}\n.reader-ellipsis {\n  letter-spacing: 6px;\n  color: #aa6611;\n  opacity: 0.6;\n}\n.reader-dash {\n  letter-spacing: 3px;\n  color: #8b4513;\n  font-weight: 700;\n}\n.reader-speak {\n  color: #d4a017;\n  font-weight: 700;\n}\n.reader-body :deep(.reader-dropcap) {\n  float: left;\n  font-size: 3.4em;\n  line-height: 0.7;\n  padding-right: 8px;\n  padding-top: 4px;\n  color: #cc7722;\n  font-weight: 900;\n  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);\n  font-family: 'Impact', 'Arial Black', sans-serif;\n}\n"
+}

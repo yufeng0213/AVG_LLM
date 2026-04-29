@@ -77,7 +77,7 @@
 <script setup>
 import { computed } from 'vue'
 import { favorToLevel, favorToColor } from '../composables/useRelationship.js'
-import { getCharacterRelationship, getRelationshipHistory } from '../../../../src/relationship/relationshipStore.js'
+import { useRelationshipStore } from '../../../../src/stores/relationship.store.js'
 
 const props = defineProps({
   character: Object,
@@ -86,9 +86,11 @@ const props = defineProps({
 
 defineEmits(['close'])
 
+const rel = useRelationshipStore()
+
 const characterId = computed(() => props.character?.id)
-const relationship = computed(() => getCharacterRelationship(characterId.value, props.character))
-const history = computed(() => characterId.value ? getRelationshipHistory(characterId.value, 10) : [])
+const relationship = computed(() => rel.getCharacter(characterId.value, props.character))
+const history = computed(() => characterId.value ? rel.getHistory(characterId.value, 10) : [])
 
 const favor = computed(() => relationship.value.favor ?? 0)
 const trust = computed(() => relationship.value.trust ?? 0)

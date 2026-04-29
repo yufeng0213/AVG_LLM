@@ -25,12 +25,7 @@ import {
 } from '../../../src/worldbook/worldBookStore'
 import { getEnabledNarratorProfiles, loadNarratorProfiles } from '../../../src/narrator/narratorStore'
 import PortraitManager from '../../../src/components/PortraitManager.vue'
-import {
-  loadBackgroundFolder,
-  loadBackgroundFiles,
-  backgroundList,
-  backgroundFolderPath
-} from '../../../src/background/backgroundStore'
+import { useBackgroundStore } from '../../../src/stores/background.store.js'
 import { isAndroid } from '../../../src/utils/platform.js'
 
 const props = defineProps({
@@ -41,6 +36,12 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['back'])
+
+const bg = useBackgroundStore()
+
+// 暴露背景 store 的属性给模板
+const backgroundList = computed(() => bg.backgroundList || [])
+const backgroundFolderPath = computed(() => bg.backgroundFolderPath || '')
 
 const editorTabs = [
   { id: 'lore', label: '世界背景' },
@@ -591,9 +592,9 @@ const getSceneDisplayName = (scene, index = 0) => {
 const handleLoadBackgroundFolder = async () => {
   isLoadingBackgrounds.value = true
   try {
-    const result = await loadBackgroundFolder()
+    const result = await bg.loadBackgroundFolder()
     if (result.success) {
-      statusMessage.value = `已加载 ${backgroundList.value.length} 个背景图片`
+      statusMessage.value = `已加载 ${bg.backgroundList.length} 个背景图片`
     } else if (!result.canceled) {
       statusMessage.value = `加载背景失败：${result.error || '未知错误'}`
     }
@@ -654,7 +655,7 @@ const handleSelectBackgroundFolder = async () => {
     if (window.avgLLM?.background?.selectFolder) {
       const result = await window.avgLLM.background.selectFolder()
       if (result.success && result.path) {
-        await loadBackgroundFolder(result.path)
+        await bg.loadBackgroundFolder(result.path)
         statusMessage.value = `已选择背景文件夹：${result.path}`
       } else if (!result?.canceled) {
         statusMessage.value = `选择背景文件夹失败：${result?.error || '未知错误'}`
@@ -668,9 +669,9 @@ const handleSelectBackgroundFolder = async () => {
     }
 
     const sourceLabel = isAndroidPlatform.value ? 'Android本地背景图片' : '本地背景图片'
-    const result = await loadBackgroundFiles(picked.files, sourceLabel)
+    const result = await bg.loadBackgroundFiles(picked.files, sourceLabel)
     if (result.success) {
-      statusMessage.value = `已导入 ${backgroundList.value.length} 张背景图片`
+      statusMessage.value = `已导入 ${bg.backgroundList.length} 张背景图片`
     } else if (!result.canceled) {
       statusMessage.value = `导入背景失败：${result.error || '未知错误'}`
     }

@@ -4,10 +4,11 @@
  */
 import { callChatCompletion, getValidatedActiveConfig } from '../llm/llmService.core.js'
 import { resolvePrompt } from '../llm/promptRegistry.js'
-import { addEvent } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import { acquireLlmSlot } from './llmThrottle.js'
 
-import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 
 const STORAGE_KEY = 'avg_llm_player_impact_config'
 const DEFAULT_FAVOR_THRESHOLD = 20
@@ -26,7 +27,7 @@ async function loadConfig() {
   }
   try {
     if (isSQLiteAvailable()) {
-      const stored = await getConfig(STORAGE_KEY)
+      const stored = await appConfigRepo.get(STORAGE_KEY)
       if (stored && typeof stored === 'object') return { ...defaults, ...stored }
     } else {
       const { kvStorage } = await import('../storage/index.js')
@@ -191,7 +192,8 @@ export async function applyImpactToSchedules(params) {
 
     // 记录影响事件
     try {
-      await addEvent(worldBook.id, {
+      const mem = useWorldMemoryStore()
+      await mem.addEvent(worldBook.id, {
         type: 'player_impact',
         participants: [impact.charId],
         summary: impact.summary || `玩家的选择影响了 ${impact.charId}`,

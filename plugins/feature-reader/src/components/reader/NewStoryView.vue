@@ -12,6 +12,9 @@ import {
   saveStories,
   addStory,
   addChapter,
+  isSQLiteAvailable,
+  insertStory as _insertStory,
+  insertChapter as _insertChapter,
 } from '../../composables/useReaderData.js'
 import { generateFirstChapter } from '../../../../../src/llm/llmService.reader.js'
 
@@ -64,25 +67,53 @@ async function handleGenerate() {
     }
 
     // 保存故事和章节
-    const stories = await loadStories()
     const storyTitle = title.value.trim() || result.title || '未命名故事'
     const storyBrief = brief.value.trim() || result.content?.slice(0, 100) || ''
 
-    const newStory = addStory(stories, {
-      title: storyTitle,
-      brief: storyBrief,
-      worldBookId: selectedBookId.value,
-    })[0]
+    if (isSQLiteAvailable()) {
+      // SQLite 模式：直接插入
+      const storyId = `story_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+      const newStory = {
+        id: storyId,
+        title: storyTitle,
+        brief: storyBrief,
+        worldBookId: selectedBookId.value,
+        chapters: [],
+        lastReadChapter: 0,
+        settings: { fontSize: 16, lineHeight: 1.8, theme: 'dark' },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      addChapter(newStory, {
+        title: result.title,
+        content: result.content,
+        suggestions: result.suggestions || [],
+        wordCount: result.wordCount,
+      })
+      await _insertStory(newStory)
+      for (const ch of newStory.chapters) {
+        await _insertChapter(storyId, ch)
+      }
+      emit('story-created', newStory)
+    } else {
+      // Web fallback
+      const stories = await loadStories()
+      const newStory = addStory(stories, {
+        title: storyTitle,
+        brief: storyBrief,
+        worldBookId: selectedBookId.value,
+      })[0]
 
-    addChapter(newStory, {
-      title: result.title,
-      content: result.content,
-      suggestions: result.suggestions || [],
-      wordCount: result.wordCount,
-    })
+      addChapter(newStory, {
+        title: result.title,
+        content: result.content,
+        suggestions: result.suggestions || [],
+        wordCount: result.wordCount,
+      })
 
-    await saveStories([newStory, ...stories.filter(s => s.id !== newStory.id)])
-    emit('story-created', newStory)
+      await saveStories([newStory, ...stories.filter(s => s.id !== newStory.id)])
+      emit('story-created', newStory)
+    }
   } catch (e) {
     error.value = e.message || '生成时发生错误'
   } finally {

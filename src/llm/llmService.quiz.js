@@ -67,6 +67,7 @@ export async function generateQuizQuestions(params = {}) {
     temperature: 0.7,
     maxTokens: 4000,
     timeout: 180000,
+    label: 'Quiz Questions',
   })
 
   if (!result.success) {
@@ -110,6 +111,7 @@ export async function generateAssessmentQuestions(params = {}) {
       temperature: 0.7 + i * 0.1,
       maxTokens: 4000,
       timeout: 180000,
+      label: 'Assessment Questions',
     })
 
     if (result.success) {
@@ -145,6 +147,7 @@ export async function parseUrlContent(url) {
     temperature: 0.6,
     maxTokens: 5000,
     timeout: 180000,
+    label: 'Quiz URL Parse',
   })
 
   if (!result.success) {
@@ -207,6 +210,7 @@ export async function generateTeachingContent(params = {}) {
     temperature: 0.75 + deepLevel * 0.05,
     maxTokens: 5000 + deepLevel * 500,
     timeout: 180000,
+    label: 'Teaching Content',
   })
 
   if (!result.success) {
@@ -255,6 +259,7 @@ export async function generateTeachingReply(params = {}) {
     temperature: 0.8,
     maxTokens: 2000,
     timeout: 120000,
+    label: 'Teaching Reply',
   })
 
   if (!result.success) {
@@ -300,6 +305,7 @@ export async function gradeAnswer(params = {}) {
     temperature: 0.6,
     maxTokens: 1500,
     timeout: 120000,
+    label: 'Quiz Grade Answer',
   })
 
   return {
@@ -345,6 +351,7 @@ export async function calculateRating(params = {}) {
     temperature: 0.5,
     maxTokens: 1000,
     timeout: 120000,
+    label: 'Quiz Rating',
   })
 
   if (!result.success) {

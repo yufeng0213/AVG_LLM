@@ -1000,15 +1000,27 @@ export const parseSmsXmlContent = (content) => {
   const raw = String(content).trim()
   if (!raw) return { success: false, error: '内容为空', replies: [], rawContent: content }
 
-  // 提取思维链
+  // 提取思维链（正常闭合的情况）
   let thinking = ''
   const thinkMatch = raw.match(/<thinking>([\s\S]*?)<\/thinking>/i)
   if (thinkMatch) {
     thinking = thinkMatch[1].trim()
   }
 
-  // 移除 thinking 块
-  const withoutThinking = raw.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim()
+  // 移除 thinking 块（先尝试完整闭合的，再尝试不闭合的）
+  let withoutThinking = raw.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim()
+
+  // 处理不闭合的 thinking 标签（被截断的情况）
+  if (withoutThinking === raw) {
+    // 检查是否有未闭合的 <thinking> 开头
+    const openThinkMatch = raw.match(/<thinking>([\s\S]*)/i)
+    if (openThinkMatch) {
+      thinking = openThinkMatch[1].trim()
+      // 移除从 <thinking> 到结尾的所有内容（因为没有闭合，后面可能是截断的thinking内容）
+      withoutThinking = raw.replace(/<thinking>[\s\S]*$/gi, '').trim()
+    }
+  }
+
   if (!withoutThinking) {
     return { success: false, error: '只有思维链，无回复内容', replies: [], thinking, rawContent: content }
   }

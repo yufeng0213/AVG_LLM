@@ -1,0 +1,13 @@
+{
+  "id": "scrapbook",
+  "name": "手帐",
+  "description": "自由编写的手帐本，可关联角色，支持贴纸和模板导入。",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": { "key": "scrapbook", "title": "手帐", "icon": "📓", "order": 40 },
+  "entry": { "type": "route", "module": "./src/entry.js", "route": "scrapbook" },
+  "storage": { "namespace": "scrapbook" },
+  "capabilities": ["storage", "worldbook"],
+  "enabledByDefault": true
+}

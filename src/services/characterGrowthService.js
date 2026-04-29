@@ -4,10 +4,11 @@
  */
 import { callChatCompletion, getValidatedActiveConfig } from '../llm/llmService.core.js'
 import { resolvePrompt } from '../llm/promptRegistry.js'
-import { addEvent } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import { acquireLlmSlot } from './llmThrottle.js'
 
-import { isSQLiteAvailable, getConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 
 const STORAGE_KEY = 'avg_llm_character_growth_config'
 const DEFAULT_CHECK_INTERVAL_DAYS = 7
@@ -28,7 +29,7 @@ async function loadConfig() {
   }
   try {
     if (isSQLiteAvailable()) {
-      const stored = await getConfig(STORAGE_KEY)
+      const stored = await appConfigRepo.get(STORAGE_KEY)
       if (stored && typeof stored === 'object') return { ...defaults, ...stored }
     } else {
       const { kvStorage } = await import('../storage/index.js')
@@ -172,7 +173,8 @@ export async function runCharacterGrowthCheck(deps) {
 
       // 记录成长事件
       try {
-        await addEvent(deps.worldBook.id, {
+        const mem = useWorldMemoryStore()
+        await mem.addEvent(deps.worldBook.id, {
           type: 'character_growth',
           participants: [char.id],
           summary: `${char.name} 发生了成长变化：${result.growth.growthNote || ''}`,

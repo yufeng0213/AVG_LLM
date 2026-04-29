@@ -4,7 +4,7 @@
  */
 import { callChatCompletion, getValidatedActiveConfig } from '../llm/llmService.core.js'
 import { persistWorldBooks, loadWorldBooks } from '../worldbook/worldBookStore.js'
-import { addEvent } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 import { setCharacterState } from '../../plugins/feature-character-state/src/services/characterStateStore.js'
 import { saveExposureData } from './exposureTracker.js'
 
@@ -133,14 +133,36 @@ export async function generateCharacterCard(params) {
  * @param {Object} characterCard
  */
 export async function promoteCharacter(worldBook, exposureEntry, characterCard) {
-  // 去重：按角色名判断（LLM 每次生成的 id 带时间戳，不同次调用 id 不同）
   if (!worldBook.characters) worldBook.characters = []
+
+  // 查找已存在的角色（已知角色合并数据，新角色直接添加）
   const normalizedName = String(characterCard.name || '').trim()
-  if (normalizedName && worldBook.characters.some(c => String(c.name || '').trim() === normalizedName)) {
-    console.warn('[NpcPromotion] 角色已存在于世界书，跳过重复添加:', characterCard.name)
-    return { success: false, error: '角色已存在' }
+  const existingIndex = worldBook.characters.findIndex(c => String(c.name || '').trim() === normalizedName)
+
+  if (existingIndex >= 0) {
+    // 角色已存在：用生成的卡片数据补充现有条目
+    const existing = worldBook.characters[existingIndex]
+    // 只填充空白字段，不覆盖已有数据
+    if (!existing.identity && characterCard.identity) existing.identity = characterCard.identity
+    if (!existing.background && characterCard.background) existing.background = characterCard.background
+    if (!existing.appearance && characterCard.appearance) existing.appearance = characterCard.appearance
+    if (!existing.personalityProfile?.mbti && characterCard.personalityProfile?.mbti) {
+      existing.personalityProfile = existing.personalityProfile || {}
+      existing.personalityProfile.mbti = characterCard.personalityProfile.mbti
+    }
+    if (!Array.isArray(existing.personalityProfile?.behaviorTags) || existing.personalityProfile.behaviorTags.length === 0) {
+      existing.personalityProfile = existing.personalityProfile || {}
+      existing.personalityProfile.behaviorTags = Array.isArray(characterCard.personalityProfile?.behaviorTags)
+        ? characterCard.personalityProfile.behaviorTags : ['神秘']
+    }
+    if (!existing.notes && characterCard.notes) existing.notes = characterCard.notes
+    if (!existing.relationshipBase) existing.relationshipBase = characterCard.relationshipBase || { favor: 0, trust: 0, stance: 0 }
+    existing.updatedAt = new Date().toISOString()
+    console.log('[NpcPromotion] 已补充角色数据:', existing.name)
+  } else {
+    // 角色不存在：新增
+    worldBook.characters.push(characterCard)
   }
-  worldBook.characters.push(characterCard)
 
   // 保存世界书
   try {
@@ -173,7 +195,7 @@ export async function promoteCharacter(worldBook, exposureEntry, characterCard) 
 
   // 3. 写入世界记忆事件
   try {
-    await addEvent(worldBook.id, {
+    await useWorldMemoryStore().addEvent(worldBook.id, {
       type: 'npc_promotion',
       participants: [characterCard.id],
       summary: `新角色 ${characterCard.name} 正式登场`,

@@ -32,21 +32,22 @@ import {
 } from './composables/usePhoneData.js'
 import { generatePhoneSmsReply, generateGroupChatReply, generateRelationshipAnalysis } from '../../../../src/llm/index.js'
 import { generatePhoneSmsFile } from '../../../../src/llm/index.js'
-import { getWorldMemory } from '../../../../src/memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../../../../src/stores/worldMemory.store.js'
 import { generateCharacterSpeech } from '../../../../src/llm/llmService.core.js'
 import { kvStorage } from '../../../../src/storage/index.js'
 import { generateIcsContent } from './utils/generateIcsContent.js'
 import { openCalendarImport } from './services/calendarBridge.js'
 import { loadWorldBooks, persistWorldBooks } from '../../../../src/worldbook/worldBookStore.js'
+import { drawRandomSmsEvent, importSmsEventPoolJson, exportSmsEventPoolJson } from '../../../../src/composables/useSmsEventPool.js'
 import { loadNpcSmsThreads } from '../../../../src/services/npcSmsService.js'
 import AvatarCropModal from '../../../feature-dormitory/src/components/AvatarCropModal.vue'
 import { useAvatar as useDormAvatar } from '../../../feature-dormitory/src/composables/useAvatar.js'
 import { useContactStatus } from './composables/useContactStatus.js'
-import { getCharacterRelationship } from '../../../../src/relationship/index.js'
+import { useRelationshipStore } from '../../../../src/stores/relationship.store.js'
 import { useCharacterSchedule } from '../../../feature-character-schedule/src/composables/useCharacterSchedule.js'
 import { usePhoneEconomy } from './composables/usePhoneEconomy.js'
 import { archiveDialogue, getUnanalysedCount, shouldAutoAnalyse, getDialogueArchive } from '../../../../src/composables/useDialogueArchive.js'
-import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
+import { usePlayerState } from '../../../../src/stores/playerState.store.js'
 import { useSmsMessaging } from './composables/useSmsMessaging.js'
 import PhoneRedPacketModal from './PhoneRedPacketModal.vue'
 import PhoneGiftShop from './PhoneGiftShop.vue'
@@ -66,7 +67,8 @@ import { setPrintableDir, getPrintableDir, clearPrintableDir } from '../../../..
 const emit = defineEmits(['back', 'call-video'])
 
 // 全局用户身份
-const globalUser = useGlobalUser()
+const playerState = usePlayerState()
+const rel = useRelationshipStore()
 const isBtConnected = inject('isBluetoothConnected', ref(false))
 
 // 寝室头像
@@ -159,6 +161,7 @@ const calendarEventImporting = ref(false)
 
 // 短信通用设置
 const smsContextMessages = ref(8)
+const smsMaxTokens = ref(2000)
 
 // 表情包
 const showStickerPanel = ref(false)
@@ -414,7 +417,7 @@ async function handleGiftSent({ gift, contact }) {
       contact: contactForLlm,
       userMessage: `[送出了 ${gift.icon} ${gift.name} 给${contact.name}]`,
       history: [],
-      options: { historyLimits: 0, maxTokens: 200 },
+      options: { historyLimits: 0, maxTokens: smsMaxTokens.value },
     })
     if (result.success && result.replies && result.replies.length > 0) {
       for (const reply of result.replies) {
@@ -646,7 +649,7 @@ function applyBubbleCss(css) {
 function handleSaveSettings() {
   kvStorage.set(SMS_BUBBLE_CSS_KEY, bubbleCss.value)
   applyBubbleCss(bubbleCss.value)
-  saveSmsSettings({ contextMessages: smsContextMessages.value })
+  saveSmsSettings({ contextMessages: smsContextMessages.value, maxTokens: smsMaxTokens.value })
   showBubbleSettings.value = false
 }
 
@@ -670,6 +673,35 @@ function handleImportCssFile(e) {
   const reader = new FileReader()
   reader.onload = (ev) => { bubbleCss.value = ev.target?.result || '' }
   reader.readAsText(file)
+}
+
+// ===== 事件池 =====
+async function handleImportEventPool(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  e.target.value = ''
+  try {
+    const text = await file.text()
+    const result = await importSmsEventPoolJson(text)
+    console.log('[sms-event-pool] Imported:', result.count, 'events')
+  } catch (err) {
+    console.error('[sms-event-pool] Import failed:', err.message)
+  }
+}
+
+async function handleExportEventPool() {
+  try {
+    const json = await exportSmsEventPoolJson()
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'sms-event-pool.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('[sms-event-pool] Export failed:', err.message)
+  }
 }
 
 // ===== 聊天背景 =====
@@ -741,6 +773,19 @@ function scrollToBottom() {
   })
 }
 
+/**
+ * 30% 概率随机抽取 SMS 事件
+ */
+async function drawRandomSmsEventWithChance() {
+  if (Math.random() >= 0.3) return null
+  try {
+    return await drawRandomSmsEvent()
+  } catch (e) {
+    console.warn('[sms-event] drawRandomSmsEvent failed:', e.message)
+    return null
+  }
+}
+
 // ===== 发送私聊 =====
 async function handleSendSms() {
   const text = smsDraft.value.trim()
@@ -769,12 +814,12 @@ async function handleSendSms() {
 
     // 加载世界记忆
     const bookId = book?.id || contact.worldBookId
-    const worldMemories = await getWorldMemory(bookId)
+    const worldMemories = await useWorldMemoryStore().get(bookId)
 
     // 加载关系数据
     let relationshipSnapshot = null
     try {
-      const rel = getCharacterRelationship(contact.id)
+      const relData = rel.getCharacter(contact.id)
       if (rel) {
         relationshipSnapshot = {
           [contact.id]: {
@@ -794,7 +839,8 @@ async function handleSendSms() {
       history,
       worldMemories,
       relationshipSnapshot,
-      options: { historyLimit: smsContextMessages.value, maxTokens: 300, stickerList },
+      options: { historyLimit: smsContextMessages.value, maxTokens: smsMaxTokens.value, stickerList },
+      eventContext: await drawRandomSmsEventWithChance(),
     })
 
     if (result.success && result.replies?.length > 0) {
@@ -1004,8 +1050,8 @@ async function handleSendGroupMessage() {
       }))
 
     const effectiveUser = {
-      name: globalUser.username.value || '玩家',
-      avatar: globalUser.avatar.value || null,
+      name: playerState.username || '玩家',
+      avatar: playerState.avatar || null,
     }
 
     const memberPrivateChats = {}
@@ -1022,14 +1068,14 @@ async function handleSendGroupMessage() {
 
     // 加载世界记忆
     const bookId = book?.id || group.worldBookId || 'default_world_book'
-    const worldMemories = await getWorldMemory(bookId)
+    const worldMemories = await useWorldMemoryStore().get(bookId)
 
     // 加载群成员关系数据
     const memberRelationships = {}
     for (const member of members) {
       const contactId = member.contactId || member.id
       try {
-        const rel = getCharacterRelationship(contactId)
+        const relData = rel.getCharacter(contactId)
         if (rel) {
           memberRelationships[contactId] = {
             favor: rel.favor,
@@ -1309,6 +1355,7 @@ onMounted(async () => {
   // 初始化时立即应用气泡CSS（无论是保存的还是默认的）
   applyBubbleCss(bubbleCss.value)
   smsContextMessages.value = smsSettings.contextMessages ?? 8
+  smsMaxTokens.value = smsSettings.maxTokens ?? 2000
   groupChats.value = await ensureWorldBookGroups(groups)
   groupThreads.value = groupThreadsData
 
@@ -1487,6 +1534,7 @@ onMounted(async () => {
       v-model:chat-bg-url="chatBgUrl"
       v-model:chat-bg-url-input="chatBgUrlInput"
       v-model:context-messages="smsContextMessages"
+      v-model:sms-max-tokens="smsMaxTokens"
       :bubble-css-file="bubbleCssFile"
       :spot-check-enabled="spotCheckEnabled"
       :spot-check-min-min="spotCheckMinMin"
@@ -1507,6 +1555,8 @@ onMounted(async () => {
       @bg-file-select="handleBgFileSelect"
       @bg-url-import="handleBgUrlImport"
       @bg-clear="handleBgClear"
+      @import-event-pool="handleImportEventPool"
+      @export-event-pool="handleExportEventPool"
     />
 
     <!-- ====== 日历事件 ====== -->

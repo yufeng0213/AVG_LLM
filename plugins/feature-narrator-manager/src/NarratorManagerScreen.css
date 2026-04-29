@@ -133,6 +133,13 @@
   background: color-mix(in srgb, var(--accent-magenta) 15%, transparent);
 }
 
+.narrator-selector-btn--active {
+  border-color: var(--accent-yellow);
+  color: var(--accent-yellow);
+  background: color-mix(in srgb, var(--accent-yellow) 12%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-yellow) 30%, transparent);
+}
+
 /* ===== 编辑面板 ===== */
 .narrator-editor-panel {
   flex: 1;

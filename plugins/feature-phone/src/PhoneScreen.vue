@@ -27,6 +27,7 @@ import FridgeScreen from '../../feature-fridge/src/FridgeScreen.vue'
 import TodoScreen from '../../feature-todo/src/TodoScreen.vue'
 import PhoneMomentsApp from './phone/PhoneMomentsApp.vue'
 import PhoneRelationshipApp from '../../feature-relationship-network/src/RelationshipScreen.vue'
+import ScrapbookScreen from '../../feature-scrapbook/src/ScrapbookScreen.vue'
 import { useOfflinePush } from './phone/composables/useOfflinePush.js'
 import { useCallPush } from './phone/composables/useCallPush.js'
 import { useBatteryAwareness } from './phone/composables/useBatteryAwareness.js'
@@ -184,6 +185,7 @@ const APP_MAP = {
   todo: { component: TodoScreen, icon: '📋', name: '待办' },
   moments: { component: PhoneMomentsApp, icon: '🌍', name: '朋友圈' },
   relationship: { component: PhoneRelationshipApp, icon: '🔗', name: '关系网' },
+  scrapbook: { component: ScrapbookScreen, icon: '📓', name: '手帐' },
 }
 
 function openApp(appId) {

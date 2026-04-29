@@ -5,7 +5,7 @@
 import './DreamScreen.css'
 import { computed, onMounted, ref, watch } from 'vue'
 import { loadWorldBooks, getActiveWorldBookId } from '../worldbook/worldBookStore.js'
-import { getWorldMemory } from '../memory/worldMemoryStore.js'
+import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
 
 const emit = defineEmits(['back'])
 
@@ -26,7 +26,7 @@ async function loadData() {
     worldBook.value = books.find(b => b.id === activeId) || books[0] || null
 
     if (worldBook.value) {
-      worldMemory.value = await getWorldMemory(worldBook.value.id)
+      worldMemory.value = await useWorldMemoryStore().get(worldBook.value.id)
       loadDreamsFromMemory()
     }
   } catch (e) {
@@ -102,7 +102,7 @@ async function refresh() {
       worldMemory: worldMemory.value,
       relationships: worldBook.value?.relationships,
     })
-    worldMemory.value = await getWorldMemory(worldBook.value.id)
+    worldMemory.value = await useWorldMemoryStore().get(worldBook.value.id)
     loadDreamsFromMemory()
   } catch (e) {
     console.warn('[Dreams] generate failed:', e.message)

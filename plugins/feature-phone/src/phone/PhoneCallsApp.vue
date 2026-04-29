@@ -13,7 +13,7 @@ import {
   formatCallDuration,
 } from './composables/usePhoneData.js'
 import { generatePhoneCallReply } from '../../../../src/llm/index.js'
-import { useGlobalUser } from '../../../../src/composables/useGlobalUser.js'
+import { usePlayerState } from '../../../../src/stores/playerState.store.js'
 import { kvStorage } from '../../../../src/storage/index.js'
 
 const emit = defineEmits(['back'])
@@ -28,7 +28,7 @@ const callTranscript = ref([])
 const showCallLogs = ref(false)
 let timerInterval = null
 
-const globalUser = useGlobalUser()
+const playerState = usePlayerState()
 
 // 蓝牙铃声
 const playIncomingCall = inject('playIncomingCall', () => {})
@@ -137,7 +137,7 @@ async function handleSendCallMsg() {
         identity: contact.identity || contact.nickname || '',
       },
       userMessage: text,
-      effectiveUser: { name: globalUser.username.value || '玩家', description: '' },
+      effectiveUser: { name: playerState.username || '玩家', description: '' },
       history: history.filter(m => m.role !== 'user').slice(-6),
       options: { historyLimit: 10, maxTokens: 400 },
     })

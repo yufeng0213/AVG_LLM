@@ -11,7 +11,8 @@
  * 在 Electron 环境下通过 IPC 代理请求，解决 CORS 问题
  */
 
-import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
+import { isSQLiteAvailable } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
 import { CapacitorHttp } from '@capacitor/core'
 
 // 存储 key 常量
@@ -167,7 +168,7 @@ export const getComfyUIConfig = async () => {
   try {
     let raw
     if (isSQLiteAvailable()) {
-      raw = await getConfig(COMFYUI_CONFIG_KEY)
+      raw = await appConfigRepo.get(COMFYUI_CONFIG_KEY)
     } else {
       const { kvStorage } = await import('../storage/index.js')
       raw = await kvStorage.get(COMFYUI_CONFIG_KEY)
@@ -197,7 +198,7 @@ export const saveComfyUIConfig = async (config) => {
 
   try {
     if (isSQLiteAvailable()) {
-      await setConfig(COMFYUI_CONFIG_KEY, {
+      await appConfigRepo.set(COMFYUI_CONFIG_KEY, {
       ...config,
       workflowPath: normalizeWorkflowPath(config?.workflowPath),
     })

@@ -4,21 +4,12 @@
  * 支持跨平台：Electron、Android (Capacitor)、Web
  */
 
-import { isSQLiteAvailable, getConfig, setConfig } from '../db/db.js'
-import { saveStorage, backupStorage } from '../storage/index.js'
-import { isElectron, isNative } from '../utils/platform.js'
+import { isSQLiteAvailable, query, exec } from '../db/connection.js'
+import { appConfigRepo } from '../db/repos/appConfig.repo.js'
+import { isElectron } from '../utils/platform.js'
 
 // 存档数据结构版本
 const SAVE_DATA_VERSION = 1
-
-// 存档元数据存储键
-const SAVE_LIST_KEY = 'saves'
-const BACKUP_LIST_KEY = 'backups'
-const MAIN_STORY_SAVES_KEY = 'main_story_saves' // { [worldBookId]: saveSlotId }
-
-// 最大存档/备份数量
-const MAX_SAVES = 20
-const MAX_BACKUPS = 10
 
 /**
  * 创建空的存档数据结构
@@ -61,7 +52,7 @@ const getSaveDir = async () => {
 
 /**
  * 获取所有存档列表
- * @returns {Promise<Array>} 存档列表
+ * 直接从 save_slots 表读取元数据，不回退到 kvStorage
  */
 const getSaveList = async () => {
   // Electron 环境优先使用 IPC
@@ -69,92 +60,43 @@ const getSaveList = async () => {
     return await window.avgLLM.save.getSaveList()
   }
 
-  // 使用存储抽象层
+  // Android 端：直接从 save_slots 表读取
   try {
-    let list
-    if (isSQLiteAvailable()) {
-      list = await getConfig(SAVE_LIST_KEY)
-    } else {
-      list = await kvStorageGet(SAVE_LIST_KEY)
+    if (!isSQLiteAvailable()) {
+      console.warn('[saveManager] SQLite not available, save list will be empty')
+      return []
     }
-    return list || []
-  } catch {
+    const rows = await query(`
+      SELECT id, timestamp, chapter, scene, play_time, preview
+      FROM save_slots
+      ORDER BY timestamp DESC
+    `)
+    return rows.map(row => ({
+      id: row.id,
+      timestamp: parseInt(row.timestamp) || 0,
+      metadata: {
+        chapter: row.chapter || '第一章',
+        scene: row.scene || '开场',
+        playTime: parseInt(row.play_time) || 0,
+        preview: row.preview || '',
+      },
+    }))
+  } catch (e) {
+    console.error('[saveManager] Failed to get save list:', e.message)
     return []
   }
 }
 
 /**
- * 更新存档列表
- * @param {Array} saves - 存档列表
- */
-const updateSaveList = async (saves) => {
-  if (isSQLiteAvailable()) {
-    await setConfig(SAVE_LIST_KEY, saves)
-  } else {
-    await kvStorageSet(SAVE_LIST_KEY, saves)
-  }
-}
-
-async function kvStorageGet(key) {
-  const { kvStorage } = await import('../storage/index.js')
-  return kvStorage.get(key)
-}
-
-async function kvStorageSet(key, value) {
-  const { kvStorage } = await import('../storage/index.js')
-  return kvStorage.set(key, value)
-}
-
-/**
- * 获取主线存档映射 { worldBookId: saveSlotId }
- */
-const getMainStorySaves = async () => {
-  try {
-    let map
-    if (isSQLiteAvailable()) {
-      map = await getConfig(MAIN_STORY_SAVES_KEY)
-    } else {
-      map = await kvStorageGet(MAIN_STORY_SAVES_KEY)
-    }
-    return map || {}
-  } catch {
-    return {}
-  }
-}
-
-/**
- * 获取某个世界书的主线存档槽位ID（不存在则返回 null）
- */
-const getMainStorySaveSlot = async (worldBookId) => {
-  const map = await getMainStorySaves()
-  return map[worldBookId] || null
-}
-
-/**
- * 设置某个世界书的主线存档槽位ID
- */
-const setMainStorySaveSlot = async (worldBookId, slotId) => {
-  const map = await getMainStorySaves()
-  map[worldBookId] = slotId
-  if (isSQLiteAvailable()) {
-    await setConfig(MAIN_STORY_SAVES_KEY, map)
-  } else {
-    await kvStorageSet(MAIN_STORY_SAVES_KEY, map)
-  }
-}
-
-/**
  * 保存游戏进度
- * @param {Object} gameData - 游戏数据
- * @param {string} slotId - 存档槽位ID（可选，不提供则自动生成）
- * @returns {Promise<Object>} 保存结果
+ * 直接写入 save_slots 表，同时更新 main_story_saves 映射
  */
 const saveGame = async (gameData, slotId = null) => {
   // 确保数据可被序列化（深拷贝并移除不可序列化的属性）
   const clonedData = typeof structuredClone === 'function'
     ? structuredClone(gameData)
     : JSON.parse(JSON.stringify(gameData))
-  
+
   const saveData = {
     ...createEmptySaveData(),
     ...clonedData,
@@ -170,65 +112,62 @@ const saveGame = async (gameData, slotId = null) => {
   }
 
   const id = slotId || `save_${Date.now()}`
-  
+
   // Electron 环境优先使用 IPC
   if (isElectron() && window.avgLLM?.save?.saveGame) {
     return await window.avgLLM.save.saveGame(saveData, id)
   }
-  
-  // 使用存储抽象层
+
+  // Android 端：直接写入 save_slots 表
   try {
-    // 保存存档数据 + 预读取存档列表（两者互不依赖，并行执行）
-    const [result, saves] = await Promise.all([
-      saveStorage.save(id, saveData),
-      getSaveList(),
-    ])
-
-    if (!result.success) {
-      return result
+    if (!isSQLiteAvailable()) {
+      console.warn('[saveManager] SQLite not available, cannot save game')
+      return { success: false, error: 'SQLite not available' }
     }
 
-    const existingIndex = saves.findIndex(s => s.id === id)
+    const worldBookId = saveData.game?.worldBookId || 'default_world_book'
 
-    const saveEntry = {
+    // 写入 save_slots 表
+    await exec(`
+      INSERT OR REPLACE INTO save_slots
+      (id, save_data, timestamp, chapter, scene, play_time, preview)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [
       id,
-      timestamp: saveData.timestamp,
-      metadata: saveData.metadata,
-    }
-
-    if (existingIndex >= 0) {
-      saves[existingIndex] = saveEntry
-    } else {
-      saves.unshift(saveEntry)
-    }
-
-    // 限制存档数量
-    const trimmedSaves = saves.slice(0, MAX_SAVES)
-
-    // 删除超出限制的存档文件
-    if (saves.length > MAX_SAVES) {
-      for (const oldSave of saves.slice(MAX_SAVES)) {
-        await saveStorage.delete(oldSave.id)
-      }
-    }
-
-    // 更新存档列表 + 注册主线存档（互不依赖，并行执行）
-    const worldBookId = saveData.game?.worldBookId
-    await Promise.all([
-      updateSaveList(trimmedSaves),
-      worldBookId ? setMainStorySaveSlot(worldBookId, id) : Promise.resolve(),
+      JSON.stringify(saveData),
+      String(saveData.timestamp),
+      saveData.metadata.chapter || '第一章',
+      saveData.metadata.scene || '开场',
+      String(saveData.metadata.playTime || 0),
+      saveData.metadata.preview || '',
     ])
+
+    console.log('[saveManager] Saved to save_slots:', id, 'worldBookId:', worldBookId)
+
+    // 更新主线存档映射
+    await setMainStorySaveSlot(worldBookId, id)
+
+    // 同时写入 app_config 作为备份（兼容旧代码）
+    try {
+      await appConfigRepo.set(`save_data:${id}`, saveData)
+    } catch { /* 忽略 */ }
 
     return { success: true, id }
   } catch (error) {
+    console.error('[saveManager] Failed to save game:', error.message)
+    // 异常情况下也尝试写入 app_config
+    try {
+      if (isSQLiteAvailable()) {
+        await appConfigRepo.set(`save_data:${id}`, JSON.parse(JSON.stringify(gameData)))
+      }
+    } catch { /* 忽略 */ }
     return { success: false, error: error.message }
   }
 }
 
 /**
  * 加载游戏存档
- * @param {string} slotId - 存档槽位ID
- * @returns {Promise<Object>} 存档数据
+ * 直接从 save_slots 表读取，不回退到文件系统
  */
 const loadGame = async (slotId) => {
   const attachSlotId = (result) => {
@@ -250,53 +189,148 @@ const loadGame = async (slotId) => {
     return attachSlotId(result)
   }
 
-  // 使用存储抽象层
-  const result = await saveStorage.load(slotId)
-  return attachSlotId(result)
+  // Android 端：直接从 save_slots 表读取
+  try {
+    if (!isSQLiteAvailable()) {
+      console.warn('[saveManager] SQLite not available, cannot load game')
+      return { success: false, error: 'SQLite not available' }
+    }
+
+    const rows = await query('SELECT save_data FROM save_slots WHERE id = ?', [slotId])
+    if (rows.length === 0) {
+      // 尝试从 app_config 备份读取
+      const backupData = await appConfigRepo.get(`save_data:${slotId}`)
+      if (backupData && typeof backupData === 'object') {
+        console.log('[saveManager] Loaded from app_config backup:', slotId)
+        return attachSlotId({ success: true, data: backupData })
+      }
+      return { success: false, error: '存档不存在' }
+    }
+
+    const saveData = JSON.parse(rows[0].save_data)
+    console.log('[saveManager] Loaded from save_slots:', slotId)
+    return attachSlotId({ success: true, data: saveData })
+  } catch (e) {
+    console.error('[saveManager] Failed to load game:', e.message)
+    // 尝试从 app_config 备份读取
+    try {
+      const backupData = await appConfigRepo.get(`save_data:${slotId}`)
+      if (backupData && typeof backupData === 'object') {
+        return attachSlotId({ success: true, data: backupData })
+      }
+    } catch { /* 忽略 */ }
+    return { success: false, error: e.message }
+  }
+}
+
+/**
+ * 获取主线存档映射 { worldBookId: saveSlotId }
+ * 直接从 main_story_saves 表读取，不回退到 kvStorage（避免被 App.vue 清除）
+ */
+const getMainStorySaves = async () => {
+  try {
+    if (!isSQLiteAvailable()) {
+      console.warn('[saveManager] SQLite not available, main_story_saves will be empty')
+      return {}
+    }
+    const rows = await query('SELECT world_book_id, save_slot_id FROM main_story_saves')
+    const map = {}
+    for (const row of rows) {
+      map[row.world_book_id] = row.save_slot_id
+    }
+    return map
+  } catch (e) {
+    console.error('[saveManager] Failed to get main_story_saves:', e.message)
+    return {}
+  }
+}
+
+/**
+ * 获取某个世界书的主线存档槽位ID（不存在则返回 null）
+ */
+const getMainStorySaveSlot = async (worldBookId) => {
+  try {
+    if (!isSQLiteAvailable()) {
+      console.warn('[saveManager] SQLite not available, cannot get save slot')
+      return null
+    }
+    const rows = await query(
+      'SELECT save_slot_id FROM main_story_saves WHERE world_book_id = ?',
+      [worldBookId]
+    )
+    return rows.length > 0 ? rows[0].save_slot_id : null
+  } catch (e) {
+    console.error('[saveManager] Failed to get main_story_save_slot:', e.message)
+    return null
+  }
+}
+
+/**
+ * 设置某个世界书的主线存档槽位ID
+ * 直接写入 main_story_saves 表，不回退到 kvStorage（避免被 App.vue 清除）
+ */
+const setMainStorySaveSlot = async (worldBookId, slotId) => {
+  try {
+    if (!isSQLiteAvailable()) {
+      console.warn('[saveManager] SQLite not available, cannot save main_story_saves')
+      return
+    }
+    await exec(
+      'INSERT OR REPLACE INTO main_story_saves (world_book_id, save_slot_id) VALUES (?, ?)',
+      [worldBookId, slotId]
+    )
+    console.log('[saveManager] Saved main_story_saves:', worldBookId, '→', slotId)
+  } catch (e) {
+    console.error('[saveManager] Failed to set main_story_save_slot:', e.message)
+  }
 }
 
 /**
  * 删除存档
- * @param {string} slotId - 存档槽位ID
- * @returns {Promise<Object>} 删除结果
+ * 直接从 save_slots 和 main_story_saves 表删除
  */
 const deleteSave = async (slotId) => {
   // Electron 环境优先使用 IPC
   if (isElectron() && window.avgLLM?.save?.deleteSave) {
     return await window.avgLLM.save.deleteSave(slotId)
   }
-  
-  // 使用存储抽象层
+
   try {
-    // 删除存档文件
-    const result = await saveStorage.delete(slotId)
-    if (!result.success) {
-      return result
+    if (!isSQLiteAvailable()) {
+      return { success: false, error: 'SQLite not available' }
     }
-    
-    // 更新存档列表
-    const saves = await getSaveList()
-    const filteredSaves = saves.filter(s => s.id !== slotId)
-    await updateSaveList(filteredSaves)
-    
+
+    // 从 save_slots 表删除
+    await exec('DELETE FROM save_slots WHERE id = ?', [slotId])
+
+    // 从 app_config 备份删除
+    try {
+      await appConfigRepo.remove(`save_data:${slotId}`)
+    } catch { /* 忽略 */ }
+
+    // 从 main_story_saves 映射中删除（找到对应的 world_book_id）
+    const rows = await query('SELECT world_book_id FROM main_story_saves WHERE save_slot_id = ?', [slotId])
+    for (const row of rows) {
+      await exec('DELETE FROM main_story_saves WHERE save_slot_id = ?', [slotId])
+    }
+
+    console.log('[saveManager] Deleted save:', slotId)
     return { success: true }
   } catch (error) {
+    console.error('[saveManager] Failed to delete save:', error.message)
     return { success: false, error: error.message }
   }
 }
 
 /**
  * 创建历史消息备份
- * @param {Array} messages - 历史消息列表
- * @param {string} backupName - 备份名称（可选）
- * @returns {Promise<Object>} 备份结果
+ * 直接写入 backup_slots 表
  */
 const createHistoryBackup = async (messages, backupName = null) => {
-  // 确保数据可被序列化（深拷贝）
   const clonedMessages = typeof structuredClone === 'function'
     ? structuredClone(messages)
     : JSON.parse(JSON.stringify(messages))
-  
+
   const backupData = {
     version: SAVE_DATA_VERSION,
     timestamp: Date.now(),
@@ -306,116 +340,113 @@ const createHistoryBackup = async (messages, backupName = null) => {
   }
 
   const id = `backup_${Date.now()}`
-  
+
   // Electron 环境优先使用 IPC
   if (isElectron() && window.avgLLM?.backup?.createBackup) {
     return await window.avgLLM.backup.createBackup(backupData)
   }
-  
-  // 使用存储抽象层
+
   try {
-    // 保存备份数据
-    const result = await backupStorage.save(id, backupData)
-    if (!result.success) {
-      return result
-    }
-    
-    // 更新备份列表
-    const backups = await getBackupList()
-    
-    const backupEntry = {
-      id,
-      timestamp: backupData.timestamp,
-      name: backupData.name,
-      messageCount: messages.length,
+    if (!isSQLiteAvailable()) {
+      return { success: false, error: 'SQLite not available' }
     }
 
-    backups.unshift(backupEntry)
-    
-    // 限制备份数量
-    const trimmedBackups = backups.slice(0, MAX_BACKUPS)
-    
-    // 删除超出限制的备份文件
-    if (backups.length > MAX_BACKUPS) {
-      for (const oldBackup of backups.slice(MAX_BACKUPS)) {
-        await backupStorage.delete(oldBackup.id)
-      }
-    }
-    
-    await kvStorageSet(BACKUP_LIST_KEY, trimmedBackups)
-    
+    // 写入 backup_slots 表
+    await exec(`
+      INSERT INTO backup_slots (id, backup_data, timestamp, name, message_count)
+      VALUES (?, ?, ?, ?, ?)
+    `, [
+      id,
+      JSON.stringify(backupData),
+      String(backupData.timestamp),
+      backupData.name,
+      messages.length,
+    ])
+
+    console.log('[saveManager] Created backup:', id)
     return { success: true, id }
   } catch (error) {
+    console.error('[saveManager] Failed to create backup:', error.message)
     return { success: false, error: error.message }
   }
 }
 
 /**
  * 获取所有历史备份列表
- * @returns {Promise<Array>} 备份列表
+ * 直接从 backup_slots 表读取
  */
 const getBackupList = async () => {
   // Electron 环境优先使用 IPC
   if (isElectron() && window.avgLLM?.backup?.getBackupList) {
     return await window.avgLLM.backup.getBackupList()
   }
-  
-  // 使用存储抽象层
+
   try {
-    let list
-    if (isSQLiteAvailable()) {
-      list = await getConfig(BACKUP_LIST_KEY)
-    } else {
-      list = await kvStorageGet(BACKUP_LIST_KEY)
+    if (!isSQLiteAvailable()) {
+      return []
     }
-    return list || []
-  } catch {
+    const rows = await query(`
+      SELECT id, timestamp, name, message_count
+      FROM backup_slots
+      ORDER BY timestamp DESC
+    `)
+    return rows.map(row => ({
+      id: row.id,
+      timestamp: parseInt(row.timestamp) || 0,
+      name: row.name || '',
+      messageCount: row.message_count || 0,
+    }))
+  } catch (e) {
+    console.error('[saveManager] Failed to get backup list:', e.message)
     return []
   }
 }
 
 /**
  * 加载历史备份
- * @param {string} backupId - 备份ID
- * @returns {Promise<Object>} 备份数据
+ * 直接从 backup_slots 表读取
  */
 const loadBackup = async (backupId) => {
   // Electron 环境优先使用 IPC
   if (isElectron() && window.avgLLM?.backup?.loadBackup) {
     return await window.avgLLM.backup.loadBackup(backupId)
   }
-  
-  // 使用存储抽象层
-  const result = await backupStorage.load(backupId)
-  return result
+
+  try {
+    if (!isSQLiteAvailable()) {
+      return { success: false, error: 'SQLite not available' }
+    }
+    const rows = await query('SELECT backup_data FROM backup_slots WHERE id = ?', [backupId])
+    if (rows.length === 0) {
+      return { success: false, error: '备份不存在' }
+    }
+    const backupData = JSON.parse(rows[0].backup_data)
+    return { success: true, data: backupData }
+  } catch (e) {
+    console.error('[saveManager] Failed to load backup:', e.message)
+    return { success: false, error: e.message }
+  }
 }
 
 /**
  * 删除历史备份
- * @param {string} backupId - 备份ID
- * @returns {Promise<Object>} 删除结果
+ * 直接从 backup_slots 表删除
  */
 const deleteBackup = async (backupId) => {
   // Electron 环境优先使用 IPC
   if (isElectron() && window.avgLLM?.backup?.deleteBackup) {
     return await window.avgLLM.backup.deleteBackup(backupId)
   }
-  
-  // 使用存储抽象层
+
   try {
-    // 删除备份文件
-    const result = await backupStorage.delete(backupId)
-    if (!result.success) {
-      return result
+    if (!isSQLiteAvailable()) {
+      return { success: false, error: 'SQLite not available' }
     }
-    
-    // 更新备份列表
-    const backups = await getBackupList()
-    const filteredBackups = backups.filter(b => b.id !== backupId)
-    await kvStorageSet(BACKUP_LIST_KEY, filteredBackups)
-    
+    await exec('DELETE FROM backup_slots WHERE id = ?', [backupId])
+    console.log('[saveManager] Deleted backup:', backupId)
     return { success: true }
   } catch (error) {
+    console.error('[saveManager] Failed to delete backup:', error.message)
     return { success: false, error: error.message }
   }
 }
