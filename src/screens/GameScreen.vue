@@ -21,6 +21,7 @@ import {
   parseStoryContent,
   parseXmlStoryContent,
   parseMainStoryContent,
+  parseAuxSection,
   toGameScript,
   hasChoices,
   extractChoices,
@@ -76,6 +77,7 @@ import {
 } from '../services/relationshipAutoScheduler.js'
 import {
   processNewDialogue as processExposure,
+  loadExposureData,
 } from '../services/exposureTracker.js'
 import {
   generateCharacterCard,
@@ -3322,11 +3324,42 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
       // 每次剧情成功推进后，自动写入默认快速存档槽位
       await quickSave({ silent: true })
 
-      // 攒够 N 段新对话后，批量触发世界记忆提取
-      const totalLines = normalizedScript.length
-      const newCount = totalLines - memoryLastExtractedLineCount.value
-      if (newCount >= MEMORY_EXTRACT_BATCH_SIZE) {
-        triggerMemoryExtraction(totalLines)
+      // 解析辅助输出区块（事件、记忆、地点等）
+      const auxResult = parseAuxSection(rawModelContent)
+      if (auxResult) {
+        console.log('[GameScreen] aux 解析成功，开始分发结果')
+        await dispatchAuxResults(auxResult, normalizedScript)
+      } else {
+        console.log('[GameScreen] 未检测到 aux 区块，使用兜底记忆提取')
+        // 无 aux 区块时，仍按旧逻辑批量触发世界记忆提取（兜底）
+        const totalLines = normalizedScript.length
+        const newCount = totalLines - memoryLastExtractedLineCount.value
+        if (newCount >= MEMORY_EXTRACT_BATCH_SIZE) {
+          triggerMemoryExtraction(totalLines)
+        }
+      }
+
+      // 曝光追踪：独立执行（不需要LLM），检测转正候选
+      const bookForExposure = worldBooks.value.find(b => b.id === activeBookId.value)
+      if (bookForExposure) {
+        const newDialogue = newDialogues
+        const startLineIndex = normalizedScript.length - newDialogue.length
+        const promotions = await processExposure(
+          activeBookId.value,
+          newDialogue,
+          startLineIndex,
+          bookForExposure
+        )
+
+        // 处理转正（只有新角色才需要调用角色设计师）
+        // 已禁用自动生成角色卡，改为手动触发
+        for (const promo of promotions) {
+          if (promo.isNewCharacter) {
+            console.log(`[GameScreen] 新角色曝光达标: ${promo.name} (score=${promo.score})，可手动转正`)
+          } else {
+            console.log(`[GameScreen] 已知角色曝光升级: ${promo.name} -> stage ${promo.stage}`)
+          }
+        }
       }
     }
   } catch (err) {
@@ -3337,6 +3370,136 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
 }
 
 // ========== 世界记忆提取 ==========
+
+/**
+ * 分发辅助输出结果到各个处理器
+ * @param {Object} auxResult - parseAuxSection 解析结果
+ * @param {Array} currentScript - 当前对话脚本
+ */
+async function dispatchAuxResults(auxResult, currentScript) {
+  if (!auxResult) return
+
+  const bookId = activeBookId.value
+  const book = activeBook.value
+
+  // 角色名 -> ID 映射辅助函数
+  const nameToId = (name) => {
+    if (!name || typeof name !== 'string') return null
+    const trimmed = name.trim()
+    if (!trimmed) return null
+    const id = resolveCharacterIdByIdentifier(trimmed)
+    return id || null
+  }
+
+  // 1. 写入事件到世界记忆
+  if (auxResult.events?.length > 0) {
+    try {
+      // 标准化事件：将参与者名字转换为角色ID
+      const normalizedEvents = []
+      for (const evt of auxResult.events) {
+        const participantIds = (evt.participants || [])
+          .map(nameToId)
+          .filter(Boolean)
+        if (participantIds.length === 0) continue // 没有有效参与者则跳过
+        normalizedEvents.push({
+          id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          type: evt.type || 'other',
+          participants: participantIds,
+          summary: evt.summary || '',
+          emotionalImpact: evt.emotionalImpact || 20,
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        })
+      }
+      if (normalizedEvents.length > 0) {
+        await mem.addEvents(bookId, normalizedEvents)
+        console.log(`[Aux] 写入 ${normalizedEvents.length} 个事件`)
+      } else {
+        console.log(`[Aux] 事件参与者未匹配到角色，已跳过`)
+      }
+    } catch (e) {
+      console.warn('[Aux] 写入事件失败:', e.message)
+    }
+  }
+
+  // 2. 写入角色记忆
+  if (auxResult.memories?.length > 0) {
+    try {
+      const memoryItems = []
+      for (const memItem of auxResult.memories) {
+        // characterId 在新格式中是角色名，需要转换为ID
+        const charId = nameToId(memItem.characterId)
+        if (!charId) {
+          console.log(`[Aux] 记忆角色未匹配: ${memItem.characterId}`)
+          continue
+        }
+        const aboutId = nameToId(memItem.about) || '__player__'
+        memoryItems.push({
+          characterId: charId,
+          about: aboutId,
+          content: memItem.content || '',
+          sentiment: memItem.sentiment || 0,
+          createdAt: new Date().toISOString(),
+        })
+      }
+      if (memoryItems.length > 0) {
+        await mem.addCharacterMemoriesBatch(bookId, memoryItems)
+        console.log(`[Aux] 写入 ${memoryItems.length} 条角色记忆`)
+      }
+    } catch (e) {
+      console.warn('[Aux] 写入角色记忆失败:', e.message)
+    }
+  }
+
+  // 3. 合并新地点到世界书
+  if (auxResult.locations?.length > 0) {
+    try {
+      await mergeDiscoveredLocations(book, auxResult.locations)
+      console.log(`[Aux] 发现 ${auxResult.locations.length} 个新地点`)
+    } catch (e) {
+      console.warn('[Aux] 合并地点失败:', e.message)
+    }
+  }
+
+  // 4. NPC互动摘要（可选：写入事件或日志）
+  if (auxResult.npcInteractions?.length > 0) {
+    try {
+      // 将NPC互动转换为事件记录（角色名转ID）
+      const npcEvents = []
+      for (const int of auxResult.npcInteractions) {
+        const charAId = nameToId(int.charA)
+        const charBId = nameToId(int.charB)
+        if (!charAId || !charBId) continue
+        npcEvents.push({
+          id: `npc_int_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          type: 'npc_interaction',
+          participants: [charAId, charBId],
+          summary: int.summary || '',
+          scene: int.location || '',
+          emotionalImpact: 15,
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        })
+      }
+      if (npcEvents.length > 0) {
+        await mem.addEvents(bookId, npcEvents)
+        console.log(`[Aux] 记录 ${npcEvents.length} 条NPC互动`)
+      }
+    } catch (e) {
+      console.warn('[Aux] NPC互动记录失败:', e.message)
+    }
+  }
+
+  // 5. 新角色建议（可选：提示用户或暂存）
+  if (auxResult.newCharacters?.length > 0) {
+    console.log(`[Aux] 新角色建议: ${auxResult.newCharacters.map(c => c.name).join(', ')}`)
+    // 这里可以触发提示，让用户决定是否添加新角色
+    // 目前只记录日志，不自动添加
+  }
+
+  // 更新提取位置
+  memoryLastExtractedLineCount.value = currentScript.length
+}
 
 /**
  * 合并新发现的地点到世界书 scenes
@@ -3448,22 +3611,12 @@ async function triggerMemoryExtraction(currentTotalLines) {
           bookForExposure
         )
 
-        // 处理转正
+        // 处理转正（已禁用自动生成角色卡）
         for (const promo of promotions) {
-          try {
-            const exposureData = await import('../services/exposureTracker.js').then(m => m.loadExposureData())
-            const exposureEntry = exposureData[activeBookId.value]?.[promo.id]
-            const mentionContexts = (exposureEntry?.mentionContexts || []).slice(-5)
-            const cardResult = await generateCharacterCard({
-              name: promo.name || promo.id,
-              worldBookEntries: bookForExposure.entries,
-              mentionContexts,
-            })
-            if (cardResult.success && cardResult.characterCard) {
-              await promoteCharacter(bookForExposure, exposureEntry || {}, cardResult.characterCard)
-            }
-          } catch (e) {
-            console.warn('[GameScreen] NPC promotion failed:', e.message)
+          if (promo.isNewCharacter) {
+            console.log(`[GameScreen] 新角色曝光达标: ${promo.name} (score=${promo.score})，可手动转正`)
+          } else {
+            console.log(`[GameScreen] 已知角色曝光升级: ${promo.name} -> stage ${promo.stage}`)
           }
         }
       }

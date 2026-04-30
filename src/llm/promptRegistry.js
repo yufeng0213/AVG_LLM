@@ -261,3 +261,38 @@ export { PROMPT_DEFAULTS } from './promptDefaults.js'
 export function __resetRegistryCache() {
   _resetCache()
 }
+
+/**
+ * 组合多个 prompt 为一个 systemPrompt（用于缓存复用）
+ * @param {string[]} ids - prompt ID 数组，如 ['base:world_context', 'core:story_generation']
+ * @returns {Promise<string>} 组合后的完整 systemPrompt
+ */
+export async function composePrompts(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return ''
+
+  const parts = []
+  for (const id of ids) {
+    const prompt = await resolvePrompt(id)
+    if (prompt && prompt.trim()) {
+      parts.push(prompt.trim())
+    }
+  }
+
+  if (parts.length === 0) return ''
+  if (parts.length === 1) return parts[0]
+
+  // 用分隔符组合，便于缓存块识别
+  return parts.join('\n\n---\n\n')
+}
+
+/**
+ * 常用的 prompt 组合预设
+ */
+export const PROMPT_COMPOSITIONS = {
+  // 主线剧情：基础层 + 剧情生成层
+  story: ['base:world_context', 'core:story_generation'],
+  // SMS回复：基础层 + 角色模板 + SMS功能层
+  sms: ['base:world_context', 'base:character_template', 'phone:sms_reply'],
+  // 面对面：基础层 + 角色模板 + 面对面层
+  faceToFace: ['base:world_context', 'base:character_template', 'phone:dorm_chat'],
+}

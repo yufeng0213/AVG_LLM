@@ -5,6 +5,8 @@
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { kvStorage } from '../../../../src/storage/index.js'
+import { isSQLiteAvailable } from '../../../../src/db/connection.js'
+import { appConfigRepo } from '../../../../src/db/repos/appConfig.repo.js'
 import { getPhoneWallpaperCache, setPhoneWallpaperCache, getWorldWallpaperCache, setWorldWallpaperCache as setWorldWallpaperCacheData } from './composables/usePhoneData.js'
 
 const props = defineProps({
@@ -102,14 +104,24 @@ async function setWorldWallpaper() {
     name: currentPhoto.value.name,
     isVideo: !!currentPhoto.value.isVideo,
   }
-  await kvStorage.set('worldhub_wallpaper', data)
+  // 使用与加载时相同的存储介质（SQLite优先）
+  if (isSQLiteAvailable()) {
+    await appConfigRepo.set('worldhub_wallpaper', data)
+  } else {
+    await kvStorage.set('worldhub_wallpaper', data)
+  }
   worldWallpaper.value = data
   setWorldWallpaperCacheData(data)
 }
 
 // 恢复世界壁纸默认
 async function restoreWorldWallpaperDefault() {
-  await kvStorage.set('worldhub_wallpaper', null)
+  // 使用与加载时相同的存储介质
+  if (isSQLiteAvailable()) {
+    await appConfigRepo.set('worldhub_wallpaper', null)
+  } else {
+    await kvStorage.set('worldhub_wallpaper', null)
+  }
   worldWallpaper.value = null
   setWorldWallpaperCacheData(null)
 }

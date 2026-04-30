@@ -476,6 +476,29 @@ const buildInstructionSection = (
     lines.push(userInput.trim())
   }
 
+  // 辅助输出区块（推荐输出，用于记录剧情事件和角色印象）
+  lines.push('')
+  lines.push('### 剧情记录区块（推荐输出）')
+  lines.push('剧情生成完成后，在 <choices> 之后输出 <aux> 区块：')
+  lines.push('')
+  lines.push('<aux>')
+  lines.push('  <event t="类型" p="角色名" s="事件摘要"/>')
+  lines.push('  <mem c="角色名" txt="对玩家的印象变化"/>')
+  lines.push('  <loc n="新地点名"/>')
+  lines.push('</aux>')
+  lines.push('')
+  lines.push('字段说明：')
+  lines.push('- event.t: conversation/romance/conflict/milestone/gift/other')
+  lines.push('- event.p: 参与者角色名（不用ID），多人用逗号分隔')
+  lines.push('- event.s: 20字内摘要')
+  lines.push('- mem.c: 角色名')
+  lines.push('- mem.txt: 角色对玩家的印象（如好感加深、产生怀疑等）')
+  lines.push('')
+  lines.push('输出建议：')
+  lines.push('- 每轮建议输出aux，即使只有一个事件')
+  lines.push('- 日常闲聊可不输出event，但感情变化时建议输出mem')
+  lines.push('- 有则输出，无则省略')
+
   return lines.join('\n')
 }
 

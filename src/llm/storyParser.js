@@ -1139,12 +1139,177 @@ export const parseSmsXmlContent = (content) => {
   }
 }
 
+/**
+ * 解析辅助输出区块 <aux>
+ * @param {string} content - LLM 返回的原始内容
+ * @returns {Object|null} 解析结果，若无 aux 区块则返回 null
+ */
+export const parseAuxSection = (content) => {
+  if (!content || typeof content !== 'string') return null
+
+  const raw = String(content).trim()
+  if (!raw) return null
+
+  // 匹配 <aux> 区块
+  const auxMatch = raw.match(/<aux>([\s\S]*?)<\/aux>/i)
+  if (!auxMatch) {
+    // 尝试匹配不完整闭合的 aux（可能被截断）
+    const openMatch = raw.match(/<aux>([\s\S]*?)$/i)
+    if (openMatch) {
+      console.log('[Aux] 检测到未闭合的 <aux> 区块')
+      return _parseAuxBody(openMatch[1] || '')
+    }
+    // 检查是否有 aux 标签但无内容
+    if (raw.includes('<aux>') || raw.includes('<aux ')) {
+      console.log('[Aux] 存在 aux 标签但无法解析完整区块')
+    }
+    return null
+  }
+
+  console.log('[Aux] 检测到完整的 <aux> 区块')
+  return _parseAuxBody(auxMatch[1] || '')
+}
+
+/**
+ * 解析 aux 区块内容
+ */
+function _parseAuxBody(auxBody) {
+  if (!auxBody || !auxBody.trim()) return null
+
+  const result = {
+    events: [],
+    memories: [],
+    locations: [],
+    npcInteractions: [],
+    newCharacters: [],
+  }
+
+  // 解析事件 <event .../> - 支持任意属性顺序
+  const eventMatches = auxBody.matchAll(/<event\s+([^>]+)\/>/gi)
+  for (const match of eventMatches) {
+    const attrs = match[1] || ''
+    const parsed = _parseXmlAttrs(attrs)
+    const type = parsed.t || parsed.type || 'other'
+    const participantsRaw = parsed.p || parsed.participants || ''
+    const participants = participantsRaw.split(/[,，、]/).map(s => s.trim()).filter(Boolean)
+    const summary = parsed.s || parsed.summary || ''
+    if (participants.length > 0 && summary) {
+      result.events.push({
+        type: type.trim(),
+        participants,
+        summary: summary.trim().slice(0, 200),
+        emotionalImpact: Math.max(1, Math.min(100, Number(parsed.i || parsed.impact || 20))),
+      })
+    }
+  }
+
+  // 解析角色记忆 <mem .../> - 支持新旧两种格式
+  const memMatches = auxBody.matchAll(/<mem\s+([^>]+)\/>/gi)
+  for (const match of memMatches) {
+    const attrs = match[1] || ''
+    const parsed = _parseXmlAttrs(attrs)
+    // 新格式: c="角色名" txt="内容"，旧格式: c a t s
+    const charId = parsed.c || parsed.char || parsed.characterId || ''
+    const aboutId = parsed.a || parsed.about || '__player__' // 默认对玩家的印象
+    const text = parsed.txt || parsed.t || parsed.text || parsed.content || ''
+    const sentiment = Number(parsed.s || parsed.sentiment || 0)
+    if (charId && text) {
+      result.memories.push({
+        characterId: charId.trim(),
+        about: aboutId.trim(),
+        content: text.trim().slice(0, 300),
+        sentiment: Math.max(-100, Math.min(100, sentiment)),
+      })
+    }
+  }
+
+  // 解析新地点 <loc .../>
+  const locMatches = auxBody.matchAll(/<loc\s+([^>]+)\/>/gi)
+  for (const match of locMatches) {
+    const attrs = match[1] || ''
+    const parsed = _parseXmlAttrs(attrs)
+    const name = parsed.n || parsed.name || ''
+    const desc = parsed.d || parsed.desc || parsed.description || ''
+    if (name) {
+      result.locations.push({
+        name: name.trim(),
+        description: desc.trim().slice(0, 200),
+      })
+    }
+  }
+
+  // 解析NPC互动 <npc .../>
+  const npcMatches = auxBody.matchAll(/<npc\s+([^>]+)\/>/gi)
+  for (const match of npcMatches) {
+    const attrs = match[1] || ''
+    const parsed = _parseXmlAttrs(attrs)
+    const charA = parsed.a || ''
+    const charB = parsed.b || ''
+    const location = parsed.l || parsed.loc || ''
+    const summary = parsed.s || parsed.summary || ''
+    if (charA && charB && summary) {
+      result.npcInteractions.push({
+        charA: charA.trim(),
+        charB: charB.trim(),
+        location: location.trim(),
+        summary: summary.trim().slice(0, 200),
+      })
+    }
+  }
+
+  // 解析新角色 <new .../>
+  const newMatches = auxBody.matchAll(/<new\s+([^>]+)\/>/gi)
+  for (const match of newMatches) {
+    const attrs = match[1] || ''
+    const parsed = _parseXmlAttrs(attrs)
+    const name = parsed.n || parsed.name || ''
+    const desc = parsed.d || parsed.desc || ''
+    if (name) {
+      result.newCharacters.push({
+        name: name.trim(),
+        description: desc.trim().slice(0, 100),
+      })
+    }
+  }
+
+  // 检查是否有有效内容
+  const hasContent = result.events.length > 0 ||
+    result.memories.length > 0 ||
+    result.locations.length > 0 ||
+    result.npcInteractions.length > 0 ||
+    result.newCharacters.length > 0
+
+  if (!hasContent) {
+    console.log('[Aux] 解析结果为空')
+    return null
+  }
+
+  console.log('[Aux] 解析成功: events=' + result.events.length + ', memories=' + result.memories.length + ', locations=' + result.locations.length)
+  return result
+}
+
+/**
+ * 解析XML属性字符串，返回属性名到值的映射
+ * 支持：name="value" 或 name='value'
+ */
+function _parseXmlAttrs(attrsStr) {
+  const result = {}
+  // 匹配 key="value" 或 key='value'
+  const regex = /(\w+)=["']([^"']*)["']/g
+  let match
+  while ((match = regex.exec(attrsStr)) !== null) {
+    result[match[1]] = match[2] || ''
+  }
+  return result
+}
+
 export default {
   parseStoryContent,
   parseXmlStoryContent,
   parseMainStoryContent,
   parseStoryTicketContent,
   parseSmsXmlContent,
+  parseAuxSection,
   validateDialogue,
   toGameScript,
   extractHighlightCharacters,

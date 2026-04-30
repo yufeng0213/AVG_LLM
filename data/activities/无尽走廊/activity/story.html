@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>剧情 - 无尽走廊</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    .story-page {
+      width: 100%;
+      height: 100%;
+      padding-bottom: 80px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #0a0f1a 0%, #1a2a3a 50%, #0f1a2a 100%);
+      overflow: hidden;
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    }
+
+    /* ===== 标题区 ===== */
+    .story-header {
+      padding: 20px 16px;
+      text-align: center;
+      background: rgba(20,30,50,0.8);
+      border-bottom: 1px solid rgba(100,149,237,0.2);
+    }
+
+    .story-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 0 20px rgba(100,149,237,0.5);
+      margin-bottom: 8px;
+    }
+
+    .story-header p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    /* ===== 章节列表 ===== */
+    .chapters-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .chapters-container::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .chapters-container::-webkit-scrollbar-thumb {
+      background: rgba(100,149,237,0.3);
+      border-radius: 2px;
+    }
+
+    .chapter-card {
+      background: rgba(30,40,60,0.6);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(100,149,237,0.2);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chapter-card:hover {
+      border-color: rgba(100,149,237,0.5);
+      transform: translateY(-2px);
+    }
+
+    .chapter-card.locked {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .chapter-card.locked:hover {
+      transform: none;
+      border-color: rgba(100,149,237,0.2);
+    }
+
+    .chapter-card.read {
+      border-color: rgba(74,222,128,0.4);
+    }
+
+    .chapter-card.read::after {
+      content: '✓ 已读';
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 11px;
+      color: #4ade80;
+      background: rgba(74,222,128,0.15);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .chapter-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .chapter-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: rgba(100,149,237,0.2);
+    }
+
+    .chapter-card.locked .chapter-icon {
+      background: rgba(100,100,100,0.2);
+    }
+
+    .chapter-info {
+      flex: 1;
+    }
+
+    .chapter-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .chapter-card.locked .chapter-title {
+      color: rgba(255,255,255,0.5);
+    }
+
+    .chapter-desc {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.4;
+    }
+
+    .chapter-card.locked .chapter-desc {
+      color: rgba(255,255,255,0.4);
+    }
+
+    .unlock-hint {
+      font-size: 12px;
+      color: #fbbf24;
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: rgba(251,191,36,0.1);
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ===== 剧情阅读界面 ===== */
+    .reading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: linear-gradient(180deg, #0a0f1a 0%, #1a2a3a 100%);
+      display: none;
+      flex-direction: column;
+      animation: overlay-fade-in 0.3s ease;
+    }
+
+    .reading-overlay.active {
+      display: flex;
+    }
+
+    @keyframes overlay-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .reading-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: rgba(20,30,50,0.9);
+      border-bottom: 1px solid rgba(100,149,237,0.2);
+    }
+
+    .reading-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 8px;
+    }
+
+    .reading-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      flex: 1;
+    }
+
+    .reading-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .scene-card {
+      background: rgba(30,40,60,0.6);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(100,149,237,0.2);
+      position: relative;
+    }
+
+    .scene-mood {
+      font-size: 12px;
+      color: rgba(100,149,237,0.8);
+      margin-bottom: 12px;
+      padding: 4px 10px;
+      background: rgba(100,149,237,0.1);
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .scene-text {
+      font-size: 15px;
+      color: rgba(255,255,255,0.9);
+      line-height: 1.8;
+    }
+
+    .scene-nav {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px;
+      background: rgba(20,30,50,0.9);
+      border-top: 1px solid rgba(100,149,237,0.2);
+    }
+
+    .scene-nav-btn {
+      padding: 10px 20px;
+      background: rgba(100,149,237,0.2);
+      border: 1px solid rgba(100,149,237,0.4);
+      border-radius: 8px;
+      color: #6495ed;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .scene-nav-btn:hover:not(:disabled) {
+      background: rgba(100,149,237,0.3);
+    }
+
+    .scene-nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .scene-progress {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Toast */
+    .wa-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 16px;
+      z-index: 9999;
+      pointer-events: none;
+      animation: wa-fade-in 0.2s ease;
+    }
+
+    @keyframes wa-fade-in {
+      from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+      to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="story-page">
+    <!-- 标题区 -->
+    <div class="story-header">
+      <h1>📖 活动剧情</h1>
+      <p>废弃大楼深处的故事...</p>
+    </div>
+
+    <!-- 章节列表 -->
+    <div class="chapters-container" id="chapters-container"></div>
+  </div>
+
+  <!-- 剧情阅读界面 -->
+  <div class="reading-overlay" id="reading-overlay">
+    <div class="reading-header">
+      <button class="reading-close" id="reading-close">←</button>
+      <div class="reading-title" id="reading-title"></div>
+    </div>
+    <div class="reading-body" id="reading-body"></div>
+    <div class="scene-nav">
+      <button class="scene-nav-btn" id="prev-scene">上一段</button>
+      <div class="scene-progress" id="scene-progress">第 1/3 段</div>
+      <button class="scene-nav-btn" id="next-scene">下一段</button>
+    </div>
+  </div>
+
+  <div id="waToast"></div>
+
+  <script>
+    ;(function() {
+      var storage = window.__avgLLM_storage
+      var activity = window.__avgLLM_activity
+
+      var STORAGE_KEY = 'story_endless_'
+      var CHAPTERS = []
+      var cellsWalked = 0
+      var completeBoard = false
+      var chaptersRead = []
+
+      var currentChapter = null
+      var currentSceneIndex = 0
+
+      // 初始化
+      function init() {
+        loadConfig()
+        loadState()
+        renderChapters()
+
+        document.getElementById('reading-close').addEventListener('click', closeReading)
+        document.getElementById('prev-scene').addEventListener('click', prevScene)
+        document.getElementById('next-scene').addEventListener('click', nextScene)
+
+        window.addEventListener('avgLLM_activityConfig', function(e) {
+          applyConfig(e.detail)
+        })
+
+        if (window.__avgLLM_activityData?.config) {
+          applyConfig(window.__avgLLM_activityData.config)
+        }
+      }
+
+      function loadConfig() {
+        var config = window.__avgLLM_activityData?.config
+        if (config?.story?.chapters) {
+          CHAPTERS = config.story.chapters
+        }
+        if (config?.corridor) {
+          // 从走廊数据读取进度
+          cellsWalked = window.__avgLLM_activityData?.corridor?.cellsWalked || 0
+          completeBoard = cellsWalked >= 40
+        }
+      }
+
+      function applyConfig(config) {
+        if (config.story?.chapters) {
+          CHAPTERS = config.story.chapters
+        }
+        renderChapters()
+      }
+
+      function loadState() {
+        activity.getWorldBookId().then(function(wbId) {
+          storage.get(STORAGE_KEY + wbId).then(function(saved) {
+            if (saved && saved.chaptersRead) {
+              chaptersRead = saved.chaptersRead
+            }
+            renderChapters()
+          })
+        })
+      }
+
+      function saveState() {
+        activity.getWorldBookId().then(function(wbId) {
+          storage.set(STORAGE_KEY + wbId, { chaptersRead: chaptersRead })
+        })
+      }
+
+      // 渲染章节列表
+      function renderChapters() {
+        var container = document.getElementById('chapters-container')
+        container.innerHTML = ''
+
+        if (CHAPTERS.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.5);">剧情加载中...</div>'
+          return
+        }
+
+        CHAPTERS.forEach(function(chapter) {
+          var unlocked = checkUnlock(chapter)
+          var isRead = chaptersRead.includes(chapter.id)
+
+          var card = document.createElement('div')
+          card.className = 'chapter-card'
+          if (!unlocked) card.className += ' locked'
+          if (isRead) card.className += ' read'
+
+          var unlockHint = ''
+          if (!unlocked && chapter.unlockCondition) {
+            var cond = chapter.unlockCondition
+            if (cond.cellsWalked) {
+              unlockHint = '<div class="unlock-hint">🔒 需行走 ' + cond.cellsWalked + ' 格解锁</div>'
+            } else if (cond.completeBoard) {
+              unlockHint = '<div class="unlock-hint">🔒 需完成一圈解锁</div>'
+            }
+          }
+
+          var icon = getChapterIcon(chapter.id)
+
+          card.innerHTML =
+            '<div class="chapter-header">' +
+              '<div class="chapter-icon">' + icon + '</div>' +
+              '<div class="chapter-info">' +
+                '<div class="chapter-title">' + chapter.title + '</div>' +
+                '<div class="chapter-desc">' + chapter.description + '</div>' +
+              '</div>' +
+            '</div>' +
+            unlockHint
+
+          if (unlocked) {
+            card.addEventListener('click', function() {
+              openChapter(chapter)
+            })
+          }
+
+          container.appendChild(card)
+        })
+      }
+
+      function checkUnlock(chapter) {
+        var cond = chapter.unlockCondition
+        if (!cond) return true
+
+        // 从全局数据读取
+        cellsWalked = window.__avgLLM_activityData?.corridor?.cellsWalked || 0
+        completeBoard = cellsWalked >= 40
+
+        if (cond.cellsWalked) {
+          return cellsWalked >= cond.cellsWalked
+        }
+        if (cond.completeBoard) {
+          return completeBoard
+        }
+        return true
+      }
+
+      function getChapterIcon(id) {
+        var icons = ['🚪', '👁️', '🔄', '💡', '🌅']
+        return icons[id - 1] || '📖'
+      }
+
+      // 打开章节阅读
+      function openChapter(chapter) {
+        currentChapter = chapter
+        currentSceneIndex = 0
+
+        document.getElementById('reading-title').textContent = chapter.title
+        renderScene()
+        document.getElementById('reading-overlay').classList.add('active')
+
+        // 记录阅读
+        if (!chaptersRead.includes(chapter.id)) {
+          chaptersRead.push(chapter.id)
+          saveState()
+          window.__avgLLM_activityData.story.chaptersRead = chaptersRead
+          activity.notifyEvent('story_read', 1)
+          renderChapters()
+        }
+      }
+
+      function closeReading() {
+        document.getElementById('reading-overlay').classList.remove('active')
+        currentChapter = null
+      }
+
+      function renderScene() {
+        if (!currentChapter) return
+
+        var scenes = currentChapter.scenes
+        var scene = scenes[currentSceneIndex]
+
+        var body = document.getElementById('reading-body')
+        body.innerHTML =
+          '<div class="scene-card">' +
+            '<div class="scene-mood">' + scene.mood + '</div>' +
+            '<div class="scene-text">' + scene.text + '</div>' +
+          '</div>'
+
+        document.getElementById('scene-progress').textContent =
+          '第 ' + (currentSceneIndex + 1) + '/' + scenes.length + ' 段'
+
+        document.getElementById('prev-scene').disabled = currentSceneIndex === 0
+        document.getElementById('next-scene').disabled = currentSceneIndex === scenes.length - 1
+      }
+
+      function prevScene() {
+        if (currentSceneIndex > 0) {
+          currentSceneIndex--
+          renderScene()
+        }
+      }
+
+      function nextScene() {
+        if (currentChapter && currentSceneIndex < currentChapter.scenes.length - 1) {
+          currentSceneIndex++
+          renderScene()
+        }
+      }
+
+      function showToast(msg) {
+        var el = document.getElementById('waToast')
+        el.innerHTML = '<div class="wa-toast">' + msg + '</div>'
+        setTimeout(function() { el.innerHTML = '' }, 2000)
+      }
+
+      init()
+    })()
+  </script>
+</body>
+</html>

@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>走廊游戏 - 无尽走廊</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    .corridor-page {
+      width: 100%;
+      height: 100%;
+      padding-bottom: 80px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #0a0f1a 0%, #1a2a3a 50%, #0f1a2a 100%);
+      overflow: hidden;
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    }
+
+    /* ===== 顶部状态栏 ===== */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(20,30,50,0.9);
+      border-bottom: 1px solid rgba(100,149,237,0.2);
+      backdrop-filter: blur(8px);
+    }
+
+    .top-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .top-icon {
+      font-size: 20px;
+    }
+
+    .top-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #6495ed;
+    }
+
+    .dice-info {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .dice-free {
+      color: #4ade80;
+      font-weight: 600;
+    }
+
+    .dice-buy {
+      color: #fbbf24;
+      font-size: 12px;
+    }
+
+    /* ===== 棋盘区域 ===== */
+    .board-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(11, 1fr);
+      grid-template-rows: repeat(11, 1fr);
+      gap: 2px;
+      width: min(90vw, 400px);
+      height: min(90vw, 400px);
+      background: rgba(30,40,60,0.5);
+      border-radius: 12px;
+      padding: 8px;
+      border: 2px solid rgba(100,149,237,0.3);
+    }
+
+    /* 格子基础样式 */
+    .cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: clamp(10px, 2vw, 14px);
+      font-weight: 600;
+      transition: all 0.2s;
+      cursor: pointer;
+      position: relative;
+      background: rgba(40,50,70,0.6);
+      border: 1px solid rgba(100,149,237,0.2);
+    }
+
+    .cell:hover {
+      transform: scale(1.05);
+      border-color: rgba(100,149,237,0.5);
+    }
+
+    .cell-icon {
+      font-size: clamp(16px, 3vw, 24px);
+    }
+
+    .cell-name {
+      font-size: clamp(8px, 1.5vw, 11px);
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    /* 格子类型样式 */
+    .cell.start {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      border-color: #4ade80;
+    }
+
+    .cell.milestone {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      border-color: #fbbf24;
+    }
+
+    .cell.reward {
+      background: rgba(100,149,237,0.2);
+      border-color: rgba(100,149,237,0.4);
+    }
+
+    .cell.event {
+      background: rgba(168,85,247,0.2);
+      border-color: rgba(168,85,247,0.4);
+    }
+
+    .cell.event.advance { border-color: #4ade80; }
+    .cell.event.back { border-color: #ef4444; }
+    .cell.event.story { border-color: #fbbf24; }
+
+    /* 玩家位置高亮 */
+    .cell.player-here {
+      box-shadow: 0 0 20px rgba(100,149,237,0.8), inset 0 0 10px rgba(100,149,237,0.4);
+      border-color: #6495ed;
+      animation: player-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes player-pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(100,149,237,0.6); }
+      50% { box-shadow: 0 0 30px rgba(100,149,237,1); }
+    }
+
+    /* 已访问格子 */
+    .cell.visited {
+      opacity: 0.5;
+    }
+
+    .cell.visited::after {
+      content: '✓';
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      font-size: 8px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* 中心空白区域 */
+    .cell.center {
+      background: transparent;
+      border: none;
+      cursor: default;
+    }
+
+    .cell.center:hover {
+      transform: none;
+    }
+
+    /* ===== 骰子区域 ===== */
+    .dice-area {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dice-display {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #1a2a3a 0%, #2a3a5a 100%);
+      border-radius: 12px;
+      border: 2px solid rgba(100,149,237,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 900;
+      color: #6495ed;
+      transition: all 0.15s;
+    }
+
+    .dice-display.rolling {
+      animation: dice-roll 0.5s ease-in-out infinite;
+    }
+
+    @keyframes dice-roll {
+      0% { transform: rotate(0deg) scale(1); }
+      25% { transform: rotate(15deg) scale(1.1); }
+      50% { transform: rotate(-15deg) scale(1); }
+      75% { transform: rotate(10deg) scale(1.05); }
+      100% { transform: rotate(0deg) scale(1); }
+    }
+
+    .dice-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .dice-btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dice-btn.free {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      color: #fff;
+    }
+
+    .dice-btn.free:disabled {
+      background: rgba(74,222,128,0.3);
+      color: rgba(255,255,255,0.5);
+      cursor: not-allowed;
+    }
+
+    .dice-btn.buy {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #fff;
+    }
+
+    .dice-btn.buy:disabled {
+      background: rgba(251,191,36,0.3);
+      color: rgba(255,255,255,0.5);
+      cursor: not-allowed;
+    }
+
+    .dice-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(100,149,237,0.3);
+    }
+
+    /* ===== 剧情弹窗 ===== */
+    .story-popup {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: popup-fade-in 0.3s ease;
+    }
+
+    .story-popup.active {
+      display: flex;
+    }
+
+    @keyframes popup-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .story-card {
+      max-width: 400px;
+      width: 100%;
+      background: linear-gradient(135deg, #1a2a3a 0%, #2a3a5a 100%);
+      border-radius: 16px;
+      border: 2px solid rgba(100,149,237,0.4);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .story-chapter-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fbbf24;
+      margin-bottom: 16px;
+    }
+
+    .story-text {
+      font-size: 15px;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+
+    .story-close-btn {
+      padding: 10px 24px;
+      background: rgba(100,149,237,0.2);
+      border: 1px solid rgba(100,149,237,0.4);
+      border-radius: 8px;
+      color: #6495ed;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ===== 奖励弹窗 ===== */
+    .reward-popup {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .reward-popup.active {
+      display: flex;
+      animation: popup-fade-in 0.3s ease;
+    }
+
+    .reward-card {
+      width: 200px;
+      background: linear-gradient(135deg, #6495ed 0%, #4169e1 100%);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      animation: reward-fly-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes reward-fly-in {
+      from { transform: translateY(-100px) scale(0.5); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .reward-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .reward-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .reward-amount {
+      font-size: 14px;
+      color: rgba(255,255,255,0.9);
+    }
+
+    /* ===== 移动动画 ===== */
+    .move-animation {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .move-animation.active {
+      display: flex;
+    }
+
+    .move-step-display {
+      font-size: 48px;
+      font-weight: 900;
+      color: #6495ed;
+      animation: step-bounce 0.3s ease infinite;
+    }
+
+    @keyframes step-bounce {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .move-progress {
+      font-size: 18px;
+      color: rgba(255,255,255,0.7);
+      margin-top: 8px;
+    }
+
+    /* Toast */
+    .wa-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 16px;
+      z-index: 9999;
+      pointer-events: none;
+      animation: wa-fade-in 0.2s ease;
+    }
+
+    @keyframes wa-fade-in {
+      from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+      to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="corridor-page">
+    <!-- 顶部状态栏 -->
+    <div class="top-bar">
+      <div class="top-item">
+        <span class="top-icon">🪙</span>
+        <span class="top-value" id="coin-count">0</span>
+      </div>
+      <div class="top-item">
+        <span class="top-icon">💎</span>
+        <span class="top-value" id="crystal-count">0</span>
+      </div>
+      <div class="dice-info">
+        <span>🎲 剩余</span>
+        <span class="dice-free" id="dice-remain">3</span>
+        <span class="dice-buy">(+100💎)</span>
+      </div>
+      <div class="top-item">
+        <span class="top-icon">📍</span>
+        <span class="top-value" id="position-display">0</span>
+        <span style="font-size:12px;color:rgba(255,255,255,0.5)">/40</span>
+      </div>
+    </div>
+
+    <!-- 棋盘区域 -->
+    <div class="board-container">
+      <div class="board" id="board"></div>
+    </div>
+
+    <!-- 骰子区域 -->
+    <div class="dice-area">
+      <div class="dice-display" id="dice-display">?</div>
+      <div class="dice-buttons">
+        <button class="dice-btn free" id="roll-free">
+          <span>🎲</span> 掷骰子
+        </button>
+        <button class="dice-btn buy" id="roll-buy">
+          <span>💎</span> 购买骰子
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 剧情弹窗 -->
+  <div class="story-popup" id="story-popup">
+    <div class="story-card">
+      <div class="story-chapter-title" id="story-title"></div>
+      <div class="story-text" id="story-text"></div>
+      <button class="story-close-btn" id="story-close">继续</button>
+    </div>
+  </div>
+
+  <!-- 奖励弹窗 -->
+  <div class="reward-popup" id="reward-popup">
+    <div class="reward-card">
+      <div class="reward-icon" id="reward-icon"></div>
+      <div class="reward-name" id="reward-name"></div>
+      <div class="reward-amount" id="reward-amount"></div>
+    </div>
+  </div>
+
+  <!-- 移动动画 -->
+  <div class="move-animation" id="move-animation">
+    <div class="move-step-display" id="move-step"></div>
+    <div class="move-progress" id="move-progress"></div>
+  </div>
+
+  <div id="waToast"></div>
+
+  <script>
+    ;(function() {
+      var storage = window.__avgLLM_storage
+      var economy = window.__avgLLM_economy
+      var updateEconomy = window.__avgLLM_updateEconomy
+      var activity = window.__avgLLM_activity
+
+      // ─── 配置 ───
+      var BOARD_SIZE = 40
+      var DICE_PER_DAY = 3
+      var DICE_COST = 100
+      var STORAGE_KEY = 'corridor_endless_'
+
+      // 格子配置（从 activity.json 动态加载）
+      var CELLS = []
+      var STORY_CHAPTERS = []
+      var FRAGMENT_REWARD = {}
+
+      // ─── 状态 ───
+      var state = {
+        position: 0,
+        diceUsed: 0,
+        diceResetDate: null,
+        cellsWalked: 0,
+        visitedCells: [],
+        fragments: {},
+        lastPlayDate: null
+      }
+
+      var configLoaded = false
+
+      // ─── 初始化 ───
+      function init() {
+        loadConfig()
+        loadState()
+        updateUI()
+        renderBoard()
+
+        document.getElementById('roll-free').addEventListener('click', function() { rollDice(false) })
+        document.getElementById('roll-buy').addEventListener('click', function() { rollDice(true) })
+        document.getElementById('reward-popup').addEventListener('click', closeRewardPopup)
+        document.getElementById('story-close').addEventListener('click', closeStoryPopup)
+
+        // 监听配置更新
+        window.addEventListener('avgLLM_activityConfig', function(e) {
+          applyConfig(e.detail)
+        })
+
+        // 检查已有配置
+        if (window.__avgLLM_activityData?.config) {
+          applyConfig(window.__avgLLM_activityData.config)
+        }
+      }
+
+      function loadConfig() {
+        var config = window.__avgLLM_activityData?.config?.corridor
+        if (config) {
+          applyCorridorConfig(config)
+        }
+      }
+
+      function applyConfig(config) {
+        if (config.corridor) {
+          applyCorridorConfig(config.corridor)
+        }
+        if (config.story?.chapters) {
+          STORY_CHAPTERS = config.story.chapters
+        }
+        configLoaded = true
+        updateUI()
+        renderBoard()
+      }
+
+      function applyCorridorConfig(config) {
+        if (config.boardSize) BOARD_SIZE = config.boardSize
+        if (config.dicePerDay) DICE_PER_DAY = config.dicePerDay
+        if (config.diceCost?.crystals) DICE_COST = config.diceCost.crystals
+        if (config.cells) CELLS = config.cells
+        if (config.fragmentReward) FRAGMENT_REWARD = config.fragmentReward
+      }
+
+      function loadState() {
+        activity.getWorldBookId().then(function(wbId) {
+          storage.get(STORAGE_KEY + wbId).then(function(saved) {
+            if (saved) {
+              state = {
+                position: saved.position || 0,
+                diceUsed: saved.diceUsed || 0,
+                diceResetDate: saved.diceResetDate || null,
+                cellsWalked: saved.cellsWalked || 0,
+                visitedCells: saved.visitedCells || [],
+                fragments: saved.fragments || {},
+                lastPlayDate: saved.lastPlayDate || null
+              }
+            }
+            checkDailyReset()
+            updateActivityData()
+            updateUI()
+            renderBoard()
+          })
+        })
+      }
+
+      function saveState() {
+        activity.getWorldBookId().then(function(wbId) {
+          storage.set(STORAGE_KEY + wbId, state)
+        })
+      }
+
+      function getTodayStr() {
+        var d = new Date()
+        return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()
+      }
+
+      function checkDailyReset() {
+        if (state.diceResetDate !== getTodayStr()) {
+          state.diceUsed = 0
+          state.diceResetDate = getTodayStr()
+          saveState()
+        }
+      }
+
+      function updateActivityData() {
+        if (window.__avgLLM_activityData) {
+          window.__avgLLM_activityData.corridor = {
+            position: state.position,
+            diceUsed: state.diceUsed,
+            cellsWalked: state.cellsWalked,
+            fragments: state.fragments
+          }
+        }
+      }
+
+      // ─── 棋盘渲染 ───
+      function renderBoard() {
+        var board = document.getElementById('board')
+        board.innerHTML = ''
+
+        // 11x11 grid，四周是格子，中间是空白
+        // 顶边: 0-10 (左到右)
+        // 右边: 11-20 (上到下)
+        // 底边: 21-30 (右到左)
+        // 左边: 31-39 (下到上)
+
+        for (var row = 0; row < 11; row++) {
+          for (var col = 0; col < 11; col++) {
+            var cellIndex = getCellIndex(row, col)
+            var cellDiv = document.createElement('div')
+
+            if (cellIndex === -1) {
+              // 中心空白
+              cellDiv.className = 'cell center'
+            } else {
+              var cellConfig = getCellConfig(cellIndex)
+              var cellClass = 'cell ' + (cellConfig?.type || 'reward')
+              if (cellConfig?.effect) cellClass += ' ' + cellConfig.effect
+              if (state.position === cellIndex) cellClass += ' player-here'
+              if (state.visitedCells.includes(cellIndex)) cellClass += ' visited'
+
+              cellDiv.className = cellClass
+              cellDiv.dataset.index = cellIndex
+
+              var icon = cellConfig?.icon || '❓'
+              var name = cellConfig?.name || ''
+
+              cellDiv.innerHTML =
+                '<span class="cell-icon">' + icon + '</span>' +
+                '<span class="cell-name">' + name + '</span>'
+
+              cellDiv.addEventListener('click', function() {
+                showCellInfo(parseInt(this.dataset.index))
+              })
+            }
+
+            board.appendChild(cellDiv)
+          }
+        }
+      }
+
+      // 计算格子位置对应的索引
+      function getCellIndex(row, col) {
+        // 顶边 (row=0): 0-10
+        if (row === 0 && col >= 0 && col <= 10) return col
+        // 右边 (col=10, row=1-10): 11-20
+        if (col === 10 && row >= 1 && row <= 10) return 10 + row
+        // 底边 (row=10, col=0-9): 21-30 (反向)
+        if (row === 10 && col >= 0 && col <= 9) return 20 + (10 - col)
+        // 左边 (col=0, row=1-9): 31-39 (反向)
+        if (col === 0 && row >= 1 && row <= 9) return 30 + (10 - row)
+        // 中心空白
+        return -1
+      }
+
+      function getCellConfig(index) {
+        if (CELLS.length > 0) {
+          return CELLS.find(function(c) { return c.index === index })
+        }
+        // 默认配置
+        var defaults = [
+          { index: 0, type: 'start', name: '起点', icon: '🚪' },
+          { index: 10, type: 'milestone', name: '第10格', icon: '🎯' },
+          { index: 20, type: 'milestone', name: '第20格', icon: '🎯' },
+          { index: 30, type: 'milestone', name: '第30格', icon: '🎯' }
+        ]
+        return defaults.find(function(c) { return c.index === index }) || {
+          index: index,
+          type: 'reward',
+          name: '金币',
+          icon: '🪙',
+          reward: { coins: 100 + index * 10 }
+        }
+      }
+
+      function showCellInfo(index) {
+        var config = getCellConfig(index)
+        showToast('第' + index + '格: ' + config.name + ' ' + config.icon)
+      }
+
+      // ─── 骰子系统 ───
+      function rollDice(isBuy) {
+        if (!configLoaded) {
+          showToast('配置加载中...')
+          return
+        }
+
+        var diceRemain = DICE_PER_DAY - state.diceUsed
+
+        if (!isBuy && diceRemain <= 0) {
+          showToast('今日免费骰子已用完')
+          return
+        }
+
+        if (isBuy && (economy.value.crystals || 0) < DICE_COST) {
+          showToast('💎 钻石不足')
+          return
+        }
+
+        // 扣除
+        if (isBuy) {
+          updateEconomy({ crystals: (economy.value.crystals || 0) - DICE_COST })
+          showToast('花费 ' + DICE_COST + ' 💎 购买骰子')
+        } else {
+          state.diceUsed++
+        }
+
+        // 骰子动画
+        var diceDisplay = document.getElementById('dice-display')
+        diceDisplay.className = 'dice-display rolling'
+
+        var rollValue = Math.floor(Math.random() * 6) + 1
+
+        // 0.8秒后显示结果
+        setTimeout(function() {
+          diceDisplay.className = 'dice-display'
+          diceDisplay.textContent = rollValue
+
+          // 开始移动
+          startMove(rollValue)
+        }, 800)
+      }
+
+      function startMove(steps) {
+        var moveAnim = document.getElementById('move-animation')
+        var moveStep = document.getElementById('move-step')
+        var moveProgress = document.getElementById('move-progress')
+
+        moveAnim.classList.add('active')
+        moveStep.textContent = steps
+        moveProgress.textContent = '移动中...'
+
+        var currentStep = 0
+        var targetPosition = (state.position + steps) % BOARD_SIZE
+
+        function animateStep() {
+          currentStep++
+          state.position = (state.position + 1) % BOARD_SIZE
+          state.cellsWalked++
+
+          moveProgress.textContent = '第 ' + currentStep + '/' + steps + ' 步 → 格子 ' + state.position
+
+          renderBoard()
+
+          if (currentStep < steps) {
+            setTimeout(animateStep, 300)
+          } else {
+            // 移动完成
+            setTimeout(function() {
+              moveAnim.classList.remove('active')
+              processCell()
+            }, 200)
+          }
+        }
+
+        setTimeout(animateStep, 200)
+      }
+
+      function processCell() {
+        var config = getCellConfig(state.position)
+
+        // 记录访问
+        if (!state.visitedCells.includes(state.position)) {
+          state.visitedCells.push(state.position)
+        }
+
+        // 处理不同类型格子
+        if (config.type === 'reward') {
+          giveReward(config)
+        } else if (config.type === 'event') {
+          handleEvent(config)
+        } else if (config.type === 'milestone') {
+          giveReward(config)
+          showToast('🎯 达成里程碑: ' + config.name)
+        } else if (config.type === 'start') {
+          showToast('🚪 回到起点，继续探索!')
+          saveState()
+        }
+
+        saveState()
+        updateActivityData()
+        updateUI()
+      }
+
+      function giveReward(config) {
+        var reward = config.reward
+        if (!reward) return
+
+        var icon = config.icon || '🎁'
+        var name = config.name || '奖励'
+
+        // 处理碎片奖励
+        if (reward.fragment) {
+          var charName = reward.fragment
+          state.fragments[charName] = (state.fragments[charName] || 0) + 1
+          showRewardPopup('🧩', charName + ' 碎片', '已收集 ' + state.fragments[charName] + ' 个')
+          activity.notifyEvent('fragment_collected', 1)
+          checkFragmentReward(charName)
+          return
+        }
+
+        // 处理货币奖励
+        if (reward.coins) {
+          updateEconomy({ coins: (economy.value.coins || 0) + reward.coins })
+          showRewardPopup('🪙', '金币', '+' + reward.coins)
+        }
+        if (reward.crystals) {
+          updateEconomy({ crystals: (economy.value.crystals || 0) + reward.crystals })
+          showRewardPopup('💎', '钻石', '+' + reward.crystals)
+        }
+      }
+
+      function checkFragmentReward(charName) {
+        var fragConfig = FRAGMENT_REWARD[charName]
+        if (!fragConfig) return
+
+        if (state.fragments[charName] >= fragConfig.required) {
+          // 集齐碎片，兑换角色卡
+          state.fragments[charName] -= fragConfig.required
+          call('cardCollection', 'addCard', [fragConfig.cardId])
+          showToast('🎉 集齐碎片! 获得 ' + charName + ' 限定卡!')
+          saveState()
+        }
+      }
+
+      function handleEvent(config) {
+        if (config.effect === 'advance') {
+          showToast('⬆️ 前进 ' + config.value + ' 格!')
+          setTimeout(function() {
+            startMove(config.value)
+          }, 500)
+        } else if (config.effect === 'back') {
+          showToast('⬇️ 后退 ' + config.value + ' 格!')
+          state.position = Math.max(0, state.position - config.value)
+          renderBoard()
+          saveState()
+        } else if (config.effect === 'story') {
+          showStoryPopup(config.chapter)
+        }
+      }
+
+      function showStoryPopup(chapterId) {
+        var chapter = STORY_CHAPTERS.find(function(c) { return c.id === chapterId })
+        if (!chapter) {
+          showToast('剧情加载中...')
+          return
+        }
+
+        var popup = document.getElementById('story-popup')
+        var title = document.getElementById('story-title')
+        var text = document.getElementById('story-text')
+
+        title.textContent = chapter.title
+
+        // 随机显示一个场景
+        var scene = chapter.scenes[Math.floor(Math.random() * chapter.scenes.length)]
+        text.textContent = scene.text
+
+        popup.classList.add('active')
+
+        // 记录剧情阅读
+        if (!window.__avgLLM_activityData.story.chaptersRead.includes(chapterId)) {
+          window.__avgLLM_activityData.story.chaptersRead.push(chapterId)
+          activity.notifyEvent('story_read', 1)
+        }
+      }
+
+      function closeStoryPopup() {
+        document.getElementById('story-popup').classList.remove('active')
+      }
+
+      function showRewardPopup(icon, name, amount) {
+        var popup = document.getElementById('reward-popup')
+        document.getElementById('reward-icon').textContent = icon
+        document.getElementById('reward-name').textContent = name
+        document.getElementById('reward-amount').textContent = amount
+        popup.classList.add('active')
+
+        setTimeout(function() {
+          popup.classList.remove('active')
+        }, 1500)
+      }
+
+      function closeRewardPopup() {
+        document.getElementById('reward-popup').classList.remove('active')
+      }
+
+      // ─── UI 更新 ───
+      function updateUI() {
+        document.getElementById('coin-count').textContent = economy.value.coins || 0
+        document.getElementById('crystal-count').textContent = economy.value.crystals || 0
+        document.getElementById('dice-remain').textContent = DICE_PER_DAY - state.diceUsed
+        document.getElementById('position-display').textContent = state.position
+
+        var diceRemain = DICE_PER_DAY - state.diceUsed
+        document.getElementById('roll-free').disabled = diceRemain <= 0
+        document.getElementById('roll-buy').disabled = (economy.value.crystals || 0) < DICE_COST
+      }
+
+      function showToast(msg) {
+        var el = document.getElementById('waToast')
+        el.innerHTML = '<div class="wa-toast">' + msg + '</div>'
+        setTimeout(function() { el.innerHTML = '' }, 2000)
+      }
+
+      function call(mod, fn, args) {
+        return new Promise(function(resolve, reject) {
+          var nextId = window.__corridor_callId = (window.__corridor_callId || 1) + 1
+          var pending = window.__corridor_pending = window.__corridor_pending || {}
+          pending[nextId] = { resolve: resolve, reject: reject }
+          parent.postMessage({ __avgLLM: true, id: nextId, mod: mod, fn: fn, args: args }, '*')
+        })
+      }
+
+      window.addEventListener('message', function(e) {
+        if (!e.data || !e.data.__avgLLM || e.data.type !== 'result') return
+        var pending = window.__corridor_pending
+        if (pending && pending[e.data.id]) {
+          if (e.data.error) pending[e.data.id].reject(new Error(e.data.error))
+          else pending[e.data.id].resolve(e.data.value)
+          delete pending[e.data.id]
+        }
+      })
+
+      init()
+    })()
+  </script>
+</body>
+</html>

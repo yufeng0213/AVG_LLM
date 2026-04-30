@@ -61,6 +61,7 @@ export {
   parseMainStoryContent,
   parseStoryTicketContent,
   parseSmsXmlContent,
+  parseAuxSection,
   countChineseChars,
   validateDialogue,
   toGameScript,
@@ -70,3 +71,8 @@ export {
   hasChoices,
   extractChoices,
 } from './storyParser'
+export {
+  composePrompts,
+  PROMPT_COMPOSITIONS,
+  resolvePrompt,
+} from './promptRegistry'

@@ -3,7 +3,7 @@
  */
 
 import { getValidatedActiveConfig, callChatCompletion } from './llmService.core'
-import { resolvePrompt } from './promptRegistry.js'
+import { resolvePrompt, composePrompts } from './promptRegistry.js'
 import { parseSmsXmlContent } from './storyParser.js'
 
 const splitSmsReplySegments = (text) => {
@@ -820,7 +820,7 @@ export const generatePhoneSmsReply = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: await resolvePrompt('phone:sms_reply'),
+    systemPrompt: await composePrompts(['base:world_context', 'base:character_template', 'phone:sms_reply']),
     userPrompt,
     temperature: params.options?.temperature ?? 0.85,
     maxTokens: smsMaxTokens,
@@ -971,7 +971,7 @@ export const generateDormChatReply = async (params = {}) => {
 
   const result = await callChatCompletion({
     config: validated.config,
-    systemPrompt: await resolvePrompt('phone:dorm_chat'),
+    systemPrompt: await composePrompts(['base:world_context', 'base:character_template', 'phone:dorm_chat']),
     userPrompt,
     temperature: params.options?.temperature ?? 0.85,
     maxTokens,

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>无尽走廊</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0f1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      color: #fff;
+    }
+
+    /* 活动入口封面 */
+    #cover {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #0a0f1a 0%, #1a2a3a 50%, #0f1a2a 100%);
+      z-index: 1;
+    }
+
+    #cover::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('./corridor_bg.png') center/cover no-repeat;
+      opacity: 0.3;
+      z-index: -1;
+    }
+
+    #cover h1 {
+      font-size: clamp(28px, 6vw, 48px);
+      color: #fff;
+      text-shadow: 0 0 30px rgba(100,149,237,0.6), 0 4px 8px rgba(0,0,0,0.5);
+      margin-bottom: 8px;
+      letter-spacing: 4px;
+    }
+
+    #cover .subtitle {
+      font-size: clamp(14px, 3vw, 20px);
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 2px;
+    }
+
+    /* 页面内容容器 */
+    #page-container {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    /* 底部导航 */
+    #bottom-nav {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      background: linear-gradient(0deg, rgba(30,40,60,0.9) 0%, rgba(30,40,60,0.5) 80%, transparent 100%);
+      padding: 0 8px;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      color: rgba(150,170,200,0.6);
+      font-size: clamp(14px, 3vw, 18px);
+      font-weight: 700;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 8px;
+      transition: all 0.15s;
+      flex: 1;
+      max-width: 120px;
+    }
+
+    .nav-btn.active {
+      color: #6495ed;
+      background: rgba(100,149,237,0.15);
+    }
+
+    .nav-btn:active {
+      transform: scale(0.93);
+    }
+
+    .nav-btn .nav-icon {
+      font-size: 24px;
+    }
+
+    /* 全局 Toast */
+    .wa-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: clamp(13px, 2.5vw, 16px);
+      z-index: 9999;
+      pointer-events: none;
+      animation: wa-fade-in 0.2s ease;
+    }
+
+    @keyframes wa-fade-in {
+      from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+      to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <!-- 封面 -->
+  <div id="cover">
+    <h1>无尽走廊</h1>
+    <div class="subtitle">🏢 废弃大楼的深处 · 永无止境的探索</div>
+  </div>
+
+  <!-- 页面内容容器 -->
+  <div id="page-container"></div>
+
+  <!-- 底部导航 -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-page="corridor">
+      <span class="nav-icon">🎲</span>
+      <span>走廊</span>
+    </button>
+    <button class="nav-btn" data-page="story">
+      <span class="nav-icon">📖</span>
+      <span>剧情</span>
+    </button>
+    <button class="nav-btn" data-page="missions">
+      <span class="nav-icon">🏆</span>
+      <span>任务</span>
+    </button>
+  </nav>
+
+  <!-- 全局 Toast 容器 -->
+  <div id="waToast"></div>
+
+  <script>
+    // ─── 全局活动数据 ───
+    window.__avgLLM_activityData = {
+      corridor: { position: 0, diceUsed: 0, cellsWalked: 0, fragments: {} },
+      story: { chaptersRead: [] },
+      missions: { completed: [] },
+      config: null
+    };
+
+    // ─── bridge ───
+    (function () {
+      var nextId = 1, pending = {}
+
+      function call(mod, fn, args) {
+        return new Promise(function (resolve, reject) {
+          var id = nextId++
+          pending[id] = { resolve: resolve, reject: reject }
+          parent.postMessage({ __avgLLM: true, id: id, mod: mod, fn: fn, args: args }, '*')
+        })
+      }
+
+      function requestActivityConfig() {
+        parent.postMessage({ __avgLLM: true, type: 'requestConfig' }, '*')
+      }
+
+      window.addEventListener('message', function (e) {
+        if (!e.data || !e.data.__avgLLM) return
+
+        if (e.data.type === 'activityConfig' && e.data.config) {
+          window.__avgLLM_activityData.config = e.data.config
+          console.log('[Activity] 收到配置:', e.data.config)
+          window.dispatchEvent(new CustomEvent('avgLLM_activityConfig', { detail: e.data.config }))
+          return
+        }
+
+        if (e.data.type !== 'result') return
+        var p = pending[e.data.id]
+        if (!p) return
+        delete pending[e.data.id]
+        if (e.data.error) p.reject(new Error(e.data.error))
+        else p.resolve(e.data.value)
+      })
+
+      window.__avgLLM_storage = {
+        get: function (k) { return call('storage', 'get', [k]) },
+        set: function (k, v) { return call('storage', 'set', [k, v]) },
+        remove: function (k) { return call('storage', 'remove', [k]) }
+      }
+
+      window.__avgLLM_economy = { value: { coins: 0, crystals: 0 } }
+      call('economy', 'get', []).then(function (v) {
+        if (v) Object.assign(window.__avgLLM_economy.value, v)
+      })
+      window.__avgLLM_updateEconomy = function (v) {
+        if (v.coins != null) window.__avgLLM_economy.value.coins = v.coins
+        if (v.crystals != null) window.__avgLLM_economy.value.crystals = v.crystals
+        call('economy', 'update', [v])
+      }
+
+      window.__avgLLM_activity = {
+        notifyEvent: function (type, count) {
+          window.dispatchEvent(new CustomEvent('avgLLM_activityEvent', { detail: { type: type, count: count } }))
+          call('activity', 'notifyEvent', [type, count])
+        },
+        getWorldBookId: function () { return call('activity', 'getWorldBookId', []) },
+        updateCorridorData: function (data) {
+          window.__avgLLM_activityData.corridor = data
+        },
+        updateStoryData: function (data) {
+          window.__avgLLM_activityData.story = data
+        }
+      }
+
+      window.__avgLLM_cardCollection = {
+        addCard: function (cardId) { call('cardCollection', 'addCard', [cardId]) }
+      }
+
+      requestActivityConfig()
+    })();
+
+    // ─── SPA 路由 ───
+    ;(function() {
+      var pages = {}
+      var currentPage = null
+
+      document.querySelectorAll('#bottom-nav .nav-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          navigate(btn.dataset.page)
+        })
+      })
+
+      window.navigate = function(page) {
+        if (page === currentPage) return
+        currentPage = page
+
+        document.querySelectorAll('#bottom-nav .nav-btn').forEach(function(btn) {
+          btn.classList.toggle('active', btn.dataset.page === page)
+        })
+
+        var container = document.getElementById('page-container')
+        var cover = document.getElementById('cover')
+
+        if (cover) cover.style.display = 'none'
+
+        if (pages[page]) {
+          container.innerHTML = pages[page]
+          execScripts(container)
+        } else {
+          container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.4);font-size:clamp(16px,3vw,24px);">加载中...</div>'
+          fetch('./' + page + '.html').then(function(r) { return r.text() }).then(function(html) {
+            pages[page] = html
+            container.innerHTML = html
+            execScripts(container)
+          }).catch(function(err) {
+            container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff6b9d;font-size:clamp(16px,3vw,24px);">加载失败: ' + err.message + '</div>'
+          })
+        }
+      }
+
+      function execScripts(container) {
+        var scripts = container.querySelectorAll('script')
+        scripts.forEach(function(s) {
+          var newScript = document.createElement('script')
+          if (s.src) {
+            newScript.src = s.src
+          } else {
+            newScript.textContent = s.textContent
+          }
+          document.body.appendChild(newScript)
+        })
+      }
+
+      navigate('corridor')
+    })()
+  </script>
+</body>
+</html>

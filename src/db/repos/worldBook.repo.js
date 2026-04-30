@@ -484,7 +484,44 @@ export async function insertBook(book, conn, statements) {
 }
 
 /**
- * 清空所有表
+ * 清空世界书相关表（不影响存档、叙事者等独立用户数据）
+ * @param {Object} [conn] — 若不传入 statements 则直接执行
+ * @param {Array} [statements] — 若传入则收集语句，不直接执行
+ */
+export async function clearWorldBookTables(conn, statements) {
+  const isCollect = Array.isArray(statements)
+  const e = (sql) => isCollect ? _add(statements, sql) : _e(conn, sql)
+
+  // 只清空与世界书相关的表
+  for (const table of [
+    // 世界书核心表
+    'world_books', 'world_book_entries', 'world_book_user_profiles',
+    'world_book_portraits', 'world_book_display_settings', 'world_book_config',
+    // 角色
+    'characters', 'character_portraits',
+    // 场景和资源
+    'scenes', 'background_assets', 'card_borders', 'sms_stickers',
+    // 关系系统（依赖世界书的角色）
+    'relationships', 'relationship_runtime', 'relationship_history', 'relationship_triggered_events',
+    // 记忆系统（依赖世界书）
+    'memory_events', 'memory_character_memories', 'memory_world_flags', 'memory_milestones',
+    'memory_extraction_config',
+    // 其他依赖世界书的数据
+    'exposure_data', 'evolution_logs', 'dialogue_archive', 'story_ticket_archives',
+    'npc_sms_threads', 'activity_story_saves',
+    // Reader 数据（依赖世界书的 story）
+    'reader_stories', 'reader_chapters', 'reader_story_memories', 'reader_settings',
+    // 角色状态和日程
+    'character_states', 'character_schedules', 'schedule_config',
+    'daily_checkin_records', 'daily_checkin_month_stats', 'checkin7_state',
+    'task_board', 'task_execution_sessions', 'task_execution_history',
+  ]) {
+    await e(`DELETE FROM ${table}`)
+  }
+}
+
+/**
+ * 清空所有表（危险操作，仅用于完全重置）
  * @param {Object} [conn] — 若不传入 statements 则直接执行
  * @param {Array} [statements] — 若传入则收集语句，不直接执行
  */

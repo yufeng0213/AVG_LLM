@@ -1,0 +1,150 @@
+{
+  "id": "endless_corridor",
+  "name": "无尽走廊",
+  "description": "废弃大楼的深处，无尽的走廊延伸向未知的黑暗...",
+  "bannerColor": "#1a2a4a",
+  "bannerIcon": "🏢",
+  "cardBackground": "./activity/card_bg.png",
+  "worldBookId": "worldbook_feitu_jiaochong_002",
+  "coverImage": null,
+  "coverGradient": ["#1a2a4a", "#2a3f5f", "#0f1a2a"],
+  "startTime": 1740000000000,
+  "endTime": 1893456000000,
+  "storyConfig": {
+    "title": "无尽走廊",
+    "openingPrompt": "在一次资源收集任务中，你们误入了一座废弃大楼。当大门在你身后关闭时，一种未知的力量将你们分散到了不同的房间。走廊似乎无限延伸，每个转角都可能通向新的危险或希望...",
+    "sceneCharacters": ["陆野", "祁朔", "阿诺", "白屿"],
+    "backgroundImage": "./activity/story_bg.png",
+    "backgroundGradient": ["#0a0f1a", "#1a2a3a", "#0f1a2a"],
+    "mood": "神秘、紧张、压抑的氛围",
+    "portraits": {
+      "陆野": { "default": "./activity/portraits/陆野.png" },
+      "祁朔": { "default": "./activity/portraits/祁朔.png" },
+      "阿诺": { "default": "./activity/portraits/阿诺.png" },
+      "白屿": { "default": "./activity/portraits/白屿.png" }
+    }
+  },
+  "corridor": {
+    "boardSize": 40,
+    "dicePerDay": 3,
+    "diceCost": { "crystals": 100 },
+    "cells": [
+      { "index": 0, "type": "start", "name": "起点", "icon": "🚪" },
+      { "index": 1, "type": "reward", "name": "金币", "reward": { "coins": 200 }, "icon": "🪙" },
+      { "index": 2, "type": "reward", "name": "钻石", "reward": { "crystals": 30 }, "icon": "💎" },
+      { "index": 3, "type": "event", "name": "前进2格", "effect": "advance", "value": 2, "icon": "⬆️" },
+      { "index": 4, "type": "reward", "name": "道具包", "reward": { "items": ["healing_potion"] }, "icon": "📦" },
+      { "index": 5, "type": "reward", "name": "金币", "reward": { "coins": 300 }, "icon": "🪙" },
+      { "index": 6, "type": "event", "name": "触发剧情", "effect": "story", "chapter": 1, "icon": "📖" },
+      { "index": 7, "type": "reward", "name": "钻石", "reward": { "crystals": 50 }, "icon": "💎" },
+      { "index": 8, "type": "event", "name": "后退1格", "effect": "back", "value": 1, "icon": "⬇️" },
+      { "index": 9, "type": "reward", "name": "金币", "reward": { "coins": 400 }, "icon": "🪙" },
+      { "index": 10, "type": "milestone", "name": "第10格", "reward": { "crystals": 100 }, "icon": "🎯" },
+      { "index": 11, "type": "reward", "name": "陆野碎片", "reward": { "fragment": "陆野" }, "icon": "🧩" },
+      { "index": 12, "type": "reward", "name": "金币", "reward": { "coins": 250 }, "icon": "🪙" },
+      { "index": 13, "type": "event", "name": "前进3格", "effect": "advance", "value": 3, "icon": "⬆️" },
+      { "index": 14, "type": "reward", "name": "钻石", "reward": { "crystals": 40 }, "icon": "💎" },
+      { "index": 15, "type": "event", "name": "触发剧情", "effect": "story", "chapter": 2, "icon": "📖" },
+      { "index": 16, "type": "reward", "name": "祁朔碎片", "reward": { "fragment": "祁朔" }, "icon": "🧩" },
+      { "index": 17, "type": "reward", "name": "金币", "reward": { "coins": 350 }, "icon": "🪙" },
+      { "index": 18, "type": "event", "name": "后退2格", "effect": "back", "value": 2, "icon": "⬇️" },
+      { "index": 19, "type": "reward", "name": "钻石", "reward": { "crystals": 60 }, "icon": "💎" },
+      { "index": 20, "type": "milestone", "name": "第20格", "reward": { "crystals": 200 }, "icon": "🎯" },
+      { "index": 21, "type": "reward", "name": "阿诺碎片", "reward": { "fragment": "阿诺" }, "icon": "🧩" },
+      { "index": 22, "type": "reward", "name": "金币", "reward": { "coins": 500 }, "icon": "🪙" },
+      { "index": 23, "type": "event", "name": "前进1格", "effect": "advance", "value": 1, "icon": "⬆️" },
+      { "index": 24, "type": "reward", "name": "道具包", "reward": { "items": ["mystery_box"] }, "icon": "🎁" },
+      { "index": 25, "type": "event", "name": "触发剧情", "effect": "story", "chapter": 3, "icon": "📖" },
+      { "index": 26, "type": "reward", "name": "白屿碎片", "reward": { "fragment": "白屿" }, "icon": "🧩" },
+      { "index": 27, "type": "reward", "name": "钻石", "reward": { "crystals": 80 }, "icon": "💎" },
+      { "index": 28, "type": "event", "name": "后退3格", "effect": "back", "value": 3, "icon": "⬇️" },
+      { "index": 29, "type": "reward", "name": "金币", "reward": { "coins": 600 }, "icon": "🪙" },
+      { "index": 30, "type": "milestone", "name": "第30格", "reward": { "crystals": 300 }, "icon": "🎯" },
+      { "index": 31, "type": "reward", "name": "陆野碎片", "reward": { "fragment": "陆野" }, "icon": "🧩" },
+      { "index": 32, "type": "reward", "name": "金币", "reward": { "coins": 400 }, "icon": "🪙" },
+      { "index": 33, "type": "event", "name": "触发剧情", "effect": "story", "chapter": 4, "icon": "📖" },
+      { "index": 34, "type": "reward", "name": "祁朔碎片", "reward": { "fragment": "祁朔" }, "icon": "🧩" },
+      { "index": 35, "type": "reward", "name": "钻石", "reward": { "crystals": 100 }, "icon": "💎" },
+      { "index": 36, "type": "event", "name": "前进2格", "effect": "advance", "value": 2, "icon": "⬆️" },
+      { "index": 37, "type": "reward", "name": "阿诺碎片", "reward": { "fragment": "阿诺" }, "icon": "🧩" },
+      { "index": 38, "type": "reward", "name": "金币", "reward": { "coins": 800 }, "icon": "🪙" },
+      { "index": 39, "type": "reward", "name": "白屿碎片", "reward": { "fragment": "白屿" }, "icon": "🧩" }
+    ],
+    "rewards": {
+      "completeBoard": { "crystals": 500, "special": "card_endless_corridor_ssr" },
+      "collectAllFragments": { "cardId": "card_endless_corridor_ssr" }
+    },
+    "fragmentReward": {
+      "陆野": { "cardId": "card_陆野_corridor", "required": 10 },
+      "祁朔": { "cardId": "card_祁朔_corridor", "required": 10 },
+      "阿诺": { "cardId": "card_阿诺_corridor", "required": 10 },
+      "白屿": { "cardId": "card_白屿_corridor", "required": 10 }
+    }
+  },
+  "story": {
+    "chapters": [
+      {
+        "id": 1,
+        "title": "第一章：误入深渊",
+        "description": "资源收集途中，你们发现了这座废弃大楼...",
+        "unlockCondition": { "cellsWalked": 6 },
+        "scenes": [
+          { "text": "废弃大楼的外墙斑驳，窗户大多破碎。你们推开了沉重的铁门...", "mood": "压抑" },
+          { "text": "突然，一阵刺耳的金属摩擦声响起，大门在身后重重关上！", "mood": "紧张" },
+          { "text": "一股无形的力量将你们分散，每个人被推向不同的方向...", "mood": "恐惧" }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "第二章：黑暗中的声音",
+        "description": "走廊深处传来奇怪的声响...",
+        "unlockCondition": { "cellsWalked": 15 },
+        "scenes": [
+          { "text": "走廊没有尽头，灯泡忽明忽暗。你能听到远处有脚步声...", "mood": "神秘" },
+          { "text": "是同伴吗？你试图呼喊，但声音似乎被走廊吞噬...", "mood": "绝望" },
+          { "text": "角落里，你发现了一张旧照片——照片上的人，似乎和你们有着某种联系...", "mood": "诡异" }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "第三章：无尽循环",
+        "description": "走廊似乎永远不会结束...",
+        "unlockCondition": { "cellsWalked": 25 },
+        "scenes": [
+          { "text": "你已经走了很久，但每次转弯都会回到相同的位置...", "mood": "困惑" },
+          { "text": "墙上开始出现奇怪的符号，似乎在指引某个方向...", "mood": "好奇" },
+          { "text": "你意识到，这座大楼不是一个普通的地方——它有自己的意志...", "mood": "震撼" }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "第四章：真相",
+        "description": "大楼的秘密逐渐揭开...",
+        "unlockCondition": { "cellsWalked": 33 },
+        "scenes": [
+          { "text": "在核心区域，你找到了大楼的「心脏」——一个古老的控制室...", "mood": "震撼" },
+          { "text": "原来这座大楼曾是一个实验设施，某种实验失败了，留下了这个扭曲的空间...", "mood": "悲伤" },
+          { "text": "你找到了关闭它的方法。走廊开始崩塌，你们终于能够逃离...", "mood": "解脱" }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "尾声：走出黑暗",
+        "description": "终于，大门再次打开...",
+        "unlockCondition": { "completeBoard": true },
+        "scenes": [
+          { "text": "阳光刺眼，你们终于走出了大楼。身后，那座建筑似乎在阳光下消失了...", "mood": "希望" },
+          { "text": "每个人都带着奇怪的纪念品——也许是对这段经历的证明...", "mood": "感慨" },
+          { "text": "「下次...我们还会再来吗？」走廊的声音在你脑海中回荡...", "mood": "神秘" }
+        ]
+      }
+    ]
+  },
+  "missions": [
+    { "id": "m1", "name": "初入走廊", "description": "完成10格行走", "type": "cells_walked", "target": 10, "reward": { "crystals": 200 } },
+    { "id": "m2", "name": "探索者", "description": "完成20格行走", "type": "cells_walked", "target": 20, "reward": { "crystals": 500 } },
+    { "id": "m3", "name": "深渊行者", "description": "完成一整圈走廊", "type": "complete_board", "target": 1, "reward": { "crystals": 1000 } },
+    { "id": "m4", "name": "碎片收集者", "description": "收集30个角色碎片", "type": "fragments_collected", "target": 30, "reward": { "cards": ["card_endless_corridor_sr"] } },
+    { "id": "m5", "name": "剧情见证者", "description": "阅读所有剧情章节", "type": "story_read", "target": 5, "reward": { "crystals": 800 } }
+  ]
+}

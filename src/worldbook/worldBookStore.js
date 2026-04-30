@@ -1,7 +1,7 @@
 import { getEmotionLabel } from './emotionPresets'
 import { DEFAULT_NARRATOR_ID } from '../narrator/narratorStore'
 import { isSQLiteAvailable, exec, query, batchExecute } from '../db/connection.js'
-import { loadBookFull, loadAllBooksFull, insertBook, clearAllTables } from '../db/repos/worldBook.repo.js'
+import { loadBookFull, loadAllBooksFull, insertBook, clearAllTables, clearWorldBookTables } from '../db/repos/worldBook.repo.js'
 
 export const ACTIVE_WORLD_BOOK_KEY = 'active_world_book'
 
@@ -851,7 +851,7 @@ async function _getBookSQLite(bookId) {
 
 async function _saveBooksSQLite(books) {
   const stmts = []
-  await clearAllTables(null, stmts)
+  await clearWorldBookTables(null, stmts)  // 只清空世界书相关表，保留存档等用户数据
   for (const book of books) {
     await insertBook(book, null, stmts)
   }

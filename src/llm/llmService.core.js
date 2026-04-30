@@ -4,7 +4,7 @@
  */
 
 import { kvStorage } from '../storage/index.js'
-import { resolvePrompt } from './promptRegistry.js'
+import { resolvePrompt, composePrompts } from './promptRegistry.js'
 import { getNarratorFullPrompt } from '../narrator/narratorStore.js'
 import { logLlmCall } from './llmLogger.js'
 
@@ -1372,11 +1372,11 @@ export const generateMiniTheater = async (params = {}) => {
 
 
 /**
- * 获取系统提示词
+ * 获取系统提示词（组合基础层 + 剧情层，用于缓存复用）
  * @returns {Promise<string>} 系统提示词
  */
-const getSystemPrompt = () => {
-  return resolvePrompt('core:story_generation')
+const getSystemPrompt = async () => {
+  return composePrompts(['base:world_context', 'core:story_generation'])
 }
 
 /**

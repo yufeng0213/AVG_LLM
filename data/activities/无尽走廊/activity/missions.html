@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>任务 - 无尽走廊</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    .missions-page {
+      width: 100%;
+      height: 100%;
+      padding-bottom: 80px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #0a0f1a 0%, #1a2a3a 50%, #0f1a2a 100%);
+      overflow: hidden;
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    }
+
+    /* ===== 标题区 ===== */
+    .missions-header {
+      padding: 20px 16px;
+      text-align: center;
+      background: rgba(20,30,50,0.8);
+      border-bottom: 1px solid rgba(100,149,237,0.2);
+    }
+
+    .missions-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 0 20px rgba(100,149,237,0.5);
+      margin-bottom: 8px;
+    }
+
+    .missions-header p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    /* ===== 任务列表 ===== */
+    .missions-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .missions-container::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .missions-container::-webkit-scrollbar-thumb {
+      background: rgba(100,149,237,0.3);
+      border-radius: 2px;
+    }
+
+    .mission-card {
+      background: rgba(30,40,60,0.6);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(100,149,237,0.2);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s;
+    }
+
+    .mission-card.completed {
+      border-color: rgba(74,222,128,0.4);
+      opacity: 0.7;
+    }
+
+    .mission-card.completed::after {
+      content: '✓';
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 24px;
+      color: #4ade80;
+    }
+
+    .mission-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      background: rgba(100,149,237,0.2);
+    }
+
+    .mission-card.completed .mission-icon {
+      background: rgba(74,222,128,0.2);
+    }
+
+    .mission-info {
+      flex: 1;
+    }
+
+    .mission-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .mission-desc {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.4;
+    }
+
+    .mission-progress {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .progress-bar {
+      width: 100px;
+      height: 6px;
+      background: rgba(100,149,237,0.2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6495ed, #4ade80);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .mission-reward {
+      padding: 8px 16px;
+      background: rgba(251,191,36,0.15);
+      border: 1px solid rgba(251,191,36,0.3);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .mission-reward:hover:not(:disabled) {
+      background: rgba(251,191,36,0.25);
+    }
+
+    .mission-reward.claimed {
+      background: rgba(74,222,128,0.15);
+      border-color: rgba(74,222,128,0.3);
+      cursor: default;
+    }
+
+    .reward-icon {
+      font-size: 16px;
+    }
+
+    .reward-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fbbf24;
+    }
+
+    .mission-reward.claimed .reward-text {
+      color: #4ade80;
+    }
+
+    /* Toast */
+    .wa-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 16px;
+      z-index: 9999;
+      pointer-events: none;
+      animation: wa-fade-in 0.2s ease;
+    }
+
+    @keyframes wa-fade-in {
+      from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+      to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="missions-page">
+    <!-- 标题区 -->
+    <div class="missions-header">
+      <h1>🏆 活动任务</h1>
+      <p>完成目标，获取丰厚奖励</p>
+    </div>
+
+    <!-- 任务列表 -->
+    <div class="missions-container" id="missions-container"></div>
+  </div>
+
+  <div id="waToast"></div>
+
+  <script>
+    ;(function() {
+      var storage = window.__avgLLM_storage
+      var economy = window.__avgLLM_economy
+      var updateEconomy = window.__avgLLM_updateEconomy
+      var activity = window.__avgLLM_activity
+
+      var STORAGE_KEY = 'missions_endless_'
+      var MISSIONS = []
+      var completed = []
+      var corridorData = {}
+      var storyData = {}
+
+      function init() {
+        loadConfig()
+        loadState()
+        renderMissions()
+
+        // 监听活动事件更新
+        window.addEventListener('avgLLM_activityEvent', function(e) {
+          updateProgress()
+          renderMissions()
+        })
+
+        window.addEventListener('avgLLM_activityConfig', function(e) {
+          applyConfig(e.detail)
+        })
+
+        if (window.__avgLLM_activityData?.config) {
+          applyConfig(window.__avgLLM_activityData.config)
+        }
+      }
+
+      function loadConfig() {
+        var config = window.__avgLLM_activityData?.config
+        if (config?.missions) {
+          MISSIONS = config.missions
+        }
+        corridorData = window.__avgLLM_activityData?.corridor || {}
+        storyData = window.__avgLLM_activityData?.story || {}
+      }
+
+      function applyConfig(config) {
+        if (config.missions) {
+          MISSIONS = config.missions
+        }
+        renderMissions()
+      }
+
+      function loadState() {
+        activity.getWorldBookId().then(function(wbId) {
+          storage.get(STORAGE_KEY + wbId).then(function(saved) {
+            if (saved && saved.completed) {
+              completed = saved.completed
+            }
+            updateProgress()
+            renderMissions()
+          })
+        })
+      }
+
+      function saveState() {
+        activity.getWorldBookId().then(function(wbId) {
+          storage.set(STORAGE_KEY + wbId, { completed: completed })
+        })
+      }
+
+      function updateProgress() {
+        corridorData = window.__avgLLM_activityData?.corridor || {}
+        storyData = window.__avgLLM_activityData?.story || {}
+      }
+
+      function getProgress(mission) {
+        var target = mission.target
+
+        if (mission.type === 'cells_walked') {
+          return corridorData.cellsWalked || 0
+        }
+        if (mission.type === 'complete_board') {
+          return corridorData.cellsWalked >= 40 ? 1 : 0
+        }
+        if (mission.type === 'fragments_collected') {
+          var total = 0
+          var fragments = corridorData.fragments || {}
+          for (var key in fragments) {
+            total += fragments[key]
+          }
+          return total
+        }
+        if (mission.type === 'story_read') {
+          return storyData.chaptersRead?.length || 0
+        }
+
+        return 0
+      }
+
+      function isComplete(mission) {
+        return completed.includes(mission.id) || getProgress(mission) >= mission.target
+      }
+
+      function canClaim(mission) {
+        return getProgress(mission) >= mission.target && !completed.includes(mission.id)
+      }
+
+      function claimReward(mission) {
+        if (!canClaim(mission)) return
+
+        var reward = mission.reward
+
+        if (reward.crystals) {
+          updateEconomy({ crystals: (economy.value.crystals || 0) + reward.crystals })
+          showToast('💎 获得 ' + reward.crystals + ' 钻石!')
+        }
+        if (reward.coins) {
+          updateEconomy({ coins: (economy.value.coins || 0) + reward.coins })
+          showToast('🪙 获得 ' + reward.coins + ' 金币!')
+        }
+        if (reward.cards && reward.cards.length > 0) {
+          reward.cards.forEach(function(cardId) {
+            call('cardCollection', 'addCard', [cardId])
+          })
+          showToast('🎉 获得限定卡牌!')
+        }
+
+        completed.push(mission.id)
+        saveState()
+        activity.notifyEvent('mission_complete', 1)
+        renderMissions()
+      }
+
+      function renderMissions() {
+        var container = document.getElementById('missions-container')
+        container.innerHTML = ''
+
+        if (MISSIONS.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.5);">任务加载中...</div>'
+          return
+        }
+
+        MISSIONS.forEach(function(mission) {
+          var progress = getProgress(mission)
+          var isCompleted = isComplete(mission)
+          var canClaimReward = canClaim(mission)
+
+          var card = document.createElement('div')
+          card.className = 'mission-card'
+          if (isCompleted) card.className += ' completed'
+
+          var progressPercent = Math.min(100, (progress / mission.target) * 100)
+
+          var rewardText = ''
+          if (mission.reward.crystals) {
+            rewardText = '💎 ' + mission.reward.crystals
+          } else if (mission.reward.cards) {
+            rewardText = '🎴 限定卡'
+          }
+
+          var rewardBtnClass = 'mission-reward'
+          if (isCompleted) rewardBtnClass += ' claimed'
+
+          var icon = getMissionIcon(mission.type)
+
+          card.innerHTML =
+            '<div class="mission-icon">' + icon + '</div>' +
+            '<div class="mission-info">' +
+              '<div class="mission-name">' + mission.name + '</div>' +
+              '<div class="mission-desc">' + mission.description + '</div>' +
+              '<div class="mission-progress">' +
+                '<div class="progress-bar">' +
+                  '<div class="progress-fill" style="width:' + progressPercent + '%"></div>' +
+                '</div>' +
+                '<span class="progress-text">' + progress + '/' + mission.target + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="' + rewardBtnClass + '" data-mission-id="' + mission.id + '">' +
+              '<span class="reward-icon">' + (isCompleted ? '✓' : '🎁') + '</span>' +
+              '<span class="reward-text">' + (isCompleted ? '已领取' : rewardText) + '</span>' +
+            '</div>'
+
+          if (canClaimReward) {
+            card.querySelector('.mission-reward').addEventListener('click', function() {
+              claimReward(mission)
+            })
+          }
+
+          container.appendChild(card)
+        })
+      }
+
+      function getMissionIcon(type) {
+        var icons = {
+          'cells_walked': '🚶',
+          'complete_board': '🎯',
+          'fragments_collected': '🧩',
+          'story_read': '📖',
+          'mission_complete': '🏆'
+        }
+        return icons[type] || '📋'
+      }
+
+      function showToast(msg) {
+        var el = document.getElementById('waToast')
+        el.innerHTML = '<div class="wa-toast">' + msg + '</div>'
+        setTimeout(function() { el.innerHTML = '' }, 2000)
+      }
+
+      function call(mod, fn, args) {
+        return new Promise(function(resolve, reject) {
+          var nextId = window.__missions_callId = (window.__missions_callId || 1) + 1
+          var pending = window.__missions_pending = window.__missions_pending || {}
+          pending[nextId] = { resolve: resolve, reject: reject }
+          parent.postMessage({ __avgLLM: true, id: nextId, mod: mod, fn: fn, args: args }, '*')
+        })
+      }
+
+      window.addEventListener('message', function(e) {
+        if (!e.data || !e.data.__avgLLM || e.data.type !== 'result') return
+        var pending = window.__missions_pending
+        if (pending && pending[e.data.id]) {
+          if (e.data.error) pending[e.data.id].reject(new Error(e.data.error))
+          else pending[e.data.id].resolve(e.data.value)
+          delete pending[e.data.id]
+        }
+      })
+
+      init()
+    })()
+  </script>
+</body>
+</html>

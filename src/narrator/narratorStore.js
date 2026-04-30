@@ -1,4 +1,4 @@
-import { isSQLiteAvailable, query, exec } from '../db/connection.js'
+import { isSQLiteAvailable, query, exec, transaction } from '../db/connection.js'
 
 export const NARRATOR_ACTIVE_KEY = 'narrator_active_id'
 export const DEFAULT_NARRATOR_ID = 'default_narrator'
@@ -147,7 +147,7 @@ export const loadNarratorProfiles = async () => {
 
 /**
  * 持久化叙事者配置列表
- * 直接写入 narrator_profiles 表，不回退到 kvStorage（避免被 App.vue 清除）
+ * 使用事务保证原子性：要么全部成功，要么全部失败（原有数据保留）
  */
 export const persistNarratorProfiles = async (profiles) => {
   if (typeof window === 'undefined') return
@@ -157,18 +157,24 @@ export const persistNarratorProfiles = async (profiles) => {
   }
 
   try {
-    await exec('DELETE FROM narrator_profiles')
-    for (const profile of profiles) {
-      await exec(
-        `INSERT INTO narrator_profiles (id, profile_data, is_default, enabled, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [profile.id, JSON.stringify(profile), profile.isDefault ? 1 : 0,
-         profile.enabled ? 1 : 0, profile.createdAt, profile.updatedAt]
-      )
-    }
+    // 使用事务包装所有操作，保证原子性
+    await transaction((statements) => {
+      // 先删除所有记录
+      statements.push({ statement: 'DELETE FROM narrator_profiles', values: [] })
+      // 再逐条插入
+      for (const profile of profiles) {
+        statements.push({
+          statement: `INSERT INTO narrator_profiles (id, profile_data, is_default, enabled, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?)`,
+          values: [profile.id, JSON.stringify(profile), profile.isDefault ? 1 : 0,
+                   profile.enabled ? 1 : 0, profile.createdAt, profile.updatedAt]
+        })
+      }
+    })
     console.log('[NarratorStore] Persisted', profiles.length, 'narrator profiles to SQLite')
   } catch (e) {
     console.error('[NarratorStore] Failed to persist profiles:', e.message)
+    throw e // 抛出错误让调用者知道保存失败
   }
 }
 

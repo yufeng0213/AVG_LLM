@@ -191,7 +191,66 @@ async function load() {
         imported: true,
       })
     }
-    // Web/Android 环境：使用 kvStorage 中的数据
+    // Android/Capacitor 环境：从文件系统读取 activity.json
+    else if (window.Capacitor?.isNativePlatform?.() || window.__avgLLM?.activity?.getFileUrl) {
+      // 如果有完整的 json 和 files（Web 环境导入的），直接使用
+      if (imp.json && Object.keys(imp.json).length > 0) {
+        const meta = { ...imp.json }
+        const coverUrl = imp.json?.coverImage || await loadCoverFile(imp.id)
+        const cardBackgroundUrl = resolveImagePathFromFiles(meta.cardBackground, imp.files)
+
+        activities.value.push({
+          id: imp.id,
+          name: meta.name || imp.id,
+          description: meta.description || '',
+          bannerColor: meta.bannerColor || '#4a9eff',
+          bannerIcon: meta.bannerIcon || '📦',
+          coverImage: coverUrl,
+          coverGradient: meta.coverGradient || null,
+          cardBackground: cardBackgroundUrl,
+          startTime: meta.startTime,
+          endTime: meta.endTime,
+          meta,
+          imported: true,
+          files: imp.files || null,
+        })
+      } else {
+        // 从文件系统读取 activity.json
+        try {
+          const activityJsonUrl = await window.__avgLLM.activity.getFileUrl(imp.id, 'activity.json')
+          console.log('[ActivityScreen] Android 加载 activity.json:', imp.id, 'url:', activityJsonUrl)
+          const res = await fetch(activityJsonUrl)
+          if (!res.ok) {
+            console.warn('[ActivityScreen] 无法读取 activity.json:', imp.id)
+            continue
+          }
+          const meta = await res.json()
+          console.log('[ActivityScreen] Android 读取到 meta:', imp.id, 'name:', meta.name)
+
+          const coverUrl = await loadCoverFile(imp.id)
+          const cardBackgroundUrl = await resolveAndroidImagePath(meta.cardBackground, imp.id)
+
+          activities.value.push({
+            id: imp.id,
+            name: meta.name || imp.id,
+            description: meta.description || '',
+            bannerColor: meta.bannerColor || '#4a9eff',
+            bannerIcon: meta.bannerIcon || '📦',
+            coverImage: coverUrl,
+            coverGradient: meta.coverGradient || null,
+            cardBackground: cardBackgroundUrl,
+            startTime: meta.startTime,
+            endTime: meta.endTime,
+            meta,
+            imported: true,
+            files: null,
+          })
+        } catch (e) {
+          console.warn('[ActivityScreen] Android 加载活动失败:', imp.id, e)
+        }
+      }
+    }
+    // Web 环境：使用 kvStorage 中的数据
     else {
       const meta = { ...(imp.json || {}) }
       const coverUrl = imp.json?.coverImage || await loadCoverFile(imp.id)
@@ -236,6 +295,26 @@ function resolveImagePath(relativePath, activityId) {
     return relativePath
   }
   return `/data/activities/${activityId}/${relativePath}`
+}
+
+// 解析图片路径（Android 环境）
+async function resolveAndroidImagePath(relativePath, activityId) {
+  if (!relativePath) return null
+  if (!window.__avgLLM?.activity?.getFileUrl) return null
+
+  // 标准化路径
+  let normalizedPath = relativePath
+  if (normalizedPath.startsWith('./')) {
+    normalizedPath = normalizedPath.substring(2)
+  }
+
+  try {
+    const url = await window.__avgLLM.activity.getFileUrl(activityId, normalizedPath)
+    return url
+  } catch (e) {
+    console.warn('[ActivityScreen] resolveAndroidImagePath 失败:', activityId, normalizedPath, e)
+    return null
+  }
 }
 
 // 从 files 数组中解析图片路径（Android/Web 环境）
@@ -451,6 +530,17 @@ function triggerZipImport() {
           const result = await importFn(json.id, fileList)
           console.log('[ActivityScreen] importFn 返回:', result)
           if (!result?.success) throw new Error(result?.error || '拷贝失败')
+
+          // Android 环境：保存导入记录到 kvStorage（只存 ID，从文件系统读取 meta）
+          const imported = await loadImported()
+          const idx = imported.findIndex(i => i.id === json.id)
+          if (idx >= 0) {
+            imported[idx] = { id: json.id }
+          } else {
+            imported.push({ id: json.id })
+          }
+          await saveImported(imported)
+          console.log('[ActivityScreen] 已保存导入记录:', json.id)
         } else {
           throw new Error('Capacitor activity.import 未初始化')
         }

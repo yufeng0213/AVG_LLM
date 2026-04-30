@@ -8,25 +8,30 @@ import { initTheme, initCustomFonts } from './theme/themeManager'
 import { runStorageMigration } from './storage/storageMigration'
 import { openDatabase, createTables } from './db/connection.js'
 
-// 初始化 SQLite 数据库（Android 端）
-openDatabase()
-  .then(async (ok) => {
+// 初始化 SQLite 数据库（Android 端）— 必须在 Vue 挂载前完成
+const initDatabase = async () => {
+  try {
+    const ok = await openDatabase()
     if (ok) {
       await createTables()
       console.log('[db] SQLite initialized')
     }
-  })
-  .catch((e) => console.warn('[db] SQLite init failed:', e.message))
+  } catch (e) {
+    console.warn('[db] SQLite init failed:', e.message)
+  }
+}
 
-// 在 Capacitor 操作之前清理 localStorage 中的 base64 图片数据
-// 防止 Android OOM（Capacitor Bridge 序列化 localStorage 时内存翻倍）
-runStorageMigration()
+// 等待数据库初始化完成后再启动应用（Web 端会立即继续，因为 openDatabase 返回 false）
+initDatabase().then(() => {
+  // 在 Capacitor 操作之前清理 localStorage 中的 base64 图片数据
+  runStorageMigration()
 
-initTheme()
-  .then(() => initCustomFonts())
-  .catch(console.error)
+  initTheme()
+    .then(() => initCustomFonts())
+    .catch(console.error)
 
-const pinia = createPinia()
-pinia.use(piniaPluginPersistedstate)
+  const pinia = createPinia()
+  pinia.use(piniaPluginPersistedstate)
 
-createApp(App).use(pinia).mount('#app')
+  createApp(App).use(pinia).mount('#app')
+})
