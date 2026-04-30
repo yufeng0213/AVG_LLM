@@ -3330,13 +3330,8 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
         console.log('[GameScreen] aux 解析成功，开始分发结果')
         await dispatchAuxResults(auxResult, normalizedScript)
       } else {
-        console.log('[GameScreen] 未检测到 aux 区块，使用兜底记忆提取')
-        // 无 aux 区块时，仍按旧逻辑批量触发世界记忆提取（兜底）
-        const totalLines = normalizedScript.length
-        const newCount = totalLines - memoryLastExtractedLineCount.value
-        if (newCount >= MEMORY_EXTRACT_BATCH_SIZE) {
-          triggerMemoryExtraction(totalLines)
-        }
+        console.log('[GameScreen] 未检测到 aux 区块，本轮不记录事件/记忆')
+        // 已禁用兜底机制：不再单独调用 LLM 提取记忆
       }
 
       // 曝光追踪：独立执行（不需要LLM），检测转正候选
@@ -3495,6 +3490,56 @@ async function dispatchAuxResults(auxResult, currentScript) {
     console.log(`[Aux] 新角色建议: ${auxResult.newCharacters.map(c => c.name).join(', ')}`)
     // 这里可以触发提示，让用户决定是否添加新角色
     // 目前只记录日志，不自动添加
+  }
+
+  // 6. 玩家影响评估（写入影响记录，供后续调度使用）
+  if (auxResult.impacts?.length > 0) {
+    try {
+      const impactRecords = []
+      for (const imp of auxResult.impacts) {
+        const affectedIds = (imp.affectedCharacters || [])
+          .map(nameToId)
+          .filter(Boolean)
+        impactRecords.push({
+          id: `impact_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          playerAction: imp.playerAction || '',
+          effect: imp.effect || '',
+          affectedCharacters: affectedIds,
+          createdAt: new Date().toISOString(),
+        })
+      }
+      // 写入世界记忆的影响记录
+      if (impactRecords.length > 0) {
+        await mem.addImpacts(bookId, impactRecords)
+        console.log(`[Aux] 记录 ${impactRecords.length} 条玩家影响`)
+      }
+    } catch (e) {
+      console.warn('[Aux] 玩家影响记录失败:', e.message)
+    }
+  }
+
+  // 7. NPC短信提示（写入NPC短信队列，等待后续生成）
+  if (auxResult.npcSms?.length > 0) {
+    try {
+      for (const sms of auxResult.npcSms) {
+        const charAId = nameToId(sms.charA)
+        const charBId = nameToId(sms.charB)
+        if (!charAId || !charBId) continue
+        // 写入NPC短信提示队列
+        await mem.addNpcSmsHint(bookId, {
+          charA: charAId,
+          charB: charBId,
+          charAName: sms.charA,
+          charBName: sms.charB,
+          location: sms.location || '',
+          topic: sms.topic || '',
+          createdAt: new Date().toISOString(),
+        })
+      }
+      console.log(`[Aux] 记录 ${auxResult.npcSms.length} 条NPC短信提示`)
+    } catch (e) {
+      console.warn('[Aux] NPC短信记录失败:', e.message)
+    }
   }
 
   // 更新提取位置

@@ -1,0 +1,434 @@
+/* 房间模拟系统样式 */
+
+/* 主面板 */
+.room-sim-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1a1a22;
+  color: #eaeaea;
+  font-family: 'PixelFont', monospace;
+}
+
+.room-sim-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #2a2a32;
+  border-bottom: 1px solid #3a3a42;
+}
+
+.room-sim-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f0f0f0;
+}
+
+.room-sim-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.room-sim-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: #4a4a52;
+  color: #eaeaea;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.room-sim-btn:hover {
+  background: #5a5a62;
+}
+
+.room-sim-btn.active {
+  background: #6a8a6a;
+  color: #fff;
+}
+
+.room-sim-btn.paused {
+  background: #8a6a6a;
+}
+
+/* 时间控制区 */
+.room-sim-time-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #22222a;
+  border-bottom: 1px solid #3a3a42;
+}
+
+.room-sim-time-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.room-sim-day-phase {
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.room-sim-day-phase.morning { background: #6a8a6a; }
+.room-sim-day-phase.afternoon { background: #8a8a6a; }
+.room-sim-day-phase.evening { background: #6a6a8a; }
+.room-sim-day-phase.night { background: #3a3a5a; }
+
+/* 房间渲染区 */
+.room-sim-room-container {
+  flex: 1;
+  display: flex;
+  overflow: auto;
+  padding: 16px;
+  background: #18181e;
+}
+
+.room-sim-room-board {
+  display: grid;
+  position: relative;
+  background: #0a0a0e;
+  border: 2px solid #3a3a42;
+  border-radius: 4px;
+}
+
+/* 单个网格单元格 */
+.room-sim-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(60, 60, 70, 0.3);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.room-sim-cell.wall {
+  background: #3a3a42;
+}
+
+.room-sim-cell.floor {
+  background: #2a2a32;
+}
+
+.room-sim-cell.door {
+  background: #5a4a3a;
+}
+
+.room-sim-cell:hover {
+  border-color: rgba(100, 140, 100, 0.5);
+}
+
+/* 家具层 */
+.room-sim-furniture {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.room-sim-furniture:hover {
+  box-shadow: 0 0 8px rgba(100, 140, 100, 0.5);
+}
+
+.room-sim-furniture.dragging {
+  opacity: 0.7;
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(100, 140, 100, 0.8);
+}
+
+.room-sim-furniture.selected {
+  box-shadow: 0 0 6px rgba(140, 100, 100, 0.8);
+}
+
+/* 小人层 */
+.room-sim-pawn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: left 0.08s linear, top 0.08s linear;
+}
+
+.room-sim-pawn:hover {
+  filter: brightness(1.2);
+}
+
+.room-sim-pawn.selected {
+  filter: brightness(1.3);
+  box-shadow: 0 0 10px rgba(140, 140, 100, 0.6);
+}
+
+.room-sim-pawn.moving {
+  z-index: 105;
+}
+
+.room-sim-pawn img,
+.room-sim-pawn svg {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+/* 小人需求指示器 */
+.room-sim-pawn-indicator {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+}
+
+.room-sim-need-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.room-sim-need-dot.critical { background: #e04040; }
+.room-sim-need-dot.warning { background: #e0a040; }
+.room-sim-need-dot.normal { background: #40a040; }
+
+/* 心情指示点 */
+.room-sim-mood-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 2px;
+}
+
+.room-sim-mood-dot.veryHappy { background: #40c040; box-shadow: 0 0 4px #40c040; }
+.room-sim-mood-dot.happy { background: #80a040; }
+.room-sim-mood-dot.normal { background: #a0a040; }
+.room-sim-mood-dot.unhappy { background: #c08040; }
+.room-sim-mood-dot.breakdown { background: #c04040; box-shadow: 0 0 4px #c04040; }
+
+/* 信息面板 */
+.room-sim-info-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  background: #22222a;
+  border-top: 1px solid #3a3a42;
+  min-height: 120px;
+}
+
+.room-sim-pawn-detail {
+  display: flex;
+  gap: 16px;
+}
+
+.room-sim-pawn-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  background: #3a3a42;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.room-sim-pawn-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.room-sim-pawn-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.room-sim-pawn-role {
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* 需求进度条 */
+.room-sim-needs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.room-sim-need-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.room-sim-need-label {
+  font-size: 11px;
+  color: #aaa;
+  width: 24px;
+}
+
+.room-sim-need-track {
+  height: 8px;
+  width: 60px;
+  background: #3a3a42;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.room-sim-need-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s;
+}
+
+.room-sim-need-fill.critical { background: #e04040; }
+.room-sim-need-fill.warning { background: #e0a040; }
+.room-sim-need-fill.normal { background: #40a040; }
+
+/* 心情条 */
+.room-sim-mood-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.room-sim-mood-label {
+  font-size: 12px;
+  color: #aaa;
+  width: 32px;
+}
+
+.room-sim-mood-track {
+  height: 10px;
+  width: 120px;
+  background: #3a3a42;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.room-sim-mood-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.room-sim-mood-fill.veryHappy { background: #40c040; }
+.room-sim-mood-fill.happy { background: #80a040; }
+.room-sim-mood-fill.normal { background: #a0a040; }
+.room-sim-mood-fill.unhappy { background: #c08040; }
+.room-sim-mood-fill.breakdown { background: #c04040; }
+
+.room-sim-mood-value {
+  font-size: 12px;
+  color: #eaeaea;
+  min-width: 24px;
+  text-align: right;
+}
+
+/* 心情条目 */
+.room-sim-mood-thoughts {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #3a3a42;
+}
+
+.room-sim-mood-breakdown {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.room-sim-mood-breakdown .positive { color: #80c080; }
+.room-sim-mood-breakdown .negative { color: #c08080; }
+
+.room-sim-thoughts-list {
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.room-sim-thought-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+.room-sim-thought-item.positive .thought-mod { color: #80c080; }
+.room-sim-thought-item.negative .thought-mod { color: #c08080; }
+
+.thought-mod {
+  min-width: 28px;
+  font-weight: 600;
+}
+
+.thought-label {
+  color: #aaa;
+}
+
+/* 家具面板 */
+.room-sim-furniture-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 16px;
+  background: #22222a;
+}
+
+.room-sim-furniture-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.room-sim-furniture-item {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  background: #3a3a42;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  transition: background 0.15s;
+}
+
+.room-sim-furniture-item:hover {
+  background: #4a4a52;
+}
+
+.room-sim-furniture-item img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+/* 日志区域 */
+.room-sim-logs {
+  flex: 0 0 auto;
+  max-height: 100px;
+  overflow-y: auto;
+  padding: 8px 16px;
+  background: #1a1a22;
+  border-top: 1px solid #3a3a42;
+  font-size: 12px;
+}
+
+.room-sim-log-item {
+  padding: 2px 0;
+  color: #aaa;
+}
+
+.room-sim-log-item.highlight {
+  color: #eaeaea;
+}

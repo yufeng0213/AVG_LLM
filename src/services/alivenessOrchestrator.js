@@ -131,16 +131,14 @@ export async function triggerAllAlivenessChecks() {
 
 /**
  * 在对话生成后调用 — 触发 NPC 短信检测等
- * 注意：事件链检查、NPC互动检测已整合到主线剧情的 <aux> 区块中，不再独立调用
+ * 注意：NPC短信和玩家影响已整合到主线剧情的 <aux> 区块中，不再独立调用 LLM
  */
 export async function onDialogueGenerated() {
   if (!_state?.running) return
 
-  // 保留 NPC 短信检查（独立触发条件）
-  await _runNpcSmsCheck()
-
-  // 保留玩家影响检查（分析玩家选择对世界的影响）
-  await _runImpactCheck()
+  // 已禁用：NPC短信和玩家影响现在由主线 LLM 的 <aux> 区块处理
+  // await _runNpcSmsCheck()
+  // await _runImpactCheck()
 }
 
 /**

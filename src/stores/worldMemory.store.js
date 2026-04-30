@@ -662,5 +662,86 @@ export const useWorldMemoryStore = defineStore('worldMemory', {
       this.pendingUpdateCount = 0
       return count
     },
+
+    /**
+     * 添加玩家影响记录（来自 aux 区块）
+     */
+    async addImpacts(worldBookId, impacts) {
+      if (!isSQLiteAvailable()) {
+        console.warn('[worldMemory] SQLite not available, cannot add impacts')
+        return
+      }
+
+      try {
+        for (const imp of impacts) {
+          await exec(
+            `INSERT INTO memory_world_flags (world_book_id, flag_name, flag_value) VALUES (?, ?, ?)`,
+            [worldBookId, `impact_${imp.id}`, JSON.stringify(imp)]
+          )
+        }
+        this.pendingUpdateCount += impacts.length
+        console.log(`[worldMemory] 写入 ${impacts.length} 条玩家影响`)
+      } catch (e) {
+        console.error('[worldMemory] SQLite addImpacts failed:', e.message)
+      }
+    },
+
+    /**
+     * 添加NPC短信提示（来自 aux 区块）
+     */
+    async addNpcSmsHint(worldBookId, hint) {
+      if (!isSQLiteAvailable()) {
+        console.warn('[worldMemory] SQLite not available, cannot add npc sms hint')
+        return
+      }
+
+      try {
+        await exec(
+          `INSERT INTO memory_world_flags (world_book_id, flag_name, flag_value) VALUES (?, ?, ?)`,
+          [worldBookId, `npc_sms_hint_${Date.now()}`, JSON.stringify(hint)]
+        )
+        this.pendingUpdateCount += 1
+      } catch (e) {
+        console.error('[worldMemory] SQLite addNpcSmsHint failed:', e.message)
+      }
+    },
+
+    /**
+     * 获取所有NPC短信提示
+     */
+    async getNpcSmsHints(worldBookId) {
+      if (!isSQLiteAvailable()) {
+        return []
+      }
+
+      try {
+        const rows = await query(
+          `SELECT flag_value FROM memory_world_flags WHERE world_book_id = ? AND flag_name LIKE 'npc_sms_hint_%'`,
+          [worldBookId]
+        )
+        return rows.map(r => JSON.parse(r.flag_value))
+      } catch (e) {
+        console.error('[worldMemory] SQLite getNpcSmsHints failed:', e.message)
+        return []
+      }
+    },
+
+    /**
+     * 清除NPC短信提示
+     */
+    async clearNpcSmsHints(worldBookId) {
+      if (!isSQLiteAvailable()) {
+        return
+      }
+
+      try {
+        await exec(
+          `DELETE FROM memory_world_flags WHERE world_book_id = ? AND flag_name LIKE 'npc_sms_hint_%'`,
+          [worldBookId]
+        )
+      } catch (e) {
+        console.error('[worldMemory] SQLite clearNpcSmsHints failed:', e.message)
+      }
+    },
   },
 })

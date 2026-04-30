@@ -1,0 +1,10 @@
+{
+  "id": "handheld-xx-room-simulation",
+  "name": "房间模拟",
+  "version": "1.0.0",
+  "type": "handheld",
+  "entry": "index.vue",
+  "icon": "🏠",
+  "replaces": [],
+  "runtime": "bundled"
+}

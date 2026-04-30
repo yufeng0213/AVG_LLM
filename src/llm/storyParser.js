@@ -1182,6 +1182,8 @@ function _parseAuxBody(auxBody) {
     locations: [],
     npcInteractions: [],
     newCharacters: [],
+    impacts: [],      // 玩家影响
+    npcSms: [],       // NPC短信
   }
 
   // 解析事件 <event .../> - 支持任意属性顺序
@@ -1238,7 +1240,44 @@ function _parseAuxBody(auxBody) {
     }
   }
 
-  // 解析NPC互动 <npc .../>
+  // 解析玩家影响 <impact .../>
+  const impactMatches = auxBody.matchAll(/<impact\s+([^>]+)\/>/gi)
+  for (const match of impactMatches) {
+    const attrs = match[1] || ''
+    const parsed = _parseXmlAttrs(attrs)
+    const playerAction = parsed.p || parsed.action || ''
+    const effect = parsed.e || parsed.effect || ''
+    const charsRaw = parsed.c || parsed.chars || ''
+    const affectedChars = charsRaw.split(/[,，、]/).map(s => s.trim()).filter(Boolean)
+    if (playerAction && effect) {
+      result.impacts.push({
+        playerAction: playerAction.trim(),
+        effect: effect.trim(),
+        affectedCharacters: affectedChars,
+      })
+    }
+  }
+
+  // 解析NPC短信 <sms .../>
+  const smsMatches = auxBody.matchAll(/<sms\s+([^>]+)\/>/gi)
+  for (const match of smsMatches) {
+    const attrs = match[1] || ''
+    const parsed = _parseXmlAttrs(attrs)
+    const charA = parsed.a || ''
+    const charB = parsed.b || ''
+    const location = parsed.loc || parsed.location || ''
+    const topic = parsed.txt || parsed.topic || ''
+    if (charA && charB) {
+      result.npcSms.push({
+        charA: charA.trim(),
+        charB: charB.trim(),
+        location: location.trim(),
+        topic: topic.trim(),
+      })
+    }
+  }
+
+  // 解析NPC互动 <npc .../> (旧格式兼容)
   const npcMatches = auxBody.matchAll(/<npc\s+([^>]+)\/>/gi)
   for (const match of npcMatches) {
     const attrs = match[1] || ''
@@ -1277,14 +1316,19 @@ function _parseAuxBody(auxBody) {
     result.memories.length > 0 ||
     result.locations.length > 0 ||
     result.npcInteractions.length > 0 ||
-    result.newCharacters.length > 0
+    result.newCharacters.length > 0 ||
+    result.impacts.length > 0 ||
+    result.npcSms.length > 0
 
   if (!hasContent) {
     console.log('[Aux] 解析结果为空')
     return null
   }
 
-  console.log('[Aux] 解析成功: events=' + result.events.length + ', memories=' + result.memories.length + ', locations=' + result.locations.length)
+  console.log('[Aux] 解析成功: events=' + result.events.length +
+    ', memories=' + result.memories.length +
+    ', impacts=' + result.impacts.length +
+    ', sms=' + result.npcSms.length)
   return result
 }
 
