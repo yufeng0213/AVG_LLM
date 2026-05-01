@@ -3,7 +3,7 @@
 import {
   SPRITE_PIXEL_SIZE,
   SPRITE_GRID_SIZE,
-} from '../../config/constants.js'
+} from '../config/constants.js'
 
 // 复用 campfireSprites 的调色板
 const PAWN_PIXEL_PALETTES = {
@@ -228,6 +228,22 @@ export const createPawnSpriteResolver = (options = {}) => {
   const maxCacheSize = options.maxCacheSize || 128
 
   const getPawnSpriteSrc = (pawn, index = 0) => {
+    // 优先使用自定义精灵（导入的PNG）
+    if (pawn?.customSprites) {
+      const facing = pawn?.sprite?.facing || 'front'
+      // 方向映射：front/back/left/right
+      const directionMap = {
+        'front': 'front',
+        'back': 'back',
+        'left': 'left',
+        'right': 'right',
+        'down': 'front',
+        'up': 'back',
+      }
+      const direction = directionMap[facing] || 'front'
+      return pawn.customSprites[direction] || pawn.customSprites.front || ''
+    }
+
     const style = styleList.includes(pawn?.sprite?.style) ? pawn.sprite.style : styleList[index % styleList.length]
     const palette = paletteList.includes(pawn?.sprite?.palette) ? pawn.sprite.palette : paletteList[index % paletteList.length]
     const action = actionList.includes(pawn?.sprite?.action) ? pawn.sprite.action : 'idle'

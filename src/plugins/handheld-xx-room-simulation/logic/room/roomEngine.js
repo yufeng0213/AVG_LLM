@@ -149,6 +149,7 @@ export const createRoomEngine = (deps = {}) => {
       x: clampInt(f.x, 0, maxX, clampInt(index % roomWidth, 0, maxX, 0)),
       y: clampInt(f.y, 0, maxY, clampInt(Math.floor(index / roomWidth), 0, maxY, 0)),
       z: clampInt(f.z, 0, 200, 10 + index * 2),
+      rotation: [0, 90, 180, 270].includes(f.rotation) ? f.rotation : 0,
       walkable: Boolean(f.walkable),
       interactable: Boolean(f.interactable !== false),
       interactionType: normalizeInteractionType(f.interactionType),
@@ -157,6 +158,8 @@ export const createRoomEngine = (deps = {}) => {
       needsSatisfied: normalizeNeedsSatisfied(f.needsSatisfied),
       spriteSpec: normalizeSpriteSpec(f.spriteSpec, index),
       spriteTemplate: f.spriteTemplate || null,
+      // 保留自定义精灵数据（导入的PNG家具）
+      customSprite: f.customSprite || null,
     }
   }
 

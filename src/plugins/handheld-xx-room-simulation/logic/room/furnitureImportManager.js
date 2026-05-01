@@ -1,8 +1,8 @@
 // 家具导入管理 - 处理 PNG 导入、z轴计算、添加到房间
 
 import { createRoomFurnitureEngine, FURNITURE_CATALOG } from './roomFurnitureEngine.js'
-import { calculateFurnitureZ, Z_LAYER_RULES } from '../render/roomSprites.js'
-import { ROOM_CELL_SIZE, SPRITE_GRID_SIZE, SPRITE_PIXEL_SIZE } from '../config/constants.js'
+import { calculateFurnitureZ, Z_LAYER_RULES } from '../../render/roomSprites.js'
+import { ROOM_CELL_SIZE, SPRITE_GRID_SIZE, SPRITE_PIXEL_SIZE } from '../../config/constants.js'
 
 export const createFurnitureImportManager = (deps = {}) => {
   const furnitureEngine = deps.furnitureEngine || createRoomFurnitureEngine()
@@ -55,10 +55,9 @@ export const createFurnitureImportManager = (deps = {}) => {
       needsSatisfied,
       // PNG 自定义精灵数据
       customSprite: {
-        palette: pngData.palette || ['#00000000', '#808080'],
-        pixels16: pngData.pixels || pngData.indexedPixels || [],
-        originalWidth: pngData.width,
-        originalHeight: pngData.height,
+        base64: pngData.base64 || null, // 直接使用原始 PNG
+        originalWidth: pngData.originalWidth || pngData.width,
+        originalHeight: pngData.originalHeight || pngData.height,
       },
       spriteSpec: null, // 不使用预设精灵
       spriteTemplate: null,

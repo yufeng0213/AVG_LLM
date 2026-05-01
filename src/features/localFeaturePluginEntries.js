@@ -28,6 +28,7 @@ import characterStateEntry from '../../plugins/feature-character-state/src/entry
 import characterCardEntry from '../../plugins/feature-character-card/src/entry.js'
 import baseBuildingEntry from '../../plugins/feature-base-building/src/entry.js'
 import scrapbookEntry from '../../plugins/feature-scrapbook/src/entry.js'
+import roomSimulationEntry from '../plugins/handheld-xx-room-simulation/entry.js'
 
 const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   backStorageEntry,
@@ -60,6 +61,7 @@ const LOCAL_FEATURE_PLUGIN_ENTRIES = [
   baseBuildingEntry,
   characterCardEntry,
   scrapbookEntry,
+  roomSimulationEntry,
 ]
 
 export const getLocalFeaturePluginEntries = () => {
@@ -80,5 +82,6 @@ export const getLocalFeaturePluginEntries = () => {
     entries.push(entry)
   })
 
+  console.log('[feature-plugin] getLocalFeaturePluginEntries result, count:', entries.length, ', ids:', entries.map(e => e.id))
   return entries
 }

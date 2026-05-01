@@ -257,6 +257,8 @@ onBeforeUnmount(() => {
 
 watch(() => ui.currentScreen, (screen) => {
   console.log('[App] currentScreen changed to:', screen)
+  console.log('[App] routing.activePluginScreen.value:', routing.activePluginScreen?.value)
+  console.log('[App] routing.pluginScreenRegistry keys:', Object.keys(routing.pluginScreenRegistry?.value || {}))
   if (screen === 'game') {
     android.scheduleAndroidLayoutDebug('screen-to-game')
   }
@@ -316,6 +318,7 @@ watch(() => routing.showDebugBaseBuilding, (v) => {
           @open-hourglass="() => ui.currentScreen = 'hourglass'"
           @open-mobius="() => ui.currentScreen = 'mobius'"
           @open-debug-base="routing.openDebugBaseBuilding"
+          @open-room-simulation="() => ui.currentScreen = 'room-simulation'"
         />
       </keep-alive>
       <StartScreen
@@ -430,12 +433,14 @@ watch(() => routing.showDebugBaseBuilding, (v) => {
         @back="routing.backToWorldHub"
       />
       <!-- Fallback: other plugin screens via dynamic routing -->
-      <component
-        v-else-if="routing.activePluginScreen"
-        :is="routing.activePluginScreen.component"
-        v-bind="routing.activePluginScreen.props"
-        v-on="routing.activePluginScreen.events && Object.keys(routing.activePluginScreen.events).length ? routing.activePluginScreen.events : {}"
-      />
+      <div v-else-if="routing.activePluginScreen?.value" class="plugin-screen-wrapper">
+        DEBUG: activePluginScreen has value, component={{ routing.activePluginScreen?.value?.component?.__name }}
+        <component
+          :is="routing.activePluginScreen.value.component"
+          v-bind="routing.activePluginScreen.value.props"
+          v-on="routing.activePluginScreen.value.events"
+        />
+      </div>
 
       <!-- 签到（全屏，从 WorldHub 直接打开） -->
       <CheckInScreen

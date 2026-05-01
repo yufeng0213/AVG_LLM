@@ -67,6 +67,8 @@ export const buildPluginScreenRegistry = (options = {}) => {
   const pluginEntries = Array.isArray(options.pluginEntries) ? options.pluginEntries : EMPTY_ARR
   const context = buildHostContext(options)
 
+  console.log('[pluginScreenRegistry] buildPluginScreenRegistry called, manifests:', pluginManifests.length, 'entries:', pluginEntries.length)
+
   const entryById = new Map()
   pluginEntries.forEach((entry, index) => {
     const id = String(entry?.id || '').trim()
@@ -79,17 +81,27 @@ export const buildPluginScreenRegistry = (options = {}) => {
     entryById.set(id, entry)
   })
 
+  console.log('[pluginScreenRegistry] entryById map keys:', Array.from(entryById.keys()))
+
   const registry = {}
 
   pluginManifests.forEach((manifest) => {
     const pluginId = String(manifest?.id || '').trim()
     const route = String(manifest?.entry?.route || '').trim()
-    if (!pluginId || !route || registry[route]) return
+    console.log('[pluginScreenRegistry] processing manifest:', pluginId, 'route:', route)
+    if (!pluginId || !route || registry[route]) {
+      console.log('[pluginScreenRegistry] skip manifest:', pluginId, 'reason:', !pluginId ? 'no id' : !route ? 'no route' : 'route already exists')
+      return
+    }
 
     const entry = entryById.get(pluginId)
+    console.log('[pluginScreenRegistry] entry for', pluginId, ':', entry ? 'found' : 'NOT FOUND')
     const routeConfig = resolveEntryPrimaryRouteConfig(entry, context, route, manifest)
     if (routeConfig) {
       registry[route] = routeConfig
+      console.log('[pluginScreenRegistry] registered route:', route, 'for plugin:', pluginId)
+    } else {
+      console.log('[pluginScreenRegistry] no routeConfig for', pluginId)
     }
   })
 

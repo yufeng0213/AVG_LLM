@@ -30,6 +30,11 @@ import characterStateManifest from '../../plugins/feature-character-state/plugin
 import characterCardManifest from '../../plugins/feature-character-card/plugin.json'
 import baseBuildingManifest from '../../plugins/feature-base-building/plugin.json'
 import scrapbookManifest from '../../plugins/feature-scrapbook/plugin.json'
+import roomSimulationManifest from '../plugins/handheld-xx-room-simulation/plugin.json'
+
+console.log('[DEBUG] roomSimulationManifest:', roomSimulationManifest)
+const validationResult = validateFeaturePluginManifest(roomSimulationManifest)
+console.log('[DEBUG] roomSimulationManifest validation:', validationResult)
 
 const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   loadSaveManifest,
@@ -63,6 +68,7 @@ const LOCAL_FEATURE_PLUGIN_MANIFESTS = [
   baseBuildingManifest,
   characterCardManifest,
   scrapbookManifest,
+  roomSimulationManifest,
 ]
 
 export const getLocalFeaturePluginManifests = () => {
@@ -74,6 +80,7 @@ export const getLocalFeaturePluginManifests = () => {
         index,
         id: manifest?.id,
         errors: result.errors,
+        manifest,
       })
       return
     }
@@ -89,5 +96,6 @@ export const getLocalFeaturePluginManifests = () => {
       ...result.normalized,
     })
   })
+  console.log('[feature-plugin] getLocalFeaturePluginManifests result, count:', list.length, ', ids:', list.map(m => m.id))
   return list
 }

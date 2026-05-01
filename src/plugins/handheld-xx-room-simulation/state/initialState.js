@@ -514,7 +514,7 @@ export const buildDefaultRoomState = () => {
     spriteSpec: { motif: 'lamp', palette: 'iron', silhouette: 'tall', ornament: 'rune', glow: 1, seed: 1000 },
   }
 
-  const furniture = [testBed, testDesk, testStove, testTable, testPlant, testLamp]
+  const furniture = []  // 默认不添加任何家具
 
   return {
     id: `room-${Date.now().toString(36)}`,
@@ -634,36 +634,19 @@ export const createDefaultRoom = (index = 0, type = 'common', ownerId = null) =>
   }
 }
 
-// 主状态构建 - 多房间系统
+// 主状态构建 - 多房间系统（空房间，无默认小人）
 export const buildDefaultState = () => {
-  // 创建公共区域
+  // 创建公共区域（空房间）
   const commonRoom = buildDefaultRoomState()
   commonRoom.id = 'room-common'
   commonRoom.name = '公共区域'
   commonRoom.type = 'common'
 
-  // 创建默认小人
-  const pawn1 = createDefaultPawn(0, '工匠')
-  const pawn2 = createDefaultPawn(1, '厨师')
-
-  // 为小人创建个人寝室
-  const bedroom1 = createDefaultRoom(0, 'bedroom', pawn1.id)
-  bedroom1.name = `${pawn1.name}的寝室`
-  bedroom1.id = `room-${pawn1.id}`
-  pawn1.ownedRoomId = bedroom1.id
-  pawn1.currentRoomId = 'room-common'
-
-  const bedroom2 = createDefaultRoom(1, 'bedroom', pawn2.id)
-  bedroom2.name = `${pawn2.name}的寝室`
-  bedroom2.id = `room-${pawn2.id}`
-  pawn2.ownedRoomId = bedroom2.id
-  pawn2.currentRoomId = 'room-common'
-
   return {
     time: buildDefaultTimeState(),
-    rooms: [commonRoom, bedroom1, bedroom2],
+    rooms: [commonRoom],
     room: null, // 保留兼容旧版本
-    pawns: [pawn1, pawn2],
+    pawns: [], // 无默认小人
     tasks: [],
     items: buildDefaultItemsState(),
     stats: buildDefaultStatsState(),
@@ -672,7 +655,46 @@ export const buildDefaultState = () => {
     selectedPawnId: '',
     selectedFurnitureId: '',
     currentView: 'room',
-    logs: ['房间模拟系统已启动，艾诺和米拉已入住。'],
+    logs: ['房间模拟系统已启动。'],
+    updatedAt: Date.now(),
+  }
+}
+
+// 为特定角色创建默认状态（每个角色有自己的房间）
+export const buildDefaultStateForCharacter = (characterInfo) => {
+  const name = characterInfo?.name || '角色'
+  const charId = characterInfo?.id || '__player__'
+
+  // 创建角色的房间（空房间，无预设家具）
+  const room = buildDefaultRoomState()
+  room.id = `room-${charId}`
+  room.name = name
+  room.furniture = [] // 无预设家具
+  room.tiles = room.tiles.map(t => ({ ...t, type: 'floor' })) // 全地板，无墙
+
+  // 创建代表该角色的小人
+  const pawn = createDefaultPawn(0, name)
+  pawn.id = `pawn-${charId}`
+  pawn.name = name
+  pawn.worldCharacterId = charId
+  pawn.position = { x: Math.floor(ROOM_DEFAULT_WIDTH / 2), y: Math.floor(ROOM_DEFAULT_HEIGHT / 2) }
+  pawn.customSprites = null // 需要玩家配置
+
+  return {
+    time: buildDefaultTimeState(),
+    rooms: [room],
+    room: null,
+    pawns: [pawn],
+    tasks: [],
+    items: buildDefaultItemsState(),
+    stats: buildDefaultStatsState(),
+    worldBookId: '',
+    worldBookCharacterSignature: charId,
+    selectedPawnId: pawn.id,
+    selectedFurnitureId: '',
+    currentView: 'room',
+    logs: [`${name}已创建，请配置精灵和家具。`],
+    customFurnitureLibrary: [],
     updatedAt: Date.now(),
   }
 }

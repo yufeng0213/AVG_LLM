@@ -18,7 +18,7 @@ import {
   ENVIRONMENT_MOOD_FACTORS,
   EVENT_MOOD_TEMPLATES,
   MOOD_EFFECT_CONFIG,
-} from '../config/constants.js'
+} from '../../config/constants.js'
 
 export const createPawnMoodEngine = (deps = {}) => {
   // ========== 心情计算 ==========
@@ -406,7 +406,7 @@ export const createPawnMoodEngine = (deps = {}) => {
   // ========== 初始化 ==========
 
   /**
-   * 初始化小人心情状态
+   * 初始化小人心情状态，并随机生成一些心情条目
    * @param {Object} pawn - 小人实例
    */
   const initializeMood = (pawn) => {
@@ -420,6 +420,115 @@ export const createPawnMoodEngine = (deps = {}) => {
     }
 
     pawn.moodThoughts = []
+
+    // 随机生成初始心情条目
+    generateRandomMoodThoughts(pawn)
+  }
+
+  /**
+   * 为小人随机生成一些初始心情条目
+   * @param {Object} pawn - 小人实例
+   */
+  const generateRandomMoodThoughts = (pawn) => {
+    if (!pawn || !pawn.needs) return
+
+    const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
+    const randomChoice = (arr) => arr[Math.floor(Math.random() * arr.length)]
+
+    // 1. 根据需求状态生成心情条目
+    const needTypes = ['hunger', 'rest', 'comfort', 'joy', 'social', 'work_satisfaction']
+    const needLabels = {
+      hunger: '饮食',
+      rest: '休息',
+      comfort: '舒适',
+      joy: '娱乐',
+      social: '社交',
+      work_satisfaction: '工作',
+    }
+
+    for (const needType of needTypes) {
+      // 随机决定是否生成此需求的心情条目（50%概率）
+      if (Math.random() > 0.5) continue
+
+      const needValue = pawn.needs[needType]?.value ?? randomInt(30, 90)
+      const mapping = NEED_MOOD_MAPPING[needType]
+      if (!mapping) continue
+
+      // 找到对应的心情条目
+      const moodEntry = mapping.find(m => needValue <= m.max)
+      if (!moodEntry || moodEntry.modifier === 0) continue
+
+      // 添加心情条目
+      pawn.moodThoughts.push({
+        id: `thought-${needType}-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+        type: MOOD_THOUGHT_TYPE_NEED,
+        source: needType,
+        label: `${needLabels[needType]}: ${moodEntry.label}`,
+        moodModifier: moodEntry.modifier,
+        duration: randomInt(200, 600),  // 随机持续时间（秒）
+        createdAt: Date.now(),
+      })
+    }
+
+    // 2. 随机添加环境心情条目（30%概率）
+    const envFactors = ['beautiful', 'comfortable', 'dark']
+    const envLabels = {
+      beautiful: '美观的房间布置',
+      comfortable: '舒适的居住环境',
+      dark: '光线稍暗',
+    }
+
+    for (const factor of envFactors) {
+      if (Math.random() > 0.3) continue
+
+      const factorConfig = ENVIRONMENT_MOOD_FACTORS[factor]
+      if (!factorConfig) continue
+
+      // 随机正或负
+      const isPositive = factor === 'beautiful' || factor === 'comfortable'
+      const modifier = isPositive ? Math.abs(factorConfig.modifier) : factorConfig.modifier
+
+      pawn.moodThoughts.push({
+        id: `thought-env-${factor}-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+        type: MOOD_THOUGHT_TYPE_ENVIRONMENT,
+        source: `env_${factor}`,
+        label: envLabels[factor] || factorConfig.label,
+        moodModifier: modifier,
+        duration: randomInt(300, 800),
+        createdAt: Date.now(),
+      })
+    }
+
+    // 3. 随机添加事件心情条目（40%概率）
+    const eventTypes = ['good_sleep', 'social_chat', 'work_complete', 'ate_good', 'new_pawn']
+    const positiveEvents = ['good_sleep', 'social_chat', 'work_complete', 'ate_good', 'new_pawn']
+    const negativeEvents = ['bad_sleep', 'social_insult', 'work_fail', 'ate_bad']
+
+    // 随机选择1-2个事件
+    const eventCount = randomInt(1, 2)
+    const allEvents = Math.random() > 0.3 ? positiveEvents : negativeEvents
+
+    for (let i = 0; i < eventCount; i++) {
+      const eventType = randomChoice(allEvents)
+      const eventTemplate = EVENT_MOOD_TEMPLATES[eventType]
+      if (!eventTemplate) continue
+
+      pawn.moodThoughts.push({
+        id: `thought-event-${eventType}-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+        type: MOOD_THOUGHT_TYPE_EVENT,
+        source: `event_${eventType}`,
+        label: eventTemplate.label,
+        moodModifier: eventTemplate.modifier,
+        duration: eventTemplate.duration + randomInt(-50, 50),
+        createdAt: Date.now(),
+      })
+    }
+
+    // 重新计算心情值
+    pawn.mood.value = calculateMoodValue(pawn)
+    pawn.mood.breakdown = getMoodBreakdown(pawn)
+    pawn.mood.state = getMoodState(pawn.mood.value)
+    pawn.mood.effects = getMoodEffects(pawn.mood.value)
   }
 
   // ========== 导出 ==========
@@ -452,6 +561,7 @@ export const createPawnMoodEngine = (deps = {}) => {
 
     // 初始化
     initializeMood,
+    generateRandomMoodThoughts,
 
     // 常量导出
     MOOD_THRESHOLD_VERY_HAPPY,

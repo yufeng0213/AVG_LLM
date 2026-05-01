@@ -106,10 +106,10 @@ export const createPawnNeedsEngine = (deps = {}) => {
   const getNeedsToSatisfy = (pawn) => {
     const evaluations = evaluateNeedsState(pawn)
     const needsList = Object.entries(evaluations)
-      .filter(([_, eval]) => eval.isWarning || eval.isCritical)
-      .map(([name, eval]) => ({
+      .filter(([_, ev]) => ev.isWarning || ev.isCritical)
+      .map(([name, ev]) => ({
         name,
-        ...eval,
+        ...ev,
       }))
       .sort((a, b) => b.urgency - a.urgency)
 

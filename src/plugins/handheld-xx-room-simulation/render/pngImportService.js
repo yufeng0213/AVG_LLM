@@ -6,9 +6,9 @@ import {
   ROOM_CELL_SIZE,
 } from '../config/constants.js'
 
-// PNG 尺寸限制
-const PNG_MAX_WIDTH = 128  // 最大4格宽
-const PNG_MAX_HEIGHT = 128 // 最大4格高
+// PNG 尺寸限制（放宽上限，允许更大图片）
+const PNG_MAX_WIDTH = 512  // 最大8格宽
+const PNG_MAX_HEIGHT = 512 // 最大8格高
 const PNG_MIN_WIDTH = 16
 const PNG_MIN_HEIGHT = 16
 
@@ -91,7 +91,7 @@ export const createPngImportService = (deps = {}) => {
   // ========== 图像加载 ==========
 
   /**
-   * 从 File 加载 ImageData
+   * 从 File 加载 ImageData 和 base64
    */
   const loadImageData = async (file) => {
     return new Promise((resolve, reject) => {
@@ -100,7 +100,10 @@ export const createPngImportService = (deps = {}) => {
         const dataUrl = e.target.result
         try {
           const imageData = await loadImageDataFromUrl(dataUrl)
-          resolve(imageData)
+          resolve({
+            ...imageData,
+            base64: dataUrl, // 保存原始 base64
+          })
         } catch (err) {
           reject(err)
         }
@@ -183,6 +186,7 @@ export const createPngImportService = (deps = {}) => {
       height,
       palette,
       uniqueColors,
+      base64: imageData.base64 || null, // 原始 PNG base64
       error: null,
     }
   }
@@ -192,12 +196,12 @@ export const createPngImportService = (deps = {}) => {
    */
   const rgbaToHex = (r, g, b, a) => {
     if (a === 0) return '0' // 透明
-    const hex = '#' +
+    let hex = '#' +
       r.toString(16).padStart(2, '0') +
       g.toString(16).padStart(2, '0') +
       b.toString(16).padStart(2, '0')
     if (a < 255) {
-      hex + a.toString(16).padStart(2, '0')
+      hex += a.toString(16).padStart(2, '0')
     }
     return hex
   }
@@ -274,8 +278,8 @@ export const createPngImportService = (deps = {}) => {
     const cellH = Math.ceil(pngHeight / cellSize)
 
     return {
-      width: Math.max(1, Math.min(4, cellW)),
-      height: Math.max(1, Math.min(4, cellH)),
+      width: Math.max(1, Math.min(8, cellW)),
+      height: Math.max(1, Math.min(8, cellH)),
     }
   }
 

@@ -47,6 +47,7 @@ const emit = defineEmits([
   'open-timeline',
   'open-evolution-log',
   'open-debug-base',
+  'open-room-simulation',
 ])
 
 const playerState = usePlayerState()
@@ -315,6 +316,10 @@ onActivated(async () => {
         <button type="button" class="hub-scatter-btn" @click="emit('open-mailbox')">
           <img src="/data/icon/worldhub_email_box_icon.png" alt="信箱" class="hub-png-icon" />
           <span class="hub-btn-label">信箱</span>
+        </button>
+        <button type="button" class="hub-scatter-btn" @click="emit('open-room-simulation')">
+          <span class="hub-btn-icon">🏠</span>
+          <span class="hub-btn-label">房间模拟</span>
         </button>
       </div>
     </section>

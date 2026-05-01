@@ -19,3 +19,9 @@ export const resolveStorageScopeKey = (options = {}) => {
   const safeSaveSlotId = sanitizeScopeToken(saveSlotId, 'global')
   return `${storageKeyBase}:${safeWorldBookId}:${safeSaveSlotId}`
 }
+
+// 世界书级别家具库的存储 key
+export const resolveFurnitureLibraryKey = (worldBookId) => {
+  const safeWorldBookId = sanitizeScopeToken(worldBookId, 'default_world_book')
+  return `${STORAGE_KEY_BASE}:${safeWorldBookId}:__furniture_library__`
+}

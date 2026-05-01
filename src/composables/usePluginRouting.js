@@ -21,19 +21,24 @@ import { useMascotStorage } from '../../plugins/feature-mascot/src/composables/u
 const FULLSCREEN_SCREENS = new Set(['world-memory', 'world-map', 'dreams', 'timeline', 'evolution-log'])
 
 export function usePluginRouting() {
+  console.log('[PluginRouting] usePluginRouting called')
   const ui = useUiState()
   const gameSession = useGameSession()
   const activityEntry = useActivityEntry()
 
   const localFeaturePluginManifests = getLocalFeaturePluginManifests()
   const localFeaturePluginEntries = getLocalFeaturePluginEntries()
+  console.log('[PluginRouting] localFeaturePluginManifests count:', localFeaturePluginManifests.length)
+  console.log('[PluginRouting] localFeaturePluginEntries count:', localFeaturePluginEntries.length)
 
   const enabledFeaturePluginManifests = computed(() => {
-    return filterEnabledFeaturePluginManifests(
+    const result = filterEnabledFeaturePluginManifests(
       localFeaturePluginManifests,
       gameSession.pluginEnabled,
       [], // worldbook tags are loaded async
     )
+    console.log('[PluginRouting] enabledFeaturePluginManifests computed, count:', result.length, ', ids:', result.map(m => m.id))
+    return result
   })
 
   const startMenuItems = computed(() => {
@@ -202,6 +207,7 @@ export function usePluginRouting() {
     startMenuItems,
     startMenuActionMap,
     enabledFeaturePluginManifests,
+    pluginScreenRegistry,
     activePluginScreen,
     showDebugBaseBuilding,
     isMusicPlayerEnabled,

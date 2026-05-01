@@ -1,53 +1,36 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 const props = defineProps({
   state: { type: Object, required: true },
-  activeRoomId: { type: String, default: '' },
-  rooms: { type: Array, default: () => [] },
-  pawns: { type: Array, default: () => [] },
   visible: { type: Boolean, default: false },
+  editMode: { type: Boolean, default: false },
+  hasSelectedFurniture: { type: Boolean, default: false },
+  ambientLight: { type: Number, default: 1.0 },  // 环境光强度 0-1
 })
 
 const emit = defineEmits([
   'close',
-  'select-room',
-  'add-room',
-  'delete-room',
-  'rename-room',
   'select-pawn',
   'add-pawn',
   'toggle-pause',
+  'toggle-edit-mode',
   'show-import',
+  'show-pawn-import',
+  'show-mood-rules',
+  'toggle-furniture-bar',
+  'delete-furniture',
+  'force-save',
   'close-panel',
+  'back-to-select',
+  'reset-room',
+  'adjust-ambient-light',  // 调整环境光
 ])
-
-// ========== 房间列表 ==========
-
-const sortedRooms = computed(() => {
-  const commonRooms = props.rooms.filter(r => r.type === 'common')
-  const bedrooms = props.rooms.filter(r => r.type === 'bedroom')
-  const others = props.rooms.filter(r => r.type !== 'common' && r.type !== 'bedroom')
-  return [...commonRooms, ...bedrooms, ...others]
-})
-
-const handleSelectRoom = (room) => {
-  emit('select-room', room.id)
-}
-
-const handleAddRoom = () => {
-  emit('add-room')
-}
-
-const handleDeleteRoom = (room) => {
-  if (props.rooms.length <= 1) return
-  emit('delete-room', room.id)
-}
 
 // ========== 小人列表 ==========
 
 const sortedPawns = computed(() => {
-  return props.pawns.slice().sort((a, b) => {
+  return props.state.pawns.slice().sort((a, b) => {
     const moodA = a.mood?.value || 50
     const moodB = b.mood?.value || 50
     return moodB - moodA
@@ -56,10 +39,6 @@ const sortedPawns = computed(() => {
 
 const handleSelectPawn = (pawn) => {
   emit('select-pawn', pawn.id)
-  // 如果小人有自己的寝室，跳转到那个房间
-  if (pawn.ownedRoomId) {
-    emit('select-room', pawn.ownedRoomId)
-  }
 }
 
 const handleAddPawn = () => {
@@ -72,24 +51,72 @@ const handleTogglePause = () => {
   emit('toggle-pause')
 }
 
+// ========== 编辑模式 ==========
+
+const handleToggleEditMode = () => {
+  emit('toggle-edit-mode')
+}
+
 // ========== 工具 ==========
 
 const handleShowImport = () => {
   emit('show-import')
 }
 
+const handleShowPawnImport = () => {
+  emit('show-pawn-import')
+}
+
+const handleShowMoodRules = () => {
+  emit('show-mood-rules')
+}
+
+const handleToggleFurnitureBar = () => {
+  emit('toggle-furniture-bar')
+}
+
+const handleDeleteFurniture = () => {
+  emit('delete-furniture')
+}
+
+const handleForceSave = () => {
+  emit('force-save')
+}
+
 const handleClosePanel = () => {
   emit('close-panel')
 }
 
-// ========== 房间类型图标 ==========
-
-const getRoomIcon = (room) => {
-  if (room.type === 'common') return '🌐'
-  if (room.type === 'bedroom') return '🛏️'
-  if (room.type === 'storage') return '📦'
-  return '🏠'
+const handleBackToSelect = () => {
+  emit('back-to-select')
 }
+
+const handleResetRoom = () => {
+  emit('reset-room')
+}
+
+// ========== 环境光调整 ==========
+
+const ambientLightPercent = computed(() => {
+  return Math.round(props.ambientLight * 100)
+})
+
+// 环境光强度等级描述
+const ambientLightLabel = computed(() => {
+  const val = props.ambientLight
+  if (val >= 1.0) return '☀️ 白天'
+  if (val >= 0.7) return '🌤️ 明亮'
+  if (val >= 0.5) return '⛅ 微暗'
+  if (val >= 0.3) return '🌙 夜晚'
+  return '🌑 深夜'
+})
+
+const handleAdjustAmbientLight = (event) => {
+  const value = parseFloat(event.target.value) / 100
+  emit('adjust-ambient-light', value)
+}
+
+// ========== 心情图标 ==========
 
 const getMoodDotClass = (pawn) => {
   const mood = pawn.mood?.value || 50
@@ -122,28 +149,55 @@ const getMoodDotClass = (pawn) => {
         </button>
       </div>
 
-      <!-- 房间列表 -->
+      <!-- 环境光调整 -->
       <div class="hamburger-section">
         <div class="hamburger-section-header">
-          <span>📍 房间列表</span>
-          <button class="hamburger-add-btn" @click="handleAddRoom">+ 新建</button>
+          <span>💡 环境亮度</span>
+          <span class="ambient-label">{{ ambientLightLabel }}</span>
         </div>
-        <div class="hamburger-room-list">
-          <div
-            v-for="room in sortedRooms"
-            :key="room.id"
-            class="hamburger-room-item"
-            :class="{ active: activeRoomId === room.id }"
-            @click="handleSelectRoom(room)"
-          >
-            <span class="room-icon">{{ getRoomIcon(room) }}</span>
-            <span class="room-name">{{ room.name }}</span>
-            <button
-              v-if="rooms.length > 1"
-              class="room-delete-btn"
-              @click.stop="handleDeleteRoom(room)"
-            >🗑️</button>
-          </div>
+        <div class="ambient-light-control">
+          <input
+            type="range"
+            class="ambient-slider"
+            min="10"
+            max="100"
+            step="10"
+            :value="ambientLightPercent"
+            @input="handleAdjustAmbientLight"
+          />
+          <span class="ambient-value">{{ ambientLightPercent }}%</span>
+        </div>
+        <p class="ambient-hint">调整整体房间亮度，光源会在暗处更明显</p>
+      </div>
+
+      <!-- 编辑模式 -->
+      <div class="hamburger-section">
+        <button class="hamburger-tool-btn" :class="{ active: editMode }" @click="handleToggleEditMode">
+          {{ editMode ? '📝 编辑模式' : '👁️ 观看模式' }}
+        </button>
+      </div>
+
+      <!-- 工具（仅在编辑模式下显示） -->
+      <div v-if="editMode" class="hamburger-section">
+        <div class="hamburger-section-header">
+          <span>🔧 编辑工具</span>
+        </div>
+        <div class="hamburger-tools">
+          <button class="hamburger-tool-btn" @click="handleToggleFurnitureBar">
+            🪑 家具栏
+          </button>
+          <button class="hamburger-tool-btn" @click="handleShowImport">
+            📦 导入家具
+          </button>
+          <button class="hamburger-tool-btn" @click="handleShowPawnImport">
+            👤 导入精灵
+          </button>
+          <button class="hamburger-tool-btn" @click="handleShowMoodRules">
+            💭 心情规则
+          </button>
+          <button v-if="hasSelectedFurniture" class="hamburger-tool-btn danger" @click="handleDeleteFurniture">
+            🗑️ 删除家具
+          </button>
         </div>
       </div>
 
@@ -151,13 +205,13 @@ const getMoodDotClass = (pawn) => {
       <div class="hamburger-section">
         <div class="hamburger-section-header">
           <span>👥 小人列表</span>
-          <button class="hamburger-add-btn" @click="handleAddPawn">+ 添加</button>
         </div>
         <div class="hamburger-pawn-list">
           <div
             v-for="pawn in sortedPawns"
             :key="pawn.id"
             class="hamburger-pawn-item"
+            :class="{ active: state.selectedPawnId === pawn.id }"
             @click="handleSelectPawn(pawn)"
           >
             <span class="pawn-mood-dot" :class="getMoodDotClass(pawn)"></span>
@@ -168,16 +222,17 @@ const getMoodDotClass = (pawn) => {
         </div>
       </div>
 
-      <!-- 工具 -->
+      <!-- 切换角色 -->
       <div class="hamburger-section">
-        <div class="hamburger-section-header">
-          <span>🔧 工具</span>
-        </div>
-        <div class="hamburger-tools">
-          <button class="hamburger-tool-btn" @click="handleShowImport">
-            📦 导入家具/背景
-          </button>
-        </div>
+        <button class="hamburger-tool-btn save" @click="handleForceSave">
+          💾 保存编辑
+        </button>
+        <button class="hamburger-tool-btn" @click="handleBackToSelect">
+          ← 切换角色房间
+        </button>
+        <button class="hamburger-tool-btn danger" @click="handleResetRoom">
+          🔄 重置房间
+        </button>
       </div>
 
       <!-- 关闭面板 -->
@@ -266,16 +321,6 @@ const getMoodDotClass = (pawn) => {
   color: #aaa;
 }
 
-.hamburger-add-btn {
-  background: #4a4a52;
-  border: none;
-  color: #eaeaea;
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
 /* 时间控制 */
 .hamburger-time {
   display: flex;
@@ -310,49 +355,52 @@ const getMoodDotClass = (pawn) => {
   background: #6a4a4a;
 }
 
-/* 房间列表 */
-.hamburger-room-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.hamburger-room-item {
+/* 环境光控制 */
+.ambient-light-control {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  background: #2a2a32;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ambient-slider {
+  flex: 1;
+  height: 8px;
+  background: #3a3a42;
   border-radius: 4px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.ambient-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #6a8a6a;
+  border-radius: 9px;
   cursor: pointer;
   transition: background 0.15s;
 }
 
-.hamburger-room-item:hover {
-  background: #3a3a42;
+.ambient-slider::-webkit-slider-thumb:hover {
+  background: #8aaa8a;
 }
 
-.hamburger-room-item.active {
-  background: #4a5a4a;
-  border-left: 3px solid #6a8a6a;
+.ambient-value {
+  font-size: 14px;
+  color: #8aa;
+  min-width: 36px;
+  text-align: right;
 }
 
-.room-icon {
-  font-size: 16px;
-}
-
-.room-name {
-  flex: 1;
+.ambient-label {
   font-size: 14px;
 }
 
-.room-delete-btn {
-  background: transparent;
-  border: none;
-  color: #666;
+.ambient-hint {
   font-size: 12px;
-  padding: 2px 4px;
-  cursor: pointer;
+  color: #666;
+  margin-top: 4px;
 }
 
 /* 小人列表 */
@@ -374,6 +422,11 @@ const getMoodDotClass = (pawn) => {
 
 .hamburger-pawn-item:hover {
   background: #3a3a42;
+}
+
+.hamburger-pawn-item.active {
+  background: #4a5a4a;
+  border-left: 3px solid #6a8a6a;
 }
 
 .pawn-mood-dot {
@@ -424,6 +477,26 @@ const getMoodDotClass = (pawn) => {
   background: #4a4a52;
 }
 
+.hamburger-tool-btn.active {
+  background: #6a8a6a;
+}
+
+.hamburger-tool-btn.save {
+  background: #5a7a5a;
+}
+
+.hamburger-tool-btn.save:hover {
+  background: #6a8a6a;
+}
+
+.hamburger-tool-btn.danger {
+  background: #6a4a4a;
+}
+
+.hamburger-tool-btn.danger:hover {
+  background: #8a4a4a;
+}
+
 /* 底部 */
 .hamburger-footer {
   padding: 16px;
@@ -450,7 +523,6 @@ const getMoodDotClass = (pawn) => {
     width: 260px;
   }
 
-  .hamburger-room-item,
   .hamburger-pawn-item {
     padding: 12px 14px;
   }
@@ -461,5 +533,27 @@ const getMoodDotClass = (pawn) => {
     padding: 14px;
     font-size: 16px;
   }
+}
+
+/* Android 下的按钮样式修复 */
+.platform-android.android-portrait .hamburger-close,
+.platform-android.android-portrait .hamburger-pause-btn,
+.platform-android.android-portrait .hamburger-tool-btn,
+.platform-android.android-portrait .hamburger-exit-btn {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  flex: none !important;
+  font-size: 1.1rem !important;
+  padding: 6px 10px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
 }
 </style>

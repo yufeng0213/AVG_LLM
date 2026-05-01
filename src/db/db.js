@@ -13,3 +13,11 @@ export {
   loadBookFull, loadAllBooksFull, insertBook, clearAllTables,
   rowToWorldBook,
 } from './repos/worldBook.repo.js'
+
+export {
+  saveRoomState, loadRoomState,
+  saveFurnitureLibrary, loadFurnitureLibrary,
+  savePawnSprites, loadPawnSprites, loadAllPawnSprites,
+  deleteFurnitureFromLibrary,
+  clearRoomSimData, isRoomSimSQLiteAvailable,
+} from '../plugins/handheld-xx-room-simulation/state/roomSimRepo.js'

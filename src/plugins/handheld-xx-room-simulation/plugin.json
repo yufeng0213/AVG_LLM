@@ -1,10 +1,27 @@
 {
   "id": "handheld-xx-room-simulation",
   "name": "房间模拟",
+  "description": "房间模拟经营系统，支持多房间、小人AI、家具布置等。",
   "version": "1.0.0",
-  "type": "handheld",
-  "entry": "index.vue",
-  "icon": "🏠",
-  "replaces": [],
-  "runtime": "bundled"
+  "apiVersion": 1,
+  "runtime": "local",
+  "menu": {
+    "key": "room-simulation",
+    "title": "房间模拟",
+    "icon": "🏠",
+    "order": 40,
+    "variant": "tone-green border-solid tilt-right"
+  },
+  "entry": {
+    "type": "route",
+    "module": "./index.vue",
+    "route": "room-simulation"
+  },
+  "storage": {
+    "namespace": "room-simulation"
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "enabledByDefault": true
 }

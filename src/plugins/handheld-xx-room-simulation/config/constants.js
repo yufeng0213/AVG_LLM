@@ -8,11 +8,12 @@ export const ROOM_GRID_MAX_HEIGHT = 24
 export const ROOM_DEFAULT_WIDTH = 24
 export const ROOM_DEFAULT_HEIGHT = 16
 
-// 像素精灵尺寸（复用现有系统）
-export const SPRITE_PIXEL_SIZE = 2
-export const SPRITE_GRID_SIZE = 16
-export const ROOM_CELL_SIZE = 32  // 每个网格单元格的渲染尺寸（像素）
+// 像素精灵尺寸
+export const SPRITE_PIXEL_SIZE = 4  // 每个像素块渲染尺寸（64px格子 / 16格 = 4px）
+export const SPRITE_GRID_SIZE = 16  // 精灵网格尺寸（16x16像素块）
+export const ROOM_CELL_SIZE = 64  // 每个网格单元格的渲染尺寸（像素）
 export const ROOM_TILE_SIZE = ROOM_CELL_SIZE // 同义词
+export const PAWN_SPRITE_DISPLAY_SIZE = 96  // 小人精灵显示尺寸（像素），用于自定义导入的精灵
 
 // Tile 类型常量
 export const TILE_TYPE_FLOOR = 'floor'
@@ -29,6 +30,10 @@ export const FURNITURE_KIND_SOCIAL = 'social'
 export const FURNITURE_KIND_STORAGE = 'storage'
 export const FURNITURE_KIND_DECOR = 'decor'
 export const FURNITURE_KIND_UTIL = 'utility'
+
+export const FURNITURE_KIND_LIST = ['floor', 'sleep', 'food', 'work', 'social', 'storage', 'decor', 'utility']
+
+export const INTERACTION_TYPE_LIST = ['none', 'work', 'sleep', 'eat', 'storage', 'social']
 
 // 交互类型
 export const INTERACTION_TYPE_WORK = 'work'
@@ -91,7 +96,7 @@ export const TIME_NIGHT_START_HOUR = 18
 export const TICKS_PER_HOUR = 60
 
 // 数量限制
-export const MAX_ROOM_FURNITURE_ITEMS = 64
+export const MAX_ROOM_FURNITURE_ITEMS = 256
 export const MAX_PAWN_COUNT = 8
 export const MAX_LOG_COUNT = 200
 export const MAX_PATH_LENGTH = 128

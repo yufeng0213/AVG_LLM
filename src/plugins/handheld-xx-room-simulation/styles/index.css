@@ -105,26 +105,44 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(60, 60, 70, 0.3);
+  border: 1px solid rgba(180, 180, 190, 0.25);
+  background: #1a1a22;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
 }
 
 .room-sim-cell.wall {
-  background: #3a3a42;
+  background: #2a2a32;
+  border-color: rgba(200, 200, 210, 0.4);
 }
 
 .room-sim-cell.floor {
-  background: #2a2a32;
-}
-
-.room-sim-cell.door {
-  background: #5a4a3a;
+  background: #1a1a22;
 }
 
 .room-sim-cell:hover {
-  border-color: rgba(100, 140, 100, 0.5);
+  border-color: rgba(100, 140, 100, 0.6);
+}
+
+/* 放置预览格子（RimWorld风格） */
+.room-sim-preview-cell {
+  position: absolute;
+  border: 2px solid rgba(100, 200, 100, 0.8);
+  background: rgba(100, 200, 100, 0.2);
+  pointer-events: none;
+  z-index: 50;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.room-sim-preview-cell.valid {
+  border-color: rgba(100, 200, 100, 0.8);
+  background: rgba(100, 200, 100, 0.15);
+}
+
+.room-sim-preview-cell.invalid {
+  border-color: rgba(200, 100, 100, 0.8);
+  background: rgba(200, 100, 100, 0.2);
 }
 
 /* 家具层 */
@@ -135,6 +153,10 @@
   justify-content: center;
   cursor: pointer;
   transition: transform 0.1s, box-shadow 0.1s;
+  /* 移除浏览器默认高亮 */
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
 .room-sim-furniture:hover {
@@ -151,6 +173,12 @@
   box-shadow: 0 0 6px rgba(140, 100, 100, 0.8);
 }
 
+.room-sim-furniture img {
+  outline: none;
+  border: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* 小人层 */
 .room-sim-pawn {
   position: absolute;
@@ -158,16 +186,23 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: left 0.08s linear, top 0.08s linear;
+  /* 移除浏览器默认高亮 */
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  /* 移除任何视觉效果 */
+  filter: none;
+  box-shadow: none;
+  background: transparent;
 }
 
-.room-sim-pawn:hover {
-  filter: brightness(1.2);
-}
-
-.room-sim-pawn.selected {
-  filter: brightness(1.3);
-  box-shadow: 0 0 10px rgba(140, 140, 100, 0.6);
+.room-sim-pawn:hover,
+.room-sim-pawn.selected,
+.room-sim-pawn:focus,
+.room-sim-pawn:active {
+  filter: none;
+  box-shadow: none;
+  outline: none;
 }
 
 .room-sim-pawn.moving {
@@ -176,9 +211,95 @@
 
 .room-sim-pawn img,
 .room-sim-pawn svg {
-  width: 32px;
-  height: 32px;
+  width: 96px;
+  height: 96px;
   object-fit: contain;
+  /* 移除图片默认样式 */
+  outline: none;
+  border: none;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+  filter: none;
+  box-shadow: none;
+}
+
+/* 光照遮罩层容器 */
+.room-sim-light-mask-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 300;  /* 在小人层(200+)之上，UI层之下 */
+}
+
+.room-sim-light-mask-container canvas {
+  display: block;
+}
+
+/* 对话气泡 */
+.room-sim-speech-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 350;  /* 在光照遮罩(300)之上 */
+  animation: bubble-fade-in 0.3s ease-out;
+}
+
+.room-sim-speech-bubble.bubble-pop {
+  animation: bubble-pop-in 0.15s ease-out;
+}
+
+.bubble-content {
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  max-width: 120px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(200, 200, 200, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bubble-tail {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 10px solid rgba(255, 255, 255, 0.95);
+  margin-top: -1px;
+}
+
+/* 气泡动画 */
+@keyframes bubble-pop-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+@keyframes bubble-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 /* 小人需求指示器 */
@@ -431,4 +552,40 @@
 
 .room-sim-log-item.highlight {
   color: #eaeaea;
+}
+
+/* Android 下的按钮样式修复 */
+.platform-android.android-portrait .room-sim-btn,
+.platform-android.android-portrait .toolbar-btn,
+.platform-android.android-portrait .toolbar-hamburger,
+.platform-android.android-portrait .direction-btn,
+.platform-android.android-portrait .furniture-bar-close,
+.platform-android.android-portrait .furniture-bar-item,
+.platform-android.android-portrait .btn-primary,
+.platform-android.android-portrait .btn-secondary,
+.platform-android.android-portrait .close-btn,
+.platform-android.android-portrait .sprite-clear,
+.platform-android.android-portrait .hamburger-close,
+.platform-android.android-portrait .hamburger-pause-btn,
+.platform-android.android-portrait .hamburger-add-btn,
+.platform-android.android-portrait .hamburger-tool-btn,
+.platform-android.android-portrait .hamburger-exit-btn,
+.platform-android.android-portrait .close-select-btn,
+.platform-android.android-portrait .character-card,
+.platform-android.android-portrait .back-btn {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  flex: none !important;
+  font-size: 1.1rem !important;
+  padding: 6px 10px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
 }

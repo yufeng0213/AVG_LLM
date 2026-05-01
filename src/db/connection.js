@@ -603,6 +603,47 @@ CREATE INDEX IF NOT EXISTS idx_task_history_task ON task_execution_history(task_
 CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);
 CREATE INDEX IF NOT EXISTS idx_fridge_items_remaining ON fridge_items(remaining);
 CREATE INDEX IF NOT EXISTS idx_fridge_purchases_date ON fridge_purchases(date);
+
+-- ============================================================
+-- 房间模拟（handheld-xx-room-simulation）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS room_sim_states (
+  id TEXT PRIMARY KEY,
+  world_book_id TEXT NOT NULL,
+  character_id TEXT NOT NULL,
+  state_data TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(world_book_id, character_id)
+);
+
+CREATE TABLE IF NOT EXISTS room_sim_furniture_library (
+  id TEXT PRIMARY KEY,
+  world_book_id TEXT NOT NULL,
+  character_id TEXT NOT NULL,
+  furniture_data TEXT NOT NULL,
+  name TEXT NOT NULL,
+  width INTEGER NOT NULL DEFAULT 1,
+  height INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  UNIQUE(world_book_id, character_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS room_sim_pawn_sprites (
+  id TEXT PRIMARY KEY,
+  world_book_id TEXT NOT NULL,
+  character_id TEXT NOT NULL,
+  pawn_id TEXT NOT NULL,
+  sprite_front TEXT DEFAULT '',
+  sprite_back TEXT DEFAULT '',
+  sprite_left TEXT DEFAULT '',
+  sprite_right TEXT DEFAULT '',
+  updated_at TEXT NOT NULL,
+  UNIQUE(world_book_id, character_id, pawn_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_room_sim_states_book ON room_sim_states(world_book_id);
+CREATE INDEX IF NOT EXISTS idx_room_sim_furniture_book ON room_sim_furniture_library(world_book_id);
+CREATE INDEX IF NOT EXISTS idx_room_sim_sprites_book ON room_sim_pawn_sprites(world_book_id);
 `
 
 // --- 查询辅助函数 ---

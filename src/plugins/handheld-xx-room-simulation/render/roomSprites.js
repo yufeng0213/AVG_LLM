@@ -209,7 +209,7 @@ const resolveFurnitureColor = (token, paletteKey) => {
 // 构建家具精灵 SVG URI（支持自定义精灵和多格子）
 const buildFurnitureSpriteUri = (furniture) => {
   // 检查是否有自定义精灵数据（从 PNG 导入）
-  if (furniture?.customSprite?.pixels16 && furniture?.customSprite?.palette) {
+  if (furniture?.customSprite?.base64) {
     return buildCustomFurnitureSpriteUri(furniture)
   }
 
@@ -237,43 +237,21 @@ const buildFurnitureSpriteUri = (furniture) => {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }
 
-// 构建自定义精灵（从 PNG 导入）- 支持多格子尺寸
+// 构建自定义精灵（从 PNG 导入）- 直接使用原始 PNG base64
 const buildCustomFurnitureSpriteUri = (furniture) => {
   const custom = furniture?.customSprite || {}
-  const palette = custom.palette || ['#00000000', '#808080']
-  const pixels = custom.pixels16 || []
-  const width = furniture?.width || 1
-  const height = furniture?.height || 1
 
-  // 计算精灵实际渲染尺寸（多格子家具需要更大的精灵）
-  const spriteWidth = SPRITE_GRID_SIZE * SPRITE_PIXEL_SIZE * width
-  const spriteHeight = SPRITE_GRID_SIZE * SPRITE_PIXEL_SIZE * height
-
-  let rects = ''
-
-  // 如果有每个格子的像素数据
-  if (Array.isArray(pixels) && pixels.length >= SPRITE_GRID_SIZE) {
-    for (let cellY = 0; cellY < height; cellY++) {
-      for (let cellX = 0; cellX < width; cellX++) {
-        const cellOffsetX = cellX * SPRITE_GRID_SIZE * SPRITE_PIXEL_SIZE
-        const cellOffsetY = cellY * SPRITE_GRID_SIZE * SPRITE_PIXEL_SIZE
-
-        for (let y = 0; y < SPRITE_GRID_SIZE; y++) {
-          const row = pixels[y + cellY * SPRITE_GRID_SIZE] || ''
-          for (let x = 0; x < SPRITE_GRID_SIZE; x++) {
-            const char = row[x + cellX * SPRITE_GRID_SIZE] || '0'
-            const index = parseInt(char, 16) || 0
-            const color = palette[index] || '#00000000'
-            if (color === '#00000000' || color === '#00000000') continue
-            rects += `<rect x="${cellOffsetX + x * SPRITE_PIXEL_SIZE}" y="${cellOffsetY + y * SPRITE_PIXEL_SIZE}" width="${SPRITE_PIXEL_SIZE}" height="${SPRITE_PIXEL_SIZE}" fill="${color}"/>`
-          }
-        }
-      }
-    }
+  // 直接返回原始 PNG base64
+  if (custom.base64) {
+    return custom.base64
   }
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spriteWidth}" height="${spriteHeight}" viewBox="0 0 ${spriteWidth} ${spriteHeight}" shape-rendering="crispEdges">${rects}</svg>`
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+  // 没有 base64 时返回空 SVG
+  const cellWidth = furniture?.width || 1
+  const cellHeight = furniture?.height || 1
+  const spriteWidth = cellWidth * ROOM_CELL_SIZE
+  const spriteHeight = cellHeight * ROOM_CELL_SIZE
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${spriteWidth}" height="${spriteHeight}"/>`
 }
 
 // 构建 Tile 精灵 SVG URI
@@ -372,6 +350,11 @@ export const createRoomSpriteResolver = (options = {}) => {
   }
 
   const getFurnitureSpriteSrc = (furniture) => {
+    // 自定义精灵（PNG 导入）直接返回 base64
+    if (furniture?.customSprite?.base64) {
+      return buildCustomFurnitureSpriteUri(furniture)
+    }
+
     const spec = furniture?.spriteSpec || {}
     const cacheKey = `${furniture?.id || 'furn'}|${spec.motif}|${spec.palette}|${spec.silhouette}|${spec.seed}`
     if (cache.has(cacheKey)) {
