@@ -161,7 +161,7 @@ export function useCallPush({ onNewCall, onNotificationClick }) {
         openingText.trim().slice(0, 60),
         contact.id,
         contact.name,
-        'calls',
+        'sms',
       )
     } catch (e) {
       console.warn('[CallPush] 来电推送失败:', e)

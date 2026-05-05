@@ -8,7 +8,13 @@ import {
   ROOM_GRID_MIN_HEIGHT,
   ROOM_GRID_MAX_HEIGHT,
   MAX_ROOM_FURNITURE_ITEMS,
+  DEFAULT_INVENTORY_CAPACITY,
 } from '../../config/constants.js'
+
+import { createItemEngine } from '../world/itemEngine.js'
+import { DEFAULT_SHOP_PRODUCTS } from '../../state/initialState.js'
+
+const itemEngine = createItemEngine()
 
 const fallbackClampInt = (value, min, max, fallback = min) => {
   const parsed = Number.parseInt(String(value), 10)
@@ -139,11 +145,12 @@ export const createRoomEngine = (deps = {}) => {
     const height = clampInt(f.height, 1, 4, 1)
     const maxX = roomWidth - width
     const maxY = roomHeight - height
+    const kind = normalizeFurnitureKind(f.kind)
 
     return {
       id: String(f.id || makeId('furn')).slice(0, 48),
       name: String(f.name || `家具${index + 1}`).slice(0, 24),
-      kind: normalizeFurnitureKind(f.kind),
+      kind,
       width,
       height,
       x: clampInt(f.x, 0, maxX, clampInt(index % roomWidth, 0, maxX, 0)),
@@ -160,21 +167,50 @@ export const createRoomEngine = (deps = {}) => {
       spriteTemplate: f.spriteTemplate || null,
       // 保留自定义精灵数据（导入的PNG家具）
       customSprite: f.customSprite || null,
+      // 存储家具属性
+      inventory: normalizeInventory(f.inventory),
+      inventoryCapacity: clampInt(f.inventoryCapacity, 10, 200, DEFAULT_INVENTORY_CAPACITY),
+      inventoryFilter: Array.isArray(f.inventoryFilter) ? f.inventoryFilter.slice(0, 10) : null,
+      // 售货机属性
+      shopInventory: kind === 'vending' ? normalizeShopInventory(f.shopInventory) : null,
+      shopAutoRestock: Boolean(f.shopAutoRestock !== false),
+      // 光源属性（已有）
+      lightSource: f.lightSource || null,
     }
   }
 
   // 规范化家具类型
   const normalizeFurnitureKind = (rawKind) => {
-    const validKinds = ['floor', 'sleep', 'food', 'work', 'social', 'storage', 'decor', 'utility']
+    const validKinds = ['floor', 'sleep', 'food', 'work', 'social', 'storage', 'decor', 'utility', 'vending']
     const kind = String(rawKind || '').toLowerCase().trim()
     return validKinds.includes(kind) ? kind : 'decor'
   }
 
   // 规范化交互类型
   const normalizeInteractionType = (rawType) => {
-    const validTypes = ['work', 'sleep', 'eat', 'storage', 'social', 'none']
+    const validTypes = ['work', 'sleep', 'eat', 'storage', 'social', 'shop', 'none']
     const type = String(rawType || '').toLowerCase().trim()
     return validTypes.includes(type) ? type : 'none'
+  }
+
+  // 规范化库存列表
+  const normalizeInventory = (rawList) => {
+    if (!Array.isArray(rawList)) return []
+    return rawList.slice(0, 100).map(item => itemEngine.normalizeItem(item))
+  }
+
+  // 规范化售货机商品列表
+  const normalizeShopInventory = (rawList) => {
+    if (!Array.isArray(rawList)) return DEFAULT_SHOP_PRODUCTS.map(p => ({ ...p }))
+    return rawList.slice(0, 20).map(p => ({
+      templateId: String(p.templateId || 'food-simple').slice(0, 32),
+      name: String(p.name || '商品').slice(0, 24),
+      type: ['food', 'material', 'product'].includes(p.type) ? p.type : 'food',
+      price: Math.max(1, Number(p.price) || 10),
+      effect: p.effect && typeof p.effect === 'object' ? { ...p.effect } : { hunger: 20 },
+      stock: Math.max(0, Number(p.stock) || 10),
+      maxStock: Math.max(10, Number(p.maxStock) || 20),
+    }))
   }
 
   // 规范化需求满足
@@ -285,6 +321,8 @@ export const createRoomEngine = (deps = {}) => {
     normalizeRoomTile,
     normalizeRoomMap,
     normalizeFurniture,
+    normalizeInventory,
+    normalizeShopInventory,
     createDefaultRoomMap,
     cloneRoomMapState,
     isRoomMapValid,

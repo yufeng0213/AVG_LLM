@@ -503,6 +503,12 @@ export const createDefaultDisplaySettings = () => ({
   activeCardBorderId: '',
 })
 
+// 创建默认背景配置
+export const createDefaultBackgroundSettings = () => ({
+  defaultBackgroundPath: '',  // 默认背景图路径（当场景无匹配时使用）
+  defaultBackgroundName: '默认背景',  // 默认背景名称
+})
+
 // 创建新场景配置
 export const createNewScene = (index = 1) => ({
   id: `scene_${Date.now()}_${index}`,
@@ -704,6 +710,15 @@ const normalizeScenes = (rawScenes) => {
   return rawScenes.map((scene, index) => normalizeScene(scene, index)).filter((s) => s.name || s.background)
 }
 
+// 规范化默认背景配置
+const normalizeBackgroundSettings = (rawSettings) => {
+  const fallback = createDefaultBackgroundSettings()
+  return {
+    defaultBackgroundPath: String(rawSettings?.defaultBackgroundPath || rawSettings?.defaultBackground || '').trim(),
+    defaultBackgroundName: String(rawSettings?.defaultBackgroundName || rawSettings?.defaultBackgroundName || fallback.defaultBackgroundName).trim(),
+  }
+}
+
 export const createDefaultRelationships = () => ({})
 
 export const normalizeRelationships = (raw, characters) => {
@@ -754,6 +769,7 @@ export const createDefaultWorldBook = () => ({
   directorEvents: [],
   scenes: [],  // 新增：场景列表
   backgroundAssets: createEmptyBackgroundAssets(),
+  backgroundSettings: createDefaultBackgroundSettings(),  // 新增：默认背景配置
   displaySettings: createDefaultDisplaySettings(),
   openingDialogueMode: 'auto',
   openingDialogue: [],
@@ -793,6 +809,7 @@ export const normalizeWorldBook = (rawBook, index = 0) => {
     directorEvents: normalizeDirectorEvents(rawBook?.directorEvents),
     scenes: normalizeScenes(rawBook?.scenes),
     backgroundAssets: normalizeBackgroundAssets(rawBook?.backgroundAssets),
+    backgroundSettings: normalizeBackgroundSettings(rawBook?.backgroundSettings),
     displaySettings: normalizeDisplaySettings(rawBook?.displaySettings),
     openingDialogueMode,
     openingDialogue: hasLegacyDefaultOpening ? [] : normalizedOpeningDialogue,
@@ -909,6 +926,12 @@ async function _loadBookSummariesSQLite() {
     })
   }
 
+  const charIds = chars.map(c => c.id)
+  const charIn = charIds.length > 0 ? '(' + charIds.map(() => '?').join(',') + ')' : '(null)'
+  const charPortraits = charIds.length > 0
+    ? await query('SELECT id, character_id, label, emotion, file_path, added_at FROM character_portraits WHERE character_id IN ' + charIn, charIds)
+    : []
+
   const stickerMapByBook = {}
   for (const s of stickers) {
     if (!stickerMapByBook[s.world_book_id]) stickerMapByBook[s.world_book_id] = {}
@@ -917,6 +940,24 @@ async function _loadBookSummariesSQLite() {
   for (const bookId of bookIds) {
     const sd = stickerMapByBook[bookId] || {}
     for (const c of (charMap[bookId] || [])) { c.smsStickers = { ...sd } }
+  }
+
+  const portraitMap = {}
+  for (const p of charPortraits) {
+    if (!portraitMap[p.character_id]) portraitMap[p.character_id] = []
+    portraitMap[p.character_id].push({
+      id: p.id,
+      label: p.label || '',
+      emotion: p.emotion || 'default',
+      filePath: p.file_path,
+      fileName: p.file_path.split('/').pop() || p.file_path,
+      addedAt: p.added_at,
+    })
+  }
+  for (const bookId of bookIds) {
+    for (const c of (charMap[bookId] || [])) {
+      c.portraits = portraitMap[c.id] || []
+    }
   }
 
   const relMap = {}

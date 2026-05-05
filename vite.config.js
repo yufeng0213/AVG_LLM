@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { readFileSync, writeFileSync } from 'fs'
-import { resolve } from 'path'
+import { readFileSync, writeFileSync, existsSync, statSync } from 'fs'
+import { resolve, extname } from 'path'
 
 export default defineConfig({
   plugins: [
@@ -18,6 +18,24 @@ export default defineConfig({
         } catch (e) {
           // silently ignore if file doesn't exist (dev mode)
         }
+      },
+    },
+    {
+      name: 'serve-data-folder',
+      configureServer(server) {
+        // Serve /data/* from project root's data/ directory
+        server.middlewares.use('/data', (req, res, next) => {
+          const filePath = resolve(__dirname, 'data', req.url)
+          if (existsSync(filePath) && statSync(filePath).isFile()) {
+            const content = readFileSync(filePath)
+            const ext = extname(filePath)
+            const mimes = { '.json': 'application/json', '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' }
+            res.writeHead(200, { 'Content-Type': mimes[ext] || 'text/plain' })
+            res.end(content)
+          } else {
+            next()
+          }
+        })
       },
     },
   ],

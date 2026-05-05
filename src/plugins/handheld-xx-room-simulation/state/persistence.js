@@ -1,4 +1,4 @@
-import { resolveStorageScopeKey, resolveFurnitureLibraryKey } from './storageScope.js'
+import { resolveStorageScopeKey, resolveFurnitureLibraryKey, resolvePublicRoomKey, resolvePublicRoomRegistryKey } from './storageScope.js'
 import {
   saveRoomState,
   loadRoomState,
@@ -234,4 +234,44 @@ export const restoreStateSnapshot = async (options = {}) => {
     const fallback = typeof buildDefaultState === 'function' ? buildDefaultState() : null
     return { state: fallback, error: String(e?.message || e), fromStorage: false, isNew: true }
   }
+}
+
+// ========== 公共区域房间持久化 ==========
+
+export const loadPublicRoomRegistry = async (storage, worldBookId) => {
+  const key = resolvePublicRoomRegistryKey(worldBookId)
+  try {
+    const raw = await storage.get(key)
+    return Array.isArray(raw) ? raw : []
+  } catch {
+    return []
+  }
+}
+
+export const savePublicRoomRegistry = async (storage, worldBookId, registry) => {
+  const key = resolvePublicRoomRegistryKey(worldBookId)
+  await storage.set(key, registry)
+}
+
+export const loadPublicRoomState = async (storage, worldBookId, roomId) => {
+  const key = resolvePublicRoomKey(worldBookId, roomId)
+  try {
+    const raw = await storage.get(key)
+    return raw && typeof raw === 'object' ? raw : null
+  } catch {
+    return null
+  }
+}
+
+export const savePublicRoomState = async (storage, worldBookId, roomId, stateData) => {
+  const key = resolvePublicRoomKey(worldBookId, roomId)
+  await storage.set(key, { ...stateData, updatedAt: Date.now() })
+}
+
+export const deletePublicRoom = async (storage, worldBookId, roomId) => {
+  const key = resolvePublicRoomKey(worldBookId, roomId)
+  try { await storage.remove(key) } catch {}
+  const registry = await loadPublicRoomRegistry(storage, worldBookId)
+  const filtered = registry.filter(r => r.id !== roomId)
+  await savePublicRoomRegistry(storage, worldBookId, filtered)
 }

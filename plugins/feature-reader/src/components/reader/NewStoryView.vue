@@ -124,21 +124,28 @@ async function handleGenerate() {
 
 <template>
   <div class="new-story">
-    <h2 class="new-title">新建故事</h2>
+    <!-- 标题栏 -->
+    <div class="new-header">
+      <button class="new-back-btn" @click="emit('back')"><</button>
+      <span class="new-title">新建故事</span>
+      <span class="new-spacer" />
+    </div>
 
     <div class="new-form">
       <!-- 选择世界书 -->
-      <label class="new-label">选择世界书</label>
-      <select v-model="selectedBookId" class="new-select">
-        <option value="" disabled>请选择...</option>
-        <option
-          v-for="book in worldBooks"
-          :key="book.id"
-          :value="book.id"
-        >
-          {{ book.title }}
-        </option>
-      </select>
+      <div class="form-group">
+        <label class="form-label">选择世界书</label>
+        <select v-model="selectedBookId" class="form-select">
+          <option value="" disabled>请选择...</option>
+          <option
+            v-for="book in worldBooks"
+            :key="book.id"
+            :value="book.id"
+          >
+            {{ book.title }}
+          </option>
+        </select>
+      </div>
 
       <!-- 世界书信息预览 -->
       <div v-if="selectedBook" class="book-preview">
@@ -149,38 +156,44 @@ async function handleGenerate() {
       </div>
 
       <!-- 故事标题 -->
-      <label class="new-label">故事标题（可选）</label>
-      <input
-        v-model="title"
-        class="new-input"
-        type="text"
-        placeholder="留空由 AI 自动生成..."
-        maxlength="50"
-      />
+      <div class="form-group">
+        <label class="form-label">故事标题（可选）</label>
+        <input
+          v-model="title"
+          class="form-input"
+          type="text"
+          placeholder="留空由 AI 自动生成..."
+          maxlength="50"
+        />
+      </div>
 
       <!-- 故事简介 -->
-      <label class="new-label">故事简介（可选）</label>
-      <textarea
-        v-model="brief"
-        class="new-textarea"
-        placeholder="留空由 AI 自行构思故事方向..."
-        maxlength="500"
-        rows="4"
-      />
+      <div class="form-group">
+        <label class="form-label">故事简介（可选）</label>
+        <textarea
+          v-model="brief"
+          class="form-textarea"
+          placeholder="留空由 AI 自行构思故事方向..."
+          maxlength="500"
+          rows="4"
+        />
+      </div>
 
       <!-- 字数设置 -->
-      <label class="new-label">每章字数: {{ wordCount }}</label>
-      <input
-        v-model="wordCount"
-        class="new-range"
-        type="range"
-        min="500"
-        max="3000"
-        step="100"
-      />
-      <div class="range-labels">
-        <span>500</span>
-        <span>3000</span>
+      <div class="form-group">
+        <label class="form-label">每章字数: {{ wordCount }}</label>
+        <input
+          v-model="wordCount"
+          class="form-range"
+          type="range"
+          min="500"
+          max="3000"
+          step="100"
+        />
+        <div class="range-labels">
+          <span>500</span>
+          <span>3000</span>
+        </div>
       </div>
 
       <!-- 错误信息 -->
@@ -198,100 +211,135 @@ async function handleGenerate() {
         {{ generating ? '正在生成第一章...' : '生成第一章' }}
       </button>
     </div>
+
+    <div class="bottom-spacer" />
   </div>
 </template>
 
 <style scoped>
 .new-story {
-  padding: 16px;
-  min-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(180deg, #f5f0ff 0%, #ede4ff 100%);
+}
+
+/* 标题栏 */
+.new-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  padding-top: 10px;
+}
+
+.new-back-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: #2d2040;
+  cursor: pointer;
+  padding: 4px 8px;
 }
 
 .new-title {
-  font-size: 1.1rem;
+  flex: 1;
+  text-align: center;
+  font-size: 1rem;
   font-weight: 700;
-  margin-bottom: 16px;
-  color: var(--reader-text, #fff);
+  color: #2d2040;
+}
+
+.new-spacer {
+  width: 40px;
 }
 
 .new-form {
+  padding: 0 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
-.new-label {
-  font-size: 0.82rem;
-  color: var(--reader-secondary, #8b9dc3);
+.form-group {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #2d2040;
   font-weight: 600;
+  margin-bottom: 8px;
 }
 
-.new-select,
-.new-input,
-.new-textarea {
-  background: var(--reader-panel-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--reader-border, rgba(255, 255, 255, 0.1));
+.form-select,
+.form-input,
+.form-textarea {
+  background: #f8f4ff;
+  border: 1px solid #e8e0f0;
   border-radius: 10px;
   padding: 10px 12px;
-  color: var(--reader-text, #fff);
-  font-size: 0.9rem;
+  color: #2d2040;
+  font-size: 0.88rem;
   outline: none;
+  width: 100%;
+  box-sizing: border-box;
   transition: border-color 0.2s;
 }
 
-.new-select:focus,
-.new-input:focus,
-.new-textarea:focus {
-  border-color: var(--reader-accent-start, #667eea);
+.form-select:focus,
+.form-input:focus,
+.form-textarea:focus {
+  border-color: #7c5cbf;
 }
 
-.new-select {
+.form-select {
   appearance: none;
   cursor: pointer;
 }
 
-.new-textarea {
+.form-textarea {
   resize: vertical;
   font-family: inherit;
 }
 
 .book-preview {
-  background: var(--reader-panel-bg, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--reader-border, rgba(255, 255, 255, 0.06));
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-top: 4px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .book-preview-summary {
   font-size: 0.8rem;
-  color: var(--reader-secondary, #aaa);
+  color: #5a3d8a;
   margin: 0 0 6px;
 }
 
 .book-preview-chars {
   font-size: 0.75rem;
-  color: var(--reader-secondary, #666);
-  opacity: 0.6;
+  color: #b0a8c0;
   margin: 0;
 }
 
-.new-range {
+.form-range {
   width: 100%;
-  accent-color: var(--reader-accent-start, #667eea);
+  accent-color: #7c5cbf;
 }
 
 .range-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.72rem;
-  color: var(--reader-secondary, #555);
-  opacity: 0.5;
+  font-size: 0.7rem;
+  color: #b0a8c0;
+  margin-top: 4px;
 }
 
 .new-error {
-  background: rgba(255, 77, 77, 0.1);
-  border: 1px solid rgba(255, 77, 77, 0.3);
+  background: rgba(255, 77, 77, 0.08);
+  border: 1px solid rgba(255, 77, 77, 0.2);
   border-radius: 10px;
   padding: 10px 12px;
   color: #ff6b6b;
@@ -299,16 +347,16 @@ async function handleGenerate() {
 }
 
 .new-generate-btn {
-  background: linear-gradient(135deg, var(--reader-accent-start, #667eea), var(--reader-accent-end, #764ba2));
+  background: linear-gradient(135deg, #7c5cbf, #9b8ec4);
   border: none;
-  color: var(--reader-text, #fff);
+  color: #fff;
   padding: 14px;
-  border-radius: 12px;
-  font-size: 1rem;
+  border-radius: 24px;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.15s, opacity 0.2s;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .new-generate-btn:hover:not(:disabled) {
@@ -333,5 +381,28 @@ async function handleGenerate() {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.bottom-spacer {
+  height: 20px;
+}
+
+.platform-android.android-portrait .new-back-btn,
+.platform-android.android-portrait .new-generate-btn {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  flex: none !important;
+  font-size: 1.1rem !important;
+  padding: 6px 14px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
 }
 </style>

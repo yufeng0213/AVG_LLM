@@ -1,15 +1,12 @@
 /**
- * SmsFilePreview.vue — 文件预览 + 打印
- *
- * 加载 data/printables/{type}/index.html 模板，
- * 用 JSON 变量替换 {{占位符}}，渲染后提供打印功能。
+ * SmsFilePreview.vue — 文件预览 + 打印（浅色主题）
  */
 <template>
   <div v-if="visible" class="file-preview-overlay" @click.self="close">
     <div class="file-preview-modal">
       <div class="file-preview-header">
         <span class="file-preview-title">{{ file?.fileName || '文件预览' }}</span>
-        <button class="file-preview-close" @click="close">✕</button>
+        <button class="file-preview-close" @click="close">&#10005;</button>
       </div>
 
       <div class="file-preview-body">
@@ -22,7 +19,7 @@
 
       <div class="file-preview-footer">
         <button class="file-print-btn" @click="printFile">
-          🖨️ 打印
+          &#x1F5A8;&#xFE0F; 打印
         </button>
       </div>
     </div>
@@ -81,7 +78,7 @@ function printFile() {
 .file-preview-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -89,13 +86,14 @@ function printFile() {
 }
 
 .file-preview-modal {
-  background: #1c1c1e;
+  background: #fff;
   border-radius: 16px;
   width: min(500px, 92vw);
   height: min(80vh, 700px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .file-preview-header {
@@ -103,23 +101,27 @@ function printFile() {
   justify-content: space-between;
   align-items: center;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
 
 .file-preview-title {
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
+  color: #222;
 }
 
 .file-preview-close {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: #999;
   font-size: 18px;
   cursor: pointer;
   padding: 4px;
+}
+
+.file-preview-close:hover {
+  color: #555;
 }
 
 .file-preview-body {
@@ -136,15 +138,15 @@ function printFile() {
 
 .file-preview-footer {
   padding: 12px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
   display: flex;
   justify-content: center;
   flex-shrink: 0;
 }
 
 .file-print-btn {
-  background: rgba(100, 180, 255, 0.25);
-  border: 1px solid rgba(100, 180, 255, 0.4);
+  background: linear-gradient(135deg, #ff8fab, #fb6f92);
+  border: none;
   border-radius: 12px;
   padding: 10px 32px;
   color: #fff;
@@ -152,10 +154,12 @@ function printFile() {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(255, 143, 171, 0.3);
 }
 
 .file-print-btn:hover {
-  background: rgba(100, 180, 255, 0.35);
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(255, 143, 171, 0.4);
 }
 
   .platform-android.android-portrait .file-preview-close {

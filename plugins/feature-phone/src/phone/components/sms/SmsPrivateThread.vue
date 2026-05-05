@@ -1,8 +1,6 @@
 <script setup>
 /**
- * SmsPrivateThread.vue — 私聊线程视图
- * 包含 header（返回/设置/头像/视频）、聊天背景、消息容器、输入栏、Plus面板。
- * 消息渲染委托给 SmsMessageRender。
+ * SmsPrivateThread.vue — 私聊线程视图（浅色 IM 风格）
  */
 import { ref } from 'vue'
 import SmsMessageRender from './SmsMessageRender.vue'
@@ -19,6 +17,7 @@ const props = defineProps({
   userAvatar: { type: String, default: null },
   playingVoiceId: { type: String, default: null },
   voiceShownText: { type: Set, default: () => new Set() },
+  onlineStatus: { type: Object, default: null },
 })
 
 const emit = defineEmits([
@@ -38,22 +37,34 @@ const emit = defineEmits([
   'avatar-pointer-leave',
   'red-packet-click',
   'call-video',
+  'call-voice',
   'open-file',
 ])
 
-const PLUS_ACTIONS = [
-  { id: 'redpacket', icon: '🧧', label: '红包', color: 'linear-gradient(135deg, #e74c3c, #c0392b)' },
-  { id: 'emoji', icon: '😀', label: '表情', color: 'linear-gradient(135deg, #f39c12, #e67e22)' },
-  { id: 'camera', icon: '📷', label: '拍照', color: 'linear-gradient(135deg, #3498db, #2980b9)' },
-  { id: 'music', icon: '🎵', label: '音乐', color: 'linear-gradient(135deg, #9b59b6, #8e44ad)' },
-  { id: 'location', icon: '📍', label: '位置', color: 'linear-gradient(135deg, #2ecc71, #27ae60)' },
-  { id: 'file', icon: '📁', label: '文件', color: 'linear-gradient(135deg, #95a5a6, #7f8c8d)' },
-  { id: 'voice', icon: '🎙️', label: '语音', color: 'linear-gradient(135deg, #1abc9c, #16a085)' },
-  { id: 'gift', icon: '🎁', label: '礼物', color: 'linear-gradient(135deg, #ff6b6b, #ee5a24)' },
-]
-
+const showMenuDropdown = ref(false)
 const messagesContainerRef = ref(null)
 defineExpose({ messagesContainerRef })
+
+function toggleMenu() {
+  showMenuDropdown.value = !showMenuDropdown.value
+}
+
+function handleMenuAction(action) {
+  showMenuDropdown.value = false
+  if (action === 'settings') emit('open-settings')
+  else if (action === 'gift') emit('open-gift-shop')
+  else if (action === 'video') emit('call-video', props.contact)
+}
+
+const PLUS_ACTIONS = [
+  { id: 'redpacket', icon: '🧧', label: '红包', color: 'linear-gradient(135deg, #e74c3c, #c0392b)' },
+  { id: 'voicecall', icon: '📞', label: '语音通话', color: 'linear-gradient(135deg, #ff8fab, #fb6f92)' },
+  { id: 'camera', icon: '', label: '拍照', color: 'linear-gradient(135deg, #3498db, #2980b9)' },
+  { id: 'music', icon: '', label: '音乐', color: 'linear-gradient(135deg, #9b59b6, #8e44ad)' },
+  { id: 'location', icon: '📍', label: '位置', color: 'linear-gradient(135deg, #2ecc71, #27ae60)' },
+  { id: 'file', icon: '📁', label: '文件', color: 'linear-gradient(135deg, #95a5a6, #7f8c8d)' },
+  { id: 'gift', icon: '🎁', label: '礼物', color: 'linear-gradient(135deg, #ff6b6b, #ee5a24)' },
+]
 </script>
 
 <template>
@@ -61,27 +72,39 @@ defineExpose({ messagesContainerRef })
     <!-- 聊天背景层 -->
     <div v-if="chatBgUrl" class="sms-chat-bg" :style="{ backgroundImage: 'url(' + chatBgUrl + ')' }"></div>
 
-    <!-- Header：简洁按钮 -->
+    <!-- Header：返回 + 角色名/在线状态 + 三点菜单 -->
     <div class="sms-thread-header">
       <div class="sms-header-left">
-        <button type="button" class="sms-header-btn" @click="emit('back')">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        <button type="button" class="sms-header-btn sms-back-btn" @click="emit('back')">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <button type="button" class="sms-header-btn" @click="emit('open-settings')" title="设置">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4m-9-9h4m14 0h4m-3.3-6.7l-2.8 2.8M6.1 17.9l-2.8 2.8m0-13.4l2.8 2.8m11.8 7.8l2.8 2.8"/></svg>
-        </button>
-      </div>
-      <div class="sms-header-avatar" @pointerdown="emit('avatar-pointer-down', $event, contact)" @pointerup="emit('avatar-pointer-up')" @pointerleave="emit('avatar-pointer-leave')">
-        <img v-if="charAvatar" :src="charAvatar" />
-        <span v-else class="sms-header-avatar-placeholder">{{ contact.name?.slice(0, 1) }}</span>
+        <div class="sms-header-title-block">
+          <div class="sms-header-title">{{ contact.name }}</div>
+          <div class="sms-header-subtitle" v-if="onlineStatus">{{ onlineStatus.label }}</div>
+        </div>
       </div>
       <div class="sms-header-right">
-        <button type="button" class="sms-header-btn" @click="emit('open-gift-shop')" title="礼物">
-          <span style="font-size: 20px;">&#x1F381;</span>
+        <button type="button" class="sms-header-btn sms-menu-btn" @click="toggleMenu">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
         </button>
-        <button type="button" class="sms-header-btn" @click="emit('call-video', contact)" title="视频通话">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-        </button>
+      </div>
+    </div>
+
+    <!-- 三点菜单下拉 -->
+    <div v-if="showMenuDropdown" class="sms-menu-dropdown" @click="showMenuDropdown = false">
+      <div class="sms-menu-content" @click.stop>
+        <div class="sms-menu-item" @click="handleMenuAction('settings')">
+          <span class="sms-menu-item-icon">⚙️</span>
+          <span>聊天设置</span>
+        </div>
+        <div class="sms-menu-item" @click="handleMenuAction('gift')">
+          <span class="sms-menu-item-icon"></span>
+          <span>送礼物</span>
+        </div>
+        <div class="sms-menu-item" @click="handleMenuAction('video')">
+          <span class="sms-menu-item-icon">📹</span>
+          <span>视频通话</span>
+        </div>
       </div>
     </div>
 
@@ -104,15 +127,16 @@ defineExpose({ messagesContainerRef })
       />
     </div>
 
-    <!-- 输入栏 -->
+    <!-- 输入栏：表情 + 文本框 + +号 + 发送 -->
     <div class="sms-input-bar">
       <button
         type="button"
-        class="sms-plus-btn"
-        :class="{ active: showPlusPanel }"
-        @click="emit('toggle-plus')"
+        class="sms-action-btn"
+        :class="{ active: showStickerPanel }"
+        @click="emit('toggle-sticker')"
+        title="表情"
       >
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
       </button>
       <div class="sms-input-wrapper">
         <textarea
@@ -129,11 +153,21 @@ defineExpose({ messagesContainerRef })
       </div>
       <button
         type="button"
+        class="sms-action-btn"
+        :class="{ active: showPlusPanel }"
+        @click="emit('toggle-plus')"
+        title="更多"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button
+        type="button"
         class="sms-send-btn"
         :disabled="!draft.trim() || loading"
         @click="emit('send')"
+        title="发送"
       >
-        <span class="sms-send-icon">&#x27A4;</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>
 
@@ -168,7 +202,7 @@ defineExpose({ messagesContainerRef })
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  padding: 8px 6px;
+  padding: 4px 8px 8px;
 }
 
 /* ===== 聊天背景 ===== */
@@ -179,106 +213,133 @@ defineExpose({ messagesContainerRef })
   background-position: center;
   background-repeat: no-repeat;
   z-index: 0;
-  opacity: 0.3;
+  opacity: 0.12;
   pointer-events: none;
 }
 
-/* ===== Header 区域 ===== */
+/* ===== Header ===== */
 .sms-thread-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
   padding-top: max(8px, var(--safe-area-inset-top, 8px));
-  background: transparent;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
   position: relative;
   z-index: 10;
 }
 
-/* 左侧按钮组 */
 .sms-header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
-/* 右侧按钮组 */
-.sms-header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.sms-back-btn {
+  flex-shrink: 0;
+  color: #333;
 }
 
-/* 简洁按钮（无背景无边框） */
+.sms-header-title-block {
+  min-width: 0;
+}
+
+.sms-header-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sms-header-subtitle {
+  font-size: 0.7rem;
+  color: #999;
+  margin-top: 1px;
+}
+
 .sms-header-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.65);
+  color: #555;
   cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  border-radius: 50%;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
 }
 
 .sms-header-btn:hover {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .sms-header-btn:active {
-  transform: scale(0.92);
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.1);
 }
 
-/* 中间头像 */
-.sms-header-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
+/* 三点菜单下拉 */
+.sms-menu-dropdown {
+  position: absolute;
+  top: 50px;
+  right: 12px;
+  z-index: 100;
+  padding: 4px;
+}
+
+.sms-menu-content {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   overflow: hidden;
+  min-width: 140px;
+  animation: menu-fade-in 0.15s ease;
+}
+
+@keyframes menu-fade-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sms-menu-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-  flex-shrink: 0;
+  gap: 10px;
+  padding: 12px 16px;
+  font-size: 0.88rem;
+  color: #333;
   cursor: pointer;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
-  transition: all 0.2s ease;
+  transition: background 0.1s;
 }
 
-.sms-header-avatar:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+.sms-menu-item:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
-.sms-header-avatar:active {
-  transform: scale(0.95);
+.sms-menu-item:active {
+  background: rgba(0, 0, 0, 0.08);
 }
 
-.sms-header-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.sms-header-avatar-placeholder {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #fff;
+.sms-menu-item-icon {
+  font-size: 1rem;
 }
 
 /* ===== + 面板 ===== */
 .sms-plus-panel {
-  background: rgba(28, 28, 30, 0.92);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 0.5px solid rgba(0, 0, 0, 0.08);
   padding: 12px 8px;
   padding-bottom: max(16px, var(--safe-area-inset-bottom, 16px));
   animation: sms-plus-slide-up 0.2s ease;
@@ -307,11 +368,11 @@ defineExpose({ messagesContainerRef })
 }
 
 .sms-plus-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .sms-plus-item:active {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .sms-plus-item-icon {
@@ -322,38 +383,12 @@ defineExpose({ messagesContainerRef })
   align-items: center;
   justify-content: center;
   font-size: 1.4rem;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .sms-plus-item-label {
   font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-/* ===== + 按钮（简洁无背景无边框） ===== */
-.sms-plus-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.55);
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-
-.sms-plus-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.sms-plus-btn.active {
-  color: #0a84ff;
-  transform: rotate(45deg);
+  color: #666;
 }
 
 /* ===== 输入栏 ===== */
@@ -361,101 +396,146 @@ defineExpose({ messagesContainerRef })
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  padding-bottom: max(10px, var(--safe-area-inset-bottom, 10px));
-  background: rgba(28, 28, 30, 0.92);
+  padding: 8px 12px;
+  padding-bottom: max(8px, var(--safe-area-inset-bottom, 8px));
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
   position: relative;
   z-index: 5;
+}
+
+.sms-action-btn,
+.sms-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sms-action-btn:hover,
+.sms-send-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #555;
+}
+
+.sms-action-btn.active {
+  color: #ff8fab;
 }
 
 .sms-input-wrapper {
   flex: 1;
   position: relative;
+  min-width: 0;
+  display: flex;
+  align-items: center;
 }
 
 .sms-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f0f0f0;
+  border: 1px solid transparent;
   border-radius: 20px;
   padding: 8px 14px;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   font-size: 0.88rem;
   outline: none;
   resize: none;
   max-height: 100px;
   line-height: 1.4;
   box-sizing: border-box;
+  transition: border-color 0.15s;
 }
 
 .sms-input:focus {
-  border-color: rgba(10, 132, 255, 0.5);
+  border-color: #ff8fab;
+  background: #fff;
 }
 
-.sms-send-btn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 132, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(10, 132, 255, 0.4);
-  border-radius: 50%;
-  color: #fff;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
+.sms-input::placeholder {
+  color: #bbb;
 }
 
 .sms-send-btn:disabled {
-  opacity: 0.4;
+  color: #ccc;
   cursor: not-allowed;
 }
 
-.sms-send-btn:hover:not(:disabled) {
-  background: rgba(10, 132, 255, 0.4);
+.sms-send-btn:not(:disabled) {
+  background: linear-gradient(135deg, #ff8fab, #fb6f92);
+  color: #fff;
+}
+
+.sms-send-btn:not(:disabled):hover {
+  background: linear-gradient(135deg, #ff8fab, #fb6f92);
+  transform: scale(1.08);
+  box-shadow: 0 2px 12px rgba(255, 143, 171, 0.4);
+}
+
+.sms-send-btn:active:not(:disabled) {
+  transform: scale(0.92);
 }
 
 /* ===== Android 兼容 ===== */
-.platform-android.android-portrait .sms-header-btn {
-  color: rgba(255, 255, 255, 0.75) !important;
+.platform-android.android-portrait .sms-header-btn,
+.platform-android.android-portrait .sms-back-btn {
+  color: #333 !important;
 }
-.platform-android.android-portrait .sms-header-avatar {
-  background: linear-gradient(135deg, #5a6fd6, #6a3ba2) !important;
+
+.platform-android.android-portrait .sms-thread-header {
+  background: rgba(255, 255, 255, 0.97) !important;
 }
-.platform-android.android-portrait .sms-plus-panel {
-  background: rgba(28, 28, 30, 0.97) !important;
-}
-.platform-android.android-portrait .sms-plus-item-icon {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
-}
+
 .platform-android.android-portrait .sms-input {
-  background: rgba(255, 255, 255, 0.14) !important;
+  background: #f5f5f5 !important;
 }
+
+.platform-android.android-portrait .sms-input:focus {
+  background: #fff !important;
+}
+
 .platform-android.android-portrait .sms-input-bar {
-  background: transparent !important;
+  background: rgba(255, 255, 255, 0.98) !important;
 }
-.platform-android.android-portrait .sms-plus-btn {
-  color: rgba(255, 255, 255, 0.6) !important;
-}
-.platform-android.android-portrait .sms-plus-btn.active {
-  color: #0a84ff !important;
-}
+
+.platform-android.android-portrait .sms-action-btn,
 .platform-android.android-portrait .sms-send-btn {
-  background: rgba(10, 132, 255, 0.45) !important;
+  color: #888 !important;
+}
+
+.platform-android.android-portrait .sms-send-btn:not(:disabled) {
+  background: linear-gradient(135deg, #ff8fab, #fb6f92) !important;
+}
+
+.platform-android.android-portrait .sms-plus-panel {
+  background: rgba(255, 255, 255, 0.98) !important;
+}
+
+.platform-android.android-portrait .sms-plus-item-label {
+  color: #555 !important;
+}
+
+.platform-android.android-portrait .sms-menu-content {
+  background: #fff !important;
+}
+
+.platform-android.android-portrait .sms-menu-item {
+  color: #333 !important;
 }
 
   .platform-android.android-portrait .sms-send-btn,
-  .platform-android.android-portrait .sms-plus-btn,
-  .platform-android.android-portrait .sms-header-btn {
+  .platform-android.android-portrait .sms-action-btn,
+  .platform-android.android-portrait .sms-header-btn,
+  .platform-android.android-portrait .sms-back-btn {
     width: auto !important;
     height: auto !important;
     min-width: 0 !important;

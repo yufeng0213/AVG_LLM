@@ -1,0 +1,25 @@
+/* ===== 极光 ===== */
+.sms-messages { background: #0a192f !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: linear-gradient(135deg, #00b4d8, #0077b6) !important;
+  border-radius: 18px 4px 18px 18px !important;
+  color: #fff !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 0 15px rgba(0, 180, 216, 0.3) !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: linear-gradient(135deg, #2d6a4f, #40916c) !important;
+  border-radius: 4px 18px 18px 18px !important;
+  color: #d8f3dc !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 0 15px rgba(64, 145, 108, 0.3) !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.65rem !important; color: #95d5b2 !important;
+  background: rgba(149, 213, 178, 0.08) !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important; border-radius: 10px !important;
+}

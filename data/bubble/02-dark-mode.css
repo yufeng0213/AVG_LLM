@@ -1,0 +1,25 @@
+/* ===== 深色模式 ===== */
+.sms-messages { background: #1a1a2e !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: linear-gradient(135deg, #4a3f8a, #6c5ce7) !important;
+  border-radius: 18px 18px 6px 18px !important;
+  color: #fff !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3) !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: #2d2d44 !important;
+  border-radius: 18px 18px 18px 6px !important;
+  color: #e0e0e0 !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.65rem !important; color: #666 !important;
+  background: rgba(255, 255, 255, 0.06) !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important; border-radius: 10px !important;
+}

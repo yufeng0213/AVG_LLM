@@ -1,0 +1,27 @@
+/* ===== 极简白 ===== */
+.sms-messages { background: #f5f5f5 !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: #fff !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 8px !important;
+  color: #212121 !important;
+  font-size: 0.9rem !important;
+  line-height: 1.6 !important;
+  padding: 10px 14px !important;
+  box-shadow: none !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: #fafafa !important;
+  border: 1px solid #eee !important;
+  border-radius: 8px !important;
+  color: #212121 !important;
+  font-size: 0.9rem !important;
+  line-height: 1.6 !important;
+  padding: 10px 14px !important;
+  box-shadow: none !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.62rem !important; color: #bdbdbd !important;
+  background: none !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important; border-radius: 4px !important;
+}

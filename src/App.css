@@ -148,7 +148,8 @@
 
 /* 允许输入框选择文本 */
 .platform-android .app-shell input,
-.platform-android .app-shell textarea {
+.platform-android .app-shell textarea,
+.platform-android .app-shell .reader-content {
   -webkit-user-select: text;
   user-select: text;
 }

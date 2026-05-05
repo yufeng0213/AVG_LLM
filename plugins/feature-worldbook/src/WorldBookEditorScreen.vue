@@ -8,6 +8,7 @@ import {
   createDefaultCharacterVoiceConfig,
   createDefaultPersonalityProfile,
   createNewCardBorder,
+  createDefaultBackgroundSettings,
   RELATIONSHIP_METRIC_MAX,
   RELATIONSHIP_METRIC_MIN,
   WORLD_BOOK_ENTRY_DEFS,
@@ -97,6 +98,7 @@ const cropRectConfirmed = ref(false)
 const displaySettingsOpen = ref(false)
 const directorSettingsOpen = ref(false)
 const tagsOpen = ref(false)
+const defaultBackgroundOpen = ref(true)  // 默认背景设置展开状态
 
 // 世界背景各条目展开状态
 const loreEntryStates = ref({})
@@ -410,6 +412,18 @@ const updateDisplaySetting = (field, value) => {
     activeBook.value.displaySettings = {}
   }
   activeBook.value.displaySettings[field] = value
+  markBookUpdated()
+}
+
+const updateBackgroundSetting = (field, value) => {
+  if (!activeBook.value) return
+  if (!activeBook.value.backgroundSettings || typeof activeBook.value.backgroundSettings !== 'object') {
+    activeBook.value.backgroundSettings = {
+      defaultBackgroundPath: '',
+      defaultBackgroundName: '默认背景',
+    }
+  }
+  activeBook.value.backgroundSettings[field] = value
   markBookUpdated()
 }
 

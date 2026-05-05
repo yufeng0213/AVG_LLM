@@ -1,5 +1,5 @@
 /**
- * NpcSmsThread.vue — 查看 NPC 间短信线程
+ * NpcSmsThread.vue — 查看 NPC 间短信线程（浅色主题）
  */
 <template>
   <div class="npc-sms-overlay" @click.self="close">
@@ -7,14 +7,14 @@
       <div class="npc-sms-header">
         <div class="npc-sms-title">
           <span class="npc-char">{{ thread.charA?.name || '?' }}</span>
-          <span class="npc-arrow">⇄</span>
+          <span class="npc-arrow">&#8644;</span>
           <span class="npc-char">{{ thread.charB?.name || '?' }}</span>
         </div>
-        <button class="npc-sms-close" @click="close">✕</button>
+        <button class="npc-sms-close" @click="close">&#10005;</button>
       </div>
 
       <div class="npc-sms-location" v-if="thread.location">
-        📍 {{ thread.location }}
+        &#x1F4CD; {{ thread.location }}
       </div>
 
       <div class="npc-sms-messages">
@@ -49,7 +49,7 @@ function close() {
 .npc-sms-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,13 +57,14 @@ function close() {
 }
 
 .npc-sms-modal {
-  background: #1c1c1e;
+  background: #fff;
   border-radius: 16px;
   width: min(420px, 90vw);
   max-height: 80vh;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .npc-sms-header {
@@ -71,7 +72,7 @@ function close() {
   justify-content: space-between;
   align-items: center;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
 
@@ -81,31 +82,35 @@ function close() {
   gap: 6px;
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
+  color: #222;
 }
 
 .npc-char {
-  color: rgba(255, 200, 220, 0.9);
+  color: #fb6f92;
 }
 
 .npc-arrow {
-  color: rgba(255, 255, 255, 0.3);
+  color: #ddd;
 }
 
 .npc-sms-close {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: #999;
   font-size: 18px;
   cursor: pointer;
   padding: 4px;
 }
 
+.npc-sms-close:hover {
+  color: #555;
+}
+
 .npc-sms-location {
   padding: 8px 16px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #bbb;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
 
@@ -128,17 +133,17 @@ function close() {
 
 .npc-sms-bubble.left {
   align-self: flex-start;
-  background: rgba(100, 180, 255, 0.15);
-  border: 1px solid rgba(100, 180, 255, 0.2);
-  color: rgba(255, 255, 255, 0.85);
+  background: rgba(100, 180, 255, 0.12);
+  border: 0.5px solid rgba(100, 180, 255, 0.2);
+  color: #333;
   border-bottom-left-radius: 4px;
 }
 
 .npc-sms-bubble.right {
   align-self: flex-end;
-  background: rgba(255, 100, 200, 0.15);
-  border: 1px solid rgba(255, 100, 200, 0.2);
-  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 143, 171, 0.12);
+  border: 0.5px solid rgba(255, 143, 171, 0.2);
+  color: #333;
   border-bottom-right-radius: 4px;
 }
 
@@ -146,6 +151,6 @@ function close() {
   font-size: 11px;
   font-weight: 600;
   margin-bottom: 2px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #999;
 }
 </style>

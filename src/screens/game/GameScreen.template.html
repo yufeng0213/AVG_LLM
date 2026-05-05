@@ -94,6 +94,15 @@
         >
           💕 好感度
         </button>
+        <button
+          type="button"
+          class="top-menu-btn top-menu-dialogue-bg"
+          :class="{ 'is-active': showDialogueBgPanel }"
+          role="menuitem"
+          @click="handleToggleDialogueBgPanelFromMenu"
+        >
+          🖼️ 对话框样式
+        </button>
         <div class="top-menu-divider"></div>
         <button
           type="button"
@@ -243,7 +252,7 @@
         </div>
       </div>
 
-      <section class="dialogue-box" aria-live="polite" @click="handleDialogueBoxClick">
+      <section class="dialogue-box" ref="dialogueBoxRef" aria-live="polite" @click="handleDialogueBoxClick">
         <div class="dialogue-head">
           <p class="speaker-tag">{{ displayLine.speaker }}</p>
           <p class="line-progress">{{ displayLineIndex + 1 }} / {{ displayDialogueLength }}</p>
@@ -481,6 +490,71 @@
           </button>
         </div>
       </div>
+
+      <!-- 对话框样式配置面板 -->
+      <section v-if="showDialogueBgPanel" class="dialogue-bg-panel" aria-label="对话框样式配置">
+        <div class="dialogue-bg-panel-header">
+          <h3 class="dialogue-bg-title">🖼️ 对话框样式</h3>
+          <button type="button" class="dialogue-bg-close" @click="toggleDialogueBgPanel">✕</button>
+        </div>
+
+        <div class="dialogue-bg-panel-body">
+          <p class="dialogue-bg-intro">
+            选择一张PNG图片作为对话框背景。
+          </p>
+
+          <!-- 当前背景预览 -->
+          <div class="dialogue-bg-preview-section">
+            <span class="dialogue-bg-preview-label">当前背景预览：</span>
+            <div class="dialogue-bg-preview-box" :style="dialogueBgPreviewStyle">
+              <span v-if="!dialogueBgImage" class="dialogue-bg-preview-default">默认样式</span>
+            </div>
+          </div>
+
+          <!-- 文件选择区域 -->
+          <div class="dialogue-bg-file-section">
+            <input
+              type="file"
+              accept=".png,.jpg,.jpeg,.webp"
+              @change="handleDialogueBgFileSelect"
+              class="dialogue-bg-file-input-hidden"
+              ref="dialogueBgFileInput"
+            />
+            <div class="dialogue-bg-file-btn-row">
+              <button
+                type="button"
+                class="dialogue-bg-browse-btn"
+                @click="triggerDialogueBgFileBrowse"
+              >
+                浏览图片
+              </button>
+              <button
+                type="button"
+                class="dialogue-bg-reset-btn"
+                @click="resetDialogueBgDefault"
+              >
+                恢复默认
+              </button>
+            </div>
+            <p v-if="dialogueBgFileName" class="dialogue-bg-file-name">
+              已选择: {{ dialogueBgFileName }}
+            </p>
+            <p v-if="dialogueBgError" class="dialogue-bg-error">{{ dialogueBgError }}</p>
+            <p v-if="dialogueBgSuccess" class="dialogue-bg-success">{{ dialogueBgSuccess }}</p>
+          </div>
+        </div>
+
+        <div class="dialogue-bg-panel-footer">
+          <button
+            type="button"
+            class="dialogue-bg-apply-btn"
+            :disabled="!dialogueBgImage"
+            @click="applyDialogueBgImage"
+          >
+            应用背景
+          </button>
+        </div>
+      </section>
 
       <!-- AI 剧情生成面板 -->
       <section v-if="showGeneratePanel" class="generate-panel" aria-label="AI剧情生成">

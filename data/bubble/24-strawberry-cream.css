@@ -1,0 +1,25 @@
+/* ===== 奶油草莓 ===== */
+.sms-messages { background: #fffafa !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: linear-gradient(135deg, #ff8a80, #ff5252) !important;
+  border-radius: 16px 16px 16px 4px !important;
+  color: #fff !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 2px 8px rgba(255, 82, 82, 0.2) !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: linear-gradient(135deg, #fff3e0, #ffe0b2) !important;
+  border-radius: 16px 16px 4px 16px !important;
+  color: #5d4037 !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 2px 8px rgba(255, 224, 178, 0.2) !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.65rem !important; color: #ef9a9a !important;
+  background: rgba(239, 154, 154, 0.1) !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important; border-radius: 10px !important;
+}

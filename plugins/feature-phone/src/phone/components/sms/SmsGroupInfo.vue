@@ -1,6 +1,6 @@
 <script setup>
 /**
- * SmsGroupInfo.vue — 群信息面板 + 成员管理
+ * SmsGroupInfo.vue — 群信息面板 + 成员管理（浅色主题）
  */
 const props = defineProps({
   group: { type: Object, required: true },
@@ -23,17 +23,15 @@ function getMemberCount() {
 <template>
   <div class="group-info-overlay" @click.self="emit('close')">
     <div class="group-info-container">
-      <!-- 顶部群名称 -->
       <div class="group-info-header">
         <div class="group-avatar-large">&#x1F465;</div>
         <div class="group-info-title">{{ group.name }}</div>
         <div class="group-info-subtitle">
           {{ group.type === 'worldbook' ? '世界书群聊' : '自定义群聊' }}
-          <span v-if="group.type === 'worldbook'"> · {{ group.worldBookTitle }}</span>
+          <span v-if="group.type === 'worldbook'"> &#183; {{ group.worldBookTitle }}</span>
         </div>
       </div>
 
-      <!-- 成员九宫格/列表 -->
       <div class="group-members-section">
         <div class="members-section-title">
           聊天成员 ({{ getMemberCount() }})
@@ -50,9 +48,8 @@ function getMemberCount() {
               <span>{{ m.contactName.charAt(0) }}</span>
             </div>
             <div class="member-grid-name">{{ m.contactName }}</div>
-            <span v-if="group.type === 'custom'" class="member-remove-badge">×</span>
+            <span v-if="group.type === 'custom'" class="member-remove-badge">&times;</span>
           </div>
-          <!-- 添加成员按钮 -->
           <div
             v-if="group.type === 'custom'"
             class="member-grid-item add-member-btn"
@@ -66,11 +63,10 @@ function getMemberCount() {
         </div>
       </div>
 
-      <!-- 管理成员面板（可展开） -->
       <div v-if="showManageMembers && group.type === 'custom'" class="manage-members-panel">
         <div class="manage-header">
           <h4>管理成员</h4>
-          <button class="manage-close-btn" @click="emit('toggle-manage')">×</button>
+          <button class="manage-close-btn" @click="emit('toggle-manage')">&times;</button>
         </div>
         <div class="manage-body">
           <div v-for="wb in contacts" :key="wb.worldBookId" class="wb-member-section">
@@ -90,7 +86,7 @@ function getMemberCount() {
                 :class="{ selected: isMemberInGroup(char.id) }"
                 @click="emit('toggle-member', { contactId: char.id, contactName: char.name, worldBookId: wb.worldBookId, worldBookTitle: wb.worldBookTitle, identity: char.identity })"
               >
-                <span class="wb-member-check">{{ isMemberInGroup(char.id) ? '&#x2714;' : '&#x25FB;' }}</span>
+                <span class="wb-member-check">{{ isMemberInGroup(char.id) ? '&#10004;' : '&#9635;' }}</span>
                 <span>{{ char.name }}</span>
               </div>
             </div>
@@ -98,7 +94,6 @@ function getMemberCount() {
         </div>
       </div>
 
-      <!-- 底部操作 -->
       <div class="group-info-actions">
         <button
           v-if="group.type === 'custom'"
@@ -123,7 +118,7 @@ function getMemberCount() {
   right: 0;
   bottom: 0;
   z-index: 20;
-  background: var(--phone-overlay, rgba(0, 0, 0, 0.7));
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: flex-end;
   padding: 16px;
@@ -138,14 +133,11 @@ function getMemberCount() {
 .group-info-container {
   width: 100%;
   max-height: 85vh;
-  background: rgba(28, 28, 30, 0.9);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  background: #fff;
   border-radius: 20px 20px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
   overflow-y: auto;
   padding-bottom: max(16px, env(safe-area-inset-bottom));
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1);
 }
 
 .group-info-header {
@@ -153,35 +145,32 @@ function getMemberCount() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 .group-avatar-large {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.8rem;
   margin-bottom: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .group-info-title {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--phone-text-primary, #fff);
+  color: #222;
   margin-bottom: 4px;
 }
 
 .group-info-subtitle {
   font-size: 0.75rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
+  color: #bbb;
 }
 
 .group-members-section {
@@ -190,7 +179,7 @@ function getMemberCount() {
 
 .members-section-title {
   font-size: 0.82rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
+  color: #999;
   margin-bottom: 12px;
 }
 
@@ -221,30 +210,27 @@ function getMemberCount() {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, #ffecd2, #fcb69f);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--phone-text-primary, #fff);
+  color: #5a3e2b;
   transition: opacity 0.15s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .member-grid-avatar.add-avatar {
-  background: rgba(255, 255, 255, 0.06);
+  background: #f5f5f5;
   font-size: 1.2rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  color: #bbb;
   font-weight: 400;
 }
 
 .member-grid-name {
   font-size: 0.7rem;
-  color: var(--phone-text-primary, #fff);
+  color: #555;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -259,7 +245,7 @@ function getMemberCount() {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--phone-accent-red, #ff3b30);
+  background: #ff3b30;
   color: #fff;
   font-size: 0.7rem;
   font-weight: 700;
@@ -279,10 +265,8 @@ function getMemberCount() {
 
 .manage-members-panel {
   margin: 0 16px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f8f8f8;
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
   border-radius: 14px;
   overflow: hidden;
 }
@@ -292,22 +276,26 @@ function getMemberCount() {
   justify-content: space-between;
   align-items: center;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 .manage-header h4 {
   margin: 0;
   font-size: 0.9rem;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
 }
 
 .manage-close-btn {
   background: none;
   border: none;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
+  color: #bbb;
   font-size: 1.2rem;
   cursor: pointer;
   padding: 4px 8px;
+}
+
+.manage-close-btn:hover {
+  color: #888;
 }
 
 .manage-body {
@@ -323,24 +311,22 @@ function getMemberCount() {
 .wb-toggle-btn {
   width: 100%;
   text-align: left;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: #f5f5f5;
   border: none;
   border-radius: 10px;
   padding: 6px 10px;
-  color: var(--phone-text-primary, #fff);
+  color: #555;
   font-size: 0.82rem;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .wb-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: #f0f0f0;
 }
 
 .wb-toggle-btn.expanded {
-  background: rgba(255, 255, 255, 0.1);
+  background: #eee;
 }
 
 .wb-member-list {
@@ -356,40 +342,38 @@ function getMemberCount() {
   cursor: pointer;
   transition: background 0.15s;
   font-size: 0.82rem;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
 }
 
 .wb-member-item:hover {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.06));
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .wb-member-item.selected {
-  background: rgba(10, 132, 255, 0.15);
+  background: rgba(255, 143, 171, 0.12);
 }
 
 .wb-member-check {
   font-size: 1rem;
-  color: var(--phone-accent-blue, #0a84ff);
+  color: #fb6f92;
 }
 
 .group-info-actions {
   padding: 16px;
   display: flex;
   gap: 10px;
-  border-top: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 .action-btn {
   flex: 1;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 .action-btn:active {
@@ -397,39 +381,45 @@ function getMemberCount() {
 }
 
 .action-btn.delete-btn {
-  background: rgba(255, 59, 48, 0.15);
+  background: rgba(255, 59, 48, 0.08);
   color: #ff3b30;
-  border-color: rgba(255, 59, 48, 0.3);
+  border-color: rgba(255, 59, 48, 0.2);
 }
 
 .action-btn.close-btn {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--phone-text-primary, #fff);
+  background: #f5f5f5;
+  color: #555;
 }
 
 .platform-android.android-portrait .group-info-container {
-  background: rgba(28, 28, 30, 0.97) !important;
+  background: #fff !important;
 }
-.platform-android.android-portrait .group-avatar-large,
+
 .platform-android.android-portrait .member-grid-avatar {
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: linear-gradient(135deg, #ffecd2, #fcb69f) !important;
 }
+
 .platform-android.android-portrait .member-grid-avatar.add-avatar {
-  background: rgba(255, 255, 255, 0.14) !important;
+  background: #f5f5f5 !important;
 }
+
 .platform-android.android-portrait .manage-members-panel {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: #f8f8f8 !important;
 }
+
 .platform-android.android-portrait .action-btn.close-btn {
-  background: rgba(255, 255, 255, 0.16) !important;
+  background: #f5f5f5 !important;
 }
+
 .platform-android.android-portrait .action-btn.delete-btn {
-  background: rgba(255, 59, 48, 0.25) !important;
+  background: rgba(255, 59, 48, 0.1) !important;
 }
+
 .platform-android.android-portrait .wb-toggle-btn {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: #f5f5f5 !important;
 }
+
 .platform-android.android-portrait .wb-toggle-btn.expanded {
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: #eee !important;
 }
 </style>

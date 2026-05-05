@@ -88,7 +88,7 @@ export const useBackgroundStore = defineStore('background', {
       return { success: true, path: this.backgroundFolderPath, files: loadedFiles }
     },
 
-    async applyWorldBookBackgroundAssets(assets, sourceLabel = '世界书背景') {
+    async applyWorldBookBackgroundAssets(assets, sourceLabel = '世界书背景', defaultBgPath) {
       if (!Array.isArray(assets) || assets.length === 0) {
         return { success: false, error: 'NO_WORLD_BOOK_BACKGROUND_ASSETS' }
       }
@@ -103,7 +103,7 @@ export const useBackgroundStore = defineStore('background', {
 
       this.backgroundFolderPath = String(sourceLabel || '世界书背景')
       this.backgroundList = normalized
-      await this._loadDefaultBackground()
+      await this._loadDefaultBackground(defaultBgPath)
 
       return { success: true, path: this.backgroundFolderPath, files: normalized }
     },
@@ -137,7 +137,7 @@ export const useBackgroundStore = defineStore('background', {
 
     async switchBackground(scene) {
       if (!scene?.background) {
-        await this._loadDefaultBackground()
+        await this._loadDefaultBackground(scene?.defaultBackgroundPath)
         this.currentScene = null
         return { success: true }
       }
@@ -145,7 +145,7 @@ export const useBackgroundStore = defineStore('background', {
       const backgroundFile = findBackgroundFile(this.backgroundList, scene.background)
       if (!backgroundFile) {
         console.warn(`背景文件未找到: ${scene.background}，尝试使用默认背景`)
-        await this._loadDefaultBackground()
+        await this._loadDefaultBackground(scene?.defaultBackgroundPath)
         this.currentScene = scene
         return { success: false, error: 'BACKGROUND_NOT_FOUND' }
       }
@@ -157,7 +157,7 @@ export const useBackgroundStore = defineStore('background', {
         return { success: true }
       }
 
-      await this._loadDefaultBackground()
+      await this._loadDefaultBackground(scene?.defaultBackgroundPath)
       return { success: false, error: '读取背景失败' }
     },
 
@@ -227,8 +227,8 @@ export const useBackgroundStore = defineStore('background', {
       }
     },
 
-    async _loadDefaultBackground() {
-      const defaultFile = findDefaultBackground(this.backgroundList)
+    async _loadDefaultBackground(defaultBgPath) {
+      const defaultFile = findDefaultBackground(this.backgroundList, defaultBgPath)
       if (!defaultFile) {
         this.currentBackgroundUrl = DEFAULT_BACKGROUND
         return

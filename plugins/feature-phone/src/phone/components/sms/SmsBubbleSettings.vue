@@ -1,6 +1,6 @@
 <script setup>
 /**
- * SmsBubbleSettings.vue — 气泡CSS设置 + 聊天背景设置
+ * SmsBubbleSettings.vue — 气泡CSS设置 + 聊天背景设置（浅色主题）
  */
 const props = defineProps({
   bubbleCss: { type: String, default: '' },
@@ -45,7 +45,7 @@ const emit = defineEmits([
     <div class="sms-bubble-settings-panel">
       <div class="settings-header">
         <h3>设置</h3>
-        <button class="settings-close-btn" @click="emit('close')">×</button>
+        <button class="settings-close-btn" @click="emit('close')">&times;</button>
       </div>
 
       <div class="settings-body">
@@ -142,7 +142,6 @@ const emit = defineEmits([
         <!-- 聊天背景 -->
         <label class="settings-label" style="margin-top: 16px;">聊天背景</label>
 
-        <!-- 当前背景预览 -->
         <div class="chat-bg-preview" :style="chatBgUrl ? { backgroundImage: 'url(' + chatBgUrl + ')' } : {}">
           <span v-if="!chatBgUrl" class="chat-bg-placeholder">暂无背景</span>
         </div>
@@ -222,7 +221,7 @@ const emit = defineEmits([
   right: 0;
   bottom: 0;
   z-index: 20;
-  background: var(--phone-overlay, rgba(0, 0, 0, 0.85));
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -239,15 +238,12 @@ const emit = defineEmits([
   width: 100%;
   max-width: 400px;
   max-height: 80vh;
-  background: rgba(28, 28, 30, 0.85);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  background: #fff;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .settings-header {
@@ -255,7 +251,7 @@ const emit = defineEmits([
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.1));
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
 }
 
@@ -263,13 +259,13 @@ const emit = defineEmits([
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--phone-text-primary, #fff);
+  color: #222;
 }
 
 .settings-close-btn {
   background: none;
   border: none;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  color: #999;
   font-size: 1.4rem;
   cursor: pointer;
   padding: 4px 8px;
@@ -278,7 +274,8 @@ const emit = defineEmits([
 }
 
 .settings-close-btn:hover {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.1));
+  background: rgba(0, 0, 0, 0.06);
+  color: #555;
 }
 
 .settings-body {
@@ -291,7 +288,7 @@ const emit = defineEmits([
 .settings-label {
   display: block;
   font-size: 0.85rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  color: #666;
   font-weight: 600;
   margin-bottom: 8px;
 }
@@ -304,21 +301,21 @@ const emit = defineEmits([
 
 .context-messages-input {
   width: 80px;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f0f0f0;
+  border: 1px solid transparent;
   border-radius: 10px;
   padding: 8px 12px;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   font-size: 0.9rem;
   outline: none;
   text-align: center;
   box-sizing: border-box;
+  transition: border-color 0.15s;
 }
 
 .context-messages-input:focus {
-  border-color: rgba(10, 132, 255, 0.5);
+  border-color: #ff8fab;
+  background: #fff;
 }
 
 .context-messages-input::-webkit-outer-spin-button,
@@ -333,7 +330,7 @@ const emit = defineEmits([
 
 .context-messages-hint {
   font-size: 0.78rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  color: #999;
 }
 
 /* 查岗设置 */
@@ -354,7 +351,7 @@ const emit = defineEmits([
 .toggle-slider {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.2);
+  background: #ddd;
   border-radius: 12px;
   transition: background 0.2s;
 }
@@ -368,16 +365,17 @@ const emit = defineEmits([
   top: 2px;
   left: 2px;
   transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 .spot-check-toggle input:checked + .toggle-slider {
-  background: rgba(10, 132, 255, 0.6);
+  background: linear-gradient(135deg, #ff8fab, #fb6f92);
 }
 .spot-check-toggle input:checked + .toggle-slider::after {
   transform: translateX(20px);
 }
 .spot-check-label-text {
   font-size: 0.78rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  color: #888;
 }
 .spot-check-interval {
   display: flex;
@@ -387,24 +385,24 @@ const emit = defineEmits([
 }
 .interval-label-text {
   font-size: 0.78rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
+  color: #999;
 }
 .interval-input {
   width: 56px;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f0f0f0;
+  border: 1px solid transparent;
   border-radius: 10px;
   padding: 6px 10px;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   font-size: 0.85rem;
   outline: none;
   text-align: center;
   box-sizing: border-box;
+  transition: border-color 0.15s;
 }
 .interval-input:focus {
-  border-color: rgba(10, 132, 255, 0.5);
+  border-color: #ff8fab;
+  background: #fff;
 }
 .interval-input::-webkit-outer-spin-button,
 .interval-input::-webkit-inner-spin-button {
@@ -415,19 +413,20 @@ const emit = defineEmits([
 }
 .interval-sep {
   font-size: 0.85rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.3));
+  color: #ccc;
 }
 .interval-save-btn {
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
-  background: rgba(10, 132, 255, 0.3);
+  background: linear-gradient(135deg, #ff8fab, #fb6f92);
   color: #fff;
   font-size: 0.78rem;
   cursor: pointer;
+  font-weight: 500;
 }
 .interval-save-btn:hover {
-  background: rgba(10, 132, 255, 0.4);
+  opacity: 0.85;
 }
 
 /* 查岗角色白名单 */
@@ -435,13 +434,13 @@ const emit = defineEmits([
   margin-bottom: 16px;
   max-height: 200px;
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.06);
+  background: #f8f8f8;
   border-radius: 10px;
   padding: 8px 12px;
 }
 .whitelist-title {
   font-size: 0.78rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
+  color: #999;
   display: block;
   margin-bottom: 6px;
 }
@@ -459,7 +458,7 @@ const emit = defineEmits([
 }
 .whitelist-name {
   font-size: 0.82rem;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   flex: 1;
 }
 .whitelist-toggle {
@@ -475,7 +474,7 @@ const emit = defineEmits([
 .whitelist-toggle-slider {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.15);
+  background: #ddd;
   border-radius: 10px;
   transition: background 0.2s;
 }
@@ -489,9 +488,10 @@ const emit = defineEmits([
   top: 2px;
   left: 2px;
   transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 .whitelist-toggle input:checked + .whitelist-toggle-slider {
-  background: rgba(10, 132, 255, 0.6);
+  background: linear-gradient(135deg, #ff8fab, #fb6f92);
 }
 .whitelist-toggle input:checked + .whitelist-toggle-slider::after {
   transform: translateX(16px);
@@ -501,10 +501,8 @@ const emit = defineEmits([
   width: 100%;
   height: 80px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f8f8f8;
   background-size: cover;
   background-position: center;
   display: flex;
@@ -515,7 +513,7 @@ const emit = defineEmits([
 
 .chat-bg-placeholder {
   font-size: 0.75rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
+  color: #bbb;
 }
 
 .chat-bg-actions {
@@ -528,11 +526,9 @@ const emit = defineEmits([
 .chat-bg-btn {
   padding: 8px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: #0a84ff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f5f5f5;
+  color: #fb6f92;
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -541,7 +537,7 @@ const emit = defineEmits([
 }
 
 .chat-bg-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f0f0f0;
 }
 
 .chat-bg-btn input {
@@ -555,29 +551,27 @@ const emit = defineEmits([
 
 .chat-bg-url-input {
   flex: 1;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f0f0f0;
+  border: 1px solid transparent;
   border-radius: 10px;
   padding: 8px 12px;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   font-size: 0.82rem;
   outline: none;
+  transition: border-color 0.15s;
 }
 
 .chat-bg-url-input:focus {
-  border-color: rgba(10, 132, 255, 0.5);
+  border-color: #ff8fab;
+  background: #fff;
 }
 
 .chat-bg-url-btn {
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid rgba(10, 132, 255, 0.4);
-  background: rgba(10, 132, 255, 0.2);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: #0a84ff;
+  border: 1px solid rgba(251, 111, 146, 0.4);
+  background: rgba(251, 111, 146, 0.15);
+  color: #fb6f92;
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -586,23 +580,19 @@ const emit = defineEmits([
 
 .chat-bg-clear-btn {
   color: #ff9500;
-  border-color: rgba(255, 149, 0, 0.3);
-  background: rgba(255, 149, 0, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(255, 149, 0, 0.2);
+  background: rgba(255, 149, 0, 0.08);
 }
 
 .css-editor {
   width: 100%;
   min-height: 200px;
   max-height: 40vh;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f8f8f8;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 12px;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   font-family: var(--font-mono, 'Consolas', 'Monaco', monospace);
   font-size: 0.8rem;
   line-height: 1.5;
@@ -613,7 +603,8 @@ const emit = defineEmits([
 }
 
 .css-editor:focus {
-  border-color: rgba(10, 132, 255, 0.5);
+  border-color: #ff8fab;
+  background: #fff;
 }
 
 .settings-actions {
@@ -628,12 +619,10 @@ const emit = defineEmits([
   align-items: center;
   justify-content: center;
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f5f5f5;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
-  color: #0a84ff;
+  color: #fb6f92;
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -641,7 +630,7 @@ const emit = defineEmits([
 }
 
 .import-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f0f0f0;
 }
 
 .import-btn input {
@@ -650,10 +639,8 @@ const emit = defineEmits([
 
 .reset-btn {
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f5f5f5;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   color: #ff9500;
   font-size: 0.82rem;
@@ -663,41 +650,40 @@ const emit = defineEmits([
 }
 
 .reset-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f0f0f0;
 }
 
 .css-hint {
   margin-top: 14px;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #f8f8f8;
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
   border-radius: 10px;
   font-size: 0.75rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  color: #888;
   line-height: 1.6;
 }
 
 .css-hint p {
   margin: 0 0 4px;
   font-weight: 600;
+  color: #666;
 }
 
 .css-hint code {
   display: inline-block;
-  background: var(--phone-bg, rgba(0, 0, 0, 0.3));
+  background: #f0f0f0;
   padding: 1px 5px;
   border-radius: 4px;
   font-family: var(--font-mono, monospace);
   font-size: 0.72rem;
-  color: var(--phone-accent-blue, #0a84ff);
+  color: #fb6f92;
   margin: 1px 0;
 }
 
 .settings-footer {
   padding: 12px 16px;
-  border-top: 1px solid var(--phone-border, rgba(255, 255, 255, 0.1));
+  border-top: 0.5px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
   display: flex;
   gap: 8px;
@@ -706,17 +692,15 @@ const emit = defineEmits([
 .apply-btn {
   flex: 1;
   padding: 10px;
-  background: linear-gradient(135deg, rgba(10, 132, 255, 0.35), rgba(88, 86, 214, 0.35));
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(10, 132, 255, 0.4);
+  background: linear-gradient(135deg, #ff8fab, #fb6f92);
+  border: none;
   border-radius: 12px;
-  color: var(--phone-text-primary, #fff);
+  color: #fff;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s;
-  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.25);
+  box-shadow: 0 2px 12px rgba(255, 143, 171, 0.3);
 }
 
 .apply-btn:hover {
@@ -734,8 +718,9 @@ const emit = defineEmits([
 }
 
 .platform-android.android-portrait .sms-bubble-settings-panel {
-  background: rgba(28, 28, 30, 0.95) !important;
+  background: #fff !important;
 }
+
 .platform-android.android-portrait .settings-close-btn,
 .platform-android.android-portrait .reset-btn,
 .platform-android.android-portrait .interval-save-btn {
@@ -755,42 +740,71 @@ const emit = defineEmits([
   border-radius: 8px !important;
   white-space: nowrap !important;
 }
+
 .platform-android.android-portrait .apply-btn {
-  background: linear-gradient(135deg, rgba(10, 132, 255, 0.5), rgba(88, 86, 214, 0.5)) !important;
+  background: linear-gradient(135deg, #ff8fab, #fb6f92) !important;
 }
+
 .platform-android.android-portrait .import-btn,
 .platform-android.android-portrait .reset-btn {
-  background: rgba(255, 255, 255, 0.14) !important;
+  background: #f5f5f5 !important;
 }
+
 .platform-android.android-portrait .css-editor {
-  background: rgba(0, 0, 0, 0.5) !important;
+  background: #f8f8f8 !important;
+  color: #333 !important;
 }
+
 .platform-android.android-portrait .chat-bg-preview {
-  background: rgba(255, 255, 255, 0.14) !important;
+  background: #f8f8f8 !important;
 }
+
 .platform-android.android-portrait .chat-bg-btn {
-  background: rgba(255, 255, 255, 0.14) !important;
+  background: #f5f5f5 !important;
 }
+
 .platform-android.android-portrait .chat-bg-url-input {
-  background: rgba(0, 0, 0, 0.5) !important;
+  background: #f0f0f0 !important;
+  color: #333 !important;
 }
+
 .platform-android.android-portrait .chat-bg-url-btn {
-  background: rgba(10, 132, 255, 0.35) !important;
+  background: rgba(251, 111, 146, 0.2) !important;
 }
+
 .platform-android.android-portrait .chat-bg-clear-btn {
-  background: rgba(255, 149, 0, 0.2) !important;
+  background: rgba(255, 149, 0, 0.1) !important;
 }
+
 .platform-android.android-portrait .css-hint {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: #f8f8f8 !important;
 }
+
 .platform-android.android-portrait .context-messages-input {
-  background: rgba(0, 0, 0, 0.5) !important;
+  background: #f0f0f0 !important;
+  color: #333 !important;
+}
+
+.platform-android.android-portrait .spot-check-whitelist {
+  background: #f8f8f8 !important;
+}
+
+.platform-android.android-portrait .whitelist-name {
+  color: #333 !important;
+}
+
+.platform-android.android-portrait .toggle-slider {
+  background: #ddd !important;
+}
+
+.platform-android.android-portrait .spot-check-toggle input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #ff8fab, #fb6f92) !important;
 }
 
 /* 事件池 */
 .event-pool-desc {
   font-size: 0.75rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  color: #999;
   margin: 6px 0 10px;
   line-height: 1.5;
 }
@@ -804,19 +818,17 @@ const emit = defineEmits([
   align-items: center;
   justify-content: center;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f5f5f5;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
-  color: #0a84ff;
+  color: #fb6f92;
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
 }
 .event-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f0f0f0;
 }
 .event-btn input {
   display: none;
@@ -831,6 +843,6 @@ const emit = defineEmits([
 .event-pool-status {
   margin-top: 8px;
   font-size: 0.72rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
+  color: #bbb;
 }
 </style>

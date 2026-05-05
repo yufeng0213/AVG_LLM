@@ -1,7 +1,7 @@
 <script setup>
 /**
  * ReaderSettingsView.vue - 阅读设置
- * 字体大小、行高、美化配置导入。
+ * 紫色主题
  */
 import { ref, onMounted } from 'vue'
 import { loadSettings, saveSettings } from '../../composables/useReaderData.js'
@@ -13,7 +13,9 @@ const fontSize = ref(16)
 const lineHeight = ref(1.8)
 const contextChapters = ref(1)
 const memoryThreshold = ref(0)
-const beautifyStatus = ref('') // '' | '已加载' | '导入成功' | '错误: xxx'
+const mainCharacters = ref('')
+const preferredGenres = ref('')
+const beautifyStatus = ref('')
 
 onMounted(async () => {
   const s = await loadSettings()
@@ -21,6 +23,8 @@ onMounted(async () => {
   lineHeight.value = s.lineHeight
   contextChapters.value = s.contextChapters ?? 1
   memoryThreshold.value = s.memoryThreshold ?? 0
+  mainCharacters.value = s.mainCharacters || ''
+  preferredGenres.value = s.preferredGenres || ''
   beautifyStatus.value = s.beautifyConfig ? '已加载' : '未配置（使用默认）'
 })
 
@@ -31,6 +35,8 @@ async function handleSave() {
     theme: 'dark',
     contextChapters: contextChapters.value,
     memoryThreshold: memoryThreshold.value,
+    mainCharacters: mainCharacters.value,
+    preferredGenres: preferredGenres.value,
   })
   emit('back')
 }
@@ -88,7 +94,12 @@ async function handleReset() {
 
 <template>
   <div class="reader-settings">
-    <h2 class="settings-title">阅读设置</h2>
+    <!-- 标题栏 -->
+    <div class="settings-header">
+      <button class="settings-back-btn" @click="emit('back')"><</button>
+      <span class="settings-title">阅读设置</span>
+      <span class="settings-spacer" />
+    </div>
 
     <!-- 字体大小 -->
     <div class="settings-group">
@@ -146,7 +157,7 @@ async function handleReset() {
     <!-- 记忆提取阈值 -->
     <div class="settings-group">
       <label class="settings-label">记忆提取阈值（章节数）</label>
-      <p class="settings-hint">每累积 N 章后，自动调用 LLM 提取剧情记忆摘要。下次生成时会注入这些记忆</p>
+      <p class="settings-hint">每累积 N 章后，自动调用 LLM 提取剧情记忆摘要</p>
       <input
         v-model.number="memoryThreshold"
         class="settings-number"
@@ -159,20 +170,38 @@ async function handleReset() {
       <p class="settings-number-value">当前: {{ memoryThreshold === 0 ? '关闭' : '每 ' + memoryThreshold + ' 章提取' }}</p>
     </div>
 
-    <!-- 主题跟随系统提示 -->
+    <!-- 主要角色设定 -->
     <div class="settings-group">
-      <label class="settings-label">主题</label>
-      <p class="settings-hint">跟随系统主题，在设置中切换主题即可</p>
+      <label class="settings-label">主要角色设定</label>
+      <p class="settings-hint">当生成非参考角色的新书时，LLM 会以此作为主要角色背景。可设置女主/男主等核心角色的姓名、性格、身份等信息。</p>
+      <textarea
+        v-model="mainCharacters"
+        class="settings-textarea"
+        placeholder="例如：&#10;女主：林小雅，性格温柔但坚韧，是一名高中生&#10;男主：叶辰，性格冷静沉稳，真实身份是隐藏的修仙者"
+        rows="4"
+      ></textarea>
+    </div>
+
+    <!-- 偏好小说类型 -->
+    <div class="settings-group">
+      <label class="settings-label">偏好小说类型</label>
+      <p class="settings-hint">新书发现时优先推荐这些类型，留空则随机推荐。多个类型用空格分隔。</p>
+      <input
+        v-model="preferredGenres"
+        class="settings-textarea"
+        type="text"
+        placeholder="例如：悬疑 都市 轻小说 快穿"
+      />
     </div>
 
     <!-- 文本美化配置 -->
     <div class="settings-group">
       <label class="settings-label">文本美化</label>
-      <p class="settings-hint">导入 JSON 配置文件，自定义首字下沉、引号变色、省略号等排版效果</p>
+      <p class="settings-hint">导入 JSON 配置文件，自定义排版效果</p>
       <div class="beautify-actions">
         <button class="beautify-btn" @click="handleImport">导入配置</button>
         <button class="beautify-btn beautify-btn--secondary" @click="handleExport">导出配置</button>
-        <button class="beautify-btn beautify-btn--danger" @click="handleReset">重置默认</button>
+        <button class="beautify-btn beautify-btn--danger" @click="handleReset">重置</button>
       </div>
       <p class="beautify-status" :class="{ error: beautifyStatus.startsWith('错误') }">{{ beautifyStatus }}</p>
     </div>
@@ -180,85 +209,131 @@ async function handleReset() {
     <button class="settings-save-btn" @click="handleSave">
       保存设置
     </button>
+
+    <div class="bottom-spacer" />
   </div>
 </template>
 
 <style scoped>
 .reader-settings {
-  padding: 16px;
-  min-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(180deg, #f5f0ff 0%, #ede4ff 100%);
+}
+
+/* 标题栏 */
+.settings-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  padding-top: 10px;
+}
+
+.settings-back-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: #2d2040;
+  cursor: pointer;
+  padding: 4px 8px;
 }
 
 .settings-title {
-  font-size: 1.1rem;
+  flex: 1;
+  text-align: center;
+  font-size: 1rem;
   font-weight: 700;
-  margin-bottom: 20px;
-  color: var(--reader-text, #fff);
+  color: #2d2040;
 }
 
+.settings-spacer {
+  width: 40px;
+}
+
+/* 设置分组 */
 .settings-group {
-  margin-bottom: 24px;
+  background: #fff;
+  margin: 0 16px 14px;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .settings-label {
   display: block;
   font-size: 0.85rem;
-  color: var(--reader-secondary, #8b9dc3);
+  color: #2d2040;
   font-weight: 600;
   margin-bottom: 8px;
 }
 
 .settings-hint {
-  font-size: 0.82rem;
-  color: var(--reader-secondary, #8b9dc3);
-  opacity: 0.7;
-  margin: 0;
-  padding: 8px 12px;
-  background: var(--reader-panel-bg, rgba(255, 255, 255, 0.04));
-  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #8b7ea8;
+  margin: 0 0 10px;
 }
 
 .settings-range {
   width: 100%;
-  accent-color: var(--reader-accent-start, #667eea);
+  accent-color: #7c5cbf;
 }
 
 .settings-range-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.72rem;
-  color: #555;
+  font-size: 0.7rem;
+  color: #b0a8c0;
 }
 
 .settings-number {
   width: 100%;
-  background: var(--reader-panel-bg, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--reader-border, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  background: #f8f4ff;
+  border: 1px solid #e8e0f0;
+  border-radius: 10px;
   padding: 10px 12px;
-  color: var(--reader-text, #fff);
-  font-size: 0.9rem;
+  color: #2d2040;
+  font-size: 0.88rem;
   outline: none;
   margin-top: 8px;
   box-sizing: border-box;
 }
 
 .settings-number:focus {
-  border-color: var(--reader-accent-start, #667eea);
+  border-color: #7c5cbf;
+}
+
+.settings-textarea {
+  width: 100%;
+  background: #f8f4ff;
+  border: 1px solid #e8e0f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #2d2040;
+  font-size: 0.82rem;
+  outline: none;
+  margin-top: 8px;
+  box-sizing: border-box;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.settings-textarea:focus {
+  border-color: #7c5cbf;
 }
 
 .settings-number-value {
   margin-top: 6px;
-  font-size: 0.8rem;
-  color: var(--reader-accent-start, #667eea);
+  font-size: 0.78rem;
+  color: #7c5cbf;
   font-weight: 600;
 }
 
 .settings-preview {
   margin-top: 8px;
-  color: var(--reader-secondary, #aaa);
+  color: #8b7ea8;
   padding: 8px 12px;
-  background: var(--reader-panel-bg, rgba(255, 255, 255, 0.04));
+  background: #f8f4ff;
   border-radius: 8px;
 }
 
@@ -272,64 +347,85 @@ async function handleReset() {
 
 .beautify-btn {
   flex: 1;
-  min-width: 80px;
-  background: var(--reader-panel-bg, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--reader-border, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  min-width: 70px;
+  background: #f0e8ff;
+  border: 1px solid #e0d4f5;
+  border-radius: 10px;
   padding: 8px 12px;
-  color: var(--reader-text, #fff);
-  font-size: 0.82rem;
+  color: #7c5cbf;
+  font-size: 0.78rem;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.2s;
 }
 
 .beautify-btn:hover {
-  background: var(--reader-border, rgba(255, 255, 255, 0.15));
+  background: #e0d4f5;
 }
 
 .beautify-btn--secondary {
-  border-color: var(--reader-accent-start, #667eea);
-  color: var(--reader-accent-start, #667eea);
+  border-color: #7c5cbf;
 }
 
 .beautify-btn--danger {
-  border-color: rgba(255, 77, 77, 0.3);
+  border-color: #ff6b6b;
   color: #ff6b6b;
+  background: rgba(255, 77, 77, 0.06);
 }
 
 .beautify-btn--danger:hover {
-  background: rgba(255, 77, 77, 0.1);
+  background: rgba(255, 77, 77, 0.12);
 }
 
 .beautify-status {
   margin-top: 8px;
-  font-size: 0.78rem;
-  color: var(--reader-accent-start, #667eea);
+  font-size: 0.75rem;
+  color: #7c5cbf;
 }
 
 .beautify-status.error {
   color: #ff6b6b;
 }
 
+/* 保存按钮 */
 .settings-save-btn {
-  width: 100%;
-  background: linear-gradient(135deg, var(--reader-accent-start, #667eea), var(--reader-accent-end, #764ba2));
+  width: calc(100% - 32px);
+  margin: 0 16px 12px;
+  background: linear-gradient(135deg, #7c5cbf, #9b8ec4);
   border: none;
-  color: var(--reader-text, #fff);
+  color: #fff;
   padding: 14px;
-  border-radius: 12px;
-  font-size: 1rem;
+  border-radius: 24px;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.15s;
-  margin-top: 12px;
 }
 
 .settings-save-btn:hover {
   transform: scale(1.02);
 }
 
-.settings-save-btn:active {
-  transform: scale(0.98);
+.bottom-spacer {
+  height: 16px;
+}
+
+.platform-android.android-portrait .settings-back-btn,
+.platform-android.android-portrait .beautify-btn,
+.platform-android.android-portrait .settings-save-btn {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  flex: none !important;
+  font-size: 1.1rem !important;
+  padding: 6px 14px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
 }
 </style>

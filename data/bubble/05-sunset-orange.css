@@ -1,0 +1,25 @@
+/* ===== 日落橙 ===== */
+.sms-messages { background: #fff8f0 !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: linear-gradient(135deg, #ffb74d, #f57c00) !important;
+  border-radius: 18px 18px 6px 18px !important;
+  color: #fff !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 2px 6px rgba(245, 124, 0, 0.25) !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: #fff3e0 !important;
+  border-radius: 18px 18px 18px 6px !important;
+  color: #4e342e !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.65rem !important; color: #ffcc80 !important;
+  background: rgba(255, 204, 128, 0.1) !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important; border-radius: 10px !important;
+}

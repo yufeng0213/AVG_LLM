@@ -143,6 +143,10 @@ export async function loadBookFull(bookId, conn) {
   if (config) {
     book.openingDialogueMode = config.opening_dialogue_mode || 'auto'
     book.openingDialogue = safeJsonParse(config.opening_dialogue, [])
+    book.backgroundSettings = {
+      defaultBackgroundPath: config.default_background_path || '',
+      defaultBackgroundName: config.default_background_name || '默认背景',
+    }
   }
 
   const portraits = await _q(conn, 'SELECT * FROM world_book_portraits WHERE world_book_id = ?', [bookId])
@@ -277,10 +281,18 @@ export async function loadAllBooksFull(conn) {
       book.openingDialogueMode = c[0].opening_dialogue_mode || 'auto'
       book.openingDialogue = safeJsonParse(c[0].opening_dialogue, [])
       book.directorEvents = safeJsonParse(c[0].director_events, [])
+      book.backgroundSettings = {
+        defaultBackgroundPath: c[0].default_background_path || '',
+        defaultBackgroundName: c[0].default_background_name || '默认背景',
+      }
     } else if (c) {
       book.openingDialogueMode = c.opening_dialogue_mode || 'auto'
       book.openingDialogue = safeJsonParse(c.opening_dialogue, [])
       book.directorEvents = safeJsonParse(c.director_events, [])
+      book.backgroundSettings = {
+        defaultBackgroundPath: c.default_background_path || '',
+        defaultBackgroundName: c.default_background_name || '默认背景',
+      }
     }
 
     book.userProfile.portraits = (userPortraitMap[id] || []).map(p => ({
@@ -392,11 +404,13 @@ export async function insertBook(book, conn, statements) {
   }
 
   await e(
-    `INSERT OR REPLACE INTO world_book_config (world_book_id, opening_dialogue_mode, opening_dialogue, director_events)
-     VALUES (?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO world_book_config (world_book_id, opening_dialogue_mode, opening_dialogue, director_events, default_background_path, default_background_name)
+     VALUES (?, ?, ?, ?, ?, ?)`,
     [book.id, book.openingDialogueMode || 'auto',
      JSON.stringify(book.openingDialogue || []),
-     JSON.stringify(book.directorEvents || [])]
+     JSON.stringify(book.directorEvents || []),
+     book.backgroundSettings?.defaultBackgroundPath || '',
+     book.backgroundSettings?.defaultBackgroundName || '默认背景']
   )
 
   for (const c of (book.characters || [])) {

@@ -36,6 +36,7 @@
     "@capacitor/status-bar": "^8.0.2",
     "@mediapipe/tasks-vision": "^0.10.34",
     "@vladmandic/human": "^3.3.6",
+    "chart.js": "^4.5.1",
     "electron": "^41.1.1",
     "gsap": "^3.15.0",
     "html2canvas": "^1.4.1",
@@ -43,10 +44,12 @@
     "lottie-web": "^5.13.0",
     "marked": "^18.0.0",
     "music-metadata-browser": "^2.5.11",
+    "pdfjs-dist": "^5.7.284",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "three": "^0.183.2",
-    "vue": "^3.5.30"
+    "vue": "^3.5.30",
+    "vue-chartjs": "^5.3.3"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.5",

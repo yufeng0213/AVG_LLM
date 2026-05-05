@@ -66,7 +66,7 @@ export const callChatCompletion = async ({
   maxTokens = 2000,
   extraParams = {},
   timeout = 120000, // 默认 120 秒超时
-  label = '', // 调用方标识，用于日志分类
+  label = 'LLM', // 调用方标识，用于日志分类，默认为 'LLM'
 }) => {
   const { customApi, apiKey, model } = config
 
@@ -110,7 +110,7 @@ export const callChatCompletion = async ({
         error: `API 请求失败: ${response.status} ${errorText}`,
         data: null,
       }
-      logLlmCall({ label, systemPrompt, userPrompt, rawResponse: errorText, success: false, model, temperature })
+      await logLlmCall({ label, systemPrompt, userPrompt, rawResponse: errorText, success: false, model, temperature })
       return result
     }
 
@@ -122,7 +122,7 @@ export const callChatCompletion = async ({
         error: 'API 返回内容为空',
         data: null,
       }
-      logLlmCall({ label, systemPrompt, userPrompt, rawResponse: JSON.stringify(data), success: false, model, temperature })
+      await logLlmCall({ label, systemPrompt, userPrompt, rawResponse: JSON.stringify(data), success: false, model, temperature })
       return result
     }
 
@@ -132,7 +132,7 @@ export const callChatCompletion = async ({
       data: content,
       rawResponse: data,
     }
-    logLlmCall({ label, systemPrompt, userPrompt, rawResponse: content, success: true, model, temperature })
+    await logLlmCall({ label, systemPrompt, userPrompt, rawResponse: content, success: true, model, temperature })
     return result
   } catch (err) {
     const result = {
@@ -140,7 +140,7 @@ export const callChatCompletion = async ({
       error: `网络请求失败: ${err.message}`,
       data: null,
     }
-    logLlmCall({ label, systemPrompt, userPrompt, rawResponse: err.message || '', success: false, model, temperature })
+    await logLlmCall({ label, systemPrompt, userPrompt, rawResponse: err.message || '', success: false, model, temperature })
     return result
   }
 }
@@ -394,7 +394,7 @@ export const generateCharacterSpeech = async (params = {}) => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: errorText, success: false })
+      await logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: errorText, success: false })
       return {
         success: false,
         error: `TTS 请求失败: ${response.status} ${errorText}`,
@@ -405,7 +405,7 @@ export const generateCharacterSpeech = async (params = {}) => {
     const data = await response.json()
     const statusCode = Number.parseInt(String(data?.base_resp?.status_code ?? 0), 10)
     if (Number.isFinite(statusCode) && statusCode !== 0) {
-      logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: JSON.stringify(data), success: false })
+      await logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: JSON.stringify(data), success: false })
       return {
         success: false,
         error: `TTS 服务返回错误: ${String(data?.base_resp?.status_msg || statusCode)}`,
@@ -416,7 +416,7 @@ export const generateCharacterSpeech = async (params = {}) => {
 
     const audioRaw = String(data?.data?.audio || data?.audio || '').trim()
     if (!audioRaw) {
-      logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: JSON.stringify(data), success: false })
+      await logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: JSON.stringify(data), success: false })
       return {
         success: false,
         error: 'TTS 返回音频为空',
@@ -427,7 +427,7 @@ export const generateCharacterSpeech = async (params = {}) => {
 
     const audioBytes = decodeHexAudio(audioRaw) || decodeBase64Audio(audioRaw)
     if (!audioBytes || audioBytes.length === 0) {
-      logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: JSON.stringify(data), success: false })
+      await logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: JSON.stringify(data), success: false })
       return {
         success: false,
         error: 'TTS 音频解码失败',
@@ -436,7 +436,7 @@ export const generateCharacterSpeech = async (params = {}) => {
       }
     }
 
-    logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: `audio ${audioBytes.length} bytes`, success: true })
+    await logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: `audio ${audioBytes.length} bytes`, success: true })
     return {
       success: true,
       error: null,
@@ -446,7 +446,7 @@ export const generateCharacterSpeech = async (params = {}) => {
       rawResponse: data,
     }
   } catch (error) {
-    logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: error?.message || '', success: false })
+    await logLlmCall({ label: 'TTS', systemPrompt: '', userPrompt: text, rawResponse: error?.message || '', success: false })
     return {
       success: false,
       error: `TTS 网络请求失败: ${error?.message || '未知错误'}`,

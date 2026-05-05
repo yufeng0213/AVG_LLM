@@ -9,6 +9,7 @@ import {
   MAX_LOG_COUNT,
   MOOD_BASE_VALUE,
   MOOD_EFFECT_CONFIG,
+  DEFAULT_INVENTORY_CAPACITY,
 } from '../config/constants.js'
 
 // ========== 测试用的 Tile 像素图案 ==========
@@ -251,6 +252,17 @@ const buildDefaultMood = () => ({
   effects: MOOD_EFFECT_CONFIG.normal,
 })
 
+// 售货机商品
+const DEFAULT_SHOP_PRODUCTS = [
+  { templateId: 'food-simple', name: '简单餐食', type: 'food', price: 10, effect: { hunger: 20 }, stock: 10, maxStock: 20 },
+  { templateId: 'food-good', name: '美味佳肴', type: 'food', price: 25, effect: { hunger: 35, joy: 5 }, stock: 5, maxStock: 10 },
+  { templateId: 'food-excellent', name: '豪华盛宴', type: 'food', price: 50, effect: { hunger: 50, joy: 10, comfort: 5 }, stock: 2, maxStock: 5 },
+  { templateId: 'material-basic', name: '基础材料', type: 'material', price: 15, effect: {}, stock: 20, maxStock: 50 },
+]
+
+// 导出默认商品供其他模块使用
+export { DEFAULT_SHOP_PRODUCTS }
+
 // 默认小人生成 - 分散初始位置
 export const createDefaultPawn = (index = 0, roleHint = '') => {
   const roles = ['工匠', '厨师', '学者', '护士', '农夫', '矿工', '商人', '艺术家']
@@ -303,6 +315,10 @@ export const createDefaultPawn = (index = 0, roleHint = '') => {
     },
     lastDialogue: '',
     dialogueCooldown: 0,
+    eventLog: [],  // 活动日志 [{ time, gameTime, text, moodImpact, activity }]
+    preferredActivities: [],  // 活动偏好 ['work', 'social', 'explore', 'relax']
+    activityCooldown: 0,      // 上次活动后的冷却时间戳
+    targetPawn: null,         // 社交目标小人ID
     updatedAt: Date.now(),
   }
 }
@@ -533,9 +549,10 @@ export const buildDefaultRoomState = () => {
 // 默认时间状态
 export const buildDefaultTimeState = () => ({
   tick: 0,
+  gameSeconds: 21600,  // 游戏开始时间：第1天 6:00（6*3600秒）
   dayCount: 1,
   hourOfDay: 6,
-  timeSpeed: 1.0,
+  speedMode: 'normal',  // 时间流速档位：pause, companion, normal, fast, ultra
   isPaused: true,
   dayPhase: 'morning',
   lightModifier: 1.0,
@@ -694,6 +711,32 @@ export const buildDefaultStateForCharacter = (characterInfo) => {
     selectedFurnitureId: '',
     currentView: 'room',
     logs: [`${name}已创建，请配置精灵和家具。`],
+    customFurnitureLibrary: [],
+    updatedAt: Date.now(),
+  }
+}
+
+// 公共区域默认状态（无小人）
+export const buildDefaultPublicRoomState = (roomName = '公共区域') => {
+  const room = buildDefaultRoomState()
+  room.id = `room-public-${Date.now().toString(36)}`
+  room.name = roomName
+  room.type = 'common'
+
+  return {
+    time: buildDefaultTimeState(),
+    rooms: [room],
+    room: null,
+    pawns: [],
+    tasks: [],
+    items: buildDefaultItemsState(),
+    stats: buildDefaultStatsState(),
+    worldBookId: '',
+    worldBookCharacterSignature: '__public__',
+    selectedPawnId: '',
+    selectedFurnitureId: '',
+    currentView: 'room',
+    logs: [`进入公共区域：${roomName}`],
     customFurnitureLibrary: [],
     updatedAt: Date.now(),
   }

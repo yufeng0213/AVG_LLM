@@ -1,28 +1,28 @@
 /**
  * usePhoneEconomy.js - 手机经济系统
- * 零花钱余额、红包收发、礼物买卖、交易记录
+ * 余额使用 WorldHub 全局金币 (playerState.economy.coins)。
+ * 红包、礼物、交易记录等手机特有数据仍存 kvStorage。
  */
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, toRaw } from 'vue'
 import { kvStorage } from '../../../../../src/storage/index.js'
+import { usePlayerState } from '../../../../../src/stores/playerState.store.js'
 
-const STORAGE_KEY_BALANCE = 'avg_llm_phone_balance_v1'
 const STORAGE_KEY_TRANSACTIONS = 'avg_llm_phone_transactions_v1'
 const STORAGE_KEY_RED_PACKETS = 'avg_llm_phone_red_packets_v1'
 const STORAGE_KEY_GIFTS = 'avg_llm_phone_gifts_v1'
+const STORAGE_KEY_MIGRATED = 'avg_llm_phone_migrated_balance'
 
 // 模块级状态
-let _balance = 0
 let _transactions = []
 let _redPackets = []
 let _gifts = []
 let _initialized = false
+let _migrationDone = false
 
 async function loadFromStorage() {
-  const b = await kvStorage.get(STORAGE_KEY_BALANCE)
   const t = await kvStorage.get(STORAGE_KEY_TRANSACTIONS)
   const rp = await kvStorage.get(STORAGE_KEY_RED_PACKETS)
   const g = await kvStorage.get(STORAGE_KEY_GIFTS)
-  _balance = typeof b === 'number' ? b : 0
   _transactions = Array.isArray(t) ? t : []
   _redPackets = Array.isArray(rp) ? rp : []
   _gifts = Array.isArray(g) ? g : []
@@ -31,7 +31,6 @@ async function loadFromStorage() {
 
 function saveAll() {
   return Promise.all([
-    kvStorage.set(STORAGE_KEY_BALANCE, _balance),
     kvStorage.set(STORAGE_KEY_TRANSACTIONS, _transactions),
     kvStorage.set(STORAGE_KEY_RED_PACKETS, _redPackets),
     kvStorage.set(STORAGE_KEY_GIFTS, _gifts),
@@ -42,7 +41,7 @@ function genId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
 }
 
-// 礼物目录（预定义小礼物，也可由 LLM 动态生成）
+// 礼物目录
 const GIFT_CATALOG = [
   { id: 'gift_flower', name: '一束花', icon: '💐', price: 8, category: '鲜花' },
   { id: 'gift_chocolate', name: '巧克力', icon: '🍫', price: 5, category: '零食' },
@@ -58,7 +57,6 @@ const GIFT_CATALOG = [
 
 export function usePhoneEconomy() {
   if (!_initialized) {
-    _balance = 0
     _transactions = []
     _redPackets = []
     _gifts = []
@@ -66,17 +64,23 @@ export function usePhoneEconomy() {
     loadFromStorage()
   }
 
-  const balance = ref(_balance)
+  const playerState = usePlayerState()
+
+  const balance = computed({
+    get: () => playerState.economy?.coins ?? 0,
+    set: (val) => playerState.updateEconomy({ coins: val }),
+  })
+
   const transactions = reactive(_transactions)
   const redPackets = reactive(_redPackets)
   const gifts = reactive(_gifts)
 
   // ===== 余额操作 =====
 
-  // 增加余额（收入）
+  // 增加金币（收入）
   async function addBalance(amount, reason) {
-    _balance += amount
-    balance.value = _balance
+    const current = playerState.economy?.coins ?? 0
+    playerState.updateEconomy({ coins: current + amount })
     const tx = {
       id: genId('tx'),
       type: 'income',
@@ -89,13 +93,13 @@ export function usePhoneEconomy() {
     return tx
   }
 
-  // 扣除余额（支出）
+  // 扣除金币（支出）
   async function deductBalance(amount, reason) {
-    if (_balance < amount) {
-      return { success: false, error: '余额不足' }
+    const current = playerState.economy?.coins ?? 0
+    if (current < amount) {
+      return { success: false, error: '金币不足' }
     }
-    _balance -= amount
-    balance.value = _balance
+    playerState.updateEconomy({ coins: current - amount })
     const tx = {
       id: genId('tx'),
       type: 'expense',
@@ -253,17 +257,27 @@ export function usePhoneEconomy() {
     return [...transactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, limit)
   }
 
-  // 清空经济数据（调试用）
-  async function resetEconomy() {
-    _balance = 0
-    _transactions = []
-    _redPackets = []
-    _gifts = []
-    balance.value = 0
-    transactions.splice(0, transactions.length)
-    redPackets.splice(0, redPackets.length)
-    gifts.splice(0, gifts.length)
-    await saveAll()
+  // ===== 一次性迁移旧余额到全局金币 =====
+  async function migrateOldBalance() {
+    if (_migrationDone) return
+    _migrationDone = true
+    const BALANCE_KEY = 'avg_llm_phone_balance_v1'
+    const oldBalance = await kvStorage.get(BALANCE_KEY)
+    if (typeof oldBalance === 'number' && oldBalance > 0) {
+      const current = playerState.economy?.coins ?? 0
+      playerState.updateEconomy({ coins: current + oldBalance })
+      // 记录一条迁移交易
+      transactions.push({
+        id: genId('tx_migrate'),
+        type: 'income',
+        amount: oldBalance,
+        reason: '旧手机零钱迁移',
+        createdAt: new Date().toISOString(),
+      })
+      await saveAll()
+      // 标记已迁移，避免重复
+      await kvStorage.set(STORAGE_KEY_MIGRATED, true)
+    }
   }
 
   return {
@@ -287,6 +301,6 @@ export function usePhoneEconomy() {
     recordGiftReply,
     recordGiftReturn,
     getRecentTransactions,
-    resetEconomy,
+    migrateOldBalance,
   }
 }

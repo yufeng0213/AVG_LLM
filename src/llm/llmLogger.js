@@ -2,28 +2,14 @@
  * LLM 输入/输出日志工具
  * 将每次 LLM 调用的 prompt 和 response 写入文件，便于调试
  *
- * Android 原生环境：写入 Documents/debug/llm-debug.log
+ * Android 原生环境：写入公共 Documents/debug/llm-debug.log
  * Web 环境：写入 localStorage（key: llm_debug_log）
  */
 
-let _capacitorFs = null
-let _capacitorDir = null
-let _capacitorEnc = null
-
-const loadCapacitor = async () => {
-  if (_capacitorFs) return
-  try {
-    const fs = await import('@capacitor/filesystem')
-    _capacitorFs = fs.Filesystem
-    _capacitorDir = fs.Directory
-    _capacitorEnc = fs.Encoding
-  } catch {
-    // Capacitor 不可用
-  }
-}
+import { writeDebugLog } from '../capacitor-plugins/StoragePermission.js'
 
 /**
- * 写入一条 LLM 日志
+ * 写入一条 LLM 日志（覆盖写入）
  * @param {object} params
  * @param {string} params.label - 调用类型标识，如 "Story", "Phone SMS", "Schedule" 等
  * @param {string} params.systemPrompt - 系统提示词
@@ -65,36 +51,20 @@ export const logLlmCall = async (params = {}) => {
 
   const entry = parts.join('\n')
 
-  await loadCapacitor()
+  // 使用原生插件写入公共 Documents/debug 目录
+  const result = await writeDebugLog(entry, 'llm-debug.log')
 
-  // Capacitor Filesystem（Android 原生环境）
-  if (_capacitorFs) {
-    try {
-      await _capacitorFs.mkdir({
-        path: 'debug',
-        directory: _capacitorDir.Documents,
-        recursive: true,
-      })
-    } catch {
-      // 目录已存在或无法创建
-    }
-    try {
-      await _capacitorFs.writeFile({
-        path: 'debug/llm-debug.log',
-        data: entry,
-        directory: _capacitorDir.Documents,
-        encoding: _capacitorEnc.UTF8,
-      })
-      return
-    } catch {
-      // 写入失败，回退到 localStorage
-    }
-  }
+  if (result.success) {
+    console.log(`[LLM Logger] 已写入日志文件: ${label} (${success ? '成功' : '失败'}) -> ${result.path}`)
+  } else {
+    console.warn('[LLM Logger] 写入失败:', result.error)
 
-  // localStorage 回退（覆盖写入）
-  try {
-    localStorage.setItem('llm_debug_log', entry)
-  } catch {
-    // localStorage 不可用
+    // Fallback: 尝试 localStorage
+    try {
+      localStorage.setItem('llm_debug_log', entry)
+      console.log(`[LLM Logger] Fallback 写入 localStorage: ${label}`)
+    } catch (e) {
+      console.warn('[LLM Logger] localStorage 写入失败:', e.message)
+    }
   }
 }

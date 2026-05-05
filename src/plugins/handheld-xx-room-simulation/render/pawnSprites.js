@@ -1,11 +1,12 @@
-// 小人精灵渲染 - 扩展 campfireSprites 模式
+// 小人精灵渲染 - 部件化换装系统 + 4方向支持
 
 import {
   SPRITE_PIXEL_SIZE,
   SPRITE_GRID_SIZE,
 } from '../config/constants.js'
 
-// 复用 campfireSprites 的调色板
+// ==================== 调色板 ====================
+
 const PAWN_PIXEL_PALETTES = {
   ember: { robe: '#b35943', trim: '#ffd4a8', accent: '#ff9f5f', hair: '#5f3728' },
   forest: { robe: '#477e50', trim: '#c6f1bf', accent: '#84cf7f', hair: '#2f4d33' },
@@ -17,18 +18,202 @@ const PAWN_PIXEL_PALETTES = {
   silver: { robe: '#9a9aa0', trim: '#dadae0', accent: '#babac0', hair: '#5a5a60' },
 }
 
-// 扩展的职业样式
 const PAWN_STYLE_LIST = ['knight', 'mage', 'ranger', 'rogue', 'priest', 'alchemist', 'worker', 'cook', 'scholar', 'nurse']
-
-// 扩展的动作列表
 const PAWN_ACTION_LIST = ['idle', 'walk', 'work', 'sleep', 'eat', 'talk', 'read', 'carry']
 
-// 创建基础精灵网格
+// ==================== 部件定义 ====================
+// 每个部件变体包含 4 个方向的像素数据
+// facing: 'front' | 'back' | 'left' | 'right'
+// 数据格式: Array<[x, y, token]>
+// right 由 left 水平翻转自动派生，无需手动定义
+
+// ---------- 发型 ----------
+
+const OUTFIT_HAIR = {
+  short: {
+    label: '短发',
+    front:  [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[5,1,'h'],[10,1,'h']],
+    back:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[5,1,'h'],[5,2,'h'],[5,3,'h'],[10,1,'h'],[10,2,'h'],[10,3,'h']],
+    left:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[5,1,'h'],[5,2,'h'],[5,3,'h']],
+  },
+  long: {
+    label: '长发',
+    front:  [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[5,1,'h'],[10,1,'h'],[4,2,'h'],[11,2,'h'],[4,3,'h'],[11,3,'h'],[4,4,'h'],[11,4,'h'],[4,5,'h'],[11,5,'h']],
+    back:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[5,1,'h'],[5,2,'h'],[5,3,'h'],[5,4,'h'],[5,5,'h'],[10,1,'h'],[10,2,'h'],[10,3,'h'],[10,4,'h'],[10,5,'h']],
+    left:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[5,1,'h'],[4,2,'h'],[4,3,'h'],[4,4,'h'],[4,5,'h']],
+  },
+  ponytail: {
+    label: '马尾',
+    front:  [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[5,1,'h'],[10,1,'h']],
+    back:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[5,1,'h'],[5,2,'h'],[5,3,'h'],[5,4,'h'],[10,1,'h'],[10,2,'h'],[10,3,'h'],[10,4,'h'],[7,5,'h'],[8,5,'h'],[7,6,'h'],[8,6,'h']],
+    left:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[5,1,'h'],[5,2,'h'],[9,2,'h'],[9,3,'h']],
+  },
+  spiky: {
+    label: '刺猬头',
+    front:  [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[4,1,'h'],[5,1,'h'],[10,1,'h'],[11,1,'h']],
+    back:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[4,1,'h'],[5,1,'h'],[5,2,'h'],[5,3,'h'],[10,1,'h'],[10,2,'h'],[10,3,'h'],[11,1,'h']],
+    left:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[4,1,'h'],[5,1,'h'],[5,2,'h'],[5,3,'h']],
+  },
+  bob: {
+    label: '波波头',
+    front:  [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[4,1,'h'],[5,1,'h'],[10,1,'h'],[11,1,'h'],[4,2,'h'],[11,2,'h']],
+    back:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[4,1,'h'],[5,1,'h'],[5,2,'h'],[5,3,'h'],[5,4,'h'],[10,1,'h'],[10,2,'h'],[10,3,'h'],[10,4,'h'],[11,1,'h']],
+    left:   [[5,0,'h'],[6,0,'h'],[7,0,'h'],[8,0,'h'],[9,0,'h'],[10,0,'h'],[4,1,'h'],[5,1,'h'],[4,2,'h'],[5,2,'h'],[4,3,'h'],[5,3,'h']],
+  },
+  bald: {
+    label: '光头',
+    front:  [],
+    back:   [],
+    left:   [],
+  },
+}
+
+// ---------- 眼睛 ----------
+
+const OUTFIT_EYES = {
+  normal: {
+    label: '普通',
+    front: [[7,2,'e'],[8,2,'e']],
+    back:  [],
+    left:  [[7,2,'e']],
+  },
+  big: {
+    label: '大眼',
+    front: [[7,2,'e'],[8,2,'e'],[7,3,'e'],[8,3,'e']],
+    back:  [],
+    left:  [[7,2,'e'],[7,3,'e']],
+  },
+  sleepy: {
+    label: '睡眼',
+    front: [[7,3,'e'],[8,3,'e']],
+    back:  [],
+    left:  [[7,3,'e']],
+  },
+  happy: {
+    label: '笑眼',
+    front: [[7,3,'e'],[8,3,'e']],
+    back:  [],
+    left:  [[7,3,'e']],
+  },
+}
+
+// ---------- 上衣 ----------
+
+const OUTFIT_TOP = {
+  robe: {
+    label: '长袍',
+    front: [[5,5,'r'],[6,5,'r'],[7,5,'r'],[8,5,'r'],[9,5,'r'],[10,5,'r'],[5,6,'r'],[6,6,'r'],[7,6,'r'],[8,6,'r'],[9,6,'r'],[10,6,'r'],[5,7,'r'],[6,7,'r'],[7,7,'r'],[8,7,'r'],[9,7,'r'],[10,7,'r'],[5,8,'r'],[6,8,'r'],[7,8,'r'],[8,8,'r'],[9,8,'r'],[10,8,'r'],[5,9,'r'],[6,9,'r'],[7,9,'r'],[8,9,'r'],[9,9,'r'],[10,9,'r'],[5,10,'r'],[6,10,'r'],[7,10,'r'],[8,10,'r'],[9,10,'r'],[10,10,'r']],
+    back:  [[5,5,'r'],[6,5,'r'],[7,5,'r'],[8,5,'r'],[9,5,'r'],[10,5,'r'],[5,6,'r'],[6,6,'r'],[7,6,'r'],[8,6,'r'],[9,6,'r'],[10,6,'r'],[5,7,'r'],[6,7,'r'],[7,7,'r'],[8,7,'r'],[9,7,'r'],[10,7,'r'],[5,8,'r'],[6,8,'r'],[7,8,'r'],[8,8,'r'],[9,8,'r'],[10,8,'r'],[5,9,'r'],[6,9,'r'],[7,9,'r'],[8,9,'r'],[9,9,'r'],[10,9,'r'],[5,10,'r'],[6,10,'r'],[7,10,'r'],[8,10,'r'],[9,10,'r'],[10,10,'r']],
+    left:  [[5,5,'r'],[6,5,'r'],[7,5,'r'],[8,5,'r'],[9,5,'r'],[10,5,'r'],[5,6,'r'],[6,6,'r'],[7,6,'r'],[8,6,'r'],[9,6,'r'],[10,6,'r'],[5,7,'r'],[6,7,'r'],[7,7,'r'],[8,7,'r'],[9,7,'r'],[10,7,'r'],[5,8,'r'],[6,8,'r'],[7,8,'r'],[8,8,'r'],[9,8,'r'],[10,8,'r'],[5,9,'r'],[6,9,'r'],[7,9,'r'],[8,9,'r'],[9,9,'r'],[10,9,'r'],[5,10,'r'],[6,10,'r'],[7,10,'r'],[8,10,'r'],[9,10,'r'],[10,10,'r']],
+  },
+  tunic: {
+    label: '束腰衣',
+    front: [[5,5,'r'],[6,5,'r'],[7,5,'r'],[8,5,'r'],[9,5,'r'],[10,5,'r'],[5,6,'r'],[6,6,'r'],[7,6,'r'],[8,6,'r'],[9,6,'r'],[10,6,'r'],[5,7,'r'],[6,7,'t'],[7,7,'r'],[8,7,'r'],[9,7,'t'],[10,7,'r'],[5,8,'r'],[6,8,'r'],[7,8,'r'],[8,8,'r'],[9,8,'r'],[10,8,'r'],[5,9,'r'],[6,9,'r'],[7,9,'r'],[8,9,'r'],[9,9,'r'],[10,9,'r'],[5,10,'r'],[6,10,'r'],[7,10,'r'],[8,10,'r'],[9,10,'r'],[10,10,'r']],
+    back:  [[5,5,'r'],[6,5,'r'],[7,5,'r'],[8,5,'r'],[9,5,'r'],[10,5,'r'],[5,6,'r'],[6,6,'r'],[7,6,'r'],[8,6,'r'],[9,6,'r'],[10,6,'r'],[5,7,'r'],[6,7,'r'],[7,7,'r'],[8,7,'r'],[9,7,'r'],[10,7,'r'],[5,8,'r'],[6,8,'r'],[7,8,'r'],[8,8,'r'],[9,8,'r'],[10,8,'r'],[5,9,'r'],[6,9,'r'],[7,9,'r'],[8,9,'r'],[9,9,'r'],[10,9,'r'],[5,10,'r'],[6,10,'r'],[7,10,'r'],[8,10,'r'],[9,10,'r'],[10,10,'r']],
+    left:  [[5,5,'r'],[6,5,'r'],[7,5,'r'],[8,5,'r'],[9,5,'r'],[10,5,'r'],[5,6,'r'],[6,6,'r'],[7,6,'r'],[8,6,'r'],[9,6,'r'],[10,6,'r'],[5,7,'r'],[6,7,'r'],[7,7,'r'],[8,7,'r'],[9,7,'t'],[10,7,'r'],[5,8,'r'],[6,8,'r'],[7,8,'r'],[8,8,'r'],[9,8,'r'],[10,8,'r'],[5,9,'r'],[6,9,'r'],[7,9,'r'],[8,9,'r'],[9,9,'r'],[10,9,'r'],[5,10,'r'],[6,10,'r'],[7,10,'r'],[8,10,'r'],[9,10,'r'],[10,10,'r']],
+  },
+  vest: {
+    label: '背心',
+    front: [[5,5,'r'],[6,5,'r'],[7,5,'r'],[8,5,'r'],[9,5,'r'],[10,5,'r'],[5,6,'r'],[6,6,'r'],[10,6,'r'],[5,7,'r'],[6,7,'r'],[10,7,'r'],[5,8,'r'],[6,8,'r'],[7,8,'r'],[8,8,'r'],[9,8,'r'],[10,8,'r'],[5,9,'r'],[6,9,'r'],[7,9,'r'],[8,9,'r'],[9,9,'r'],[10,9,'r'],[5,10,'r'],[6,10,'r'],[7,10,'r'],[8,10,'r'],[9,10,'r'],[10,10,'r']],
+    back:  [[5,5,'r'],[6,5,'r'],[7,5,'r'],[8,5,'r'],[9,5,'r'],[10,5,'r'],[5,6,'r'],[6,6,'r'],[7,6,'r'],[8,6,'r'],[9,6,'r'],[10,6,'r'],[5,7,'r'],[6,7,'r'],[7,7,'r'],[8,7,'r'],[9,7,'r'],[10,7,'r'],[5,8,'r'],[6,8,'r'],[7,8,'r'],[8,8,'r'],[9,8,'r'],[10,8,'r'],[5,9,'r'],[6,9,'r'],[7,9,'r'],[8,9,'r'],[9,9,'r'],[10,9,'r'],[5,10,'r'],[6,10,'r'],[7,10,'r'],[8,10,'r'],[9,10,'r'],[10,10,'r']],
+    left:  [[5,5,'r'],[6,5,'r'],[7,5,'r'],[8,5,'r'],[9,5,'r'],[10,5,'r'],[5,6,'r'],[6,6,'r'],[10,6,'r'],[5,7,'r'],[6,7,'r'],[10,7,'r'],[5,8,'r'],[6,8,'r'],[7,8,'r'],[8,8,'r'],[9,8,'r'],[10,8,'r'],[5,9,'r'],[6,9,'r'],[7,9,'r'],[8,9,'r'],[9,9,'r'],[10,9,'r'],[5,10,'r'],[6,10,'r'],[7,10,'r'],[8,10,'r'],[9,10,'r'],[10,10,'r']],
+  },
+}
+
+// ---------- 下装 ----------
+
+const OUTFIT_BOTTOM = {
+  boots: {
+    label: '长靴',
+    front: [[6,11,'b'],[9,11,'b'],[6,12,'b'],[9,12,'b'],[6,13,'b'],[9,13,'b']],
+    back:  [[6,11,'b'],[9,11,'b'],[6,12,'b'],[9,12,'b'],[6,13,'b'],[9,13,'b']],
+    left:  [[6,11,'b'],[9,11,'b'],[6,12,'b'],[9,12,'b'],[6,13,'b'],[9,13,'b']],
+  },
+  pants: {
+    label: '短裤',
+    front: [[6,11,'b'],[9,11,'b']],
+    back:  [[6,11,'b'],[9,11,'b']],
+    left:  [[6,11,'b'],[9,11,'b']],
+  },
+  barefoot: {
+    label: '赤脚',
+    front: [[6,11,'s'],[9,11,'s']],
+    back:  [[6,11,'s'],[9,11,'s']],
+    left:  [[6,11,'s'],[9,11,'s']],
+  },
+}
+
+// ---------- 配饰 ----------
+
+const OUTFIT_ACCESSORY = {
+  none: {
+    label: '无',
+    front: [],
+    back: [],
+    left: [],
+  },
+  helmet: {
+    label: '头盔',
+    front: [[5,0,'a'],[6,0,'a'],[7,0,'a'],[8,0,'a'],[9,0,'a'],[10,0,'a'],[7,6,'a'],[8,6,'a']],
+    back:  [[5,0,'a'],[6,0,'a'],[7,0,'a'],[8,0,'a'],[9,0,'a'],[10,0,'a']],
+    left:  [[5,0,'a'],[6,0,'a'],[7,0,'a'],[8,0,'a'],[9,0,'a'],[10,0,'a']],
+  },
+  pointed_hat: {
+    label: '尖帽',
+    front: [[7,0,'a'],[6,1,'a'],[7,1,'a'],[8,1,'a'],[5,2,'a'],[6,2,'a'],[7,2,'a'],[8,2,'a'],[9,2,'a'],[10,2,'a'],[8,7,'a'],[8,8,'a']],
+    back:  [[7,0,'a'],[6,1,'a'],[7,1,'a'],[8,1,'a'],[5,2,'a'],[6,2,'a'],[7,2,'a'],[8,2,'a'],[9,2,'a'],[10,2,'a']],
+    left:  [[7,0,'a'],[6,1,'a'],[7,1,'a'],[8,1,'a'],[9,1,'a'],[5,2,'a'],[6,2,'a'],[7,2,'a'],[8,2,'a'],[9,2,'a'],[10,2,'a']],
+  },
+  bow: {
+    label: '弓箭',
+    front: [[11,6,'a'],[11,7,'a'],[11,8,'a'],[11,9,'a']],
+    back:  [[4,6,'a'],[4,7,'a'],[4,8,'a'],[4,9,'a']],
+    left:  [[11,6,'a'],[11,7,'a'],[11,8,'a'],[11,9,'a']],
+  },
+  staff: {
+    label: '法杖',
+    front: [[11,5,'a'],[11,6,'a'],[11,7,'a'],[11,8,'a'],[11,9,'a'],[11,10,'a']],
+    back:  [[4,5,'a'],[4,6,'a'],[4,7,'a'],[4,8,'a'],[4,9,'a'],[4,10,'a']],
+    left:  [[11,5,'a'],[11,6,'a'],[11,7,'a'],[11,8,'a'],[11,9,'a'],[11,10,'a']],
+  },
+  belt: {
+    label: '腰带',
+    front: [[5,6,'a'],[6,6,'a'],[7,6,'a'],[8,6,'a'],[9,6,'a'],[10,6,'a']],
+    back:  [[5,6,'a'],[6,6,'a'],[7,6,'a'],[8,6,'a'],[9,6,'a'],[10,6,'a']],
+    left:  [[5,6,'a'],[6,6,'a'],[7,6,'a'],[8,6,'a'],[9,6,'a'],[10,6,'a']],
+  },
+  cross: {
+    label: '十字架',
+    front: [[7,6,'a'],[8,6,'a'],[7,7,'a'],[8,7,'a'],[7,8,'a'],[8,8,'a']],
+    back:  [],
+    left:  [[9,7,'a'],[9,8,'a']],
+  },
+  flask: {
+    label: '烧瓶',
+    front: [[10,7,'a'],[10,8,'a'],[11,7,'a'],[11,8,'a'],[10,9,'a']],
+    back:  [[5,7,'a'],[5,8,'a']],
+    left:  [[10,7,'a'],[10,8,'a'],[11,7,'a'],[11,8,'a']],
+  },
+  book: {
+    label: '书本',
+    front: [[4,7,'a'],[4,8,'a'],[5,7,'a'],[5,8,'a']],
+    back:  [],
+    left:  [[4,7,'a'],[4,8,'a']],
+  },
+  chef_hat: {
+    label: '厨师帽',
+    front: [[4,0,'a'],[5,0,'a'],[6,0,'a'],[7,0,'a'],[8,0,'a'],[9,0,'a'],[10,0,'a'],[11,0,'a'],[7,6,'a'],[8,6,'a']],
+    back:  [[4,0,'a'],[5,0,'a'],[6,0,'a'],[7,0,'a'],[8,0,'a'],[9,0,'a'],[10,0,'a'],[11,0,'a']],
+    left:  [[4,0,'a'],[5,0,'a'],[6,0,'a'],[7,0,'a'],[8,0,'a'],[9,0,'a'],[10,0,'a'],[11,0,'a']],
+  },
+}
+
+// ==================== 工具函数 ====================
+
 const createSpriteGrid = (size = SPRITE_GRID_SIZE, fillToken = '.') => {
   return Array.from({ length: size }, () => Array(size).fill(fillToken))
 }
 
-// 绘制矩形
 const paintRect = (grid, x, y, w, h, token) => {
   for (let yy = 0; yy < h; yy++) {
     for (let xx = 0; xx < w; xx++) {
@@ -41,7 +226,6 @@ const paintRect = (grid, x, y, w, h, token) => {
   }
 }
 
-// 绘制点
 const paintPoints = (grid, points, token) => {
   for (const [x, y] of points) {
     if (x >= 0 && x < SPRITE_GRID_SIZE && y >= 0 && y < SPRITE_GRID_SIZE) {
@@ -50,69 +234,69 @@ const paintPoints = (grid, points, token) => {
   }
 }
 
-// 基础身体绘制
-const applyPawnBaseBody = (grid) => {
-  // 头部
-  paintRect(grid, 6, 1, 4, 4, 's')
-  // 眼睛
-  paintPoints(grid, [[7, 2], [8, 2]], 'e')
-  // 身体
-  paintRect(grid, 5, 5, 6, 6, 'r')
-  // 腿部基础
-  paintRect(grid, 6, 11, 1, 3, 'b')
-  paintRect(grid, 9, 11, 1, 3, 'b')
+// 水平翻转网格（用于 right facing）
+const mirrorGridHorizontal = (src, dst) => {
+  for (let y = 0; y < SPRITE_GRID_SIZE; y++) {
+    for (let x = 0; x < SPRITE_GRID_SIZE; x++) {
+      dst[y][SPRITE_GRID_SIZE - 1 - x] = src[y][x]
+    }
+  }
 }
 
-// 应用动作姿势
+// ==================== 身体基础绘制 ====================
+
+// 头部（皮肤）— 发型会覆盖头顶部分
+const applyHead = (grid) => {
+  paintRect(grid, 6, 1, 4, 4, 's')
+}
+
+// 身体皮肤（颈部）
+const applyNeck = (grid) => {
+  paintRect(grid, 7, 5, 2, 1, 's')
+}
+
+// 动作姿势（手臂、腿部动画）
 const applyPawnPose = (grid, action, frame) => {
   const variant = frame % 2
   const legOffset = variant === 0 ? 0 : 1
 
   switch (action) {
     case 'walk':
-      // 走路：腿部交替移动
       paintRect(grid, 4 + legOffset, 11, 2, 3, 'b')
       paintRect(grid, 10 - legOffset, 11, 2, 3, 'b')
       paintRect(grid, 5, 7, 1, 3, 't')
       paintRect(grid, 10, 7, 1, 3, 't')
       break
     case 'work':
-      // 工作：手臂操作姿势
       paintRect(grid, 4, 5, 2, 4, 't')
       paintRect(grid, 10, 5, 2, 4, 't')
       paintRect(grid, 6 + legOffset, 11, 1, 3, 'b')
       paintRect(grid, 9 - legOffset, 11, 1, 3, 'b')
       break
     case 'sleep':
-      // 睡眠：躺卧姿势（简化显示）
       paintRect(grid, 3, 8, 10, 4, 'r')
       paintRect(grid, 2, 8, 4, 4, 's')
       paintPoints(grid, [[3, 9], [4, 9]], 'e')
       break
     case 'eat':
-      // 进食：手持食物
       paintRect(grid, 4, 6, 1, 3, 't')
       paintRect(grid, 10, 7, 1, 3, 't')
       paintRect(grid, 9, 5, 2, 2, 'a')
       break
     case 'talk':
-      // 对话：手臂指向
       paintRect(grid, 3, 5, 2, 3, 't')
       paintRect(grid, 11, 6, 1, 3, 't')
       break
     case 'read':
-      // 阅读：手持书本
       paintRect(grid, 5, 6, 6, 3, 't')
       paintRect(grid, 6, 5, 4, 2, 'a')
       break
     case 'carry':
-      // 携带：双手持物
       paintRect(grid, 5, 4, 1, 5, 't')
       paintRect(grid, 10, 4, 1, 5, 't')
       paintRect(grid, 6, 3, 4, 3, 'a')
       break
-    default: // idle
-      // 默认：手臂自然下垂
+    default:
       paintRect(grid, 4, 6, 1, 3, 't')
       paintRect(grid, 11, 6, 1, 3, 't')
       paintRect(grid, 6 + legOffset, 11, 1, 3, 'b')
@@ -120,8 +304,8 @@ const applyPawnPose = (grid, action, frame) => {
   }
 }
 
-// 应用职业样式
-const applyPawnStyle = (grid, style, frame) => {
+// 旧版职业样式（向后兼容）
+const applyPawnStyleLegacy = (grid, style, frame) => {
   switch (style) {
     case 'knight':
       paintRect(grid, 5, 0, 6, 1, 'h')
@@ -143,9 +327,7 @@ const applyPawnStyle = (grid, style, frame) => {
     case 'rogue':
       paintRect(grid, 6, 2, 4, 1, 'h')
       paintRect(grid, 5, 6, 6, 1, 'a')
-      if (frame % 2 === 1) {
-        paintPoints(grid, [[4, 9], [11, 9]], 'a')
-      }
+      if (frame % 2 === 1) paintPoints(grid, [[4, 9], [11, 9]], 'a')
       break
     case 'priest':
       paintRect(grid, 4, 6, 1, 5, 't')
@@ -179,31 +361,145 @@ const applyPawnStyle = (grid, style, frame) => {
   }
 }
 
-// 解析像素颜色
-const resolvePawnPixelColor = (token, paletteKey) => {
-  const palette = PAWN_PIXEL_PALETTES[paletteKey] || PAWN_PIXEL_PALETTES.ember
+// ==================== 面向方向工具 ====================
+
+const FACING_LIST = ['front', 'back', 'left', 'right']
+
+const normalizeFacing = (facing) => {
+  const map = { front: 'front', back: 'back', left: 'left', right: 'right', down: 'front', up: 'back' }
+  return map[facing] || 'front'
+}
+
+// ==================== 核心渲染 ====================
+
+// 使用部件化系统构建精灵网格
+const buildOutfitGrid = (outfit, facing, action, frame) => {
+  const grid = createSpriteGrid(SPRITE_GRID_SIZE)
+
+  // 1. 绘制头部皮肤
+  applyHead(grid)
+
+  // 2. 绘制发型（覆盖头顶）
+  const hairKey = outfit.hair || 'short'
+  const hairDef = OUTFIT_HAIR[hairKey]
+  if (hairDef) {
+    let hairFacing = facing
+    // right 使用 left 翻转
+    if (hairFacing === 'right') hairFacing = 'left'
+    const hairPoints = hairDef[hairFacing] || hairDef.front || []
+    paintPoints(grid, hairPoints, 'h')
+  }
+
+  // 3. 绘制眼睛
+  const eyesKey = outfit.eyes || 'normal'
+  const eyesDef = OUTFIT_EYES[eyesKey]
+  if (eyesDef) {
+    let eyesFacing = facing
+    if (eyesFacing === 'right') eyesFacing = 'left'
+    const eyesPoints = eyesDef[eyesFacing] || eyesDef.front || []
+    paintPoints(grid, eyesPoints, 'e')
+  }
+
+  // 4. 绘制颈部
+  applyNeck(grid)
+
+  // 5. 绘制上衣
+  const topKey = outfit.top || 'robe'
+  const topDef = OUTFIT_TOP[topKey]
+  if (topDef) {
+    let topFacing = facing
+    if (topFacing === 'right') topFacing = 'left'
+    const topPoints = topDef[topFacing] || topDef.front || []
+    paintPoints(grid, topPoints, 'r')
+  }
+
+  // 6. 绘制下装
+  const bottomKey = outfit.bottom || 'boots'
+  const bottomDef = OUTFIT_BOTTOM[bottomKey]
+  if (bottomDef) {
+    let bottomFacing = facing
+    if (bottomFacing === 'right') bottomFacing = 'left'
+    const bottomPoints = bottomDef[bottomFacing] || bottomDef.front || []
+    paintPoints(grid, bottomPoints, 'b')
+  }
+
+  // 7. 应用动作姿势（会覆盖手臂和腿部）
+  applyPawnPose(grid, action, frame)
+
+  // 8. 绘制配饰（最上层）
+  const accKey = outfit.accessory || 'none'
+  const accDef = OUTFIT_ACCESSORY[accKey]
+  if (accDef) {
+    let accFacing = facing
+    if (accFacing === 'right') accFacing = 'left'
+    const accPoints = accDef[accFacing] || accDef.front || []
+    paintPoints(grid, accPoints, 'a')
+  }
+
+  // 9. right 方向水平翻转
+  if (facing === 'right') {
+    const tmp = createSpriteGrid(SPRITE_GRID_SIZE)
+    mirrorGridHorizontal(grid, tmp)
+    for (let y = 0; y < SPRITE_GRID_SIZE; y++) {
+      for (let x = 0; x < SPRITE_GRID_SIZE; x++) {
+        grid[y][x] = tmp[y][x]
+      }
+    }
+  }
+
+  return grid
+}
+
+// 使用旧版系统构建精灵网格（向后兼容）
+const buildLegacyGrid = (style, palette, action, frame) => {
+  const grid = createSpriteGrid(SPRITE_GRID_SIZE)
+  applyHead(grid)
+  paintPoints(grid, [[7, 2], [8, 2]], 'e')
+  applyNeck(grid)
+  paintRect(grid, 5, 5, 6, 6, 'r')
+  paintRect(grid, 6, 11, 1, 3, 'b')
+  paintRect(grid, 9, 11, 1, 3, 'b')
+  applyPawnPose(grid, action, frame)
+  applyPawnStyleLegacy(grid, style, frame)
+  return grid
+}
+
+// 颜色解析
+const resolvePawnPixelColor = (token, palette) => {
+  const pal = PAWN_PIXEL_PALETTES[palette] || PAWN_PIXEL_PALETTES.ember
   switch (token) {
-    case 's': return '#f0caa4'  // 皮肤
-    case 'e': return '#1c120d'  // 眼睛
-    case 'r': return palette.robe  // 衣服
-    case 't': return palette.trim  // 装饰
-    case 'a': return palette.accent  // 强调色
-    case 'h': return palette.hair  // 头发/帽子
-    case 'b': return '#2b3145'  // 鞋子
+    case 's': return '#f0caa4'
+    case 'e': return '#1c120d'
+    case 'r': return pal.robe
+    case 't': return pal.trim
+    case 'a': return pal.accent
+    case 'h': return pal.hair
+    case 'b': return '#2b3145'
     default: return ''
   }
 }
 
-// 构建小人精灵 SVG URI
-const buildPawnSpriteUri = (style, palette, action, frame) => {
-  const grid = createSpriteGrid(SPRITE_GRID_SIZE)
-  applyPawnBaseBody(grid)
-  applyPawnPose(grid, action, frame)
-  applyPawnStyle(grid, style, frame)
-
+// 将网格转为 SVG data URI
+const gridToSvgUri = (grid) => {
   const spriteSize = SPRITE_GRID_SIZE * SPRITE_PIXEL_SIZE
   let rects = ''
+  for (let y = 0; y < SPRITE_GRID_SIZE; y++) {
+    for (let x = 0; x < SPRITE_GRID_SIZE; x++) {
+      const token = grid[y][x]
+      if (token === '.') continue
+      const color = resolvePawnPixelColor(token, 'ember')
+      if (!color) continue
+      rects += `<rect x="${x * SPRITE_PIXEL_SIZE}" y="${y * SPRITE_PIXEL_SIZE}" width="${SPRITE_PIXEL_SIZE}" height="${SPRITE_PIXEL_SIZE}" fill="${color}"/>`
+    }
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spriteSize}" height="${spriteSize}" viewBox="0 0 ${spriteSize} ${spriteSize}" shape-rendering="crispEdges">${rects}</svg>`
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
 
+// 带调色板的 SVG 生成
+const buildPawnSpriteUri = (grid, palette) => {
+  const spriteSize = SPRITE_GRID_SIZE * SPRITE_PIXEL_SIZE
+  let rects = ''
   for (let y = 0; y < SPRITE_GRID_SIZE; y++) {
     for (let x = 0; x < SPRITE_GRID_SIZE; x++) {
       const token = grid[y][x]
@@ -213,51 +509,63 @@ const buildPawnSpriteUri = (style, palette, action, frame) => {
       rects += `<rect x="${x * SPRITE_PIXEL_SIZE}" y="${y * SPRITE_PIXEL_SIZE}" width="${SPRITE_PIXEL_SIZE}" height="${SPRITE_PIXEL_SIZE}" fill="${color}"/>`
     }
   }
-
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spriteSize}" height="${spriteSize}" viewBox="0 0 ${spriteSize} ${spriteSize}" shape-rendering="crispEdges">${rects}</svg>`
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }
 
-// 创建小人精灵解析器
+// ==================== 精灵解析器 ====================
+
 export const createPawnSpriteResolver = (options = {}) => {
   const styleList = Array.isArray(options?.styleList) ? options.styleList : PAWN_STYLE_LIST
   const paletteList = Array.isArray(options?.paletteList) ? options.paletteList : Object.keys(PAWN_PIXEL_PALETTES)
   const actionList = Array.isArray(options?.actionList) ? options.actionList : PAWN_ACTION_LIST
   const getFrameTick = typeof options?.getFrameTick === 'function' ? options.getFrameTick : (() => 0)
   const cache = new Map()
-  const maxCacheSize = options.maxCacheSize || 128
+  const maxCacheSize = options.maxCacheSize || 256
+
+  // 公开部件定义供 UI 使用
+  const getOutfitDefinitions = () => ({
+    hair: OUTFIT_HAIR,
+    eyes: OUTFIT_EYES,
+    top: OUTFIT_TOP,
+    bottom: OUTFIT_BOTTOM,
+    accessory: OUTFIT_ACCESSORY,
+  })
 
   const getPawnSpriteSrc = (pawn, index = 0) => {
     // 优先使用自定义精灵（导入的PNG）
     if (pawn?.customSprites) {
-      const facing = pawn?.sprite?.facing || 'front'
-      // 方向映射：front/back/left/right
-      const directionMap = {
-        'front': 'front',
-        'back': 'back',
-        'left': 'left',
-        'right': 'right',
-        'down': 'front',
-        'up': 'back',
-      }
+      const facing = normalizeFacing(pawn?.sprite?.facing || 'front')
+      const directionMap = { front: 'front', back: 'back', left: 'left', right: 'right', down: 'front', up: 'back' }
       const direction = directionMap[facing] || 'front'
       return pawn.customSprites[direction] || pawn.customSprites.front || ''
     }
 
-    const style = styleList.includes(pawn?.sprite?.style) ? pawn.sprite.style : styleList[index % styleList.length]
-    const palette = paletteList.includes(pawn?.sprite?.palette) ? pawn.sprite.palette : paletteList[index % paletteList.length]
-    const action = actionList.includes(pawn?.sprite?.action) ? pawn.sprite.action : 'idle'
+    const sprite = pawn?.sprite || {}
+    const palette = paletteList.includes(sprite.palette) ? sprite.palette : paletteList[index % paletteList.length]
+    const action = actionList.includes(sprite.action) ? sprite.action : 'idle'
     const frame = (Number(getFrameTick()) + index) % 2
+    const facing = normalizeFacing(sprite.facing || 'front')
+    const outfit = sprite.outfit || null
 
-    const cacheKey = `${style}|${palette}|${action}|${frame}`
-    if (cache.has(cacheKey)) {
-      return cache.get(cacheKey)
+    let cacheKey
+    let grid
+
+    if (outfit) {
+      // 部件化系统
+      cacheKey = `o:${outfit.hair||''}:${outfit.eyes||''}:${outfit.top||''}:${outfit.bottom||''}:${outfit.accessory||''}|${palette}|${action}|${frame}|${facing}`
+      if (cache.has(cacheKey)) return cache.get(cacheKey)
+      grid = buildOutfitGrid(outfit, facing, action, frame)
+    } else {
+      // 旧版 style 系统（向后兼容）
+      const style = styleList.includes(sprite.style) ? sprite.style : styleList[index % styleList.length]
+      cacheKey = `l:${style}|${palette}|${action}|${frame}`
+      if (cache.has(cacheKey)) return cache.get(cacheKey)
+      grid = buildLegacyGrid(style, palette, action, frame)
     }
 
-    const uri = buildPawnSpriteUri(style, palette, action, frame)
-    if (cache.size < maxCacheSize) {
-      cache.set(cacheKey, uri)
-    }
+    const uri = buildPawnSpriteUri(grid, palette)
+    if (cache.size < maxCacheSize) cache.set(cacheKey, uri)
     return uri
   }
 
@@ -268,6 +576,7 @@ export const createPawnSpriteResolver = (options = {}) => {
   return {
     getPawnSpriteSrc,
     getTeammateSpriteSrc,
+    getOutfitDefinitions,
     clearCache: () => cache.clear(),
   }
 }

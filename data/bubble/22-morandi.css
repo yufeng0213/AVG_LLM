@@ -1,0 +1,25 @@
+/* ===== 莫兰迪 ===== */
+.sms-messages { background: #f5f2ee !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: #b5a89b !important;
+  border-radius: 14px !important;
+  color: #3d3530 !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: none !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: #d4c5b9 !important;
+  border-radius: 14px !important;
+  color: #3d3530 !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: none !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.62rem !important; color: #a89b8f !important;
+  background: none !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important;
+}

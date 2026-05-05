@@ -1,10 +1,9 @@
 <script setup>
 /**
- * SmsStickerPanel.vue — 表情包面板
- * 显示表情网格，支持 JSON 导入。
+ * SmsStickerPanel.vue — 表情包面板（浅色主题）
  */
 const props = defineProps({
-  stickers: { type: Array, required: true }, // [[desc, url], ...]
+  stickers: { type: Array, required: true },
   showImport: { type: Boolean, default: false },
   importText: { type: String, default: '' },
 })
@@ -21,7 +20,6 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
           {{ showImport ? '关闭' : '+ 导入' }}
         </button>
       </div>
-      <!-- 导入区域 -->
       <div v-if="showImport" class="sticker-import-body">
         <textarea
           :value="importText"
@@ -34,7 +32,6 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
           <button class="sticker-import-apply" @click="emit('import')">导入</button>
         </div>
       </div>
-      <!-- 表情网格 -->
       <div class="sticker-grid">
         <div v-if="stickers.length === 0" class="sticker-empty">
           暂无表情，点击右上角导入添加
@@ -62,16 +59,14 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
 }
 
 .sticker-panel {
-  background: rgba(28, 28, 30, 0.85);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #fff;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
   max-height: 280px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .sticker-panel-header {
@@ -79,34 +74,32 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
 }
 
 .sticker-import-toggle {
   background: none;
   border: none;
-  color: var(--phone-accent-blue, #0a84ff);
+  color: #fb6f92;
   font-size: 0.8rem;
   cursor: pointer;
 }
 
 .sticker-import-body {
   padding: 10px 14px;
-  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 .sticker-import-textarea {
   width: 100%;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f8f8f8;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   padding: 8px 10px;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   font-family: var(--font-mono, monospace);
   font-size: 0.75rem;
   resize: vertical;
@@ -115,7 +108,8 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
 }
 
 .sticker-import-textarea:focus {
-  border-color: rgba(10, 132, 255, 0.5);
+  border-color: #ff8fab;
+  background: #fff;
 }
 
 .sticker-import-actions {
@@ -126,12 +120,10 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
 
 .sticker-import-apply {
   padding: 6px 16px;
-  background: rgba(10, 132, 255, 0.2);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(10, 132, 255, 0.4);
+  background: rgba(251, 111, 146, 0.15);
+  border: 1px solid rgba(251, 111, 146, 0.3);
   border-radius: 10px;
-  color: #0a84ff;
+  color: #fb6f92;
   font-size: 0.8rem;
   cursor: pointer;
 }
@@ -149,7 +141,7 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
+  background: #f5f5f5;
   border-radius: 12px;
   width: 60px;
   height: 60px;
@@ -160,7 +152,7 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
 }
 
 .sticker-item:hover {
-  background: rgba(10, 132, 255, 0.2);
+  background: #f0f0f0;
 }
 
 .sticker-item img {
@@ -174,12 +166,13 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
   text-align: center;
   padding: 20px;
   font-size: 0.78rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
+  color: #bbb;
 }
 
 .platform-android.android-portrait .sticker-panel {
-  background: rgba(28, 28, 30, 0.95) !important;
+  background: #fff !important;
 }
+
 .platform-android.android-portrait .sticker-import-toggle {
   width: auto !important;
   height: auto !important;
@@ -197,13 +190,17 @@ const emit = defineEmits(['close', 'toggle-import', 'update:importText', 'import
   border-radius: 8px !important;
   white-space: nowrap !important;
 }
+
 .platform-android.android-portrait .sticker-item {
-  background: rgba(255, 255, 255, 0.14) !important;
+  background: #f5f5f5 !important;
 }
+
 .platform-android.android-portrait .sticker-import-textarea {
-  background: rgba(0, 0, 0, 0.5) !important;
+  background: #f8f8f8 !important;
+  color: #333 !important;
 }
+
 .platform-android.android-portrait .sticker-import-apply {
-  background: rgba(10, 132, 255, 0.35) !important;
+  background: rgba(251, 111, 146, 0.2) !important;
 }
 </style>

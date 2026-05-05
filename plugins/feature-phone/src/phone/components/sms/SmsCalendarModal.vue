@@ -1,7 +1,6 @@
 <script setup>
 /**
- * SmsCalendarModal.vue — 日历事件预览弹窗
- * 纯展示组件，负责显示检测到的日程并提供导入/忽略操作。
+ * SmsCalendarModal.vue — 日历事件预览弹窗（浅色主题）
  */
 const props = defineProps({
   pendingEvent: { type: Object, default: null },
@@ -52,7 +51,7 @@ const emit = defineEmits(['dismiss', 'import'])
 .calendar-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -73,14 +72,11 @@ const emit = defineEmits(['dismiss', 'import'])
 .calendar-modal {
   width: 100%;
   max-width: 420px;
-  background: rgba(28, 28, 30, 0.9);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  background: #fff;
   border-radius: 20px 20px 0 0;
   padding-bottom: env(safe-area-inset-bottom, 16px);
   animation: slideUp 0.3s ease;
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1);
 }
 
 .calendar-modal-header {
@@ -88,7 +84,7 @@ const emit = defineEmits(['dismiss', 'import'])
   align-items: center;
   gap: 10px;
   padding: 20px 20px 12px;
-  border-bottom: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 .calendar-modal-icon {
@@ -98,7 +94,7 @@ const emit = defineEmits(['dismiss', 'import'])
 .calendar-modal-title {
   margin: 0;
   font-size: 1.1rem;
-  color: var(--phone-text-primary, #fff);
+  color: #222;
   font-weight: 600;
 }
 
@@ -116,12 +112,12 @@ const emit = defineEmits(['dismiss', 'import'])
 }
 
 .calendar-event-label {
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.5));
+  color: #999;
   min-width: 40px;
 }
 
 .calendar-event-value {
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   flex: 1;
 }
 
@@ -147,28 +143,26 @@ const emit = defineEmits(['dismiss', 'import'])
 }
 
 .calendar-modal-btn-dismiss {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--phone-text-primary, #fff);
+  background: #f5f5f5;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #555;
 }
 
 .calendar-modal-btn-import {
-  background: rgba(74, 144, 217, 0.3);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(74, 144, 217, 0.5);
+  background: linear-gradient(135deg, #ff8fab, #fb6f92);
   color: #fff;
+  box-shadow: 0 2px 8px rgba(255, 143, 171, 0.3);
 }
 
 .platform-android.android-portrait .calendar-modal {
-  background: rgba(28, 28, 30, 0.97) !important;
+  background: #fff !important;
 }
+
 .platform-android.android-portrait .calendar-modal-btn-dismiss {
-  background: rgba(255, 255, 255, 0.16) !important;
+  background: #f5f5f5 !important;
 }
+
 .platform-android.android-portrait .calendar-modal-btn-import {
-  background: rgba(74, 144, 217, 0.45) !important;
+  background: linear-gradient(135deg, #ff8fab, #fb6f92) !important;
 }
 </style>

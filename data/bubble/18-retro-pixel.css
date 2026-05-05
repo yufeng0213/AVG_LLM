@@ -1,0 +1,29 @@
+/* ===== 复古像素 ===== */
+.sms-messages { background: #2b2b2b !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: #4a90d9 !important;
+  border-radius: 0 !important;
+  border: 3px solid #357abd !important;
+  color: #fff !important;
+  font-size: 0.85rem !important;
+  line-height: 1.5 !important;
+  padding: 10px 14px !important;
+  font-family: 'Courier New', monospace !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: #50c878 !important;
+  border-radius: 0 !important;
+  border: 3px solid #3da85f !important;
+  color: #1a1a1a !important;
+  font-size: 0.85rem !important;
+  line-height: 1.5 !important;
+  padding: 10px 14px !important;
+  font-family: 'Courier New', monospace !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.62rem !important; color: #888 !important;
+  background: #333 !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important; border-radius: 0 !important;
+  font-family: 'Courier New', monospace !important;
+  border: 2px solid #444 !important;
+}

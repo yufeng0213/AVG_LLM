@@ -118,10 +118,12 @@ const kindOptions = [
   { value: 'floor', label: '地板/地毯', zRange: '0-9' },
   { value: 'decor', label: '装饰', zRange: '10-29' },
   { value: 'utility', label: '功能设施', zRange: '30-49' },
+  { value: 'toy', label: '玩具', zRange: '30-49' },
   { value: 'sleep', label: '休息', zRange: '50-99' },
   { value: 'food', label: '食物相关', zRange: '50-99' },
   { value: 'social', label: '社交', zRange: '50-99' },
-  { value: 'storage', label: '收纳', zRange: '100-199' },
+  { value: 'storage', label: '收纳/存储', zRange: '100-199' },
+  { value: 'vending', label: '售货机', zRange: '100-199' },
   { value: 'work', label: '工作', zRange: '100-199' },
 ]
 
@@ -129,10 +131,22 @@ const interactionOptions = [
   { value: 'none', label: '无交互' },
   { value: 'sleep', label: '休息' },
   { value: 'eat', label: '进食' },
+  { value: 'play', label: '游玩' },
   { value: 'work', label: '工作' },
   { value: 'social', label: '社交' },
   { value: 'storage', label: '收纳' },
+  { value: 'shop', label: '商店' },
 ]
+
+// 存储家具容量配置
+const storageConfig = ref({
+  capacity: 50,
+})
+
+// 售货机商品配置
+const vendingConfig = ref({
+  autoRestock: true,
+})
 
 // ========== 拖拽处理 ==========
 
@@ -307,6 +321,24 @@ const handleAddFurniture = () => {
     console.log('[FurnitureImport] lightSource added to furnitureToPlace:', furnitureToPlace.lightSource)
   }
 
+  // 添加存储家具配置
+  if (furnitureConfig.value.kind === 'storage') {
+    furnitureToPlace.inventory = []
+    furnitureToPlace.inventoryCapacity = storageConfig.value.capacity
+    furnitureToPlace.inventoryFilter = null
+  }
+
+  // 添加售货机配置
+  if (furnitureConfig.value.kind === 'vending') {
+    // 使用默认商品列表
+    furnitureToPlace.shopInventory = [
+      { templateId: 'food-simple', name: '简单餐食', type: 'food', price: 10, effect: { hunger: 20 }, stock: 10, maxStock: 20 },
+      { templateId: 'food-good', name: '美味佳肴', type: 'food', price: 25, effect: { hunger: 35, joy: 5 }, stock: 5, maxStock: 10 },
+      { templateId: 'material-basic', name: '基础材料', type: 'material', price: 15, effect: {}, stock: 20, maxStock: 50 },
+    ]
+    furnitureToPlace.shopAutoRestock = vendingConfig.value.autoRestock
+  }
+
   console.log('[FurnitureImport] furnitureToPlace:', furnitureToPlace.id, furnitureToPlace.name, 'lightSource:', furnitureToPlace.lightSource)
 
   // 保存模板到家具库（用于后续重复选取）
@@ -387,8 +419,47 @@ const resetImport = () => {
     flicker: false,
     flickerSpeed: 2,
   }
+  storageConfig.value = {
+    capacity: 50,
+  }
+  vendingConfig.value = {
+    autoRestock: true,
+  }
   selectedMoodTemplate.value = ''
 }
+
+// 监听类型变化，自动设置交互类型
+watch(() => furnitureConfig.value.kind, (newKind) => {
+  if (newKind === 'storage') {
+    furnitureConfig.value.interactionType = 'storage'
+    furnitureConfig.value.interactable = true
+  } else if (newKind === 'vending') {
+    furnitureConfig.value.interactionType = 'shop'
+    furnitureConfig.value.interactable = true
+  } else if (newKind === 'sleep') {
+    furnitureConfig.value.interactionType = 'sleep'
+    furnitureConfig.value.interactable = true
+  } else if (newKind === 'food') {
+    furnitureConfig.value.interactionType = 'eat'
+    furnitureConfig.value.interactable = true
+  } else if (newKind === 'work') {
+    furnitureConfig.value.interactionType = 'work'
+    furnitureConfig.value.interactable = true
+  } else if (newKind === 'social') {
+    furnitureConfig.value.interactionType = 'social'
+    furnitureConfig.value.interactable = true
+  } else if (!['storage', 'vending', 'sleep', 'food', 'work', 'social'].includes(newKind)) {
+    // 其他类型默认无交互
+    if (furnitureConfig.value.interactionType === 'storage' ||
+        furnitureConfig.value.interactionType === 'shop' ||
+        furnitureConfig.value.interactionType === 'sleep' ||
+        furnitureConfig.value.interactionType === 'eat' ||
+        furnitureConfig.value.interactionType === 'work' ||
+        furnitureConfig.value.interactionType === 'social') {
+      furnitureConfig.value.interactionType = 'none'
+    }
+  }
+})
 
 const handleClose = () => {
   emit('close')
@@ -544,6 +615,48 @@ const triggerFileSelect = () => {
         <span class="z-item furniture">50-99 家具</span>
         <span class="z-item tall">100-199 高家具</span>
         <span class="z-item pawn">200+ 小人</span>
+      </div>
+
+      <!-- 存储家具配置 -->
+      <div v-if="furnitureConfig.kind === 'storage'" class="storage-config-section">
+        <div class="section-header">
+          <span>📦 存储家具配置</span>
+        </div>
+        <div class="section-body">
+          <div class="config-row">
+            <label>库存容量</label>
+            <input v-model.number="storageConfig.capacity" type="number" class="config-input small" min="10" max="200" />
+            <span class="hint">物品槽位数量</span>
+          </div>
+          <div class="config-info">
+            <p>💡 存储家具可以存放食物等物品，小人会自动取出消耗。</p>
+            <p>点击已放置的存储家具可查看库存。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 售货机配置 -->
+      <div v-if="furnitureConfig.kind === 'vending'" class="vending-config-section">
+        <div class="section-header">
+          <span>🛒 售货机配置</span>
+        </div>
+        <div class="section-body">
+          <div class="config-row checkbox-row">
+            <label>
+              <input type="checkbox" v-model="vendingConfig.autoRestock" />
+              自动补货
+            </label>
+          </div>
+          <div class="config-info">
+            <p>💡 售货机自带默认商品：</p>
+            <ul>
+              <li>简单餐食 (10金币) - 恢复饥饿+20</li>
+              <li>美味佳肴 (25金币) - 恢复饥饿+35,快乐+5</li>
+              <li>基础材料 (15金币)</li>
+            </ul>
+            <p>小人饿时会自动购买消耗。</p>
+          </div>
+        </div>
       </div>
 
       <!-- 心情效果配置 -->
@@ -973,7 +1086,8 @@ const triggerFileSelect = () => {
    .platform-android.android-portrait .close-btn,
    .platform-android.android-portrait .action-buttons,
    .platform-android.android-portrait .btn-primary,
-   .platform-android.android-portrait .btn-secondary{
+   .platform-android.android-portrait .btn-secondary,
+   .platform-android.android-portrait .color-btn {
     width: auto !important;
     height: auto !important;
     min-width: 0 !important;
@@ -1096,5 +1210,52 @@ const triggerFileSelect = () => {
 
   .color-btn:hover {
     border-color: #aaa;
+  }
+
+  /* 存储家具配置 */
+  .storage-config-section,
+  .vending-config-section {
+    margin-top: 12px;
+    padding: 12px;
+    background: #2a3a2a;
+    border-radius: 6px;
+    border: 1px solid #4a5a4a;
+  }
+
+  .section-header {
+    font-size: 14px;
+    color: #aac;
+    margin-bottom: 8px;
+  }
+
+  .section-body {
+    font-size: 13px;
+  }
+
+  .config-info {
+    margin-top: 8px;
+    padding: 8px;
+    background: #1a2a1a;
+    border-radius: 4px;
+    color: #8a8;
+    font-size: 12px;
+  }
+
+  .config-info p {
+    margin: 4px 0;
+  }
+
+  .config-info ul {
+    margin: 4px 0;
+    padding-left: 16px;
+  }
+
+  .config-info li {
+    margin: 2px 0;
+  }
+
+  .hint {
+    font-size: 12px;
+    color: #888;
   }
 </style>

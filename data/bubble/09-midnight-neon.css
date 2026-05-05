@@ -1,0 +1,25 @@
+/* ===== 午夜霓虹 ===== */
+.sms-messages { background: #0d0d1a !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: linear-gradient(135deg, #1a0a2e, #2d1b69) !important;
+  border-radius: 12px !important;
+  color: #e0b0ff !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 0 12px rgba(138, 43, 226, 0.3) !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: linear-gradient(135deg, #1a1a2e, #16213e) !important;
+  border-radius: 12px !important;
+  color: #88d8ff !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 0 12px rgba(0, 150, 255, 0.2) !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.65rem !important; color: #ff6ec7 !important;
+  background: rgba(255, 110, 199, 0.1) !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important; border-radius: 10px !important;
+}

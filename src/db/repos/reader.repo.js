@@ -32,7 +32,9 @@ export async function loadStories() {
     author: r.author,
     genre: r.genre,
     summary: r.summary,
+    worldview: r.worldview || null,
     worldBookId: r.world_book_id,
+    sourceType: r.source_type || 'llm',
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     chapters: [],
@@ -45,10 +47,10 @@ export async function insertStory(story) {
   if (!isSQLiteAvailable()) return null
   const now = new Date().toISOString()
   await exec(
-    `INSERT INTO reader_stories (id, title, author, genre, summary, world_book_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO reader_stories (id, title, author, genre, summary, worldview, world_book_id, source_type, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [story.id, story.title || '', story.author || '', story.genre || '',
-     story.summary || '', story.worldBookId || '', now, now]
+     story.summary || '', story.worldview || '', story.worldBookId || '', story.sourceType || 'llm', now, now]
   )
 }
 
@@ -60,6 +62,7 @@ export async function updateStory(storyId, updates) {
   if (updates.author !== undefined) { fields.push('author = ?'); values.push(updates.author) }
   if (updates.genre !== undefined) { fields.push('genre = ?'); values.push(updates.genre) }
   if (updates.summary !== undefined) { fields.push('summary = ?'); values.push(updates.summary) }
+  if (updates.worldview !== undefined) { fields.push('worldview = ?'); values.push(updates.worldview) }
   fields.push('updated_at = ?')
   values.push(new Date().toISOString())
   values.push(storyId)
@@ -81,6 +84,7 @@ export async function loadChapters(storyId) {
     'SELECT * FROM reader_chapters WHERE story_id = ? ORDER BY chapter_index',
     [storyId]
   )
+  console.log('[DB] loadChapters', { storyId, count: rows.length, titles: rows.map(r => r.title) })
   return rows.map(r => ({
     id: r.id,
     title: r.title,
@@ -125,11 +129,13 @@ export async function insertChapter(storyId, chapter) {
   const index = await loadChapterCount(storyId)
   const now = new Date().toISOString()
   const id = chapter.id || `ch_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+  const wordCount = chapter.wordCount || 0
+  console.log('[DB] insertChapter', { storyId, chapterIndex: index, title: chapter.title, wordCount, contentLen: chapter.content?.length || 0 })
   await exec(
     `INSERT INTO reader_chapters (id, story_id, chapter_index, title, content, card_html, word_count, last_read_page, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, storyId, index, chapter.title || '', chapter.content || '',
-     chapter.cardHtml || null, chapter.wordCount || 0, 0, now]
+     chapter.cardHtml || null, wordCount, 0, now]
   )
   return { ...chapter, id, chapterIndex: index }
 }

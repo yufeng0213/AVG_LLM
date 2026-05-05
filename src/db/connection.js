@@ -697,4 +697,34 @@ export async function createTables() {
   const conn = getDB()
   await conn.execute(CREATE_TABLES_SQL)
   await conn.execute(CREATE_INDEXES_SQL)
+
+  // 迁移：为 reader_stories 表添加 source_type 字段
+  try {
+    const tableInfo = await query('PRAGMA table_info(reader_stories)')
+    const columns = tableInfo.map(r => r.name)
+    if (!columns.includes('source_type')) {
+      await exec(`ALTER TABLE reader_stories ADD COLUMN source_type TEXT NOT NULL DEFAULT 'llm'`)
+    }
+    if (!columns.includes('worldview')) {
+      await exec(`ALTER TABLE reader_stories ADD COLUMN worldview TEXT NOT NULL DEFAULT ''`)
+    }
+  } catch (e) {
+    console.warn('[DB] Migration for reader_stories source_type failed:', e.message)
+  }
+
+  // 迁移：为 world_book_config 表添加默认背景字段
+  try {
+    // 检查列是否存在
+    const tableInfo = await query('PRAGMA table_info(world_book_config)')
+    const columns = tableInfo.map(r => r.name)
+
+    if (!columns.includes('default_background_path')) {
+      await exec('ALTER TABLE world_book_config ADD COLUMN default_background_path TEXT DEFAULT ""')
+    }
+    if (!columns.includes('default_background_name')) {
+      await exec('ALTER TABLE world_book_config ADD COLUMN default_background_name TEXT DEFAULT "默认背景"')
+    }
+  } catch (e) {
+    console.warn('[DB] Migration for world_book_config failed:', e.message)
+  }
 }

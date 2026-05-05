@@ -1060,7 +1060,7 @@
           <span class="char-name">{{ getSceneDisplayName(scene, index) }}</span>
           <span class="char-note">{{ scene.description?.substring(0, 10) || '无描述' }}</span>
         </button>
-        
+
         <button
           type="button"
           class="worldbook-entry-item add-item"
@@ -1076,6 +1076,66 @@
           当前场景：{{ activeSceneDisplayName }}
           <span v-if="backgroundList.length > 0"> | 已加载 {{ backgroundList.length }} 个背景</span>
         </p>
+
+        <!-- 默认背景设置 - 可折叠 -->
+        <section class="collapsible-block lore-entry-block default-background-section">
+          <button
+            type="button"
+            class="collapsible-trigger"
+            :class="{ expanded: defaultBackgroundOpen }"
+            @click="defaultBackgroundOpen = !defaultBackgroundOpen"
+          >
+            <span class="collapse-title">默认背景设置</span>
+            <span class="collapse-arrow">▼</span>
+          </button>
+          <div v-if="defaultBackgroundOpen" class="collapsible-content lore-entry-content">
+            <p class="setting-hint">
+              当剧情中切换到一个未配置的场景时，将使用此默认背景。适用于没有特定场景配置的剧情段落。
+            </p>
+
+            <label class="setting-field">
+              <span class="setting-label">默认背景名称</span>
+              <input
+                :value="activeBook?.backgroundSettings?.defaultBackgroundName || '默认背景'"
+                class="setting-input"
+                type="text"
+                placeholder="例如：默认场景、未知地点"
+                @input="updateBackgroundSetting('defaultBackgroundName', $event.target.value)"
+              />
+            </label>
+
+            <label class="setting-field">
+              <span class="setting-label">默认背景图片</span>
+              <select
+                :value="activeBook?.backgroundSettings?.defaultBackgroundPath || ''"
+                class="setting-select"
+                @change="updateBackgroundSetting('defaultBackgroundPath', $event.target.value)"
+              >
+                <option value="">-- 不使用默认背景 --</option>
+                <option
+                  v-for="bg in backgroundList"
+                  :key="bg.id"
+                  :value="bg.id"
+                >
+                  {{ bg.label }}
+                </option>
+              </select>
+              <p class="setting-hint">
+                选择一个背景图片作为未匹配场景的默认背景。
+              </p>
+            </label>
+
+            <!-- 默认背景预览 -->
+            <div v-if="activeBook?.backgroundSettings?.defaultBackgroundPath" class="scene-preview">
+              <p class="preview-label">默认背景预览</p>
+              <div class="preview-box">
+                <p class="preview-placeholder">
+                  已选择: {{ activeBook.backgroundSettings.defaultBackgroundName || activeBook.backgroundSettings.defaultBackgroundPath }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <!-- 背景文件夹操作 -->
         <div class="scene-folder-actions">

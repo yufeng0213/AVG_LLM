@@ -146,6 +146,87 @@ export const createItemEngine = (deps = {}) => {
     return createItem(template.id, type, 1)
   }
 
+  // ========== 存储和售货机相关方法 ==========
+
+  // 检查库存是否有满足需求的物品
+  const hasItemForNeed = (inventory, needType) => {
+    if (!Array.isArray(inventory)) return false
+    return inventory.some(item =>
+      item.effect && item.effect[needType] > 0 && item.amount > 0
+    )
+  }
+
+  // 获取满足需求的最佳物品（效果最强）
+  const getBestItemForNeed = (inventory, needType) => {
+    if (!Array.isArray(inventory)) return null
+    const candidates = inventory.filter(item =>
+      item.effect && item.effect[needType] > 0 && item.amount > 0
+    )
+    if (candidates.length === 0) return null
+    return candidates.reduce((best, item) =>
+      item.effect[needType] > best.effect[needType] ? item : best
+    )
+  }
+
+  // 消耗物品并应用效果（给小人）
+  const consumeItemForPawn = (pawn, inventory, itemId, amount = 1) => {
+    if (!Array.isArray(inventory)) return { success: false }
+    const item = inventory.find(i => i.id === itemId)
+    if (!item || item.amount < amount) return { success: false }
+
+    // 应用效果到小人需求
+    if (item.effect) {
+      for (const [needType, value] of Object.entries(item.effect)) {
+        if (pawn.needs?.[needType]) {
+          pawn.needs[needType].value = Math.min(100, pawn.needs[needType].value + value)
+        }
+      }
+    }
+
+    // 减少数量
+    item.amount -= amount
+    if (item.amount <= 0) {
+      const index = inventory.indexOf(item)
+      inventory.splice(index, 1)
+    }
+
+    return { success: true, effects: item.effect, itemName: item.name }
+  }
+
+  // 从售货机购买商品
+  const purchaseFromShop = (currency, shopInventory, templateId, amount = 1) => {
+    if (!Array.isArray(shopInventory)) return { success: false, error: 'no_shop' }
+    const product = shopInventory.find(p => p.templateId === templateId)
+    if (!product || product.stock < amount) return { success: false, error: 'out_of_stock' }
+
+    const totalPrice = product.price * amount
+    if (!currency || currency.coins < totalPrice) return { success: false, error: 'not_enough_money' }
+
+    // 扣款减库存
+    currency.coins -= totalPrice
+    product.stock -= amount
+
+    // 创建物品实例（用于显示效果）
+    const purchasedItem = {
+      name: product.name,
+      type: product.type,
+      effect: { ...product.effect },
+      price: product.price,
+    }
+
+    return { success: true, item: purchasedItem, cost: totalPrice }
+  }
+
+  // 售货机自动补货
+  const restockShopInventory = (shopInventory, restockAmount = 5) => {
+    if (!Array.isArray(shopInventory)) return
+    for (const product of shopInventory) {
+      if (product.stock < product.maxStock) {
+        product.stock = Math.min(product.maxStock, product.stock + restockAmount)
+      }
+    }
+  }
+
   return {
     createItem,
     addItemToInventory,
@@ -156,6 +237,11 @@ export const createItemEngine = (deps = {}) => {
     normalizeItem,
     normalizeInventory,
     generateRandomItem,
+    hasItemForNeed,
+    getBestItemForNeed,
+    consumeItemForPawn,
+    purchaseFromShop,
+    restockShopInventory,
     ITEM_TEMPLATES,
   }
 }

@@ -27,6 +27,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(MascotPlugin.class);
         registerPlugin(WidgetBackgroundPickerPlugin.class);
         registerPlugin(ImageReaderPlugin.class);
+        registerPlugin(StoragePermissionPlugin.class);
         // 在 Capacitor Bridge 初始化之前清理 SharedPreferences 中的大尺寸 base64 数据
         // 防止 OOM：Bridge 在 JS→Native 传递时会序列化整个 SharedPreferences
         cleanOomCausingData();

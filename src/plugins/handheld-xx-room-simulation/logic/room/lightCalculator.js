@@ -17,15 +17,11 @@ export const createLightCalculator = (deps = {}) => {
    */
   const extractLightSources = (room) => {
     if (!room || !Array.isArray(room.furniture)) {
-      console.log('[LightCalculator] extractLightSources: no room or furniture array')
       return []
     }
 
-    console.log('[LightCalculator] extractLightSources: furniture count:', room.furniture.length)
-
     const sources = []
     for (const furniture of room.furniture) {
-      console.log('[LightCalculator] checking furniture:', furniture.id, furniture.name, 'lightSource:', furniture.lightSource)
       if (!furniture.lightSource?.enabled) continue
       if (sources.length >= MAX_LIGHT_SOURCES) break
 
@@ -35,8 +31,6 @@ export const createLightCalculator = (deps = {}) => {
       // 光源位置为家具中心
       const centerX = furniture.x + effectiveSize.width / 2
       const centerY = furniture.y + effectiveSize.height / 2
-
-      console.log('[LightCalculator] found light source at furniture:', furniture.id, 'center:', centerX, centerY, 'radius:', furniture.lightSource.radius)
 
       sources.push({
         id: furniture.id,
@@ -52,7 +46,6 @@ export const createLightCalculator = (deps = {}) => {
       })
     }
 
-    console.log('[LightCalculator] extracted sources:', sources.length)
     return sources
   }
 

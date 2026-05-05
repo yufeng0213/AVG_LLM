@@ -1,0 +1,25 @@
+/* ===== 深海 ===== */
+.sms-messages { background: linear-gradient(180deg, #001f3f, #003366) !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: linear-gradient(135deg, #0074d9, #005fa3) !important;
+  border-radius: 16px 4px 16px 16px !important;
+  color: #fff !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 2px 10px rgba(0, 116, 217, 0.3) !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: linear-gradient(135deg, #3d9c6f, #2d7a54) !important;
+  border-radius: 4px 16px 16px 16px !important;
+  color: #e0f7ef !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 2px 10px rgba(61, 156, 111, 0.3) !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.65rem !important; color: #7fdbca !important;
+  background: rgba(127, 219, 202, 0.08) !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important; border-radius: 10px !important;
+}

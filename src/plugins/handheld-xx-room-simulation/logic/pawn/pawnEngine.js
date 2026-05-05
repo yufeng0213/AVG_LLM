@@ -52,6 +52,7 @@ export const createPawnEngine = (deps = {}) => {
       palette: palettes[index % palettes.length],
       action: 'idle',
       facing: 'right',
+      outfit: null, // 部件化换装: { hair, eyes, top, bottom, accessory } 或 null 使用旧版 style
     }
   }
 
@@ -182,13 +183,25 @@ export const createPawnEngine = (deps = {}) => {
     if (!raw || typeof raw !== 'object') return null
     const styles = ['knight', 'mage', 'ranger', 'rogue', 'priest', 'alchemist', 'worker', 'cook', 'scholar', 'nurse']
     const actions = ['idle', 'walk', 'work', 'sleep', 'eat', 'talk', 'read', 'carry']
-    const facings = ['left', 'right']
+    const facings = ['left', 'right', 'front', 'back']
+
+    let outfit = null
+    if (raw.outfit && typeof raw.outfit === 'object') {
+      outfit = {
+        hair: String(raw.outfit.hair || 'short').slice(0, 20),
+        eyes: String(raw.outfit.eyes || 'normal').slice(0, 20),
+        top: String(raw.outfit.top || 'robe').slice(0, 20),
+        bottom: String(raw.outfit.bottom || 'boots').slice(0, 20),
+        accessory: String(raw.outfit.accessory || 'none').slice(0, 20),
+      }
+    }
 
     return {
       style: styles.includes(raw.style) ? raw.style : 'knight',
       palette: String(raw.palette || 'ember').slice(0, 16),
       action: actions.includes(raw.action) ? raw.action : 'idle',
       facing: facings.includes(raw.facing) ? raw.facing : 'right',
+      outfit,
     }
   }
 
@@ -210,7 +223,7 @@ export const createPawnEngine = (deps = {}) => {
       path: pawn.path.slice(),
       needs: { ...pawn.needs },
       skills: { ...pawn.skills },
-      sprite: { ...pawn.sprite },
+      sprite: { ...pawn.sprite, outfit: pawn.sprite?.outfit ? { ...pawn.sprite.outfit } : null },
       taskQueue: pawn.taskQueue.slice(),
     }
   }

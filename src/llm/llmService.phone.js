@@ -885,6 +885,87 @@ export const generatePhoneSmsReply = async (params = {}) => {
 }
 
 /**
+ * 从网页内容生成档案卡片
+ */
+export const generateArchiveCard = async (params = {}) => {
+  const validated = await getValidatedActiveConfig()
+  if (!validated.success || !validated.config) {
+    return { success: false, error: validated.error || 'API 配置不可用' }
+  }
+
+  const { title = '', url = '', excerpt = '', worldBookTitle = '', contactName = '' } = params
+  if (!title && !excerpt) {
+    return { success: false, error: '档案参数不完整' }
+  }
+
+  const userPrompt = [
+    worldBookTitle ? `当前世界观：${worldBookTitle}` : '',
+    contactName ? `角色：${contactName}` : '',
+    '',
+    '请从以下网页内容中提取信息，生成一张档案卡片：',
+    '',
+    `标题：${title}`,
+    `网址：${url}`,
+    `内容摘要：${(excerpt || '').substring(0, 2000)}`,
+    '',
+    '请严格按照以下 JSON 格式返回（不要添加任何其他内容）：',
+    '{',
+    '  "title": "档案标题（5-20字）",',
+    '  "category": "knowledge|secret|clue|trivia|legend|relationship|worldview",',
+    '  "tags": ["标签1", "标签2"],',
+    '  "rarity": "common|uncommon|rare|epic|legendary",',
+    '  "summary": "一句话摘要（20-80字）"',
+    '}',
+  ].filter(Boolean).join('\n')
+
+  try {
+    const { callChatCompletion } = await import('./llmService.core.js')
+    const { resolvePrompt } = await import('./promptRegistry.js')
+
+    const systemPrompt = resolvePrompt('phone:archive_card')
+
+    const result = await callChatCompletion({
+      systemPrompt,
+      userPrompt,
+      model: validated.config.model,
+      apiKey: validated.config.apiKey,
+      apiEndpoint: validated.config.customApi,
+      temperature: 0.7,
+      maxTokens: 500,
+    })
+
+    if (!result?.success || !result?.text) {
+      return { success: false, error: 'LLM 响应为空' }
+    }
+
+    const rawText = result.text
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      return { success: false, error: '无法解析JSON', rawResponse: rawText }
+    }
+
+    const card = JSON.parse(jsonMatch[0])
+    const validCategories = ['knowledge', 'secret', 'clue', 'trivia', 'legend', 'relationship', 'worldview']
+    const validRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary']
+
+    return {
+      success: true,
+      card: {
+        title: card.title || title.substring(0, 30),
+        category: validCategories.includes(card.category) ? card.category : 'knowledge',
+        tags: Array.isArray(card.tags) ? card.tags.slice(0, 4) : [],
+        rarity: validRarities.includes(card.rarity) ? card.rarity : 'common',
+        summary: card.summary || '',
+      },
+      rawResponse: rawText,
+    }
+  } catch (e) {
+    console.error('[generateArchiveCard] Error:', e)
+    return { success: false, error: e.message }
+  }
+}
+
+/**
  * 寝室当面聊天
  * 和 generatePhoneSmsReply 的区别：
  * - 使用 DORM_CHAT_SYSTEM_PROMPT（面对面感，不是短信）

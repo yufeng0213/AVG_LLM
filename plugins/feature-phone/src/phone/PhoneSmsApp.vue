@@ -48,6 +48,9 @@ import { useCharacterSchedule } from '../../../feature-character-schedule/src/co
 import { usePhoneEconomy } from './composables/usePhoneEconomy.js'
 import { archiveDialogue, getUnanalysedCount, shouldAutoAnalyse, getDialogueArchive } from '../../../../src/composables/useDialogueArchive.js'
 import { usePlayerState } from '../../../../src/stores/playerState.store.js'
+import { generateArchiveCard } from '../../../../src/llm/llmService.phone.js'
+import { addArchiveCard, getArchiveStats } from './services/archiveService.js'
+import { checkAchievements } from './services/achievementService.js'
 import { useSmsMessaging } from './composables/useSmsMessaging.js'
 import PhoneRedPacketModal from './PhoneRedPacketModal.vue'
 import PhoneGiftShop from './PhoneGiftShop.vue'
@@ -61,15 +64,22 @@ import SmsBubbleSettings from './components/sms/SmsBubbleSettings.vue'
 import SmsCalendarModal from './components/sms/SmsCalendarModal.vue'
 import NpcSmsThread from './components/sms/NpcSmsThread.vue'
 import SmsFilePreview from './components/sms/SmsFilePreview.vue'
+import SmsVoiceCall from './components/sms/SmsVoiceCall.vue'
 import { importPrintableDirectoryNative } from '../../../../src/native/cardImportPlugin.js'
 import { setPrintableDir, getPrintableDir, clearPrintableDir } from '../../../../src/services/printableConfigService.js'
 
-const emit = defineEmits(['back', 'call-video'])
+const emit = defineEmits(['back', 'call-video', 'call-voice'])
 
 // 全局用户身份
 const playerState = usePlayerState()
 const rel = useRelationshipStore()
 const isBtConnected = inject('isBluetoothConnected', ref(false))
+
+// 语音通话来电
+const pendingVoiceCall = inject('pendingVoiceCall', ref(null))
+
+// Reader 分享转发
+const pendingSmsShare = inject('pendingSmsShare', ref(null))
 
 // 寝室头像
 const dormAvatarRef = ref(null)
@@ -183,94 +193,48 @@ const pendingAvatarFile = ref(null)
 const pendingAvatarChar = ref(null)
 let longPressTimer = null
 
-// 红包/礼物
+// 红包/礼物/语音通话
 const activeRedPacket = ref(null)
 const showRedPacketModal = ref(false)
 const showGiftShop = ref(false)
 const showGiftReturnToast = ref(null)
+const showVoiceCall = ref(false)
+const voiceCallIncoming = ref(false)
 
-// 默认气泡 CSS 模板（使用更具体的选择器确保覆盖scoped样式）
-// 使用 .sms-messages .sms-msg-row 增加选择器层级，提高优先级
-// Android端需要额外添加 .platform-android 选择器 + !important
-const DEFAULT_BUBBLE_CSS = `/* ===== 短信气泡自定义样式 ===== */
+// 默认气泡 CSS 模板（浅色 IM 风格）
+const DEFAULT_BUBBLE_CSS = `/* ===== 短信气泡自定义样式（浅色 IM 风格） ===== */
 .sms-messages {
-  background: linear-gradient(180deg, #fff5f9 0%, #fef0ff 50%, #f0f4ff 100%);
-  padding: 12px 6px;
+  background: transparent;
+  padding: 4px 8px;
 }
 .sms-messages .sms-msg-row .sms-bubble.user {
-  position: relative;
-  background: linear-gradient(135deg, #ffecd2, #fcb69f);
-  border-radius: 20px 20px 6px 20px;
-  color: #5a3e2b;
+  background: linear-gradient(135deg, #ffeef5, #fce4ec);
+  border-radius: 18px 18px 6px 18px;
+  color: #4a2040;
   font-size: 0.88rem;
   line-height: 1.55;
-  padding: 10px 16px;
-  margin: 6px 12px 6px 8px;
-  box-shadow: 0 3px 10px rgba(252, 182, 159, 0.35), inset 0 -2px 4px rgba(0, 0, 0, 0.04);
-  border: 2px solid rgba(255, 255, 255, 0.6);
-  transition: transform 0.15s ease;
-}
-.sms-messages .sms-msg-row .sms-bubble.user:active {
-  transform: scale(0.98);
-}
-.sms-messages .sms-msg-row .sms-bubble.user::after {
-  content: '✦';
-  position: absolute;
-  right: -18px;
-  top: -8px;
-  font-size: 0.75rem;
-  color: #fcb69f;
-  text-shadow: 0 0 6px rgba(252, 182, 159, 0.6);
+  padding: 10px 14px;
+  box-shadow: 0 1px 4px rgba(252, 182, 159, 0.2);
 }
 .sms-messages .sms-msg-row .sms-bubble.assistant {
-  position: relative;
-  background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
-  border-radius: 20px 20px 20px 6px;
-  color: #1b4a5e;
+  background: #fff;
+  border-radius: 18px 18px 18px 6px;
+  color: #333;
   font-size: 0.88rem;
   line-height: 1.55;
-  padding: 10px 16px;
-  margin: 6px 8px 6px 12px;
-  box-shadow: 0 3px 10px rgba(178, 235, 242, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.04);
-  border: 2px solid rgba(255, 255, 255, 0.7);
-  transition: transform 0.15s ease;
-}
-.sms-messages .sms-msg-row .sms-bubble.assistant:active {
-  transform: scale(0.98);
-}
-.sms-messages .sms-msg-row .sms-bubble.assistant::before {
-  content: '❀';
-  position: absolute;
-  left: -18px;
-  top: -8px;
-  font-size: 0.75rem;
-  color: #80deea;
-  text-shadow: 0 0 6px rgba(128, 222, 234, 0.6);
+  padding: 10px 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 .sms-messages .sms-time {
   text-align: center;
-  font-size: 0.7rem;
-  color: #c0a0b0;
-  background: rgba(255, 255, 255, 0.7);
+  font-size: 0.65rem;
+  color: #bbb;
+  background: rgba(0, 0, 0, 0.04);
   display: inline-block;
-  margin: 12px auto;
-  padding: 4px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(224, 180, 200, 0.3);
-  letter-spacing: 0.5px;
-}
-/* ===== Android端专用（需要!important覆盖其他样式） ===== */
-.platform-android .sms-messages .sms-msg-row .sms-bubble.user {
-  background: linear-gradient(135deg, #ffecd2, #fcb69f) !important;
-  border-radius: 20px 20px 6px 20px !important;
-  color: #5a3e2b !important;
-  box-shadow: 0 3px 10px rgba(252, 182, 159, 0.35) !important;
-}
-.platform-android .sms-messages .sms-msg-row .sms-bubble.assistant {
-  background: linear-gradient(135deg, #e0f7fa, #b2ebf2) !important;
-  border-radius: 20px 20px 20px 6px !important;
-  color: #1b4a5e !important;
-  box-shadow: 0 3px 10px rgba(178, 235, 242, 0.4) !important;
+  margin: 8px auto;
+  padding: 3px 14px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
 }`
 
 const SMS_BUBBLE_CSS_KEY = 'phone_sms_bubble_css'
@@ -285,10 +249,6 @@ function getCharScheduleStatus(char) {
 function getOnlineStatusForChar(char) {
   const { activityType, canContact } = getCharScheduleStatus(char)
   return contactStatus.getOnlineStatus(activityType, canContact)
-}
-
-function getSignatureForChar(char) {
-  return contactStatus.getSignature(char.id)
 }
 
 function getLastMessage(contactId) {
@@ -308,7 +268,7 @@ function getGroupMemberCount(group) {
 }
 
 function getCharAvatar(char) {
-  return char?.smsAvatar || char?.portraits?.[0] || null
+  return char?.smsAvatar || char?.portraits?.[0]?.filePath || null
 }
 
 function getUserAvatar() {
@@ -400,11 +360,20 @@ function openGiftShop() {
   showGiftShop.value = true
 }
 
-async function handleGiftSent({ gift, contact }) {
-  if (selectedContact.value && selectedContact.value.id === contact.id) {
-    addSmsMessage(smsThreads.value, contact.id, 'user', `[送出了 ${gift.icon} ${gift.name}]`)
-    await saveSmsThreads(smsThreads.value)
-  }
+async function handleGiftSent({ gift }) {
+  if (!selectedContact.value) return
+  const contact = selectedContact.value
+  // 插入 giftCard 消息用于卡片渲染
+  const thread = smsThreads.value[contact.id] || []
+  thread.push({
+    id: `sms_gc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    role: 'user',
+    msgType: 'giftCard',
+    giftCard: { giftName: gift.name, icon: gift.icon },
+    timestamp: new Date().toISOString(),
+  })
+  smsThreads.value[contact.id] = thread
+  await saveSmsThreads(smsThreads.value)
   try {
     const book = await getWorldBookById(contact.worldBookId)
     const contactForLlm = {
@@ -507,6 +476,10 @@ function handlePlusAction(action) {
     case 'emoji':
       showStickerPanel.value = !showStickerPanel.value
       break
+    case 'voicecall':
+      voiceCallIncoming.value = false
+      showVoiceCall.value = true
+      break
     case 'gift':
       openGiftShop()
       break
@@ -516,7 +489,7 @@ function handlePlusAction(action) {
     case 'file':
       openPrintableConfig()
       break
-    case 'camera': case 'music': case 'location': case 'voice':
+    case 'camera': case 'music': case 'location':
       break // TODO
   }
 }
@@ -948,6 +921,9 @@ async function handleSendSms() {
         })
         smsThreads.value[contact.id] = thread
         await saveSmsThreads(smsThreads.value)
+        // 显示回礼弹窗
+        showGiftReturnToast.value = returnGift
+        setTimeout(() => { showGiftReturnToast.value = null }, 4000)
       }
     }
   } catch (e) {
@@ -1340,7 +1316,8 @@ function closeFilePreview() {
 
 // ===== 初始化 =====
 onMounted(async () => {
-  await contactStatus.loadSignatureCache()
+  // 迁移旧手机零钱到全局金币
+  economy.migrateOldBalance()
   const [groupedContacts, threads, savedCss, smsSettings, groups, groupThreadsData] = await Promise.all([
     getGroupedContacts(),
     loadSmsThreads(),
@@ -1365,8 +1342,6 @@ onMounted(async () => {
     const threads = await loadNpcSmsThreads(book.id)
     npcSmsThreads.value.push(...threads)
   }
-  const allChars = groupedContacts.flatMap(g => g.characters || [])
-  contactStatus.generateAllSignatures(allChars)
 
   // 初始化时加载已配置的可打印文件目录
   const savedPrintableDir = await getPrintableDir()
@@ -1386,6 +1361,256 @@ onMounted(async () => {
   spotCheckMinMax.value = (scMax !== undefined && scMax !== null) ? scMax : 90
   spotCheckWhitelist.value = (scWhitelist !== undefined && scWhitelist !== null) ? scWhitelist : []
 })
+
+// ===== 监听来电（语音通话） =====
+watch(pendingVoiceCall, async (contact) => {
+  if (contact && contact.id && !showVoiceCall.value) {
+    const allChars = contacts.value.flatMap(g => g.characters || [])
+    const found = allChars.find(c => c.id === contact.id)
+    if (found) {
+      selectedContact.value = found
+      voiceCallIncoming.value = true
+      showVoiceCall.value = true
+    }
+    pendingVoiceCall.value = null
+  }
+}, { immediate: true })
+
+// ===== 监听 Reader 分享转发 =====
+watch(pendingSmsShare, async (shareInfo) => {
+  console.log('[PhoneSmsApp] pendingSmsShare watch fired:', shareInfo)
+  if (!shareInfo?.contact) return
+  const { contact, shareData } = shareInfo
+
+  console.log('[PhoneSmsApp] contacts count:', contacts.value?.length || 0, 'smsThreads count:', Object.keys(smsThreads.value || {}).length)
+
+  // 等待 contacts/smsThreads 初始化完成
+  if (!contacts.value || contacts.value.length === 0) {
+    console.log('[PhoneSmsApp] contacts 未初始化，等待中...')
+    await new Promise(resolve => {
+      const stopWatch = watch(
+        () => contacts.value?.length,
+        (len) => {
+          if (len > 0) { stopWatch(); resolve() }
+        },
+      )
+      setTimeout(() => { stopWatch(); resolve() }, 5000)
+    })
+    console.log('[PhoneSmsApp] contacts 初始化完成:', contacts.value.length)
+  }
+
+  // 1. 直接使用该角色，不再去 contacts 里找（避免异步等待导致时序问题）
+  const allChars = contacts.value.flatMap(g => g.characters || [])
+  const found = allChars.find(c => c.id === contact.id)
+  if (found) {
+    console.log('[PhoneSmsApp] found contact in list:', found.name)
+    await selectContact(found)
+  } else {
+    console.log('[PhoneSmsApp] using raw contact:', contact.name)
+    selectedContact.value = contact
+    smsDraft.value = ''
+    chatBgUrl.value = contact?.smsBg || ''
+    nextTick(() => scrollToBottom())
+  }
+
+  // 2. 插入 shareCard 消息（根据分享类型构建不同数据）
+  const isBrowserShare = shareData?.type === 'browser_share'
+  const shareMsg = {
+    id: `sms_sc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    role: 'user',
+    msgType: 'shareCard',
+    text: isBrowserShare
+      ? `[分享了网页《${shareData.title}》：${shareData.url}]`
+      : `[分享了《${shareData.storyTitle}》的内容：${shareData.excerpt?.substring(0, 100)}...]`,
+    shareCard: isBrowserShare
+      ? {
+          storyTitle: shareData.title || '未知网页',
+          chapterTitle: '',
+          excerpt: shareData.excerpt || '',
+          storyId: '',
+          chapterIndex: -1,
+          sourceUrl: shareData.url || '',
+          shareType: 'browser',
+        }
+      : {
+          storyTitle: shareData.storyTitle,
+          chapterTitle: shareData.chapterTitle || '',
+          excerpt: shareData.excerpt || '',
+          storyId: shareData.storyId || '',
+          chapterIndex: shareData.chapterIndex ?? -1,
+          shareType: 'book',
+        },
+    timestamp: new Date().toISOString(),
+  }
+
+  console.log('[PhoneSmsApp] inserting shareCard for:', contact.id)
+  const thread = smsThreads.value[contact.id] || []
+  thread.push(shareMsg)
+  smsThreads.value[contact.id] = thread
+  await saveSmsThreads(smsThreads.value)
+
+  // 2.5 浏览器分享：生成档案卡片
+  let generatedArchive = null
+  if (isBrowserShare) {
+    try {
+      const book = await getWorldBookById(contact.worldBookId)
+      const archiveResult = await generateArchiveCard({
+        title: shareData.title,
+        url: shareData.url,
+        excerpt: shareData.excerpt,
+        worldBookTitle: book?.title || '',
+        contactName: contact.name,
+      })
+      if (archiveResult.success) {
+        const saveResult = await addArchiveCard({
+          ...archiveResult.card,
+          sourceUrl: shareData.url,
+          excerpt: shareData.excerpt,
+          sharedWithChar: contact.name,
+        })
+        if (saveResult.success) {
+          generatedArchive = saveResult.card
+          console.log('[PhoneSmsApp] Archive card generated:', generatedArchive.title)
+        }
+      } else {
+        console.warn('[PhoneSmsApp] generateArchiveCard failed:', archiveResult.error)
+      }
+    } catch (e) {
+      console.error('[PhoneSmsApp] Archive card generation error:', e)
+    }
+  }
+
+  // 2.6 检查成就
+  try {
+    const archiveStats = await getArchiveStats()
+    const shareCount = (await kvStorage.get('browser_share_count_v1')) || 0
+    const newCount = shareCount + (isBrowserShare ? 1 : 0)
+    await kvStorage.set('browser_share_count_v1', newCount)
+
+    const newlyUnlocked = await checkAchievements(archiveStats, newCount)
+    for (const ach of newlyUnlocked) {
+      console.log('[PhoneSmsApp] Achievement unlocked:', ach.name)
+      // 插入成就通知消息到SMS线程
+      const achMsg = {
+        id: `sms_ach_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        role: 'system',
+        msgType: 'achievement',
+        text: `🏆 成就解锁：${ach.name} - ${ach.description}`,
+        achievement: ach,
+        timestamp: new Date().toISOString(),
+      }
+      const thread = smsThreads.value[contact.id] || []
+      thread.push(achMsg)
+      smsThreads.value[contact.id] = thread
+      await saveSmsThreads(smsThreads.value)
+    }
+  } catch (e) {
+    console.warn('[PhoneSmsApp] Achievement check error:', e)
+  }
+
+  // 3. 触发 LLM 回复
+  smsLoading.value = true
+  try {
+    await triggerReplyForShareCard(shareMsg, contact, generatedArchive)
+    console.log('[PhoneSmsApp] shareCard reply done')
+  } catch (e) {
+    console.warn('[PhoneSmsApp] shareCard 回复失败:', e)
+  } finally {
+    smsLoading.value = false
+  }
+
+  // 4. 清除 pending
+  pendingSmsShare.value = null
+}, { immediate: true })
+
+async function triggerReplyForShareCard(shareMsg, contact, generatedArchive) {
+  const book = await getWorldBookById(contact.worldBookId)
+  const contactForLlm = {
+    id: contact.id,
+    name: contact.name,
+    identity: contact.identity || contact.nickname || '',
+  }
+
+  const isBrowserShare = shareMsg.shareCard.shareType === 'browser'
+
+  // 构建 forwardedClues
+  const excerpt = shareMsg.shareCard.excerpt || ''
+  const forwardedClues = [isBrowserShare
+    ? {
+        sourceType: '网页分享',
+        title: shareMsg.shareCard.storyTitle,
+        summary: excerpt.length > 500 ? excerpt.substring(0, 500) + '...' : excerpt,
+        tags: shareMsg.shareCard.sourceUrl ? [shareMsg.shareCard.sourceUrl] : [],
+        ...(generatedArchive ? {
+          archiveCard: {
+            title: generatedArchive.title,
+            category: generatedArchive.category,
+            rarity: generatedArchive.rarity,
+            summary: generatedArchive.summary,
+          },
+        } : {}),
+      }
+    : {
+        sourceType: '书籍分享',
+        title: `${shareMsg.shareCard.storyTitle}${shareMsg.shareCard.chapterTitle ? ' · ' + shareMsg.shareCard.chapterTitle : ''}`,
+        summary: excerpt.length > 500 ? excerpt.substring(0, 500) + '...' : excerpt,
+        tags: book ? [book.title] : [],
+      }
+  ]
+
+  // 获取短信历史
+  const thread = getSmsThread(smsThreads.value, contact.id)
+  const history = thread.slice(-smsContextMessages.value).map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    text: m.text,
+  }))
+
+  // 加载世界记忆
+  const bookId = book?.id || contact.worldBookId
+  const worldMemories = await useWorldMemoryStore().get(bookId)
+
+  // 加载关系数据
+  let relationshipSnapshot = null
+  try {
+    const relData = rel.getCharacter(contact.id)
+    if (rel) {
+      relationshipSnapshot = {
+        [contact.id]: {
+          favor: rel.favor,
+          trust: rel.trust,
+          stance: rel.stance,
+          level: rel.level,
+        },
+      }
+    }
+  } catch { /* 忽略 */ }
+
+  const userMessage = isBrowserShare
+    ? `[分享] 玩家给你分享了一个网页《${shareMsg.shareCard.storyTitle}》(${shareMsg.shareCard.sourceUrl})`
+    : `[分享] 玩家给你分享了一段来自《${shareMsg.shareCard.storyTitle}》${shareMsg.shareCard.chapterTitle ? '· ' + shareMsg.shareCard.chapterTitle : ''}的内容`
+
+  const result = await generatePhoneSmsReply({
+    worldBook: book || { id: contact.worldBookId, title: contact.worldBookTitle, characters: [] },
+    contact: contactForLlm,
+    userMessage,
+    history,
+    worldMemories,
+    relationshipSnapshot,
+    forwardedClues,
+    options: { historyLimit: smsContextMessages.value, maxTokens: smsMaxTokens.value },
+  })
+
+  if (result.success && result.replies?.length > 0) {
+    for (const reply of result.replies) {
+      if (reply && reply.trim()) {
+        addSmsMessage(smsThreads.value, contact.id, 'assistant', reply.trim())
+      }
+    }
+    await saveSmsThreads(smsThreads.value)
+  }
+
+  nextTick(() => scrollToBottom())
+}
 </script>
 
 <template>
@@ -1409,7 +1634,6 @@ onMounted(async () => {
         :get-last-message="getLastMessage"
         :get-last-group-message="getLastGroupMessage"
         :get-online-status-for-char="getOnlineStatusForChar"
-        :get-signature-for-char="getSignatureForChar"
         :format-sms-time="formatSmsTime"
         :get-char-avatar="getCharAvatar"
         :get-group-member-count="getGroupMemberCount"
@@ -1449,6 +1673,7 @@ onMounted(async () => {
       :user-avatar="getUserAvatar()"
       :playing-voice-id="playingVoiceId"
       :voice-shown-text="voiceShownText"
+      :online-status="getOnlineStatusForChar(selectedContact)"
       @back="goBack"
       @send="handleSendSms"
       @toggle-plus="(val) => { if (val !== undefined) showPlusPanel = val; else showPlusPanel = !showPlusPanel }"
@@ -1489,10 +1714,18 @@ onMounted(async () => {
 
     <PhoneGiftShop
       v-if="showGiftShop"
-      :contacts="contacts"
       :economy="economy"
       @back="showGiftShop = false"
       @gift-sent="handleGiftSent"
+    />
+
+    <!-- ====== 语音通话 ====== -->
+    <SmsVoiceCall
+      v-if="showVoiceCall && selectedContact"
+      :contact="selectedContact"
+      :standee-url="selectedContact?.portraits?.[0]?.filePath || null"
+      :incoming-call="voiceCallIncoming"
+      @hangup="showVoiceCall = false; voiceCallIncoming = false"
     />
 
     <!-- ====== 群聊线程 ====== -->
@@ -1632,6 +1865,20 @@ onMounted(async () => {
     <!-- ====== Toast 提示 ====== -->
     <div v-if="printableConfigToast" class="printable-toast">{{ printableConfigToast }}</div>
 
+    <!-- ====== 礼物回礼弹窗 ====== -->
+    <Transition name="gift-return-toast">
+      <div v-if="showGiftReturnToast" class="gift-return-toast" @click="showGiftReturnToast = null">
+        <div class="gift-return-toast-card">
+          <div class="grt-icon">{{ showGiftReturnToast.icon }}</div>
+          <div class="grt-content">
+            <div class="grt-label">收到回礼</div>
+            <div class="grt-name">{{ showGiftReturnToast.itemName }}</div>
+            <div class="grt-message">{{ showGiftReturnToast.message || '来自 ' + showGiftReturnToast.fromName }}</div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- ====== 头像裁剪 ====== -->
     <input
       id="sms-avatar-file-input"
@@ -1657,10 +1904,10 @@ onMounted(async () => {
   align-items: center;
   padding: 10px 14px;
   padding-top: max(14px, var(--safe-area-inset-top, 14px));
-  background: linear-gradient(180deg, rgba(25, 25, 35, 0.95) 0%, rgba(20, 20, 28, 0.9) 100%);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
 }
 
@@ -1668,9 +1915,9 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  border: none;
+  color: #333;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -1680,8 +1927,8 @@ onMounted(async () => {
 }
 
 .phone-app-back-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.06);
+  color: #111;
 }
 
 .phone-app-back-btn:active {
@@ -1692,7 +1939,7 @@ onMounted(async () => {
   margin: 0;
   font-size: 1.15rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
+  color: #222;
   flex: 1;
   text-align: center;
   letter-spacing: 0.5px;
@@ -1708,7 +1955,7 @@ onMounted(async () => {
   height: 100%;
   min-height: 0;
   position: relative;
-  background: linear-gradient(180deg, rgba(20, 20, 28, 0.98) 0%, rgba(15, 15, 22, 1) 100%);
+  background: linear-gradient(180deg, #fff5f9 0%, #fef0ff 50%, #f0f4ff 100%);
 }
 
 .phone-loading {
@@ -1717,15 +1964,15 @@ onMounted(async () => {
   justify-content: center;
   padding: 24px 16px;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: #bbb;
 }
 
 .loading-spinner {
   display: inline-block;
   width: 18px;
   height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, 0.15);
-  border-top-color: rgba(10, 132, 255, 0.8);
+  border: 2.5px solid rgba(0, 0, 0, 0.08);
+  border-top-color: #ff8fab;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-right: 8px;
@@ -1957,4 +2204,90 @@ onMounted(async () => {
     border-radius: 8px !important;
     white-space: nowrap !important;
   }
+
+/* ===== 礼物回礼弹窗 ===== */
+.gift-return-toast {
+  position: fixed;
+  top: max(60px, var(--safe-area-inset-top, 60px));
+  left: 16px;
+  right: 16px;
+  z-index: 10020;
+  display: flex;
+  justify-content: center;
+}
+
+.gift-return-toast-card {
+  background: linear-gradient(135deg, #fff8e8, #fef0d5);
+  border: 1px solid rgba(243, 156, 18, 0.2);
+  border-radius: 16px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(243, 156, 18, 0.2);
+  max-width: 340px;
+  cursor: pointer;
+  animation: gift-toast-slide-in 0.4s ease;
+}
+
+@keyframes gift-toast-slide-in {
+  from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.gift-return-toast-enter-active,
+.gift-return-toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.gift-return-toast-enter-from {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.9);
+}
+
+.gift-return-toast-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+}
+
+.grt-icon {
+  font-size: 36px;
+  flex-shrink: 0;
+  animation: gift-icon-bounce 0.6s ease;
+}
+
+@keyframes gift-icon-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.grt-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.grt-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e67e22;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.grt-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a3728;
+  margin-bottom: 2px;
+}
+
+.grt-message {
+  font-size: 11px;
+  color: #a08060;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>
+

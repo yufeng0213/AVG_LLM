@@ -1,112 +1,65 @@
 <script setup>
 /**
- * PhoneGiftShop.vue - 礼物商店 & 送礼界面
+ * PhoneGiftShop.vue - 礼物商店（底部滑出面板，浅色 IM 风格）
+ * 点击即买即送，自动关闭弹窗。
  */
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 const props = defineProps({
-  contacts: { type: Array, required: true }, // 联系人列表
-  economy: { type: Object, required: true }, // usePhoneEconomy 返回值
+  economy: { type: Object, required: true },
 })
 
 const emit = defineEmits(['back', 'gift-sent'])
 
-const activeTab = ref('shop') // 'shop' | 'my-gifts'
-const pendingGift = ref(null) // 待送出的礼物
-const showContactPicker = ref(false)
-
 const catalog = computed(() => props.economy.getGiftCatalog())
-const myGifts = computed(() => props.economy.availableGifts.value || [])
 
-async function handleBuyGift(gift) {
+async function handleBuyAndSend(gift) {
   if (props.economy.balance.value < gift.price) return
   const result = await props.economy.buyGift(gift.id)
   if (result.success) {
-    // 自动进入送礼流程
-    pendingGift.value = result.gift
-    showContactPicker.value = true
+    emit('gift-sent', { gift: result.gift })
+    emit('back')
   }
 }
 
-async function handleSendGift(contact) {
-  if (!pendingGift.value) return
-  const result = await props.economy.sendGift(pendingGift.value.id, contact.id, contact.name)
-  if (result.success) {
-    showContactPicker.value = false
-    pendingGift.value = null
-    emit('gift-sent', { gift: result.gift, contact })
+function categoryColor(cat) {
+  const map = {
+    食物: '#ff6b6b', 饰品: '#f0b800', 鲜花: '#ff9ec4', 书籍: '#7c5cbf', 玩具: '#5cb8ff', 其他: '#b0a8c0',
   }
-}
-
-function formatPrice(n) {
-  return `${n}`
+  return map[cat] || map.其他
 }
 </script>
 
 <template>
-  <div class="gift-shop-app">
-    <!-- 顶部导航 -->
-    <div class="gift-shop-header">
-      <button type="button" class="gift-shop-back-btn" @click="emit('back')">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <h2 class="gift-shop-title">礼物商店</h2>
-      <div class="gift-shop-balance">💰 {{ economy.balance.value }}</div>
-    </div>
-
-    <!-- 标签切换 -->
-    <div class="gift-shop-tabs">
-      <button type="button" class="tab-btn" :class="{ active: activeTab === 'shop' }" @click="activeTab = 'shop'">商店</button>
-      <button type="button" class="tab-btn" :class="{ active: activeTab === 'my-gifts' }" @click="activeTab = 'my-gifts'">我的礼物 ({{ myGifts.length }})</button>
-    </div>
-
-    <!-- 商店 -->
-    <div v-if="activeTab === 'shop'" class="gift-grid">
-      <div v-for="gift in catalog" :key="gift.id" class="gift-card" :class="{ 'gift-card-disabled': economy.balance.value < gift.price }" @click="economy.balance.value >= gift.price && handleBuyGift(gift)">
-        <div class="gift-icon">{{ gift.icon }}</div>
-        <div class="gift-name">{{ gift.name }}</div>
-        <div class="gift-price">💰 {{ gift.price }}</div>
-        <div class="gift-category-tag">{{ gift.category }}</div>
+  <div class="gift-shop-overlay" @click.self="emit('back')">
+    <div class="gift-shop-panel">
+      <!-- 关闭按钮 -->
+      <div class="gift-shop-handle">
+        <div class="gift-shop-handle-bar" />
+        <button type="button" class="gift-shop-close mailbox-back-btn" @click="emit('back')">&times;</button>
       </div>
-    </div>
 
-    <!-- 我的礼物 -->
-    <div v-else class="my-gifts-list">
-      <div v-if="myGifts.length === 0" class="gifts-empty">
-        <span class="empty-icon">🎁</span>
-        <p class="empty-text">还没有购买的礼物</p>
-        <p class="empty-hint">去商店挑一个吧</p>
-      </div>
-      <div v-for="gift in myGifts" :key="gift.id" class="my-gift-card">
-        <div class="my-gift-icon">{{ gift.icon }}</div>
-        <div class="my-gift-info">
-          <div class="my-gift-name">{{ gift.name }}</div>
-          <div class="my-gift-price">购买价: 💰{{ gift.price }}</div>
-        </div>
-        <div class="my-gift-action">
-          <button type="button" class="send-btn" @click="pendingGift = gift; showContactPicker = true">送出</button>
-        </div>
-      </div>
-    </div>
+      <!-- 余额 -->
+      <div class="gift-shop-balance">&#x1FA99; {{ economy.balance.value }} 金币</div>
 
-    <!-- 选择收礼人 -->
-    <div v-if="showContactPicker" class="contact-picker-overlay" @click.self="showContactPicker = false">
-      <div class="contact-picker-panel">
-        <div class="contact-picker-header">
-          <h3>选择收礼人</h3>
-          <button type="button" class="picker-close" @click="showContactPicker = false">×</button>
-        </div>
-        <div class="contact-picker-list">
-          <template v-for="group in contacts" :key="group.worldBookId">
-            <div class="picker-group-title">《{{ group.worldBookTitle }}》</div>
-            <div v-for="char in (group.characters || [])" :key="char.id" class="picker-contact-item" @click="handleSendGift(char)">
-              <div class="picker-contact-avatar">
-                <img v-if="char.portraits?.[0]" :src="char.portraits[0]" />
-                <span v-else class="picker-avatar-text">{{ char.name.slice(0, 1) }}</span>
-              </div>
-              <div class="picker-contact-name">{{ char.name }}</div>
+      <!-- 礼物网格 -->
+      <div v-if="catalog.length > 0" class="gift-grid">
+        <div
+          v-for="gift in catalog"
+          :key="gift.id"
+          class="gift-card"
+          :class="{ 'gift-card-disabled': economy.balance.value < gift.price }"
+          @click="handleBuyAndSend(gift)"
+        >
+          <div class="gift-card-bg" :style="{ background: 'linear-gradient(135deg, ' + categoryColor(gift.category) + '18, ' + categoryColor(gift.category) + '06)' }" />
+          <div class="gift-card-content">
+            <div class="gift-icon-wrap">
+              <span class="gift-icon">{{ gift.icon }}</span>
+              <span class="gift-cat-dot" :style="{ background: categoryColor(gift.category) }" />
             </div>
-          </template>
+            <div class="gift-name">{{ gift.name }}</div>
+            <div class="gift-price">&#x1FA99; {{ gift.price }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -114,91 +67,102 @@ function formatPrice(n) {
 </template>
 
 <style scoped>
-.gift-shop-app {
+.gift-shop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
   display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: #1c1c1e;
-  color: #fff;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  animation: gs-overlay-in 0.2s ease;
 }
 
-.gift-shop-header {
+@keyframes gs-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gift-shop-panel {
+  width: 100%;
+  max-height: 75vh;
+  background: linear-gradient(180deg, #fff5f9 0%, #fef0ff 30%, #f0f4ff 100%);
+  border-radius: 18px 18px 0 0;
+  overflow-y: auto;
+  animation: gs-slide-up 0.25s ease;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+}
+
+@keyframes gs-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* 顶部手柄区域 */
+.gift-shop-handle {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  justify-content: space-between;
+  padding: 10px 14px 6px;
+  flex-shrink: 0;
 }
 
-.gift-shop-back-btn {
+.gift-shop-handle-bar {
+  width: 40px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+.gift-shop-close {
   background: none;
   border: none;
-  color: #fff;
+  color: rgba(51, 51, 51, 0.5);
+  font-size: 1.1rem;
   cursor: pointer;
-  padding: 4px;
-  display: flex;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
 }
 
-.gift-shop-title {
-  font-size: 18px;
-  font-weight: 600;
-  flex: 1;
+.gift-shop-close:hover {
+  background: rgba(0, 0, 0, 0.06);
 }
 
+/* 余额 */
 .gift-shop-balance {
-  font-size: 14px;
-  color: #ffd60a;
-  background: rgba(255, 214, 10, 0.1);
-  padding: 4px 10px;
-  border-radius: 12px;
+  font-size: 0.82rem;
+  color: #e67e22;
+  font-weight: 600;
+  text-align: center;
+  padding: 6px 0 10px;
 }
 
-.gift-shop-tabs {
-  display: flex;
-  padding: 8px 12px;
-  gap: 8px;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 8px;
-  background: rgba(44, 44, 46, 0.6);
-  border: none;
-  border-radius: 10px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.tab-btn.active {
-  background: rgba(255, 204, 0, 0.15);
-  color: #ffd60a;
-}
-
+/* 礼物网格 */
 .gift-grid {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 12px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  align-content: start;
+  padding: 0 14px 14px;
 }
 
 .gift-card {
-  background: rgba(44, 44, 46, 0.8);
-  border-radius: 12px;
-  padding: 12px 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
   cursor: pointer;
-  transition: transform 0.15s;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .gift-card:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
+}
+
+.gift-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .gift-card-disabled {
@@ -206,181 +170,80 @@ function formatPrice(n) {
   pointer-events: none;
 }
 
-.gift-icon {
-  font-size: 32px;
+.gift-card-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
 }
 
-.gift-name {
-  font-size: 13px;
-  text-align: center;
-}
-
-.gift-price {
-  font-size: 12px;
-  color: #ffd60a;
-}
-
-.gift-category-tag {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.08);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-/* 我的礼物 */
-.my-gifts-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 12px;
-}
-
-.gifts-empty {
+.gift-card-content {
+  position: relative;
+  z-index: 1;
+  padding: 10px 8px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 60px 20px;
+  gap: 5px;
 }
 
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-.empty-text {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0;
-}
-
-.empty-hint {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.3);
-  margin-top: 4px;
-}
-
-.my-gift-card {
+.gift-icon-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(44, 44, 46, 0.6);
-  border-radius: 12px;
-  margin-bottom: 8px;
-}
-
-.my-gift-icon {
-  font-size: 32px;
-}
-
-.my-gift-info {
-  flex: 1;
-}
-
-.my-gift-name {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.my-gift-price {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
-  margin-top: 2px;
-}
-
-.send-btn {
-  padding: 6px 16px;
-  background: rgba(255, 204, 0, 0.2);
-  border: none;
-  border-radius: 12px;
-  color: #ffd60a;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-/* 收礼人选择器 */
-.contact-picker-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: flex-end;
   justify-content: center;
-  z-index: 100;
-}
-
-.contact-picker-panel {
-  width: 100%;
-  max-width: 400px;
-  max-height: 70vh;
-  background: #2c2c2e;
-  border-radius: 16px 16px 0 0;
-  overflow-y: auto;
-}
-
-.contact-picker-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.contact-picker-header h3 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.picker-close {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 24px;
-  cursor: pointer;
-}
-
-.picker-group-title {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 8px 16px 4px;
-}
-
-.picker-contact-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  cursor: pointer;
-}
-
-.picker-contact-item:active {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.picker-contact-avatar {
-  width: 36px;
-  height: 36px;
+  background: rgba(255, 255, 255, 0.8);
   border-radius: 50%;
-  overflow: hidden;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin-bottom: 2px;
 }
 
-.picker-contact-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.gift-icon {
+  font-size: 24px;
 }
 
-.picker-avatar-text {
-  font-size: 16px;
+.gift-cat-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.gift-name {
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #fff;
+  text-align: center;
+  color: rgba(51, 51, 51, 0.85);
 }
 
-.picker-contact-name {
-  font-size: 14px;
+.gift-price {
+  font-size: 0.68rem;
+  color: #e67e22;
+  font-weight: 600;
+  background: linear-gradient(135deg, #fff8e8, #fef0d5);
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+/* ===== Android portrait ===== */
+.platform-android.android-portrait .gift-shop-close {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  flex: none !important;
+  font-size: 1.1rem !important;
+  padding: 6px 10px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
 }
 </style>

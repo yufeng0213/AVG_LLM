@@ -1,7 +1,6 @@
 <script setup>
 /**
- * SmsGroupThread.vue — 群聊线程视图
- * 包含 header、消息列表、@提及输入栏。
+ * SmsGroupThread.vue — 群聊线程视图（浅色主题）
  */
 import { ref } from 'vue'
 
@@ -68,14 +67,14 @@ defineExpose({ groupMessagesRef })
       </button>
       <div class="phone-app-title" />
       <button type="button" class="group-info-btn" @click="emit('open-info')">
-        &#x2139;&#xFE0F;
+        &#8505;
       </button>
     </div>
 
     <div class="sms-thread">
       <div ref="groupMessagesRef" class="sms-messages">
         <div v-if="!threadMessages || threadMessages.filter(m => m.type === 'message').length === 0" class="phone-loading">
-          发送消息开始群聊 · {{ memberCount }} 位成员
+          发送消息开始群聊 &#183; {{ memberCount }} 位成员
         </div>
         <template v-for="(item, idx) in threadMessages" :key="item.id || 'time-g-' + idx">
           <div v-if="item.type === 'time'" class="sms-time">{{ item.text }}</div>
@@ -103,11 +102,6 @@ defineExpose({ groupMessagesRef })
         </div>
       </div>
       <div class="sms-input-bar">
-        <button type="button" class="sms-mention-btn" @click="$emit('open-info')">
-          <!-- @ button toggles mention, but for now let it just be decorative;
-               actual mention trigger is done by typing @ in textarea -->
-          <span style="font-size: 1rem; line-height: 1;">@</span>
-        </button>
         <div class="sms-input-wrapper">
           <textarea
             :value="draft"
@@ -125,10 +119,10 @@ defineExpose({ groupMessagesRef })
           class="sms-send-btn"
           :disabled="!draft.trim() || loading"
           @click="emit('send')"
+          title="发送"
         >
-          <span class="sms-send-icon">&#x27A4;</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
-        <!-- @ 提及下拉 -->
         <div v-if="showMentionDropdown" class="mention-dropdown">
           <template v-for="m in mentionableMembers" :key="m.contactId">
             <div class="mention-item" @click="emit('insert-mention', m)">{{ m.contactName }}</div>
@@ -155,13 +149,14 @@ defineExpose({ groupMessagesRef })
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  padding: 8px 6px;
+  padding: 4px 8px 8px;
 }
 
 .sms-msg-row {
   display: flex;
   align-items: flex-end;
   width: 100%;
+  gap: 6px;
 }
 
 .sms-msg-row.assistant {
@@ -182,11 +177,8 @@ defineExpose({ groupMessagesRef })
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .sms-msg-avatar img {
@@ -196,8 +188,9 @@ defineExpose({ groupMessagesRef })
 }
 
 .sms-msg-avatar-default {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   line-height: 1;
+  opacity: 0.6;
 }
 
 .sms-msg-content {
@@ -209,14 +202,50 @@ defineExpose({ groupMessagesRef })
 .group-sender-name {
   display: inline-block;
   font-size: 0.72rem;
-  color: var(--phone-accent-blue, #0a84ff);
+  color: #fb6f92;
   font-weight: 600;
   margin-bottom: 3px;
 }
 
 .mention-highlight {
-  color: var(--phone-accent-blue, #0a84ff);
+  color: #fb6f92;
   font-weight: 700;
+}
+
+/* Header */
+.phone-app-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  padding-top: max(8px, var(--safe-area-inset-top, 8px));
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.phone-app-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #333;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+
+.phone-app-back-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.phone-app-title {
+  flex: 1;
 }
 
 .group-info-btn {
@@ -226,50 +255,116 @@ defineExpose({ groupMessagesRef })
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 6px;
-  transition: background 0.2s;
-  line-height: 1;
+  color: #888;
+  transition: background 0.15s;
 }
 
 .group-info-btn:hover {
-  background: var(--phone-card-bg, rgba(255, 255, 255, 0.1));
+  background: rgba(0, 0, 0, 0.06);
 }
 
+/* 时间戳 */
+.sms-time {
+  align-self: center;
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #bbb;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 3px 14px;
+  border-radius: 10px;
+  margin: 8px auto;
+}
+
+/* 气泡 */
+.sms-bubble {
+  max-width: 75%;
+  word-wrap: break-word;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  border-radius: 18px;
+}
+
+.sms-bubble.assistant {
+  background: #fff;
+  color: #333;
+  border-radius: 18px 18px 18px 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.sms-bubble.user {
+  background: linear-gradient(135deg, #ffeef5, #fce4ec);
+  color: #4a2040;
+  border-radius: 18px 18px 6px 18px;
+  box-shadow: 0 1px 4px rgba(252, 182, 159, 0.2);
+}
+
+/* 加载 */
+.phone-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  font-size: 0.82rem;
+  color: #bbb;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(0, 0, 0, 0.08);
+  border-top-color: #ff8fab;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 输入栏 */
 .sms-input-bar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 6px;
   padding: 8px 10px;
-  background: rgba(28, 28, 30, 0.92);
+  padding-bottom: max(8px, var(--safe-area-inset-bottom, 8px));
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid var(--phone-border, rgba(255, 255, 255, 0.08));
+  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
   position: relative;
 }
 
 .sms-input-wrapper {
   flex: 1;
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .sms-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f0f0f0;
+  border: 1px solid transparent;
   border-radius: 20px;
   padding: 8px 14px;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   font-size: 0.88rem;
   outline: none;
   resize: none;
   max-height: 100px;
   line-height: 1.4;
   box-sizing: border-box;
+  transition: border-color 0.15s;
 }
 
 .sms-input:focus {
-  border-color: rgba(10, 132, 255, 0.5);
+  border-color: #ff8fab;
+  background: #fff;
 }
 
 .sms-input:disabled {
@@ -277,45 +372,51 @@ defineExpose({ groupMessagesRef })
 }
 
 .sms-send-btn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 132, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(10, 132, 255, 0.4);
-  border-radius: 50%;
-  color: #fff;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: #888;
   cursor: pointer;
-  transition: all 0.15s;
+  border-radius: 50%;
+  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
+.sms-send-btn:not(:disabled) {
+  background: linear-gradient(135deg, #ff8fab, #fb6f92);
+  color: #fff;
+}
+
+.sms-send-btn:not(:disabled):hover {
+  transform: scale(1.08);
+  box-shadow: 0 2px 12px rgba(255, 143, 171, 0.4);
+}
+
+.sms-send-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
 .sms-send-btn:disabled {
-  opacity: 0.4;
+  color: #ccc;
   cursor: not-allowed;
 }
 
-.sms-send-btn:hover:not(:disabled) {
-  background: rgba(10, 132, 255, 0.4);
-}
-
+/* @ 提及下拉 */
 .mention-dropdown {
   position: absolute;
   bottom: 100%;
   left: 0;
   right: 0;
-  background: rgba(28, 28, 30, 0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #fff;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
   max-height: 160px;
   overflow-y: auto;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
   z-index: 30;
 }
 
@@ -323,12 +424,12 @@ defineExpose({ groupMessagesRef })
   padding: 8px 14px;
   cursor: pointer;
   font-size: 0.85rem;
-  color: var(--phone-text-primary, #fff);
+  color: #333;
   transition: background 0.1s;
 }
 
 .mention-item:hover {
-  background: rgba(10, 132, 255, 0.15);
+  background: rgba(255, 143, 171, 0.1);
 }
 
 .mention-item:first-child {
@@ -342,17 +443,69 @@ defineExpose({ groupMessagesRef })
 .mention-empty {
   padding: 10px 14px;
   font-size: 0.82rem;
-  color: var(--phone-text-secondary, rgba(255, 255, 255, 0.4));
+  color: #bbb;
   text-align: center;
 }
 
+/* Android */
 .platform-android.android-portrait .sms-input {
-  background: rgba(255, 255, 255, 0.14) !important;
+  background: #f5f5f5 !important;
+  color: #333 !important;
 }
-.platform-android.android-portrait .sms-send-btn {
-  background: rgba(10, 132, 255, 0.45) !important;
+
+.platform-android.android-portrait .sms-send-btn:not(:disabled) {
+  background: linear-gradient(135deg, #ff8fab, #fb6f92) !important;
 }
+
 .platform-android.android-portrait .sms-msg-avatar {
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: #f5f5f5 !important;
+}
+
+.platform-android.android-portrait .phone-app-header {
+  background: rgba(255, 255, 255, 0.97) !important;
+}
+
+.platform-android.android-portrait .phone-app-back-btn {
+  color: #333 !important;
+}
+
+.platform-android.android-portrait .sms-input-bar {
+  background: rgba(255, 255, 255, 0.98) !important;
+}
+
+.platform-android.android-portrait .mention-dropdown {
+  background: #fff !important;
+}
+
+.platform-android.android-portrait .mention-item {
+  color: #333 !important;
+}
+
+.platform-android.android-portrait .mention-empty {
+  color: #bbb !important;
+}
+
+.platform-android.android-portrait .phone-loading {
+  color: #bbb !important;
+}
+
+.platform-android.android-portrait .loading-spinner {
+  border-color: rgba(0,0,0,0.08) !important;
+  border-top-color: #ff8fab !important;
+}
+
+.platform-android.android-portrait .sms-time {
+  color: #bbb !important;
+  background: rgba(0,0,0,0.04) !important;
+}
+
+.platform-android.android-portrait .sms-bubble.assistant {
+  background: #fff !important;
+  color: #333 !important;
+}
+
+.platform-android.android-portrait .sms-bubble.user {
+  background: linear-gradient(135deg, #ffeef5, #fce4ec) !important;
+  color: #4a2040 !important;
 }
 </style>

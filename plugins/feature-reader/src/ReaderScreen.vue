@@ -1,120 +1,228 @@
 <script setup>
 /**
  * ReaderScreen.vue - 书城 APP 入口
- * 管理书架、新建、阅读、目录、设置的视图切换。
+ * 底部 tab 导航容器：书城/书架/发现/我的
  */
 import { ref } from 'vue'
+import ReaderTabBar from './ReaderTabBar.vue'
+import BookStoreHome from './BookStoreHome.vue'
 import BookShelfView from './components/reader/BookShelfView.vue'
 import NewStoryView from './components/reader/NewStoryView.vue'
+import BookImportView from './components/reader/BookImportView.vue'
+import BookDetail from './BookDetail.vue'
 import ReaderView from './components/reader/ReaderView.vue'
 import ChapterListView from './components/reader/ChapterListView.vue'
 import ReaderSettingsView from './components/reader/ReaderSettingsView.vue'
+import RankingView from './RankingView.vue'
+import CategoryView from './CategoryView.vue'
+import NewBooksScreen from './NewBooksScreen.vue'
 
 const emit = defineEmits(['back'])
 
-const currentView = ref('shelf') // shelf | new | reader | chapters | settings
+const currentTab = ref('store')
+const subView = ref(null)
 const activeStory = ref(null)
-const settingsKey = ref(0) // 强制刷新设置
-const shelfKey = ref(0) // 强制刷新书架
+const settingsKey = ref(0)
+const shelfKey = ref(0)
+const newStoryKey = ref(0)
+const importKey = ref(0)
 
 function goHome() {
-  currentView.value = 'shelf'
+  subView.value = null
   activeStory.value = null
 }
 
 function openStory(story) {
   activeStory.value = story
-  currentView.value = 'reader'
+  subView.value = 'reader'
+}
+
+function openDetail(story) {
+  activeStory.value = story
+  subView.value = 'detail'
 }
 
 function openNewStory(worldBookId) {
   activeStory.value = { worldBookId }
-  currentView.value = 'new'
+  newStoryKey.value++
+  subView.value = 'new'
 }
 
 function openChapters(story) {
   activeStory.value = story
-  currentView.value = 'chapters'
+  subView.value = 'chapters'
 }
 
 function openSettings() {
   settingsKey.value++
-  currentView.value = 'settings'
+  subView.value = 'settings'
+}
+
+function openRanking() {
+  subView.value = 'ranking'
+}
+
+function openCategory() {
+  subView.value = 'category'
+}
+
+function openNewBooks() {
+  subView.value = 'newBooks'
 }
 
 function openChapterWithIndex(idx) {
   activeStory.value = { ...activeStory.value, chapterIndex: idx }
-  currentView.value = 'reader'
+  subView.value = 'reader'
+}
+
+function openChapterWithOutline(idx, outlineTitle) {
+  activeStory.value = { ...activeStory.value, chapterIndex: idx, outlineTitle: outlineTitle }
+  subView.value = 'reader'
 }
 
 function onStorySaved(story) {
-  // 新建故事完成后进入阅读
   activeStory.value = story
-  currentView.value = 'reader'
+  subView.value = 'reader'
 }
 
 function onStoryDeleted() {
-  // 删除故事后刷新书架
   shelfKey.value++
+}
+
+function openBookImport() {
+  importKey.value++
+  subView.value = 'import'
+}
+
+function onStoryImported(story) {
+  shelfKey.value++
+  activeStory.value = story
+  subView.value = 'reader'
+}
+
+function showSubView() {
+  return subView.value !== null
+}
+
+function onTabChange(tab) {
+  if (tab === 'mine') {
+    settingsKey.value++
+    subView.value = 'settings'
+  } else {
+    currentTab.value = tab
+  }
 }
 </script>
 
 <template>
   <div class="reader-app">
-    <!-- 顶栏 -->
-    <div class="reader-header">
-      <button
-        v-if="currentView !== 'shelf'"
-        class="reader-back-btn"
-        @click="goHome"
-      >
-        ← 返回
-      </button>
-      <span v-else class="reader-back-btn" @click="emit('back')">← 关闭</span>
-      <span class="reader-title">📜 书城</span>
-      <div class="reader-header-actions">
-        <button v-if="currentView === 'shelf'" class="reader-icon-btn" @click="openSettings">⚙️</button>
-      </div>
+    <!-- 子视图（绝对定位覆盖整个内容区） -->
+    <RankingView
+      v-if="subView === 'ranking'"
+      class="sub-view"
+      @back="goHome"
+      @open-detail="openDetail"
+    />
+
+    <CategoryView
+      v-if="subView === 'category'"
+      class="sub-view"
+      @back="goHome"
+      @open-detail="openDetail"
+    />
+
+    <NewBooksScreen
+      v-if="subView === 'newBooks'"
+      class="sub-view"
+      @back="goHome"
+      @open-detail="openDetail"
+    />
+
+    <BookDetail
+      v-if="subView === 'detail'"
+      class="sub-view"
+      :story="activeStory"
+      @back="goHome"
+      @open-reader="openStory"
+      @open-chapters="openChapters"
+    />
+
+    <ReaderView
+      v-if="subView === 'reader' && activeStory?.id"
+      class="sub-view"
+      :story="activeStory"
+      @back="goHome"
+      @open-chapters="openChapters"
+    />
+
+    <ChapterListView
+      v-if="subView === 'chapters' && activeStory?.id"
+      class="sub-view"
+      :story="activeStory"
+      @back="goHome"
+      @open-chapter="openChapterWithIndex"
+      @open-chapter-outline="openChapterWithOutline"
+    />
+
+    <NewStoryView
+      v-if="subView === 'new'"
+      class="sub-view"
+      :key="newStoryKey"
+      :world-book-id="activeStory?.worldBookId"
+      @back="goHome"
+      @story-created="onStorySaved"
+    />
+
+    <BookImportView
+      v-if="subView === 'import'"
+      class="sub-view"
+      :key="importKey"
+      @back="goHome"
+      @story-imported="onStoryImported"
+    />
+
+    <ReaderSettingsView
+      v-if="subView === 'settings'"
+      class="sub-view"
+      :key="settingsKey"
+      @back="goHome"
+    />
+
+    <!-- Tab 内容 -->
+    <KeepAlive>
+      <BookStoreHome
+        v-if="currentTab === 'store' && !showSubView()"
+        class="sub-view"
+        @back="emit('back')"
+        @open-detail="openDetail"
+        @open-shelf="currentTab = 'shelf'"
+        @open-settings="openSettings"
+        @open-ranking="openRanking"
+        @open-category="openCategory"
+        @open-new-books="openNewBooks"
+      />
+    </KeepAlive>
+
+    <BookShelfView
+      v-if="currentTab === 'shelf' && !showSubView()"
+      class="sub-view"
+      :key="shelfKey"
+      @open-story="openStory"
+      @open-new-story="openNewStory"
+      @open-book-import="openBookImport"
+      @open-chapters="openChapters"
+      @open-settings="openSettings"
+      @story-deleted="onStoryDeleted"
+    />
+
+    <div v-if="currentTab === 'discover' && !showSubView()" class="placeholder-page">
+      <div class="placeholder-icon">✨</div>
+      <p class="placeholder-text">发现</p>
+      <p class="placeholder-hint">功能开发中...</p>
     </div>
 
-    <!-- 内容区域 -->
-    <div class="reader-content">
-      <BookShelfView
-        v-if="currentView === 'shelf'"
-        :key="shelfKey"
-        @open-story="openStory"
-        @open-new-story="openNewStory"
-        @open-chapters="openChapters"
-        @story-deleted="onStoryDeleted"
-      />
-
-      <NewStoryView
-        v-if="currentView === 'new'"
-        :world-book-id="activeStory?.worldBookId"
-        @back="goHome"
-        @story-created="onStorySaved"
-      />
-
-      <ReaderView
-        v-if="currentView === 'reader' && activeStory?.id"
-        :story="activeStory"
-        @back="goHome"
-        @open-chapters="openChapters"
-      />
-
-      <ChapterListView
-        v-if="currentView === 'chapters' && activeStory?.id"
-        :story="activeStory"
-        @back="goHome"
-        @open-chapter="openChapterWithIndex"
-      />
-
-      <ReaderSettingsView
-        v-if="currentView === 'settings'"
-        :key="settingsKey"
-        @back="goHome"
-      />
-    </div>
+    <!-- 底部导航（子视图时隐藏） -->
+    <ReaderTabBar v-if="!showSubView()" v-model="currentTab" @update:model-value="onTabChange" />
   </div>
 </template>
 
@@ -123,87 +231,55 @@ function onStoryDeleted() {
   position: fixed;
   inset: 0;
   padding-top: var(--safe-area-inset-top, 0px);
-  padding-bottom: var(--safe-area-inset-bottom, 0px);
   z-index: 10001;
   display: flex;
   flex-direction: column;
-  background: var(--reader-bg, #0a0a1a);
-  color: var(--reader-text, #fff);
+  background: #f5f0ff;
+  color: #2d2040;
   font-family: var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
-  overflow: hidden;
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
-.reader-header {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  background: var(--reader-header-bg, rgba(255, 255, 255, 0.05));
-  border-bottom: 1px solid var(--reader-border, rgba(255, 255, 255, 0.08));
-  flex-shrink: 0;
+.reader-app :deep(.reader-content),
+.reader-app :deep(.reader-content *) {
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
-.reader-back-btn {
-  background: none;
-  border: none;
-  color: var(--reader-secondary, #8b9dc3);
-  font-size: 0.9rem;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.reader-back-btn:hover {
-  background: var(--reader-panel-bg, rgba(255, 255, 255, 0.1));
-}
-
-.reader-title {
-  flex: 1;
-  text-align: center;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--reader-text, #fff);
-}
-
-.reader-header-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.reader-icon-btn {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  color: var(--reader-secondary, #8b9dc3);
-}
-
-.reader-icon-btn:hover {
-  background: var(--reader-panel-bg, rgba(255, 255, 255, 0.1));
-}
-
-.reader-content {
+/* 子视图容器：flex 1 占满 tab bar 上方的空间 */
+.reader-app > .sub-view {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
-  .platform-android.android-portrait .reader-back-btn {
-    width: auto !important;
-    height: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    max-width: none !important;
-    max-height: none !important;
-    flex: none !important;
-    font-size: 1.1rem !important;
-    padding: 6px 10px !important;
-    box-sizing: border-box !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 8px !important;
-    white-space: nowrap !important;
-  }
+.placeholder-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f5f0ff, #ede4ff);
+}
+
+.placeholder-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+.placeholder-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d2040;
+  margin-bottom: 6px;
+}
+
+.placeholder-hint {
+  font-size: 0.85rem;
+  color: #8b7ea8;
+}
 </style>

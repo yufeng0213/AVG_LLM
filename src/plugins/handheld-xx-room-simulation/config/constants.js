@@ -30,10 +30,12 @@ export const FURNITURE_KIND_SOCIAL = 'social'
 export const FURNITURE_KIND_STORAGE = 'storage'
 export const FURNITURE_KIND_DECOR = 'decor'
 export const FURNITURE_KIND_UTIL = 'utility'
+export const FURNITURE_KIND_VENDING = 'vending'
+export const FURNITURE_KIND_TOY = 'toy'
 
-export const FURNITURE_KIND_LIST = ['floor', 'sleep', 'food', 'work', 'social', 'storage', 'decor', 'utility']
+export const FURNITURE_KIND_LIST = ['floor', 'sleep', 'food', 'work', 'social', 'storage', 'decor', 'utility', 'vending', 'toy']
 
-export const INTERACTION_TYPE_LIST = ['none', 'work', 'sleep', 'eat', 'storage', 'social']
+export const INTERACTION_TYPE_LIST = ['none', 'work', 'sleep', 'eat', 'storage', 'social', 'shop', 'play']
 
 // 交互类型
 export const INTERACTION_TYPE_WORK = 'work'
@@ -41,6 +43,8 @@ export const INTERACTION_TYPE_SLEEP = 'sleep'
 export const INTERACTION_TYPE_EAT = 'eat'
 export const INTERACTION_TYPE_STORAGE = 'storage'
 export const INTERACTION_TYPE_SOCIAL = 'social'
+export const INTERACTION_TYPE_SHOP = 'shop'
+export const INTERACTION_TYPE_PLAY = 'play'
 
 // 需求常量
 export const NEED_MAX_VALUE = 100
@@ -80,6 +84,26 @@ export const PAWN_ACTIVITY_SLEEPING = 'sleeping'
 export const PAWN_ACTIVITY_EATING = 'eating'
 export const PAWN_ACTIVITY_SOCIALIZING = 'socializing'
 
+// 自由活动常量
+export const IDLE_ACTION_INTERVAL_MS = 5000  // 空闲活动检查间隔
+export const IDLE_ACTION_COOLDOWN_MS = 10000 // 活动后冷却时间
+export const RANDOM_WALK_CHANCE = 0.3        // 随机漫步概率
+export const INTERACTION_CHANCE = 0.25       // 主动互动概率
+export const SOCIAL_CHANCE = 0.15            // 社交概率
+
+// 活动类型
+export const ACTIVITY_TYPE_WALK = 'walk'
+export const ACTIVITY_TYPE_INTERACT = 'interact'
+export const ACTIVITY_TYPE_SOCIALIZE = 'socialize'
+
+// 家具心情加成
+export const FURNITURE_MOOD_BOOST = {
+  decor: 2,
+  social: 5,
+  work: 3,
+  sleep: 4,
+}
+
 // 小人精灵动作（扩展 campfireSprites）
 export const PAWN_SPRITE_ACTION_IDLE = 'idle'
 export const PAWN_SPRITE_ACTION_WALK = 'walk'
@@ -89,17 +113,32 @@ export const PAWN_SPRITE_ACTION_EAT = 'eat'
 export const PAWN_SPRITE_ACTION_TALK = 'talk'
 
 // 时间系统
-export const TIME_TICK_INTERVAL_MS = 100
+export const TIME_TICK_INTERVAL_MS = 1000   // 每1秒一个tick
 export const TIME_HOURS_PER_DAY = 24
 export const TIME_DAY_START_HOUR = 6
 export const TIME_NIGHT_START_HOUR = 18
-export const TICKS_PER_HOUR = 60
+
+// 时间流速档位（每tick增加的游戏秒数）
+export const TIME_SPEED_SETTINGS = {
+  pause: { multiplier: 0, gameSecondsPerTick: 0, label: '暂停' },
+  companion: { multiplier: 0.0167, gameSecondsPerTick: 1, label: '陪伴' },    // 现实24小时=游戏1天
+  normal: { multiplier: 1, gameSecondsPerTick: 60, label: '正常' },            // 现实24分钟=游戏1天
+  fast: { multiplier: 2, gameSecondsPerTick: 120, label: '快速' },             // 现实12分钟=游戏1天
+  ultra: { multiplier: 4, gameSecondsPerTick: 240, label: '超快' },            // 现实6分钟=游戏1天
+}
+
+export const TIME_SPEED_ORDER = ['pause', 'companion', 'normal', 'fast', 'ultra']
 
 // 数量限制
 export const MAX_ROOM_FURNITURE_ITEMS = 256
 export const MAX_PAWN_COUNT = 8
 export const MAX_LOG_COUNT = 200
 export const MAX_PATH_LENGTH = 128
+
+// 货币默认值
+export const DEFAULT_CURRENCY_COINS = 100
+export const MAX_INVENTORY_CAPACITY = 200
+export const DEFAULT_INVENTORY_CAPACITY = 50
 
 // 存储键
 export const STORAGE_KEY_BASE = 'handheld-xx-room-simulation-state'
@@ -201,3 +240,16 @@ export const MOOD_EFFECT_CONFIG = {
   unhappy: { efficiencyMod: 0.85, socialMod: 0.8 },
   breakdown: { efficiencyMod: 0.7, socialMod: 0.5 },
 }
+
+// 房间导航分组
+export const ROOM_NAV_GROUPS = {
+  BEDROOM: 'bedroom',
+  PUBLIC: 'public',
+  ADVENTURE: 'adventure',
+}
+
+// 探险区域占位
+export const ADVENTURE_ZONES = [
+  { id: 'gathering', name: '采集场', icon: '🌿', placeholder: true },
+  { id: 'hunting', name: '狩猎场', icon: '⚔️', placeholder: true },
+]

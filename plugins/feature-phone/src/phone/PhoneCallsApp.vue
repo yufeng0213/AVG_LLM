@@ -208,7 +208,7 @@ function formatLogTime(isoStr) {
             @click="selectContact(char)"
           >
             <div class="contact-avatar">
-              <img v-if="char.portraits?.[0]" :src="char.portraits[0]" :alt="char.name" />
+              <img v-if="char.portraits?.[0]?.filePath" :src="char.portraits[0].filePath" :alt="char.name" />
               <span v-else class="contact-avatar-placeholder">&#x1F464;</span>
             </div>
             <div class="contact-info">

@@ -2,7 +2,7 @@
  * useReaderData.js - 书城数据层
  * SQLite 优先，Web 端回退到 kvStorage。
  */
-import { isSQLiteAvailable as _isSQLiteAvailable } from '../../../../src/db/connection.js'
+import { isSQLiteAvailable as _isSQLiteAvailable, query } from '../../../../src/db/connection.js'
 
 // 重新导出给组件用
 export const isSQLiteAvailable = _isSQLiteAvailable
@@ -39,6 +39,8 @@ const DEFAULT_SETTINGS = {
   theme: 'dark',
   contextChapters: 1,
   memoryThreshold: 0,
+  mainCharacters: '', // 主要角色设定（非参考角色新书生成时使用）
+  preferredGenres: '', // 偏好类型（新书发现时优先使用这些类型）
 }
 
 // ===== 故事管理 =====
@@ -64,7 +66,6 @@ export async function saveStories(stories) {
     return
   }
   // SQLite 模式下：这个函数通常用于保存新建故事后的完整数据
-  //  stories 数组的第一个元素是新创建的故事，带有 chapters
   for (const story of stories) {
     if (story.chapters && story.chapters.length > 0) {
       // 检查是否已存在（通过 chapter count 判断）
@@ -80,6 +81,34 @@ export async function saveStories(stories) {
   }
 }
 
+/**
+ * 保存单个故事元数据（不含章节，用于加入书架但无章节的情况）
+ */
+export async function saveStoryMeta(story) {
+  if (!isSQLiteAvailable()) {
+    const stories = await kvStorage.get(STORIES_KEY) || []
+    const idx = stories.findIndex(s => s.id === story.id)
+    if (idx >= 0) {
+      stories[idx] = { ...stories[idx], ...story }
+    } else {
+      stories.unshift(story)
+    }
+    await kvStorage.set(STORIES_KEY, stories)
+    return
+  }
+  // 检查是否已存在
+  const rows = await query('SELECT id FROM reader_stories WHERE id = ?', [story.id])
+  if (rows.length === 0) {
+    await _insertStory(story)
+  } else {
+    const { exec } = await import('../../../../src/db/connection.js')
+    await exec(
+      `UPDATE reader_stories SET title = ?, author = ?, genre = ?, summary = ?, worldview = ?, world_book_id = ?, source_type = ?, updated_at = ? WHERE id = ?`,
+      [story.title || '', story.author || '', story.genre || '', story.summary || '', story.worldview || '', story.worldBookId || '', story.sourceType || 'llm', story.updatedAt || new Date().toISOString(), story.id]
+    )
+  }
+}
+
 export function addStory(stories, story) {
   const newStory = {
     id: `story_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -90,6 +119,7 @@ export function addStory(stories, story) {
       lineHeight: 1.8,
       theme: 'dark',
     },
+    sourceType: 'llm',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...story,

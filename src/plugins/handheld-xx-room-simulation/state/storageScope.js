@@ -25,3 +25,16 @@ export const resolveFurnitureLibraryKey = (worldBookId) => {
   const safeWorldBookId = sanitizeScopeToken(worldBookId, 'default_world_book')
   return `${STORAGE_KEY_BASE}:${safeWorldBookId}:__furniture_library__`
 }
+
+// 公共区域房间存储 key
+export const resolvePublicRoomKey = (worldBookId, roomId) => {
+  const safeWorldBookId = sanitizeScopeToken(worldBookId, 'default_world_book')
+  const safeRoomId = sanitizeScopeToken(roomId, 'unnamed')
+  return `${STORAGE_KEY_BASE}:${safeWorldBookId}:public:${safeRoomId}`
+}
+
+// 公共区域房间注册表存储 key
+export const resolvePublicRoomRegistryKey = (worldBookId) => {
+  const safeWorldBookId = sanitizeScopeToken(worldBookId, 'default_world_book')
+  return `${STORAGE_KEY_BASE}:${safeWorldBookId}:public_registry`
+}

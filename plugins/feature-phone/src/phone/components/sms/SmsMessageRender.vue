@@ -1,8 +1,6 @@
 <script setup>
 /**
- * SmsMessageRender.vue — 消息渲染组件
- * 负责渲染时间线、语音、红包、回礼、贴纸、普通文字消息。
- * 纯展示组件，不持有业务状态。
+ * SmsMessageRender.vue — 消息渲染组件（浅色 IM 风格）
  */
 const props = defineProps({
   messages: { type: Array, required: true },
@@ -16,6 +14,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['play-voice', 'voice-long-press', 'voice-long-release', 'red-packet-click', 'open-file'])
+
+import SmsShareCardBubble from './SmsShareCardBubble.vue'
+import ArchiveCardBubble from '../browser/ArchiveCardBubble.vue'
 
 function getAvailableStickers() {
   const stickers = props.selectedContact?.smsStickers || {}
@@ -61,10 +62,12 @@ function getVoiceDuration(msg) {
     </div>
     <template v-for="(item, idx) in messages" :key="item.id || item.dateKey || idx">
       <div v-if="item.type === 'time'" class="sms-time">{{ item.text }}</div>
+
       <!-- 语音消息 -->
       <div v-else-if="item.msgType === 'voice'" class="sms-msg-row" :class="item.role">
         <div class="sms-msg-avatar">
           <img v-if="item.role === 'assistant' && charAvatar" :src="charAvatar" />
+          <img v-else-if="item.role === 'user' && userAvatar" :src="userAvatar" />
           <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
         </div>
         <div class="sms-voice-wrapper">
@@ -81,13 +84,13 @@ function getVoiceDuration(msg) {
             <span class="voice-duration">{{ getVoiceDuration(item) }}s</span>
             <span class="voice-hint">长按看文字</span>
           </div>
-          <!-- 长按显示的文字 -->
           <div v-if="voiceShownText.has(item.id)" class="voice-text-quote">
             <span class="voice-quote-icon">💬</span>
             <span class="voice-quote-text">{{ item.voiceText }}</span>
           </div>
         </div>
       </div>
+
       <!-- 红包消息 -->
       <div v-else-if="item.msgType === 'redPacket'" class="sms-msg-row assistant" @click="!item.redPacket?.isOpened && emit('red-packet-click', item)">
         <div class="sms-msg-avatar">
@@ -95,14 +98,41 @@ function getVoiceDuration(msg) {
           <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
         </div>
         <div class="sms-bubble sms-redpacket-bubble" :class="{ opened: item.redPacket?.isOpened }">
-          <div class="redpacket-icon">{{ item.redPacket?.isOpened ? '🧧' : '🎁' }}</div>
-          <div class="redpacket-content">
-            <div class="redpacket-title">{{ item.redPacket?.senderName }} 的红包</div>
-            <div class="redpacket-blessing">{{ item.redPacket?.blessing }}</div>
-            <div v-if="item.redPacket?.isOpened" class="redpacket-opened-tag">已领取</div>
+          <div class="redpacket-inner">
+            <div class="redpacket-icon">{{ item.redPacket?.isOpened ? '✅' : '🧧' }}</div>
+            <div class="redpacket-content">
+              <div class="redpacket-title">{{ item.redPacket?.senderName }} 的红包</div>
+              <div class="redpacket-blessing">{{ item.redPacket?.blessing }}</div>
+              <div v-if="item.redPacket?.isOpened" class="redpacket-opened-tag">已领取</div>
+              <div v-else class="redpacket-hint">点击拆开</div>
+            </div>
+            <div class="redpacket-arrow" v-if="!item.redPacket?.isOpened">›</div>
           </div>
         </div>
       </div>
+
+      <!-- 玩家送礼卡片 -->
+      <div v-else-if="item.msgType === 'giftCard'" class="sms-msg-row user">
+        <div class="sms-msg-avatar">
+          <img v-if="userAvatar" :src="userAvatar" />
+          <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
+        </div>
+        <div class="sms-bubble sms-giftcard-bubble">
+          <div class="giftcard-inner">
+            <div class="giftcard-icon-wrap">
+              <div class="giftcard-icon">{{ item.giftCard?.icon || '🎁' }}</div>
+              <div class="giftcard-sparkle" />
+            </div>
+            <div class="giftcard-content">
+              <div class="giftcard-header">
+                <span class="giftcard-label">送礼</span>
+              </div>
+              <div class="giftcard-item">{{ item.giftCard?.giftName }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 角色回礼消息 -->
       <div v-else-if="item.msgType === 'giftReturn'" class="sms-msg-row assistant">
         <div class="sms-msg-avatar">
@@ -110,13 +140,23 @@ function getVoiceDuration(msg) {
           <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
         </div>
         <div class="sms-bubble sms-giftreturn-bubble">
-          <div class="giftreturn-icon">{{ item.giftReturn?.icon || '🎁' }}</div>
-          <div class="giftreturn-content">
-            <div class="giftreturn-title">收到了 {{ item.giftReturn?.fromName }} 的回礼</div>
-            <div class="giftreturn-item">{{ item.giftReturn?.itemName }} {{ item.giftReturn?.message || '' }}</div>
+          <div class="giftreturn-inner">
+            <div class="giftreturn-icon-wrap">
+              <div class="giftreturn-icon">{{ item.giftReturn?.icon || '🎁' }}</div>
+              <div class="giftreturn-sparkle" />
+            </div>
+            <div class="giftreturn-content">
+              <div class="giftreturn-header">
+                <span class="giftreturn-label">回礼</span>
+              </div>
+              <div class="giftreturn-name">来自 {{ item.giftReturn?.fromName }}</div>
+              <div class="giftreturn-item">{{ item.giftReturn?.itemName }}</div>
+              <div class="giftreturn-message" v-if="item.giftReturn?.message">"{{ item.giftReturn.message }}"</div>
+            </div>
           </div>
         </div>
       </div>
+
       <!-- 文件消息 -->
       <div v-else-if="item.msgType === 'file'" class="sms-msg-row assistant" @click="emit('open-file', item)">
         <div class="sms-msg-avatar">
@@ -131,7 +171,60 @@ function getVoiceDuration(msg) {
           </div>
         </div>
       </div>
-      <!-- 文字消息 -->
+
+      <!-- 分享卡片 -->
+      <div v-else-if="item.msgType === 'shareCard'" class="sms-msg-row" :class="item.role">
+        <div class="sms-msg-avatar">
+          <img v-if="item.role === 'assistant' && charAvatar" :src="charAvatar" />
+          <img v-else-if="item.role === 'user' && userAvatar" :src="userAvatar" />
+          <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
+        </div>
+        <div class="sms-share-card-wrapper">
+          <SmsShareCardBubble :share-card="item.shareCard" />
+        </div>
+      </div>
+
+      <!-- 档案卡片 -->
+      <div v-else-if="item.msgType === 'archiveCard'" class="sms-msg-row" :class="item.role">
+        <div class="sms-msg-avatar">
+          <img v-if="item.role === 'assistant' && charAvatar" :src="charAvatar" />
+          <img v-else-if="item.role === 'user' && userAvatar" :src="userAvatar" />
+          <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
+        </div>
+        <div class="sms-archive-card-wrapper">
+          <ArchiveCardBubble :card="item.archiveCard" />
+        </div>
+      </div>
+
+      <!-- 成就通知 -->
+      <div v-else-if="item.msgType === 'achievement'" class="sms-msg-row achievement-msg">
+        <div class="achievement-msg-content">
+          <span class="achievement-msg-icon">{{ item.achievement?.icon || '🏆' }}</span>
+          <div class="achievement-msg-text">
+            <div class="achievement-msg-name">成就解锁：{{ item.achievement?.name }}</div>
+            <div class="achievement-msg-desc">{{ item.achievement?.description }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 纯贴纸（无气泡包裹） -->
+      <div v-else-if="item.text && item.text.startsWith('[sticker:') && item.text.endsWith(']')" class="sms-msg-row" :class="item.role">
+        <div class="sms-msg-avatar">
+          <img v-if="item.role === 'assistant' && charAvatar" :src="charAvatar" />
+          <img v-else-if="item.role === 'user' && userAvatar" :src="userAvatar" />
+          <span v-else class="sms-msg-avatar-default">&#x1F9D1;</span>
+        </div>
+        <img
+          v-for="part in [renderStickerText(item.text).find(p => p.type === 'sticker')]"
+          :key="part?.desc"
+          v-if="part"
+          class="sms-sticker-img-large"
+          :src="part.url"
+          :alt="part.desc"
+        />
+      </div>
+
+      <!-- 文字消息（含内联贴纸） -->
       <div v-else class="sms-msg-row" :class="item.role">
         <div class="sms-msg-avatar">
           <img v-if="item.role === 'assistant' && charAvatar" :src="charAvatar" />
@@ -156,8 +249,8 @@ function getVoiceDuration(msg) {
 .sms-messages {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 6px;
+  gap: 4px;
+  padding: 4px 8px 8px;
   min-height: 100%;
 }
 
@@ -165,14 +258,14 @@ function getVoiceDuration(msg) {
   display: flex;
   align-items: flex-end;
   width: 100%;
-  gap: 4px;
-  animation: msg-slide-in 0.3s ease-out;
+  gap: 6px;
+  animation: msg-slide-in 0.25s ease-out;
 }
 
 @keyframes msg-slide-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -191,18 +284,18 @@ function getVoiceDuration(msg) {
 /* ===== 头像 ===== */
 .sms-msg-avatar {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   transition: transform 0.2s ease;
-  margin: 0 2px;
+  align-self: flex-end;
 }
 
 .sms-msg-avatar:hover {
@@ -216,42 +309,49 @@ function getVoiceDuration(msg) {
 }
 
 .sms-msg-avatar-default {
-  font-size: 1.2rem;
-  opacity: 0.7;
+  font-size: 1.1rem;
+  opacity: 0.6;
 }
 
 /* ===== 时间戳 ===== */
 .sms-time {
   align-self: center;
   text-align: center;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  padding: 3px 12px;
+  color: #bbb;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 3px 14px;
   border-radius: 10px;
   margin: 8px auto;
   letter-spacing: 0.3px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ===== 消息气泡基础（仅布局属性，装饰样式由自定义CSS控制） ===== */
+/* ===== 消息气泡 ===== */
 .sms-bubble {
   position: relative;
   max-width: 75%;
   word-wrap: break-word;
-  /* 不设置任何装饰样式，让自定义CSS完全控制 */
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  border-radius: 18px;
 }
 
-/* 用户消息间距 */
-.sms-bubble.user {
-  margin-right: 4px;
-}
-
-/* 角色消息间距 */
+/* 左侧气泡（对方）— 白色 */
 .sms-bubble.assistant {
-  margin-left: 4px;
+  background: #fff;
+  color: #333;
+  border-radius: 18px 18px 18px 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* 右侧气泡（自己）— 淡紫色 */
+.sms-bubble.user {
+  background: linear-gradient(135deg, #ffeef5, #fce4ec);
+  color: #4a2040;
+  border-radius: 18px 18px 6px 18px;
+  box-shadow: 0 1px 4px rgba(252, 182, 159, 0.2);
 }
 
 /* ===== 语音消息 ===== */
@@ -271,12 +371,13 @@ function getVoiceDuration(msg) {
   min-width: 120px;
   user-select: none;
   position: relative;
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(9, 182, 255, 0.12)) !important;
-  border-radius: 16px !important;
+  background: #fff !important;
+  border-radius: 18px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
 }
 
 .sms-voice-bubble:hover {
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.35), rgba(9, 182, 255, 0.25)) !important;
+  background: #f8f8f8 !important;
 }
 
 .sms-voice-bubble.playing {
@@ -285,11 +386,11 @@ function getVoiceDuration(msg) {
 
 @keyframes voice-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4);
+    box-shadow: 0 0 0 0 rgba(255, 143, 171, 0.4);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(0, 212, 255, 0);
+    box-shadow: 0 0 0 8px rgba(255, 143, 171, 0);
     transform: scale(1.02);
   }
 }
@@ -297,53 +398,38 @@ function getVoiceDuration(msg) {
 .voice-icon {
   font-size: 1.3rem;
   flex-shrink: 0;
-  animation: voice-icon-bounce 0.6s ease-in-out infinite;
 }
 
 .sms-voice-bubble.playing .voice-icon {
   animation: none;
 }
 
-@keyframes voice-icon-bounce {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
 .voice-wave {
   font-family: var(--font-mono, monospace);
   font-size: 0.9rem;
   letter-spacing: 2px;
-  opacity: 0.6;
-  color: rgba(0, 212, 255, 0.8);
+  opacity: 0.5;
+  color: #ff8fab;
 }
 
 .sms-voice-bubble.playing .voice-wave {
   opacity: 1;
-  animation: wave-animate 0.4s steps(4) infinite;
-}
-
-@keyframes wave-animate {
-  0% { content: '~~~~'; }
-  25% { content: '▂▃▅'; }
-  50% { content: '▃▅▇'; }
-  75% { content: '▅▇█'; }
-  100% { content: '▇█▇'; }
 }
 
 .voice-duration {
   font-size: 0.75rem;
   font-weight: 600;
-  opacity: 0.5;
-  color: rgba(0, 212, 255, 0.7);
+  opacity: 0.6;
+  color: #999;
 }
 
 .voice-hint {
   font-size: 0.6rem;
-  opacity: 0.35;
+  opacity: 0.3;
   position: absolute;
   bottom: 2px;
   right: 8px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #bbb;
 }
 
 /* 语音文字引用 */
@@ -351,15 +437,14 @@ function getVoiceDuration(msg) {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #f8f8f8;
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
   margin-top: 4px;
   padding: 8px 12px;
   border-radius: 12px;
   font-size: 0.8rem;
   animation: quote-fade-in 0.25s ease;
-  color: rgba(255, 255, 255, 0.85);
+  color: #555;
 }
 
 @keyframes quote-fade-in {
@@ -370,7 +455,7 @@ function getVoiceDuration(msg) {
 .voice-quote-icon {
   flex-shrink: 0;
   font-size: 0.7rem;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .voice-quote-text {
@@ -381,20 +466,18 @@ function getVoiceDuration(msg) {
 /* ===== 红包气泡 ===== */
 .sms-redpacket-bubble {
   background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px !important;
+  padding: 0 !important;
   cursor: pointer;
-  min-width: 180px;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3) !important;
-  transition: transform 0.15s ease;
-  margin-left: 4px;
+  min-width: 220px;
+  border-radius: 14px !important;
+  box-shadow: 0 2px 12px rgba(231, 76, 60, 0.25) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
 }
 
 .sms-redpacket-bubble:hover:not(.opened) {
   transform: scale(1.02);
+  box-shadow: 0 4px 20px rgba(231, 76, 60, 0.35) !important;
 }
 
 .sms-redpacket-bubble:active:not(.opened) {
@@ -404,22 +487,42 @@ function getVoiceDuration(msg) {
 .sms-redpacket-bubble.opened {
   opacity: 0.6;
   cursor: default;
-  filter: grayscale(30%);
+  filter: grayscale(10%);
+}
+
+.redpacket-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+/* 金色分隔线 */
+.redpacket-inner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.4), transparent);
 }
 
 .redpacket-icon {
-  font-size: 28px;
+  font-size: 32px;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
 }
 
 .sms-redpacket-bubble:hover:not(.opened) .redpacket-icon {
-  animation: redpacket-shake 0.3s ease-in-out infinite;
+  animation: rp-icon-shake 0.6s ease-in-out infinite;
 }
 
-@keyframes redpacket-shake {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-5deg); }
-  75% { transform: rotate(5deg); }
+@keyframes rp-icon-shake {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-8deg) scale(1.05); }
+  75% { transform: rotate(8deg) scale(1.05); }
 }
 
 .redpacket-content {
@@ -430,41 +533,168 @@ function getVoiceDuration(msg) {
 .redpacket-title {
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 4px;
 }
 
 .redpacket-blessing {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.7);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.redpacket-opened-tag {
+.redpacket-hint {
   font-size: 11px;
-  color: rgba(255, 215, 0, 0.8);
+  color: rgba(255, 215, 0, 0.7);
   margin-top: 3px;
-  font-weight: 500;
+  font-style: italic;
 }
 
-/* ===== 角色回礼气泡 ===== */
-.sms-giftreturn-bubble {
-  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%) !important;
+.redpacket-opened-tag {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 3px;
+}
+
+.redpacket-arrow {
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+  font-weight: 300;
+  line-height: 1;
+}
+
+/* ===== 送礼卡片 ===== */
+.sms-giftcard-bubble {
+  background: linear-gradient(135deg, #fef9e7, #fdf0d5) !important;
+  padding: 0 !important;
+  min-width: 180px;
+  border-radius: 14px !important;
+  box-shadow: 0 2px 10px rgba(243, 156, 18, 0.12) !important;
+  border: 1px solid rgba(243, 156, 18, 0.15) !important;
+  overflow: hidden;
+}
+
+.giftcard-inner {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px !important;
-  min-width: 180px;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3) !important;
-  margin-left: 4px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.giftcard-inner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(243, 156, 18, 0.2), transparent);
+}
+
+.giftcard-icon-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.giftcard-icon {
+  font-size: 32px;
+}
+
+.giftcard-sparkle {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #ffd700, transparent);
+  border-radius: 50%;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.giftcard-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.giftcard-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.giftcard-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e67e22;
+  background: rgba(230, 126, 34, 0.1);
+  padding: 1px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.giftcard-item {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a3728;
+}
+
+/* ===== 回礼气泡 ===== */
+.sms-giftreturn-bubble {
+  background: linear-gradient(135deg, #fef9e7, #fdf0d5) !important;
+  padding: 0 !important;
+  min-width: 200px;
+  border-radius: 14px !important;
+  box-shadow: 0 2px 10px rgba(243, 156, 18, 0.12) !important;
+  border: 1px solid rgba(243, 156, 18, 0.15) !important;
+  overflow: hidden;
+}
+
+.giftreturn-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.giftreturn-inner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(243, 156, 18, 0.2), transparent);
+}
+
+.giftreturn-icon-wrap {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .giftreturn-icon {
-  font-size: 28px;
-  flex-shrink: 0;
+  font-size: 32px;
+}
+
+/* 闪光点动画 */
+.giftreturn-sparkle {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #ffd700, transparent);
+  border-radius: 50%;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.5); opacity: 0.8; }
 }
 
 .giftreturn-content {
@@ -472,16 +702,42 @@ function getVoiceDuration(msg) {
   min-width: 0;
 }
 
-.giftreturn-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
+.giftreturn-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.giftreturn-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e67e22;
+  background: rgba(230, 126, 34, 0.1);
+  padding: 1px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.giftreturn-name {
+  font-size: 12px;
+  color: #8b7355;
+  margin-bottom: 4px;
 }
 
 .giftreturn-item {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a3728;
+}
+
+.giftreturn-message {
+  font-size: 11px;
+  color: #a08060;
+  margin-top: 4px;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ===== 文件气泡 ===== */
@@ -492,10 +748,10 @@ function getVoiceDuration(msg) {
   padding: 12px 14px !important;
   min-width: 160px;
   cursor: pointer;
-  background: linear-gradient(135deg, rgba(100, 100, 255, 0.15), rgba(150, 100, 255, 0.1)) !important;
-  border-radius: 12px !important;
+  background: #fff !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   transition: transform 0.15s ease;
-  margin-left: 4px;
 }
 
 .sms-file-bubble:hover {
@@ -519,7 +775,7 @@ function getVoiceDuration(msg) {
 .file-bubble-name {
   font-size: 13px;
   font-weight: 600;
-  color: inherit;
+  color: #333;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -527,18 +783,26 @@ function getVoiceDuration(msg) {
 
 .file-bubble-hint {
   font-size: 11px;
-  opacity: 0.5;
+  color: #bbb;
   margin-top: 3px;
 }
 
 /* ===== 表情包 ===== */
 .sms-sticker-img {
   display: inline-block;
-  max-width: 100px;
-  max-height: 100px;
+  max-width: 80px;
+  max-height: 80px;
   vertical-align: bottom;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 纯贴纸（无气泡，大图） */
+.sms-sticker-img-large {
+  display: block;
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* ===== 加载动画 ===== */
@@ -549,15 +813,15 @@ function getVoiceDuration(msg) {
   gap: 8px;
   padding: 16px;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: #bbb;
 }
 
 .loading-spinner {
   display: inline-block;
   width: 18px;
   height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, 0.15);
-  border-top-color: rgba(10, 132, 255, 0.8);
+  border: 2.5px solid rgba(0, 0, 0, 0.08);
+  border-top-color: #ff8fab;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -577,7 +841,7 @@ function getVoiceDuration(msg) {
 .typing-dot {
   width: 8px;
   height: 8px;
-  background: rgba(255, 255, 255, 0.6);
+  background: #ccc;
   border-radius: 50%;
   animation: typing-bounce 1.2s ease-in-out infinite;
 }
@@ -597,7 +861,141 @@ function getVoiceDuration(msg) {
 
 /* ===== Android 兼容 ===== */
 .platform-android.android-portrait .sms-msg-avatar {
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: #f5f5f5 !important;
 }
-/* Android端气泡样式由自定义CSS控制，不再强制覆盖 */
+
+.platform-android.android-portrait .sms-bubble.assistant {
+  background: #fff !important;
+  color: #333 !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+}
+
+.platform-android.android-portrait .sms-bubble.user {
+  background: linear-gradient(135deg, #ffeef5, #fce4ec) !important;
+  color: #4a2040 !important;
+}
+
+.platform-android.android-portrait .sms-time {
+  color: #bbb !important;
+  background: rgba(0,0,0,0.04) !important;
+}
+
+.platform-android.android-portrait .sms-voice-bubble {
+  background: #fff !important;
+}
+
+.platform-android.android-portrait .sms-redpacket-bubble,
+.platform-android.android-portrait .sms-giftreturn-bubble,
+.platform-android.android-portrait .sms-giftcard-bubble {
+  color: #fff !important;
+}
+
+.platform-android.android-portrait .redpacket-title {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.platform-android.android-portrait .redpacket-blessing {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.platform-android.android-portrait .redpacket-hint {
+  color: rgba(255, 215, 0, 0.7) !important;
+}
+
+.platform-android.android-portrait .redpacket-arrow {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.platform-android.android-portrait .sms-file-bubble {
+  background: #fff !important;
+  border: 1px solid rgba(0,0,0,0.08) !important;
+}
+
+.platform-android.android-portrait .file-bubble-name {
+  color: #333 !important;
+}
+
+.platform-android.android-portrait .file-bubble-hint {
+  color: #bbb !important;
+}
+
+.platform-android.android-portrait .voice-text-quote {
+  background: #f8f8f8 !important;
+  border-color: rgba(0,0,0,0.06) !important;
+  color: #555 !important;
+}
+
+.platform-android.android-portrait .phone-loading {
+  color: #bbb !important;
+}
+
+.platform-android.android-portrait .loading-spinner {
+  border-color: rgba(0,0,0,0.08) !important;
+  border-top-color: #ff8fab !important;
+}
+
+.platform-android.android-portrait .typing-dot {
+  background: #ccc !important;
+}
+
+.platform-android.android-portrait .sms-share-card-wrapper {
+  max-width: 85%;
+}
+
+.platform-android.android-portrait .sms-archive-card-wrapper {
+  max-width: 85%;
+}
+
+.platform-android.android-portrait .share-card-bubble {
+  max-width: 100%;
+  font-size: 1rem;
+}
+
+.platform-android.android-portrait .archive-card-bubble {
+  max-width: 100%;
+  font-size: 1rem;
+}
+
+/* 成就消息 */
+.achievement-msg {
+  justify-content: center !important;
+}
+
+.achievement-msg-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(243,156,18,0.15), rgba(155,89,182,0.15));
+  border: 1px solid rgba(243,156,18,0.3);
+  border-radius: 16px;
+  max-width: 90%;
+  animation: achievement-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes achievement-glow {
+  from { box-shadow: 0 0 8px rgba(243,156,18,0.2); }
+  to { box-shadow: 0 0 16px rgba(243,156,18,0.4); }
+}
+
+.achievement-msg-icon {
+  font-size: 1.5rem;
+}
+
+.achievement-msg-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.achievement-msg-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f39c12;
+}
+
+.achievement-msg-desc {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.6);
+  margin-top: 2px;
+}
 </style>

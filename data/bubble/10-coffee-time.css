@@ -1,0 +1,25 @@
+/* ===== 咖啡时光 ===== */
+.sms-messages { background: #faf6f1 !important; padding: 4px 8px !important; }
+.sms-messages .sms-msg-row .sms-bubble.user {
+  background: linear-gradient(135deg, #d7ccc8, #bcaaa4) !important;
+  border-radius: 18px 6px 18px 18px !important;
+  color: #3e2723 !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 1px 3px rgba(62, 39, 35, 0.15) !important;
+}
+.sms-messages .sms-msg-row .sms-bubble.assistant {
+  background: #efebe9 !important;
+  border-radius: 6px 18px 18px 18px !important;
+  color: #4e342e !important;
+  font-size: 0.88rem !important;
+  line-height: 1.55 !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+.sms-messages .sms-time {
+  text-align: center !important; font-size: 0.65rem !important; color: #a1887f !important;
+  background: rgba(0, 0, 0, 0.04) !important; display: inline-block !important;
+  margin: 8px auto !important; padding: 3px 14px !important; border-radius: 10px !important;
+}

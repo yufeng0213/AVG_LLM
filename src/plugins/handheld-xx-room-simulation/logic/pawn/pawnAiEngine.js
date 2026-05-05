@@ -2,6 +2,7 @@
 
 import { createPawnNeedsEngine } from './pawnNeedsEngine.js'
 import { createPawnPathfindEngine } from './pawnPathfind.js'
+import { createItemEngine } from '../world/itemEngine.js'
 import {
   NEED_DEFAULT_CONFIG,
   PAWN_ACTIVITY_IDLE,
@@ -28,6 +29,7 @@ const NEED_PRIORITY_ORDER = ['hunger', 'rest', 'joy', 'social', 'comfort', 'work
 export const createPawnAiEngine = (deps = {}) => {
   const needsEngine = deps.needsEngine || createPawnNeedsEngine()
   const pathfindEngine = deps.pathfindEngine || createPawnPathfindEngine()
+  const itemEngine = deps.itemEngine || createItemEngine()
 
   // AI 决策流程
   const runPawnDecision = (pawn, roomState, globalState) => {
@@ -74,7 +76,8 @@ export const createPawnAiEngine = (deps = {}) => {
     // 如果有紧急需求
     if (sortedNeeds.length > 0) {
       const topNeed = sortedNeeds[0]
-      const furniture = findFurnitureForNeed(topNeed.name, roomState)
+      const currency = globalState?.currency || roomState?.currency
+      const furniture = findFurnitureForNeed(topNeed.name, roomState, pawn.position, currency)
 
       if (furniture) {
         return {
@@ -243,17 +246,60 @@ export const createPawnAiEngine = (deps = {}) => {
     }
   }
 
-  // 找到能满足需求的家具
-  const findFurnitureForNeed = (needType, roomState) => {
+  // 找到能满足需求的家具（扩展版：支持存储家具和售货机）
+  const findFurnitureForNeed = (needType, roomState, pawnPosition, currency) => {
     const furniture = roomState?.furniture || []
-    const candidates = furniture.filter(f =>
-      f.needsSatisfied && f.needsSatisfied[needType] > 0 && f.interactable
+
+    // 优先级1：有满足需求物品的存储家具
+    const storageWithItem = furniture.filter(f =>
+      f.kind === 'storage' &&
+      f.interactable &&
+      f.inventory &&
+      itemEngine.hasItemForNeed(f.inventory, needType)
     )
+    if (storageWithItem.length > 0) {
+      return findNearestFurniture(storageWithItem, pawnPosition)
+    }
 
-    if (candidates.length === 0) return null
+    // 优先级2：有满足需求商品的售货机（且有钱）
+    const vendingWithProduct = furniture.filter(f =>
+      f.kind === 'vending' &&
+      f.interactable &&
+      f.shopInventory &&
+      f.shopInventory.some(p =>
+        p.effect?.[needType] > 0 &&
+        p.stock > 0 &&
+        p.price <= (currency?.coins || 0)
+      )
+    )
+    if (vendingWithProduct.length > 0) {
+      return findNearestFurniture(vendingWithProduct, pawnPosition)
+    }
 
-    // 选择第一个可用的家具
-    return candidates[0]
+    // 优先级3：普通家具直接满足需求
+    const directFurniture = furniture.filter(f =>
+      f.needsSatisfied?.[needType] > 0 && f.interactable
+    )
+    if (directFurniture.length > 0) {
+      return findNearestFurniture(directFurniture, pawnPosition)
+    }
+
+    return null
+  }
+
+  // 辅助函数：找最近的家具（曼哈顿距离）
+  const findNearestFurniture = (candidates, position) => {
+    if (!position) return candidates[0] || null
+    let nearest = null
+    let minDist = Infinity
+    for (const f of candidates) {
+      const dist = Math.abs(f.x - position.x) + Math.abs(f.y - position.y)
+      if (dist < minDist) {
+        minDist = dist
+        nearest = f
+      }
+    }
+    return nearest
   }
 
   // 找到能执行工作的家具
@@ -324,17 +370,62 @@ export const createPawnAiEngine = (deps = {}) => {
         pawn.currentActivity = PAWN_ACTIVITY_SOCIALIZING
         pawn.sprite.action = 'talk'
         break
+      case 'storage':
+        pawn.currentActivity = 'retrieving'
+        pawn.sprite.action = 'interact'
+        break
+      case 'shop':
+        pawn.currentActivity = 'shopping'
+        pawn.sprite.action = 'interact'
+        break
       default:
         pawn.currentActivity = PAWN_ACTIVITY_IDLE
         pawn.sprite.action = 'idle'
     }
   }
 
-  // 完成交互
-  const completeInteraction = (pawn, roomState, needsEngine) => {
+  // 完成交互（扩展版：支持存储家具和售货机）
+  const completeInteraction = (pawn, roomState, needsEngine, currency) => {
     const furniture = roomState?.furniture?.find(f => f.id === pawn.targetFurniture)
 
-    // 恢复需求
+    // 处理存储家具：从库存取出物品消耗
+    if (furniture?.interactionType === 'storage' && furniture.inventory) {
+      const urgentNeed = getMostUrgentNeed(pawn)
+      if (urgentNeed) {
+        const item = itemEngine.getBestItemForNeed(furniture.inventory, urgentNeed.name)
+        if (item) {
+          const result = itemEngine.consumeItemForPawn(pawn, furniture.inventory, item.id, 1)
+          if (result.success) {
+            // 成功消耗物品，需求已恢复
+          }
+        }
+      }
+    }
+
+    // 处理售货机：购买商品并消费
+    if (furniture?.interactionType === 'shop' && furniture.shopInventory && currency) {
+      const urgentNeed = getMostUrgentNeed(pawn)
+      if (urgentNeed) {
+        const product = furniture.shopInventory.find(p =>
+          p.effect?.[urgentNeed.name] > 0 &&
+          p.stock > 0 &&
+          p.price <= currency.coins
+        )
+        if (product) {
+          const result = itemEngine.purchaseFromShop(currency, furniture.shopInventory, product.templateId, 1)
+          if (result.success) {
+            // 应用效果
+            for (const [needType, value] of Object.entries(result.item.effect)) {
+              if (pawn.needs?.[needType]) {
+                pawn.needs[needType].value = Math.min(100, pawn.needs[needType].value + value)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 恢复需求（普通家具）
     if (furniture?.needsSatisfied) {
       for (const [need, rate] of Object.entries(furniture.needsSatisfied)) {
         needsEngine.recoverNeed(pawn, need, rate * 20)
@@ -352,6 +443,22 @@ export const createPawnAiEngine = (deps = {}) => {
     pawn.assignedWork = null
     pawn.sprite.action = 'idle'
     pawn.activityStartTime = 0
+  }
+
+  // 辅助：获取最紧急的需求
+  const getMostUrgentNeed = (pawn) => {
+    const needs = pawn?.needs || {}
+    let urgentNeed = null
+    let lowestValue = 100
+
+    for (const [name, data] of Object.entries(needs)) {
+      if (data.value < lowestValue) {
+        lowestValue = data.value
+        urgentNeed = { name, value: data.value, threshold: data.threshold, critical: data.critical }
+      }
+    }
+
+    return urgentNeed
   }
 
   // 根据工作添加技能经验
@@ -380,11 +487,13 @@ export const createPawnAiEngine = (deps = {}) => {
     selectTargetBehavior,
     executeDecision,
     findFurnitureForNeed,
+    findNearestFurniture,
     findFurnitureForWork,
     findAvailableWork,
     findRandomWalkablePosition,
     startInteractionAtTarget,
     completeInteraction,
+    getMostUrgentNeed,
   }
 }
 

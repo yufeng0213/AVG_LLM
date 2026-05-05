@@ -108,6 +108,37 @@ export function useTodoInventory() {
   const isLoading = ref(false)
   const todos = _todos // _todos 已是 reactive 代理，直接引用
 
+  // 按时间分组（未完成待办）
+  const groupedByTime = computed(() => {
+    const groups = { today: [], tomorrow: [], future: [], overdue: [] }
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const dayAfter = new Date(tomorrow)
+    dayAfter.setDate(dayAfter.getDate() + 1)
+
+    for (const t of todos) {
+      if (t.status === 'done') continue
+      const ds = getDueStatus(t)
+      if (ds === 'overdue') {
+        groups.overdue.push(t)
+      } else if (t.dueDate) {
+        const due = new Date(t.dueDate)
+        if (due >= tomorrow && due < dayAfter) {
+          groups.tomorrow.push(t)
+        } else if (due >= dayAfter) {
+          groups.future.push(t)
+        } else {
+          groups.today.push(t)
+        }
+      } else {
+        groups.today.push(t)
+      }
+    }
+    return groups
+  })
+
   // 按分类分组（仅未完成）
   const categorizedTodos = computed(() => {
     const groups = {}
@@ -126,12 +157,28 @@ export function useTodoInventory() {
     const pending = todos.filter(t => t.status === 'pending')
     const done = todos.filter(t => t.status === 'done')
     const overdue = pending.filter(t => getDueStatus(t) === 'overdue')
+    const dueToday = pending.filter(t => getDueStatus(t) === 'due_today')
     return {
       total: todos.length,
       pending: pending.length,
       done: done.length,
       overdue: overdue.length,
+      dueToday: dueToday.length,
     }
+  })
+
+  // 完成率
+  const completionRate = computed(() => {
+    return todos.length ? Math.round(todos.filter(t => t.status === 'done').length / todos.length * 100) : 0
+  })
+
+  // 按分类统计
+  const statsByCategory = computed(() => {
+    const result = {}
+    for (const cat of CATEGORY_ORDER) {
+      result[cat] = todos.filter(t => t.category === cat).length
+    }
+    return result
   })
 
   // 已完成（最近7天）
@@ -349,7 +396,10 @@ export function useTodoInventory() {
     todos,
     isLoading,
     categorizedTodos,
+    groupedByTime,
     stats,
+    completionRate,
+    statsByCategory,
     recentDone,
     addTodo,
     updateTodo,

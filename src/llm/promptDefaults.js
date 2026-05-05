@@ -326,6 +326,45 @@ XML 标签：
 5) 可输出 1-4 条连续短信，不要只回一句敷衍。`,
   },
   {
+    id: 'phone:archive_card',
+    category: 'phone',
+    name: '档案卡片生成',
+    description: '从网页内容提取结构化信息，生成百科档案卡片',
+    protocol: 'json',
+    defaultValue: `你是"百科档案提取器"。
+
+你的任务是从玩家分享的网页内容中，提取关键信息并生成一张结构化的百科档案卡片。这卡片将被存入"角色百科档案馆"，是玩家和角色一起发现、收集的知识。
+
+## 分类说明
+
+- knowledge（知识）：科普、学术、技术、常识类内容
+- secret（秘密）：鲜为人知的内幕、阴谋、隐藏真相
+- clue（线索）：指向更大谜团的蛛丝马迹、关键证据
+- trivia（趣闻）：冷门但有趣的八卦、花絮、冷知识
+- legend（传说）：神话、传说、历史传奇
+- relationship（人物关系）：角色之间的关系线索、人际网络信息
+- worldview（世界观）：世界设定、规则、背景信息
+
+## 稀有度判定
+
+- common（普通）：一般信息、常见内容
+- uncommon（少见）：有一定价值的内容、不太容易发现的
+- rare（稀有）：高价值内容、关键线索、重要发现
+- epic（史诗）：重大发现、改变认知的内容
+- legendary（传说）：极其罕见、传说级别的发现
+
+## 输出
+
+严格返回以下 JSON 格式，不要添加任何其他内容：
+{
+  "title": "档案标题（5-20字，要有吸引力）",
+  "category": "上述7个分类之一",
+  "tags": ["标签1", "标签2"],
+  "rarity": "上述5个稀有度之一",
+  "summary": "一句话摘要（20-80字，要有意思）"
+}`,
+  },
+  {
     id: 'phone:dorm_chat',
     category: 'phone',
     name: '面对面宿舍聊天',
@@ -942,10 +981,27 @@ XML 标签：
 |end|
 |suggestions=下一章方向A|下一章方向B|下一章方向C|
 
+【评论生成】（可选，在建议之后追加）
+你还需要为章节生成读者评论，包括章评（整章评论）和段评（绑定到具体段落）。
+格式如下：
+
+<thinking>分析当前章节内容，思考哪些段落可能引发读者讨论，构思评论的角度和语气</thinking>
+
+<comments type="chapter">
+  <comment author="书友昵称" avatar="emoji" likes="数字">章评内容</comment>
+  <comment author="书友昵称" avatar="emoji" likes="数字">章评内容</comment>
+</comments>
+<comments para="段落索引">
+  <comment author="书友昵称" avatar="emoji" likes="数字">段评内容</comment>
+</comments>
+
 说明：
-- |title=...| 之间是章节标题
-- |end| 标记正文结束
-- |suggestions=A|B|C| 是 3 个下一章建议方向，用 | 分隔
+- avatar 从以下 emoji 中选择：🗣📖✨🌟💫😂😭🔥👍❤️
+- content 是评论文本，口语化，像真实读者的语气
+- likes 是点赞数，范围 10-9999
+- 章评用 <comments type="chapter">，段评用 <comments para="N">（N 为段落索引，从0开始）
+- 每个段落最多 2-3 条段评，章评 1-3 条
+- 评论内容要和章节内容相关，体现对剧情的反应
 - 不要输出任何其他内容，不要输出 JSON`,
   },
 

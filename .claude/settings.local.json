@@ -100,7 +100,8 @@
       "Bash(sed -i 's|getConfig\\(|appConfigRepo.get\\(|g' src/services/exposureTracker.js)",
       "Bash(sed -i 's|setConfig\\(|appConfigRepo.set\\(|g' src/services/exposureTracker.js)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git config *)"
     ]
   }
 }

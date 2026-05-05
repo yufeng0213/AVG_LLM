@@ -87,7 +87,7 @@ export function useOfflinePush({ onNewMessage, onNotificationClick }) {
     // 尝试通过 Service Worker 发送（后台也能工作）
     if (navigator.serviceWorker?.controller) {
       navigator.serviceWorker.controller.postMessage({
-        type: appId === 'calls' ? 'navigate-to-calls' : 'show-notification',
+        type: 'show-notification',
         title,
         body,
         contactId,
@@ -229,14 +229,18 @@ export function useOfflinePush({ onNewMessage, onNotificationClick }) {
 
   // 处理 Service Worker 的 postMessage（通知点击）
   function handleSWMessage(event) {
-    if (event.data?.type === 'navigate-to-sms') {
+    if (event.data?.type === 'navigate-to-sms' || event.data?.type === 'show-notification') {
       if (onNotificationClick) {
-        onNotificationClick(event.data.contactId)
+        onNotificationClick({
+          appId: event.data.appId || 'sms',
+          contactId: event.data.contactId,
+          contact: { id: event.data.contactId, name: event.data.title || '' },
+        })
       }
     }
     if (event.data?.type === 'navigate-to-calls') {
       if (onNotificationClick) {
-        onNotificationClick({ appId: 'calls', contactId: event.data.contactId })
+        onNotificationClick({ appId: 'sms', contactId: event.data.contactId })
       }
     }
   }

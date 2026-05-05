@@ -130,13 +130,6 @@ const worldBooks = ref([])
 // 使用传入的世界书ID（优先级最高），如果没有则使用默认的
 // 注意：不使用存档中的 worldBookId，因为存档可能是旧数据
 const activeBookId = ref(props.worldBookId || 'default_world_book')
-
-// 监听 props.worldBookId 变化，强制更新（防止存档中的旧 worldBookId 覆盖）
-watch(() => props.worldBookId, (newId) => {
-  if (newId && newId !== activeBookId.value) {
-    activeBookId.value = newId
-  }
-}, { immediate: true })
 // 叙事者数据（优先：本局覆盖 > 全局激活 > 世界书默认 > 系统默认）
 const narratorProfiles = ref([])
 const sessionNarratorId = ref(props.sessionNarratorId || '')
@@ -145,18 +138,32 @@ const LLM_SETTINGS_STORAGE_PREFIX = 'game-llm-settings'
 const RELATIONSHIP_LEDGER_STORAGE_PREFIX = 'relationship-ledger'
 
 const SESSION_SCOPED_STORAGE_PREFIXES = [
-  LLM_SETTINGS_STORAGE_PREFIX,
   RELATIONSHIP_LEDGER_STORAGE_PREFIX,
 ]
 const createSessionSmsScopeId = () => `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 const sanitizeSmsScopeId = (value) => String(value || '').trim()
 const smsSaveScopeId = ref(sanitizeSmsScopeId(props.saveData?.__slotId) || createSessionSmsScopeId())
 
+// LLM 配置存储 key（只依赖 worldBookId，不依赖 scopeId，确保跨会话持久化）
+const llmSettingsStorageKey = computed(() => {
+  const worldId = String(activeBookId.value || 'default_world_book').trim() || 'default_world_book'
+  return `${LLM_SETTINGS_STORAGE_PREFIX}:${worldId}`
+})
+
+// 关系账本存储 key（依赖 scopeId，因为不同存档的关系历史可能不同）
 const getScopedStorageKey = (prefix, worldBookId = activeBookId.value, scopeId = smsSaveScopeId.value) => {
   const normalizedWorldId = String(worldBookId || 'default_world_book').trim() || 'default_world_book'
   const normalizedScopeId = sanitizeSmsScopeId(scopeId) || 'session_default'
   return `${prefix}:${normalizedWorldId}:${normalizedScopeId}`
 }
+
+// 监听 props.worldBookId 变化，强制更新（防止存档中的旧 worldBookId 覆盖）
+// 注意：此 watch 放在变量定义之后，避免初始化顺序问题
+watch(() => props.worldBookId, (newId) => {
+  if (newId && newId !== activeBookId.value) {
+    activeBookId.value = newId
+  }
+}, { immediate: true })
 
 // 立绘图片缓存
 const portraitImageCache = ref(new Map())
@@ -267,6 +274,7 @@ const normalizeOpeningDialogueLines = (rawLines, options = {}) => {
         speaker: String(line?.speaker || '旁白').trim() || '旁白',
         text: String(line?.text || '').trim(),
         emotion: line?.emotion || null,
+        scene: line?.scene || null,
       }))
       .filter((line) => line.text)
       .slice(0, max)
@@ -381,7 +389,6 @@ const storyTokenUsage = ref({
   outputTokens: null,
   totalTokens: null,
 })
-const llmSettingsStorageKey = computed(() => getScopedStorageKey(LLM_SETTINGS_STORAGE_PREFIX))
 const isGeneratingMiniTheater = ref(false)
 const showMiniTheaterPanel = ref(false)
 const miniTheaterError = ref('')
@@ -757,14 +764,13 @@ const loadLlmSettingsFromStorage = async () => {
   return false
 }
 
-const hydrateLlmSettingsForScope = async (fallbackValue = null) => {
+const hydrateLlmSettingsForScope = async () => {
+  // 从 SQLite 加载该世界书的配置（配置独立于存档，跨会话持久化）
   const loaded = await loadLlmSettingsFromStorage()
   if (loaded) return
-  if (fallbackValue && typeof fallbackValue === 'object') {
-    applyLlmSettingsPayload(fallbackValue)
-  } else {
-    applyLlmSettingsPayload(getCurrentLlmSettingsPayload())
-  }
+
+  // SQLite 没有配置时，使用当前默认值并持久化
+  applyLlmSettingsPayload(getCurrentLlmSettingsPayload())
   await persistLlmSettings()
 }
 
@@ -1522,12 +1528,22 @@ const applyBackgroundByLineScene = async (line, options = {}) => {
   const sceneInput = line?.scene
   const matchedScene = resolveSceneFromWorldBook(sceneInput)
 
+  // 优先：匹配到的场景有背景图
   if (matchedScene?.background) {
     await bg.switchBackground(matchedScene)
     return
   }
 
+  // 获取默认背景配置
+  const defaultBgPath = activeBook.value?.backgroundSettings?.defaultBackgroundPath
+  const defaultBgName = activeBook.value?.backgroundSettings?.defaultBackgroundName || '默认背景'
+
+  // 有场景输入但未匹配到场景配置，使用默认背景
   if (sceneInput) {
+    if (defaultBgPath) {
+      await applyDefaultBackground(defaultBgPath, defaultBgName)
+      return
+    }
     const sceneObject = typeof sceneInput === 'string'
       ? { id: sceneInput, name: sceneInput, background: '' }
       : sceneInput
@@ -1535,12 +1551,40 @@ const applyBackgroundByLineScene = async (line, options = {}) => {
     return
   }
 
+  // 兜底：允许fallback时，始终使用默认背景
   if (options.allowFallback) {
+    if (defaultBgPath) {
+      await applyDefaultBackground(defaultBgPath, defaultBgName)
+      return
+    }
+
+    // 无默认背景，使用第一个有背景图的场景
     const fallbackScene = (activeBook.value?.scenes || []).find((item) => item?.background)
     if (fallbackScene?.background) {
       updateCurrentSceneName(fallbackScene)
       await bg.switchBackground(fallbackScene)
     }
+  }
+}
+
+// 直接应用默认背景，绕过 switchBackground 的匹配逻辑
+const applyDefaultBackground = async (bgPath, bgName) => {
+  // 先尝试通过 switchBackground 匹配资产列表
+  const defaultScene = {
+    id: 'default_background',
+    name: bgName,
+    background: bgPath,
+    defaultBackgroundPath: bgPath,
+  }
+  updateCurrentSceneName(defaultScene)
+  const result = await bg.switchBackground(defaultScene)
+
+  // 如果 switchBackground 成功加载了背景，直接返回
+  if (bg.currentBackgroundUrl) return
+
+  // switchBackground 失败时，直接将路径作为 URL 使用
+  if (bgPath) {
+    bg.currentBackgroundUrl = typeof bgPath === 'string' && /^https?:\/\//i.test(bgPath) ? bgPath : `url(${bgPath})`
   }
 }
 
@@ -2265,10 +2309,12 @@ const loadNarratorData = async () => {
 
 const applyBackgroundAssetsFromActiveBook = async () => {
   const assets = Array.isArray(activeBook.value?.backgroundAssets) ? activeBook.value.backgroundAssets : []
+  const defaultBgPath = activeBook.value?.backgroundSettings?.defaultBackgroundPath
   if (assets.length > 0) {
     await bg.applyWorldBookBackgroundAssets(
       assets,
       `世界书背景：${String(activeBook.value?.title || '未命名世界书')}`,
+      defaultBgPath,
     )
     return
   }
@@ -2499,6 +2545,7 @@ const resetHistoryDialoguesViewport = async () => {
 
 const toggleDialogueHistoryPanel = async () => {
   const nextVisible = !showDialogueHistoryPanel.value
+  showDialogueBgPanel.value = false
   showDialogueHistoryPanel.value = nextVisible
   if (!nextVisible) {
     return
@@ -2512,6 +2559,7 @@ const closeDialogueHistoryPanel = () => {
 
 const toggleRelationshipTablePanel = () => {
   const nextVisible = !showRelationshipTablePanel.value
+  showDialogueBgPanel.value = false
   showRelationshipTablePanel.value = nextVisible
 }
 
@@ -2521,6 +2569,7 @@ const closeRelationshipTablePanel = () => {
 
 // 新增：好感度面板控制函数
 const toggleAffectionPanel = () => {
+  showDialogueBgPanel.value = false
   showAffectionPanel.value = !showAffectionPanel.value
 }
 
@@ -3330,8 +3379,7 @@ const handleGenerateStory = async (choiceToApply = null, options = {}) => {
         console.log('[GameScreen] aux 解析成功，开始分发结果')
         await dispatchAuxResults(auxResult, normalizedScript)
       } else {
-        console.log('[GameScreen] 未检测到 aux 区块，本轮不记录事件/记忆')
-        // 已禁用兜底机制：不再单独调用 LLM 提取记忆
+        console.warn('[GameScreen] ⚠️ LLM 未输出 aux 区块，无记忆/事件记录')
       }
 
       // 曝光追踪：独立执行（不需要LLM），检测转正候选
@@ -3543,6 +3591,83 @@ async function dispatchAuxResults(auxResult, currentScript) {
   }
 
   // 更新提取位置
+  memoryLastExtractedLineCount.value = currentScript.length
+}
+
+/**
+ * 兜底机制：当LLM未输出aux区块时，自动生成一条默认事件记录
+ * @param {Array} currentScript - 当前对话脚本
+ */
+async function generateFallbackMemory(currentScript) {
+  const bookId = activeBookId.value
+  const book = activeBook.value
+  if (!bookId || !book) return
+
+  // 从对话脚本中提取参与角色（排除旁白）
+  const speakers = new Set()
+  let lastStoryTime = ''
+  let summaryText = ''
+
+  for (const line of currentScript.slice(-10)) {
+    if (line.speaker && line.speaker !== '旁白') {
+      speakers.add(line.speaker)
+    }
+    if (line.storyTime) {
+      lastStoryTime = line.storyTime
+    }
+    // 取最后一条非旁白对话作为摘要参考
+    if (line.speaker !== '旁白' && line.text) {
+      summaryText = line.text.slice(0, 30)
+    }
+  }
+
+  // 获取角色ID
+  const participantIds = []
+  for (const name of speakers) {
+    const id = resolveCharacterIdByIdentifier(name)
+    if (id) participantIds.push(id)
+  }
+
+  // 如果没有参与者，添加玩家
+  if (participantIds.length === 0) {
+    participantIds.push('__player__')
+  }
+
+  // 创建默认事件记录
+  const fallbackEvent = {
+    id: `evt_fallback_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    type: 'daily',
+    participants: participantIds,
+    summary: summaryText ? `日常互动：${summaryText}` : '日常对话互动',
+    emotionalImpact: 10,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    scene: lastStoryTime || '',
+  }
+
+  try {
+    await mem.addEvent(bookId, fallbackEvent)
+    console.log(`[FallbackMemory] 已自动生成事件记录: ${fallbackEvent.summary}`)
+  } catch (e) {
+    console.warn('[FallbackMemory] 自动生成事件失败:', e.message)
+  }
+
+  // 如果有角色参与，为每个角色创建一条默认印象记录
+  for (const charId of participantIds) {
+    if (charId === '__player__') continue
+    try {
+      await mem.addCharacterMemory(bookId, charId, {
+        about: '__player__',
+        content: '与玩家进行了日常互动',
+        sentiment: 5,
+        status: 'active',
+      })
+      console.log(`[FallbackMemory] 已为角色 ${charId} 生成默认印象`)
+    } catch (e) {
+      console.warn(`[FallbackMemory] 角色 ${charId} 印象记录失败:`, e.message)
+    }
+  }
+
   memoryLastExtractedLineCount.value = currentScript.length
 }
 
@@ -3766,6 +3891,7 @@ const toggleGeneratePanel = async () => {
 
   if (!showGeneratePanel.value) {
     showMiniTheaterPanel.value = false
+    showDialogueBgPanel.value = false
     closeDialogueHistoryPanel()
     closeRelationshipTablePanel()
     await loadApiConfigStatus()
@@ -3835,6 +3961,7 @@ const toggleMiniTheaterPanel = async () => {
   if (!showMiniTheaterPanel.value) {
     showGeneratePanel.value = false
     showChoicesPanel.value = false
+    showDialogueBgPanel.value = false
     currentChoices.value = null
     closeDialogueHistoryPanel()
     closeRelationshipTablePanel()
@@ -3926,6 +4053,7 @@ const toggleCardPanel = async () => {
     showGeneratePanel.value = false
     showMiniTheaterPanel.value = false
     showChoicesPanel.value = false
+    showDialogueBgPanel.value = false
     currentChoices.value = null
     closeDialogueHistoryPanel()
     closeRelationshipTablePanel()
@@ -4931,6 +5059,16 @@ const saveSlotName = ref('')
 const playStartTime = ref(Date.now()) // 游戏开始时间
 const DEFAULT_QUICK_SAVE_SLOT_ID = 'save_quick_default'
 
+// 对话框样式配置状态
+const showDialogueBgPanel = ref(false)
+const dialogueBgImage = ref('')
+const dialogueBgFileName = ref('')
+const dialogueBgError = ref('')
+const dialogueBgSuccess = ref('')
+const dialogueBgFileInput = ref(null)
+const dialogueBoxRef = ref(null)
+const DIALOGUE_BG_STORAGE_KEY = 'avg-dialogue-bg-image'
+
 // 计算游戏时长（秒）
 const currentPlayTime = computed(() => {
   return Math.floor((Date.now() - playStartTime.value) / 1000)
@@ -4994,6 +5132,7 @@ const toggleSavePanel = () => {
   closeDebugPanel()
   closeDialogueHistoryPanel()
   closeRelationshipTablePanel()
+  showDialogueBgPanel.value = false
   showSavePanel.value = !showSavePanel.value
   if (!showSavePanel.value) {
     saveError.value = null
@@ -5007,6 +5146,7 @@ const toggleDebugPanel = () => {
   closeDialogueHistoryPanel()
   closeRelationshipTablePanel()
   showSavePanel.value = false
+  showDialogueBgPanel.value = false
   showDebugPanel.value = !showDebugPanel.value
 }
 
@@ -5089,6 +5229,7 @@ const handleToggleDialogueHistoryFromMenu = () => {
   closeTopMenu()
   showSavePanel.value = false
   showDebugPanel.value = false
+  showDialogueBgPanel.value = false
   closeRelationshipTablePanel()
   toggleDialogueHistoryPanel()
 }
@@ -5097,6 +5238,7 @@ const handleToggleRelationshipTableFromMenu = () => {
   closeTopMenu()
   showSavePanel.value = false
   showDebugPanel.value = false
+  showDialogueBgPanel.value = false
   closeDialogueHistoryPanel()
   toggleRelationshipTablePanel()
 }
@@ -5105,6 +5247,7 @@ const handleToggleChapterHistoryFromMenu = () => {
   closeTopMenu()
   showSavePanel.value = false
   showDebugPanel.value = false
+  showDialogueBgPanel.value = false
   closeDialogueHistoryPanel()
   closeRelationshipTablePanel()
   showChapterHistoryPanel.value = !showChapterHistoryPanel.value
@@ -5117,6 +5260,162 @@ const jumpToChapter = (chapter) => {
   showChapterHistoryPanel.value = false
 }
 
+// ========== 对话框样式配置方法 ==========
+
+const handleToggleDialogueBgPanelFromMenu = () => {
+  closeTopMenu()
+  toggleDialogueBgPanel()
+}
+
+const toggleDialogueBgPanel = () => {
+  if (!showDialogueBgPanel.value) {
+    // 打开面板前，关闭其他面板
+    showSavePanel.value = false
+    showDebugPanel.value = false
+    closeDialogueHistoryPanel()
+    closeRelationshipTablePanel()
+    showChapterHistoryPanel.value = false
+    showAffectionPanel.value = false
+    showGeneratePanel.value = false
+    showMiniTheaterPanel.value = false
+    showCardPanel.value = false
+  }
+  showDialogueBgPanel.value = !showDialogueBgPanel.value
+  if (!showDialogueBgPanel.value) {
+    dialogueBgError.value = ''
+    dialogueBgSuccess.value = ''
+  }
+}
+
+const triggerDialogueBgFileBrowse = () => {
+  if (dialogueBgFileInput.value) {
+    dialogueBgFileInput.value.click()
+  }
+}
+
+const handleDialogueBgFileSelect = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  dialogueBgError.value = ''
+  dialogueBgSuccess.value = ''
+  dialogueBgFileName.value = file.name
+
+  // 验证文件类型
+  const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
+  if (!validTypes.includes(file.type)) {
+    dialogueBgError.value = '请选择 PNG、JPG 或 WebP 格式的图片'
+    event.target.value = ''
+    return
+  }
+
+  // 验证文件大小（限制为 5MB）
+  if (file.size > 5 * 1024 * 1024) {
+    dialogueBgError.value = '图片大小不能超过 5MB'
+    event.target.value = ''
+    return
+  }
+
+  try {
+    // 读取文件为 base64
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      dialogueBgImage.value = e.target.result
+      dialogueBgSuccess.value = '图片已加载，点击"应用背景"生效'
+    }
+    reader.onerror = () => {
+      dialogueBgError.value = '图片读取失败'
+    }
+    reader.readAsDataURL(file)
+  } catch (err) {
+    dialogueBgError.value = `加载失败: ${err.message || '未知错误'}`
+  }
+
+  event.target.value = ''
+}
+
+const applyDialogueBgImage = () => {
+  if (!dialogueBgImage.value) return
+
+  // 保存到 localStorage
+  try {
+    localStorage.setItem(DIALOGUE_BG_STORAGE_KEY, dialogueBgImage.value)
+    dialogueBgSuccess.value = '背景已应用并保存'
+  } catch (err) {
+    // localStorage 可能因容量限制而失败
+    dialogueBgError.value = '保存失败，图片可能过大'
+    return
+  }
+
+  // 应用样式到对话框
+  applyDialogueBgStyle(dialogueBgImage.value)
+}
+
+const resetDialogueBgDefault = () => {
+  dialogueBgImage.value = ''
+  dialogueBgFileName.value = ''
+  dialogueBgError.value = ''
+  dialogueBgSuccess.value = ''
+
+  // 清除 localStorage
+  localStorage.removeItem(DIALOGUE_BG_STORAGE_KEY)
+
+  // 重置样式
+  applyDialogueBgStyle(null)
+}
+
+const applyDialogueBgStyle = (imageData) => {
+  const dialogueBox = dialogueBoxRef.value
+  if (!dialogueBox) {
+    // 如果 ref 还没挂载，尝试用 querySelector
+    const fallbackBox = document.querySelector('.dialogue-box')
+    if (!fallbackBox) return
+    applyStyleToElement(fallbackBox, imageData)
+    return
+  }
+  applyStyleToElement(dialogueBox, imageData)
+}
+
+const applyStyleToElement = (element, imageData) => {
+  if (imageData) {
+    // 使用 CSS 变量存储图片 URL
+    document.documentElement.style.setProperty('--dialogue-bg-image', `url(${imageData})`)
+    // 添加自定义背景类
+    element.classList.add('has-custom-bg-image')
+  } else {
+    // 移除 CSS 变量和类
+    document.documentElement.style.removeProperty('--dialogue-bg-image')
+    element.classList.remove('has-custom-bg-image')
+  }
+}
+
+const loadDialogueBgFromStorage = () => {
+  try {
+    const savedImage = localStorage.getItem(DIALOGUE_BG_STORAGE_KEY)
+    if (savedImage) {
+      dialogueBgImage.value = savedImage
+      // 延迟应用样式，等待 DOM 加载完成
+      setTimeout(() => {
+        applyDialogueBgStyle(savedImage)
+      }, 100)
+    }
+  } catch (err) {
+    console.warn('加载对话框背景配置失败:', err)
+  }
+}
+
+// 对话框背景预览样式计算
+const dialogueBgPreviewStyle = computed(() => {
+  if (dialogueBgImage.value) {
+    return {
+      backgroundImage: `url(${dialogueBgImage.value})`,
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat'
+    }
+  }
+  return {}
+})
+
 // 加载存档数据
 const loadSaveData = async () => {
   clearMiniTheaterMode()
@@ -5128,7 +5427,7 @@ const loadSaveData = async () => {
   if (!(props.saveData && props.saveData.game)) {
     storyTimeLabel.value = getCurrentStoryTimeLabel()
     hydrateNarrativeRuntimeState(null)
-    await hydrateLlmSettingsForScope(null)
+    await hydrateLlmSettingsForScope()
     await hydrateRelationshipLedgerForScope(null)
     return
   }
@@ -5163,7 +5462,7 @@ const loadSaveData = async () => {
   storyTimeLabel.value = normalizeStoryTimeLabel(props.saveData.metadata?.storyTime, storyTimeLabel.value)
 
   hydrateNarrativeRuntimeState(props.saveData.game)
-  await hydrateLlmSettingsForScope(props.saveData.game.llmSettings)
+  await hydrateLlmSettingsForScope()
   await hydrateRelationshipLedgerForScope(props.saveData.game.relationshipLedger)
 
   // 恢复章节状态
@@ -5211,7 +5510,7 @@ watch(currentLine, async (newLine) => {
   updateCurrentSceneName(newLine?.scene)
 
   // 根据当前对话场景切换背景（支持世界书场景映射）
-  await applyBackgroundByLineScene(newLine)
+  await applyBackgroundByLineScene(newLine, { allowFallback: true })
 }, { immediate: true })
 
 // 背景样式计算
@@ -5244,6 +5543,9 @@ onMounted(async () => {
   await updatePortraitUrls()
   await applyBackgroundAssetsFromActiveBook()
 
+  // 加载对话框背景配置
+  loadDialogueBgFromStorage()
+
   // 初始化关系 store（设置 worldBookId，否则 SQLite 写入时 world_book_id 为 null）
   await rel.init(activeBookId.value)
 
@@ -5254,7 +5556,7 @@ onMounted(async () => {
     // 新游戏：初始化开场白
     await initializeOpeningDialogue()
     hydrateNarrativeRuntimeState(null)
-    await hydrateLlmSettingsForScope(null)
+    await hydrateLlmSettingsForScope()
     await hydrateRelationshipLedgerForScope(null)
 
     // 新游戏开始时播放章节切换动画

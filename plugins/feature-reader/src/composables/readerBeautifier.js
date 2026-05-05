@@ -71,6 +71,51 @@ export const DEFAULT_STYLES = `
   color: var(--reader-accent-start, #667eea);
   font-weight: 700;
 }
+
+/* 段评气泡 */
+.reader-body p[data-has-comments] {
+  position: relative;
+}
+.reader-body p[data-has-comments]::after {
+  content: '💬';
+  position: absolute;
+  right: -22px;
+  top: 2px;
+  opacity: 0.5;
+  font-size: 0.8rem;
+  pointer-events: auto;
+  cursor: pointer;
+}
+@media (hover: none) {
+  .reader-body p[data-has-comments]::after {
+    right: -8px;
+    width: 6px;
+    height: 6px;
+    background: #7c5cbf;
+    border-radius: 50%;
+    opacity: 0.4;
+    font-size: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+/* 章评按钮 */
+.chapter-comment-btn {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: #7c5cbf;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: #f0e8ff;
+  cursor: pointer;
+  user-select: none;
+  margin-left: 8px;
+  transition: background 0.15s;
+}
+.chapter-comment-btn:hover {
+  background: #e0d4f5;
+}
 `
 
 // ===== 引擎 =====
@@ -134,10 +179,26 @@ export function loadBeautifyConfig(userConfig) {
 }
 
 /**
+ * 为每个 <p> 标签注入 data-para-id 属性（按顺序编号）
+ */
+export function injectParaIds(html) {
+  let idx = 0
+  return html.replace(/<p([^>]*)>/g, (match, attrs) => {
+    const paraId = idx++
+    // 如果已有 data-para-id，不重复注入
+    if (attrs.includes('data-para-id')) return match
+    return `<p${attrs} data-para-id="${paraId}">`
+  })
+}
+
+/**
  * 应用美化规则到 HTML
  */
 export function beautifyHtml(html, config) {
   if (!html || !config?.rules?.length) return html
+
+  // 先注入段落ID
+  html = injectParaIds(html)
 
   for (const rule of config.rules) {
     if (rule.enabled === false) continue

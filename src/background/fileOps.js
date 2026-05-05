@@ -110,6 +110,9 @@ function findBackgroundFile(backgroundList, backgroundIdOrName) {
   if (found) return found
   found = backgroundList.find(bg => bg.name === backgroundIdOrName)
   if (found) return found
+  // 按路径匹配（用于 defaultBackgroundPath 场景）
+  found = backgroundList.find(bg => bg.path === backgroundIdOrName)
+  if (found) return found
   const nameWithoutExt = backgroundIdOrName.replace(/\.[^.]+$/, '')
   return backgroundList.find(bg => {
     const bgNameWithoutExt = bg.name.replace(/\.[^.]+$/, '')
@@ -120,9 +123,25 @@ function findBackgroundFile(backgroundList, backgroundIdOrName) {
 /**
  * 在背景列表中查找默认背景
  */
-function findDefaultBackground(backgroundList) {
+function findDefaultBackground(backgroundList, defaultBgPath) {
   if (!backgroundList || backgroundList.length === 0) return null
 
+  // 优先：使用用户配置的默认背景路径
+  if (defaultBgPath) {
+    let found = backgroundList.find(bg => bg.path === defaultBgPath)
+    if (found) return found
+    // 也尝试按路径的文件名匹配
+    const pathFileName = defaultBgPath.split('/').pop().split('\\').pop()
+    if (pathFileName) {
+      found = backgroundList.find(bg => bg.name === pathFileName)
+      if (found) return found
+      const nameWithoutExt = pathFileName.replace(/\.[^.]+$/, '')
+      found = backgroundList.find(bg => bg.name.replace(/\.[^.]+$/, '') === nameWithoutExt)
+      if (found) return found
+    }
+  }
+
+  // 兜底：按名称搜索 "default"
   let found = backgroundList.find(bg => {
     const nameWithoutExt = bg.name.replace(/\.[^.]+$/, '').toLowerCase()
     return nameWithoutExt === 'default'

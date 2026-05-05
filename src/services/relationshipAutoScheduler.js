@@ -11,7 +11,10 @@ import { useWorldMemoryStore } from '../stores/worldMemory.store.js'
  */
 export function flushRelationshipSave() {
   import('../stores/relationship.store.js').then(({ useRelationshipStore }) => {
-    useRelationshipStore().flushSave()
+    const store = useRelationshipStore()
+    if (typeof store.flushSave === 'function') {
+      store.flushSave()
+    }
   })
 }
 
